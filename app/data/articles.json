@@ -1,0 +1,708 @@
+{
+  "age_group": "6-7",
+  "total_articles": 30,
+  "articles": [
+    {
+      "id": 1,
+      "title": "The Life of a Butterfly",
+      "image": "/img/article/1.jpg",
+      "content": "A butterfly starts as a tiny egg. The egg hatches into a caterpillar. The caterpillar eats leaves and grows. Then it makes a chrysalis. Inside, it changes into a butterfly. This change is called metamorphosis.",
+      "questions": [
+        {
+          "question": "What does a butterfly start as?",
+          "options": ["An egg", "A bird", "A flower"],
+          "correct_answer_index": 0
+        },
+        {
+          "question": "What does a caterpillar eat?",
+          "options": ["Leaves", "Rocks", "Sand"],
+          "correct_answer_index": 0
+        },
+        {
+          "question": "What is the change called?",
+          "options": ["Metamorphosis", "Migration", "Hibernation"],
+          "correct_answer_index": 0
+        }
+      ],
+      "audio_narration_script": "A butterfly begins as a tiny egg. It hatches into a caterpillar that eats leaves. Then it forms a chrysalis and changes into a butterfly. This amazing change is called metamorphosis."
+    },
+    {
+      "id": 2,
+      "title": "Why We Need Water",
+      "image": "/img/article/2.jpg",
+      "content": "Water is important for all living things. People drink water to stay healthy. Plants need water to grow. Animals drink water too. We use water to cook and clean.",
+      "questions": [
+        {
+          "question": "Why do people drink water?",
+          "options": ["To stay healthy", "To jump higher", "To sleep less"],
+          "correct_answer_index": 0
+        },
+        {
+          "question": "Who needs water?",
+          "options": ["Plants and animals", "Only robots", "Only cars"],
+          "correct_answer_index": 0
+        },
+        {
+          "question": "What is one way we use water?",
+          "options": ["Cleaning", "Flying", "Drawing"],
+          "correct_answer_index": 0
+        }
+      ],
+      "audio_narration_script": "Water helps people, plants, and animals. We drink it to stay healthy. Plants use it to grow. We also use water for cooking and cleaning."
+    },
+
+    {
+      "id": 3,
+      "title": "All About the Sun",
+      "content": "The Sun is a big star. It gives us light and heat. Plants use sunlight to grow. The Earth moves around the Sun.",
+      "questions": [
+        {
+          "question": "What is the Sun?",
+          "options": ["A star", "A planet", "A cloud"],
+          "correct_answer_index": 0
+        },
+        {
+          "question": "What does the Sun give us?",
+          "options": ["Light and heat", "Snow", "Rainbows"],
+          "correct_answer_index": 0
+        },
+        {
+          "question": "What moves around the Sun?",
+          "options": ["Earth", "The Moon", "A tree"],
+          "correct_answer_index": 0
+        }
+      ],
+      "audio_narration_script": "The Sun is a bright star. It gives us light and keeps us warm. The Earth travels around the Sun every year."
+    },
+
+    {
+      "id": 4,
+      "title": "The Five Senses",
+      "content": "We have five senses. We see with our eyes. We hear with our ears. We smell with our nose. We taste with our tongue. We touch with our skin.",
+      "questions": [
+        {
+          "question": "How many senses do we have?",
+          "options": ["Five", "Two", "Ten"],
+          "correct_answer_index": 0
+        },
+        {
+          "question": "What do we use to hear?",
+          "options": ["Ears", "Eyes", "Hands"],
+          "correct_answer_index": 0
+        },
+        {
+          "question": "What do we use to taste?",
+          "options": ["Tongue", "Nose", "Feet"],
+          "correct_answer_index": 0
+        }
+      ],
+      "audio_narration_script": "Our five senses help us learn about the world. We see, hear, smell, taste, and touch every day."
+    },
+
+    {
+      "id": 5,
+      "title": "Rain and the Water Cycle",
+      "content": "The Sun heats water in lakes and oceans. The water turns into vapor and goes into the sky. It forms clouds. When clouds get heavy, rain falls. This is called the water cycle.",
+      "questions": [
+        {
+          "question": "What heats the water?",
+          "options": ["The Sun", "The Moon", "The Wind"],
+          "correct_answer_index": 0
+        },
+        {
+          "question": "What forms in the sky?",
+          "options": ["Clouds", "Mountains", "Trees"],
+          "correct_answer_index": 0
+        },
+        {
+          "question": "What is this process called?",
+          "options": ["Water cycle", "Food chain", "Solar system"],
+          "correct_answer_index": 0
+        }
+      ],
+      "audio_narration_script": "The Sun warms water and turns it into vapor. It forms clouds in the sky. When clouds are heavy, rain falls. This is the water cycle."
+    },
+    
+  {
+    "id": 6,
+    "title": "Mammals",
+    "content": "Mammals are animals that have hair or fur. They drink milk from their mothers when they are babies. Most mammals give birth to live babies. Dogs, cats, and whales are mammals.",
+    "questions": [
+      {
+        "question": "What covers most mammals' bodies?",
+        "options": ["Hair or fur", "Scales", "Feathers"],
+        "correct_answer_index": 0
+      },
+      {
+        "question": "What do baby mammals drink?",
+        "options": ["Milk", "Juice", "Oil"],
+        "correct_answer_index": 0
+      },
+      {
+        "question": "Which animal is a mammal?",
+        "options": ["Dog", "Snake", "Fish"],
+        "correct_answer_index": 0
+      }
+    ],
+    "audio_narration_script": "Mammals are animals with hair or fur. Baby mammals drink milk from their mothers. Dogs, cats, and even whales are mammals."
+  },
+  {
+    "id": 7,
+    "title": "Birds",
+    "content": "Birds have feathers and wings. Most birds can fly. They lay eggs. Birds use their beaks to eat food.",
+    "questions": [
+      {
+        "question": "What covers a bird’s body?",
+        "options": ["Feathers", "Fur", "Scales"],
+        "correct_answer_index": 0
+      },
+      {
+        "question": "How do birds have babies?",
+        "options": ["They lay eggs", "They grow on trees", "They hatch from rocks"],
+        "correct_answer_index": 0
+      },
+      {
+        "question": "What do birds use to eat?",
+        "options": ["Beaks", "Hands", "Paws"],
+        "correct_answer_index": 0
+      }
+    ],
+    "audio_narration_script": "Birds have feathers and wings. Many birds can fly. They lay eggs and use their beaks to eat."
+  },
+  {
+    "id": 8,
+    "title": "Reptiles",
+    "content": "Reptiles are cold-blooded animals. They have dry, scaly skin. Snakes, lizards, and turtles are reptiles. Most reptiles lay eggs.",
+    "questions": [
+      {
+        "question": "What kind of skin do reptiles have?",
+        "options": ["Dry and scaly", "Wet and slimy", "Soft and furry"],
+        "correct_answer_index": 0
+      },
+      {
+        "question": "Which is a reptile?",
+        "options": ["Snake", "Cat", "Frog"],
+        "correct_answer_index": 0
+      },
+      {
+        "question": "Are reptiles warm-blooded or cold-blooded?",
+        "options": ["Cold-blooded", "Warm-blooded", "Hot-blooded"],
+        "correct_answer_index": 0
+      }
+    ],
+    "audio_narration_script": "Reptiles have dry, scaly skin. Snakes and turtles are reptiles. They are cold-blooded animals."
+  },
+  {
+    "id": 9,
+    "title": "Fish",
+    "content": "Fish live in water. They breathe through gills. Fish have fins to swim. Most fish lay eggs.",
+    "questions": [
+      {
+        "question": "Where do fish live?",
+        "options": ["In water", "In trees", "In caves"],
+        "correct_answer_index": 0
+      },
+      {
+        "question": "How do fish breathe?",
+        "options": ["Gills", "Lungs", "Nose"],
+        "correct_answer_index": 0
+      },
+      {
+        "question": "What helps fish swim?",
+        "options": ["Fins", "Wings", "Legs"],
+        "correct_answer_index": 0
+      }
+    ],
+    "audio_narration_script": "Fish live in water. They breathe with gills and swim using fins."
+  },
+  {
+    "id": 10,
+    "title": "Plants Need Sunlight",
+    "content": "Plants need sunlight to make food. They also need water and air. Leaves help plants take in sunlight. Roots hold plants in the ground.",
+    "questions": [
+      {
+        "question": "What do plants need to make food?",
+        "options": ["Sunlight", "Candy", "Sand"],
+        "correct_answer_index": 0
+      },
+      {
+        "question": "What part takes in sunlight?",
+        "options": ["Leaves", "Roots", "Stems"],
+        "correct_answer_index": 0
+      },
+      {
+        "question": "What holds a plant in the ground?",
+        "options": ["Roots", "Flowers", "Leaves"],
+        "correct_answer_index": 0
+      }
+    ],
+    "audio_narration_script": "Plants need sunlight, water, and air. Leaves catch sunlight. Roots keep the plant in the ground."
+  },
+  {
+    "id": 11,
+    "title": "The Moon",
+    "content": "The Moon moves around the Earth. It shines at night because it reflects sunlight. The Moon changes shape in the sky. These changes are called phases.",
+    "questions": [
+      {
+        "question": "What does the Moon move around?",
+        "options": ["Earth", "Mars", "Sun"],
+        "correct_answer_index": 0
+      },
+      {
+        "question": "Why does the Moon shine?",
+        "options": ["It reflects sunlight", "It makes its own light", "It is on fire"],
+        "correct_answer_index": 0
+      },
+      {
+        "question": "What are the Moon’s shape changes called?",
+        "options": ["Phases", "Seasons", "Storms"],
+        "correct_answer_index": 0
+      }
+    ],
+    "audio_narration_script": "The Moon travels around Earth. It shines because it reflects sunlight. The Moon has different phases."
+  },
+  {
+    "id": 12,
+    "title": "The Four Seasons",
+    "content": "There are four seasons: spring, summer, autumn, and winter. In spring, flowers grow. Summer is warm. In autumn, leaves fall. Winter is cold.",
+    "questions": [
+      {
+        "question": "How many seasons are there?",
+        "options": ["Four", "Two", "Six"],
+        "correct_answer_index": 0
+      },
+      {
+        "question": "In which season do leaves fall?",
+        "options": ["Autumn", "Spring", "Summer"],
+        "correct_answer_index": 0
+      },
+      {
+        "question": "Which season is cold?",
+        "options": ["Winter", "Summer", "Spring"],
+        "correct_answer_index": 0
+      }
+    ],
+    "audio_narration_script": "We have four seasons. Spring has flowers. Summer is warm. Autumn has falling leaves. Winter is cold."
+  },
+  {
+    "id": 13,
+    "title": "Healthy Food",
+    "content": "Healthy food helps our bodies grow strong. Fruits and vegetables are healthy. Drinking water is important. Eating too much sugar is not healthy.",
+    "questions": [
+      {
+        "question": "What helps our bodies grow strong?",
+        "options": ["Healthy food", "Candy only", "Nothing"],
+        "correct_answer_index": 0
+      },
+      {
+        "question": "Which is healthy?",
+        "options": ["Vegetables", "Chips", "Soda"],
+        "correct_answer_index": 0
+      },
+      {
+        "question": "What should we not eat too much of?",
+        "options": ["Sugar", "Water", "Apples"],
+        "correct_answer_index": 0
+      }
+    ],
+    "audio_narration_script": "Healthy foods like fruits and vegetables help us grow strong. Too much sugar is not good for our bodies."
+  },
+  {
+    "id": 14,
+    "title": "Teeth Care",
+    "content": "We use our teeth to chew food. We should brush our teeth twice a day. Brushing keeps teeth clean and strong. Visiting the dentist helps keep teeth healthy.",
+    "questions": [
+      {
+        "question": "What do we use teeth for?",
+        "options": ["Chewing food", "Running", "Hearing"],
+        "correct_answer_index": 0
+      },
+      {
+        "question": "How many times should we brush daily?",
+        "options": ["Twice", "Once a week", "Never"],
+        "correct_answer_index": 0
+      },
+      {
+        "question": "Who helps keep teeth healthy?",
+        "options": ["Dentist", "Pilot", "Chef"],
+        "correct_answer_index": 0
+      }
+    ],
+    "audio_narration_script": "Teeth help us chew food. We should brush twice a day and visit the dentist to keep them healthy."
+  },
+  {
+    "id": 15,
+    "title": "Community Helpers",
+    "content": "Community helpers are people who help us every day. Teachers help us learn. Doctors help us stay healthy. Firefighters keep us safe.",
+    "questions": [
+      {
+        "question": "Who helps us learn?",
+        "options": ["Teacher", "Driver", "Singer"],
+        "correct_answer_index": 0
+      },
+      {
+        "question": "Who helps us stay healthy?",
+        "options": ["Doctor", "Painter", "Farmer"],
+        "correct_answer_index": 0
+      },
+      {
+        "question": "Who keeps us safe from fires?",
+        "options": ["Firefighter", "Dancer", "Actor"],
+        "correct_answer_index": 0
+      }
+    ],
+    "audio_narration_script": "Community helpers make our lives better. Teachers teach us. Doctors care for us. Firefighters protect us."
+  },
+  
+  {
+    "id": 16,
+    "title": "The Solar System",
+    "content": "The Solar System is made up of the Sun and eight planets. The planets move around the Sun. Earth is one of these planets. Each planet is different.",
+    "questions": [
+      {
+        "question": "How many planets are in the Solar System?",
+        "options": ["Eight", "Three", "Twelve"],
+        "correct_answer_index": 0
+      },
+      {
+        "question": "What do planets move around?",
+        "options": ["The Sun", "The Moon", "Clouds"],
+        "correct_answer_index": 0
+      },
+      {
+        "question": "Is Earth a planet?",
+        "options": ["Yes", "No", "Only at night"],
+        "correct_answer_index": 0
+      }
+    ],
+    "audio_narration_script": "The Solar System has the Sun and eight planets. The planets travel around the Sun. Earth is one of these planets."
+  },
+  {
+    "id": 17,
+    "title": "Dinosaurs",
+    "content": "Dinosaurs lived on Earth millions of years ago. Some were big and some were small. Some ate plants and others ate meat. Dinosaurs are now extinct.",
+    "questions": [
+      {
+        "question": "When did dinosaurs live?",
+        "options": ["Millions of years ago", "Yesterday", "Next year"],
+        "correct_answer_index": 0
+      },
+      {
+        "question": "What did some dinosaurs eat?",
+        "options": ["Plants and meat", "Candy", "Ice cream"],
+        "correct_answer_index": 0
+      },
+      {
+        "question": "Are dinosaurs alive today?",
+        "options": ["No", "Yes", "Only in water"],
+        "correct_answer_index": 0
+      }
+    ],
+    "audio_narration_script": "Dinosaurs lived millions of years ago. Some ate plants and some ate meat. Today, dinosaurs are extinct."
+  },
+  {
+    "id": 18,
+    "title": "Insects",
+    "content": "Insects are small animals with six legs. Most insects have wings. Ants, bees, and butterflies are insects. Insects have three body parts.",
+    "questions": [
+      {
+        "question": "How many legs do insects have?",
+        "options": ["Six", "Four", "Eight"],
+        "correct_answer_index": 0
+      },
+      {
+        "question": "Which is an insect?",
+        "options": ["Ant", "Dog", "Fish"],
+        "correct_answer_index": 0
+      },
+      {
+        "question": "How many body parts do insects have?",
+        "options": ["Three", "One", "Five"],
+        "correct_answer_index": 0
+      }
+    ],
+    "audio_narration_script": "Insects are small animals with six legs. Ants and bees are insects. They have three body parts."
+  },
+  {
+    "id": 19,
+    "title": "Magnets",
+    "content": "Magnets can pull some metal objects. This pull is called magnetism. Magnets can push or pull other magnets. Not all metals stick to magnets.",
+    "questions": [
+      {
+        "question": "What can magnets pull?",
+        "options": ["Some metals", "Water", "Paper"],
+        "correct_answer_index": 0
+      },
+      {
+        "question": "What is the pull called?",
+        "options": ["Magnetism", "Gravity", "Wind"],
+        "correct_answer_index": 0
+      },
+      {
+        "question": "Do all metals stick to magnets?",
+        "options": ["No", "Yes", "Only gold"],
+        "correct_answer_index": 0
+      }
+    ],
+    "audio_narration_script": "Magnets can pull some metal objects. This pull is called magnetism. Not all metals stick to magnets."
+  },
+  {
+    "id": 20,
+    "title": "Habitats",
+    "content": "A habitat is a place where an animal lives. Forests, oceans, and deserts are habitats. Animals live in habitats that meet their needs.",
+    "questions": [
+      {
+        "question": "What is a habitat?",
+        "options": ["A place where an animal lives", "A toy", "A type of food"],
+        "correct_answer_index": 0
+      },
+      {
+        "question": "Which is a habitat?",
+        "options": ["Forest", "Car", "House shoe"],
+        "correct_answer_index": 0
+      },
+      {
+        "question": "Why do animals live in habitats?",
+        "options": ["To meet their needs", "To watch TV", "To drive cars"],
+        "correct_answer_index": 0
+      }
+    ],
+    "audio_narration_script": "A habitat is a place where animals live. Forests and oceans are habitats. Animals choose habitats that help them survive."
+  },
+  {
+    "id": 21,
+    "title": "Air",
+    "content": "Air is all around us. We cannot see it, but we can feel it. We need air to breathe. Wind is moving air.",
+    "questions": [
+      {
+        "question": "Can we see air?",
+        "options": ["No", "Yes", "Only at night"],
+        "correct_answer_index": 0
+      },
+      {
+        "question": "Why do we need air?",
+        "options": ["To breathe", "To swim", "To jump"],
+        "correct_answer_index": 0
+      },
+      {
+        "question": "What is moving air called?",
+        "options": ["Wind", "Rain", "Snow"],
+        "correct_answer_index": 0
+      }
+    ],
+    "audio_narration_script": "Air is everywhere. We need it to breathe. When air moves, we call it wind."
+  },
+  {
+    "id": 22,
+    "title": "Rocks",
+    "content": "Rocks are natural materials found on Earth. Some rocks are hard and some are soft. Rocks can be different colors and sizes.",
+    "questions": [
+      {
+        "question": "Where are rocks found?",
+        "options": ["On Earth", "On the Sun", "In the sky only"],
+        "correct_answer_index": 0
+      },
+      {
+        "question": "Are all rocks the same?",
+        "options": ["No", "Yes", "Only big ones"],
+        "correct_answer_index": 0
+      },
+      {
+        "question": "Can rocks be different colors?",
+        "options": ["Yes", "No", "Only gray"],
+        "correct_answer_index": 0
+      }
+    ],
+    "audio_narration_script": "Rocks are found all over Earth. They can be big or small, hard or soft, and many different colors."
+  },
+  {
+    "id": 23,
+    "title": "Transportation",
+    "content": "Transportation helps people move from place to place. Cars, buses, trains, and airplanes are types of transportation.",
+    "questions": [
+      {
+        "question": "What does transportation help us do?",
+        "options": ["Move places", "Sleep longer", "Grow taller"],
+        "correct_answer_index": 0
+      },
+      {
+        "question": "Which is transportation?",
+        "options": ["Train", "Tree", "Chair"],
+        "correct_answer_index": 0
+      },
+      {
+        "question": "Is an airplane transportation?",
+        "options": ["Yes", "No", "Only underwater"],
+        "correct_answer_index": 0
+      }
+    ],
+    "audio_narration_script": "Transportation helps us travel. Cars, buses, trains, and airplanes take us from place to place."
+  },
+  {
+    "id": 24,
+    "title": "The Human Heart",
+    "content": "The heart is a muscle inside your body. It pumps blood. Blood carries oxygen and nutrients to all parts of the body.",
+    "questions": [
+      {
+        "question": "What is the heart?",
+        "options": ["A muscle", "A bone", "A tooth"],
+        "correct_answer_index": 0
+      },
+      {
+        "question": "What does the heart pump?",
+        "options": ["Blood", "Water", "Air"],
+        "correct_answer_index": 0
+      },
+      {
+        "question": "What does blood carry?",
+        "options": ["Oxygen and nutrients", "Candy", "Sand"],
+        "correct_answer_index": 0
+      }
+    ],
+    "audio_narration_script": "Your heart is a strong muscle. It pumps blood through your body. Blood carries oxygen and nutrients."
+  },
+  {
+    "id": 25,
+    "title": "Shadows",
+    "content": "A shadow forms when light is blocked. The Sun can make shadows. Shadows change size during the day.",
+    "questions": [
+      {
+        "question": "When does a shadow form?",
+        "options": ["When light is blocked", "When it rains", "At bedtime"],
+        "correct_answer_index": 0
+      },
+      {
+        "question": "What can make shadows?",
+        "options": ["The Sun", "The Wind", "The Ocean"],
+        "correct_answer_index": 0
+      },
+      {
+        "question": "Do shadows stay the same size?",
+        "options": ["No", "Yes", "Only at night"],
+        "correct_answer_index": 0
+      }
+    ],
+    "audio_narration_script": "Shadows form when light is blocked. The Sun makes shadows. Shadows can change size during the day."
+  },
+  {
+    "id": 26,
+    "title": "Frogs",
+    "content": "Frogs are amphibians. They can live on land and in water. Frogs start life as tadpoles. They change as they grow.",
+    "questions": [
+      {
+        "question": "What kind of animal is a frog?",
+        "options": ["Amphibian", "Mammal", "Bird"],
+        "correct_answer_index": 0
+      },
+      {
+        "question": "Where can frogs live?",
+        "options": ["Land and water", "Only trees", "Only deserts"],
+        "correct_answer_index": 0
+      },
+      {
+        "question": "What do baby frogs start as?",
+        "options": ["Tadpoles", "Kittens", "Chicks"],
+        "correct_answer_index": 0
+      }
+    ],
+    "audio_narration_script": "Frogs are amphibians. They live on land and in water. Baby frogs are called tadpoles."
+  },
+  {
+    "id": 27,
+    "title": "Volcanoes",
+    "content": "A volcano is an opening in the Earth. It can erupt with lava. Lava is hot melted rock.",
+    "questions": [
+      {
+        "question": "What comes out of a volcano?",
+        "options": ["Lava", "Snow", "Leaves"],
+        "correct_answer_index": 0
+      },
+      {
+        "question": "What is lava?",
+        "options": ["Melted rock", "Water", "Sand"],
+        "correct_answer_index": 0
+      },
+      {
+        "question": "Is lava hot or cold?",
+        "options": ["Hot", "Cold", "Freezing"],
+        "correct_answer_index": 0
+      }
+    ],
+    "audio_narration_script": "A volcano can erupt with hot lava. Lava is melted rock from inside the Earth."
+  },
+  {
+    "id": 28,
+    "title": "Bees",
+    "content": "Bees are insects. They collect nectar from flowers. Bees make honey. They help plants grow by pollination.",
+    "questions": [
+      {
+        "question": "What do bees collect?",
+        "options": ["Nectar", "Rocks", "Sand"],
+        "correct_answer_index": 0
+      },
+      {
+        "question": "What do bees make?",
+        "options": ["Honey", "Milk", "Juice"],
+        "correct_answer_index": 0
+      },
+      {
+        "question": "How do bees help plants?",
+        "options": ["Pollination", "Cutting leaves", "Pulling roots"],
+        "correct_answer_index": 0
+      }
+    ],
+    "audio_narration_script": "Bees collect nectar from flowers. They make honey and help plants grow by pollination."
+  },
+  {
+    "id": 29,
+    "title": "The Skeleton",
+    "content": "The skeleton is made of bones. It helps our body stand up. Bones protect important organs like the brain and heart.",
+    "questions": [
+      {
+        "question": "What is the skeleton made of?",
+        "options": ["Bones", "Muscles", "Skin"],
+        "correct_answer_index": 0
+      },
+      {
+        "question": "What does the skeleton help us do?",
+        "options": ["Stand up", "Fly", "Disappear"],
+        "correct_answer_index": 0
+      },
+      {
+        "question": "What do bones protect?",
+        "options": ["Organs", "Shoes", "Hats"],
+        "correct_answer_index": 0
+      }
+    ],
+    "audio_narration_script": "Your skeleton is made of bones. It helps you stand up and protects important organs."
+  },
+  {
+    "id": 30,
+    "title": "The Ocean",
+    "content": "The ocean is a large body of salt water. Many animals live in the ocean. The ocean covers most of Earth’s surface.",
+    "questions": [
+      {
+        "question": "What kind of water is in the ocean?",
+        "options": ["Salt water", "Fresh water", "Juice"],
+        "correct_answer_index": 0
+      },
+      {
+        "question": "Do animals live in the ocean?",
+        "options": ["Yes", "No", "Only birds"],
+        "correct_answer_index": 0
+      },
+      {
+        "question": "Does the ocean cover much of Earth?",
+        "options": ["Yes", "No", "Only small parts"],
+        "correct_answer_index": 0
+      }
+    ],
+    "audio_narration_script": "The ocean is full of salt water. Many animals live there. The ocean covers most of our planet."
+  }
+
+
+
+
+    
+  ]
+}
