@@ -1,22 +1,160 @@
+// app/account.jsx
+//
+// Account screen.
+//
+// State machine:
+//   hasEmail=false → show Set Credentials form
+//   hasEmail=true  → show three account option cards
+//
+// Three option cards (shown after email is linked):
+//   1. My Account    — email, plan, subscription upgrade
+//   2. Learning Path — curriculum / level map overview
+//   3. Reports       — child's progress & activity stats
+//
+// Profiles section and Logout are always shown.
+
 import {
   StyleSheet,
   Text,
   View,
-  FlatList,
   TouchableOpacity,
   Modal,
   TextInput,
   ScrollView,
   Alert,
   ActivityIndicator,
+  KeyboardAvoidingView,
+  Platform,
+  Animated,
+  Image,
 } from "react-native";
-import React, { useState } from "react";
+import React, { useState, useRef, useEffect } from "react";
 import { useRouter } from "expo-router";
+import { SafeAreaView } from "react-native-safe-area-context";
 import ScreenWrapper from "./components/ScreenWrapper";
+import AppBackground from "./components/AppBackground";
 import ProfileCard from "./components/ProfileCard";
 import { useUser } from "./_contexts/UserContext";
 import { saveProfile } from "./services/profileService";
+import { setUserAccountCredentials } from "./services/userAccountService";
+import { COLORS, SHADOWS } from "./theme";
+import { logoutUser } from "./services/authService";
+import { clearAuthTokens } from "./services/tokenStorage";
 
+// ─────────────────────────────────────────────────────────────────────────────
+// Inline toast — no external library
+// ─────────────────────────────────────────────────────────────────────────────
+function ToastBanner({ message, type }) {
+  const op = useRef(new Animated.Value(0)).current;
+
+  useEffect(() => {
+    Animated.sequence([
+      Animated.timing(op, { toValue: 1, duration: 200, useNativeDriver: true }),
+      Animated.delay(2400),
+      Animated.timing(op, { toValue: 0, duration: 300, useNativeDriver: true }),
+    ]).start();
+  }, []);
+
+  const bg = type === "error" ? "rgba(239,83,80,0.96)" : "rgba(0,188,212,0.96)";
+
+  return (
+    <Animated.View
+      style={[toastS.wrap, { backgroundColor: bg, opacity: op }]}
+      pointerEvents="none"
+    >
+      <Text style={toastS.text}>{message}</Text>
+    </Animated.View>
+  );
+}
+
+const toastS = StyleSheet.create({
+  wrap: {
+    position: "absolute",
+    top: 56,
+    left: 20,
+    right: 20,
+    borderRadius: 14,
+    paddingVertical: 13,
+    paddingHorizontal: 18,
+    zIndex: 9999,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 14,
+  },
+  text: {
+    color: "#fff",
+    fontSize: 14,
+    fontWeight: "700",
+    textAlign: "center",
+  },
+});
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Account Option Card — square-ish card with icon, label, subtitle
+// ─────────────────────────────────────────────────────────────────────────────
+function AccountOptionCard({ image, label, onPress }) {
+  const scale = useRef(new Animated.Value(1)).current;
+
+  const pressIn = () =>
+    Animated.spring(scale, {
+      toValue: 0.95,
+      friction: 5,
+      tension: 200,
+      useNativeDriver: true,
+    }).start();
+
+  const pressOut = () =>
+    Animated.spring(scale, {
+      toValue: 1,
+      friction: 5,
+      tension: 200,
+      useNativeDriver: true,
+    }).start();
+
+  return (
+    <Animated.View style={[optCardS.wrapper, { transform: [{ scale }] }]}>
+      <TouchableOpacity
+        style={optCardS.card}
+        onPress={onPress}
+        onPressIn={pressIn}
+        onPressOut={pressOut}
+        activeOpacity={1}
+      >
+        <Image source={image} style={optCardS.iconImage} resizeMode="contain" />
+        <Text style={optCardS.label}>{label}</Text>
+      </TouchableOpacity>
+    </Animated.View>
+  );
+}
+
+const optCardS = StyleSheet.create({
+  wrapper: { flex: 1 },
+  card: {
+    backgroundColor: "rgba(255,255,255,0.05)",
+    borderRadius: 18,
+    borderWidth: 1.5,
+    borderColor: "rgba(0,188,212,0.44)",
+    alignItems: "center",
+    justifyContent: "center",
+    paddingVertical: 22,
+    paddingHorizontal: 10,
+    gap: 10,
+  },
+  iconImage: { width: 52, height: 52 },
+  label: {
+    fontSize: 13,
+    fontWeight: "800",
+    letterSpacing: 0.2,
+    textAlign: "center",
+    color: COLORS.teal,
+  },
+});
+
+// ─────────────────────────────────────────────────────────────────────────────
+// MAIN SCREEN
+// ─────────────────────────────────────────────────────────────────────────────
 const Account = () => {
   const router = useRouter();
   const {
@@ -27,24 +165,86 @@ const Account = () => {
     selectProfile,
     currentProfile,
     userAccount,
+    setUserAccount,
+    clearAllData,
   } = useUser();
 
+  // ── Toast state ───────────────────────────────────────────
+  const [toastKey, setToastKey] = useState(0);
+  const [toastMsg, setToastMsg] = useState(null);
+  const [toastType, setToastType] = useState("success");
+  const showToast = (message, type = "success") => {
+    setToastMsg(message);
+    setToastType(type);
+    setToastKey((k) => k + 1); // remount to restart animation
+  };
+
+  // ── Credentials form state ────────────────────────────────
+  const [emailInput, setEmailInput] = useState("");
+  const [passwordInput, setPasswordInput] = useState("");
+  const [isSavingEmail, setIsSavingEmail] = useState(false);
+
+  // hasEmail drives which section to show
+  const hasEmail = userAccount?.email && userAccount.email.trim().length > 0;
+
+  const scrollRef = useRef(null);
+  const emailSectionRef = useRef(null);
+
+  // ── Profile modal state ───────────────────────────────────
   const [modalVisible, setModalVisible] = useState(false);
   const [editingProfile, setEditingProfile] = useState(null);
   const [formData, setFormData] = useState({
     id: "",
     name: "",
     age: "",
-    readingLevel: "Early", // frontend UI field
+    readingLevel: "Early",
   });
   const [isSaving, setIsSaving] = useState(false);
+  const readingLevels = ["Early", "Middle", "Advance"];
 
-  const readingLevels = ["Early", "Middle", "Advance"]; // frontend options
+  // ── Set credentials handler ───────────────────────────────
+  const handleSaveCredentials = async () => {
+    const trimmedEmail = emailInput.trim();
+    const trimmedPassword = passwordInput.trim();
 
-  // --------- Modal handlers ---------
+    if (!trimmedEmail) {
+      showToast("Please enter an email address", "error");
+      return;
+    }
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(trimmedEmail)) {
+      showToast("Please enter a valid email address", "error");
+      return;
+    }
+    if (!trimmedPassword || trimmedPassword.length < 6) {
+      showToast("Password must be at least 6 characters", "error");
+      return;
+    }
+
+    setIsSavingEmail(true);
+    try {
+      await setUserAccountCredentials(trimmedEmail, trimmedPassword);
+
+      // Update userAccount in context so hasEmail becomes true
+      // and the credentials form is replaced by the option cards.
+      if (setUserAccount) {
+        setUserAccount((prev) => ({ ...prev, email: trimmedEmail }));
+      }
+
+      showToast("Email linked successfully! 🎉");
+      setEmailInput("");
+      setPasswordInput("");
+    } catch (e) {
+      showToast("Failed to save credentials. Please try again.", "error");
+    } finally {
+      setIsSavingEmail(false);
+    }
+  };
+
+  // ── Profile handlers ──────────────────────────────────────
   const handleProfilePress = (profile) => {
     selectProfile(profile);
-    router.push("/categories");
+    router.push("/home");
   };
 
   const handleAddNew = () => {
@@ -59,7 +259,6 @@ const Account = () => {
       id: profile.id,
       name: profile.name,
       age: profile.age.toString(),
-      // map backend level (EARLY) to frontend readingLevel (Early)
       readingLevel:
         profile.level.charAt(0) + profile.level.slice(1).toLowerCase(),
     });
@@ -67,7 +266,6 @@ const Account = () => {
   };
 
   const handleDelete = (profile) => {
-    // 🚨 Prevent deleting primary profile
     if (userAccount?.defaultProfileId === profile.id) {
       Alert.alert(
         "Not Allowed",
@@ -75,10 +273,9 @@ const Account = () => {
       );
       return;
     }
-
     Alert.alert(
       "Delete Profile",
-      `Are you sure you want to delete ${profile.name}'s profile? This cannot be undone.`,
+      `Are you sure you want to delete ${profile.name}'s profile?`,
       [
         { text: "Cancel", style: "cancel" },
         {
@@ -87,7 +284,7 @@ const Account = () => {
           onPress: async () => {
             try {
               await deleteProfile(profile.id);
-              Alert.alert("Success", "Profile deleted successfully.");
+              showToast("Profile deleted successfully.");
             } catch (error) {
               if (error.message === "PRIMARY_PROFILE_DELETE_NOT_ALLOWED") {
                 Alert.alert(
@@ -95,9 +292,9 @@ const Account = () => {
                   "You cannot delete the primary profile of this account.",
                 );
               } else {
-                Alert.alert(
-                  "Error",
+                showToast(
                   "Unable to delete profile. Please try again.",
+                  "error",
                 );
               }
             }
@@ -107,7 +304,6 @@ const Account = () => {
     );
   };
 
-  // --------- Save / Add ---------
   const handleSave = async () => {
     if (!formData.name.trim()) {
       Alert.alert("Error", "Please enter a name");
@@ -117,33 +313,29 @@ const Account = () => {
       Alert.alert("Error", "Please enter a valid age");
       return;
     }
-
     setIsSaving(true);
-
     try {
-      // call backend
       const savedProfile = await saveProfile(formData);
-
-      // Map backend response to frontend format (formData only cares about readingLevel)
       const profileForContext = {
         id: savedProfile.id,
         name: savedProfile.name,
         age: savedProfile.age,
         dob: savedProfile.dob || null,
-        level: savedProfile.level, // uppercase for backend
+        level: savedProfile.level,
+        playLevel: savedProfile.playLevel,
+        coins: savedProfile.coins,
+        diamonds: savedProfile.diamonds,
+        wordBag: { words: savedProfile?.words },
         achievements: savedProfile.achievements || [],
         favoriteBookIds: savedProfile.favoriteBookIds || [],
         createdAt: savedProfile.createdAt || null,
         updatedAt: savedProfile.updatedAt || null,
       };
-
       if (editingProfile) {
         await updateProfile(profileForContext);
       } else {
         await addProfile(profileForContext);
       }
-
-      // close modal
       setModalVisible(false);
       setFormData({ id: "", name: "", age: "", readingLevel: "Early" });
       setEditingProfile(null);
@@ -160,271 +352,554 @@ const Account = () => {
     setEditingProfile(null);
   };
 
-  // --------- Render ---------
+  const handleLogout = () => {
+    Alert.alert("Log Out", "Are you sure you want to log out?", [
+      { text: "Cancel", style: "cancel" },
+      {
+        text: "Log Out",
+        style: "destructive",
+        onPress: async () => {
+          try {
+            await logoutUser();
+            await clearAuthTokens();
+            router.replace("../login");
+          } catch (error) {
+            console.log("Logout failed", error);
+          }
+        },
+      },
+    ]);
+  };
+
+  // ── Render ────────────────────────────────────────────────
   return (
     <ScreenWrapper>
-      <View style={styles.container}>
-        <Text style={styles.title}>Who's Reading?</Text>
-
-        {currentProfile && (
-          <View style={styles.currentProfileBanner}>
-            <Text style={styles.currentProfileText}>
-              Currently: {currentProfile.name} (
-              {currentProfile.level.charAt(0) +
-                currentProfile.level.slice(1).toLowerCase()}
-              )
-            </Text>
-          </View>
-        )}
-
-        <FlatList
-          data={profiles}
-          keyExtractor={(item) => item.id}
-          contentContainerStyle={styles.listContent}
-          renderItem={({ item }) => (
-            <ProfileCard
-              name={item.name}
-              age={item.age}
-              readingLevel={
-                item.level.charAt(0) + item.level.slice(1).toLowerCase()
-              }
-              avatar={item.avatar || null} // optional placeholder if needed
-              isCurrentProfile={currentProfile?.id === item.id}
-              onPress={() => handleProfilePress(item)}
-              onEdit={() => handleEdit(item)}
-              onDelete={() => handleDelete(item)}
-            />
+      <AppBackground>
+        <SafeAreaView style={styles.safeArea} edges={[]}>
+          {/* Toast — absolutely positioned, renders above all content */}
+          {toastMsg && (
+            <ToastBanner key={toastKey} message={toastMsg} type={toastType} />
           )}
-          ListFooterComponent={
-            <TouchableOpacity style={styles.addButton} onPress={handleAddNew}>
-              <Text style={styles.addButtonText}>+ Add New Profile</Text>
-            </TouchableOpacity>
-          }
-        />
 
-        {/* Edit/Add Modal */}
-        <Modal
-          animationType="slide"
-          transparent={true}
-          visible={modalVisible}
-          onRequestClose={handleCancel}
-        >
-          <View style={styles.modalOverlay}>
-            <View style={styles.modalContent}>
-              <Text style={styles.modalTitle}>
-                {editingProfile ? "Edit Profile" : "Create New Profile"}
-              </Text>
+          <KeyboardAvoidingView
+            style={{ flex: 1 }}
+            behavior={Platform.OS === "ios" ? "padding" : "height"}
+            keyboardVerticalOffset={Platform.OS === "ios" ? 90 : 60}
+          >
+            <ScrollView
+              ref={scrollRef}
+              showsVerticalScrollIndicator={false}
+              keyboardShouldPersistTaps="handled"
+            >
+              <Text style={styles.title}>Who's Reading?</Text>
 
-              <ScrollView showsVerticalScrollIndicator={false}>
-                <View style={styles.inputGroup}>
-                  <Text style={styles.label}>Name</Text>
-                  <TextInput
-                    style={styles.input}
-                    placeholder="Enter name"
-                    value={formData.name}
-                    onChangeText={(text) =>
-                      setFormData({ ...formData, name: text })
+              {currentProfile && (
+                <View style={styles.currentProfileBanner}>
+                  <Text style={styles.currentProfileText}>
+                    Currently: {currentProfile.name} (
+                    {currentProfile.level.charAt(0) +
+                      currentProfile.level.slice(1).toLowerCase()}
+                    )
+                  </Text>
+                </View>
+              )}
+
+              {/* ── Profiles ── */}
+              <View style={styles.listContent}>
+                {profiles.map((item) => (
+                  <ProfileCard
+                    key={item.id}
+                    name={item.name}
+                    age={item.age}
+                    readingLevel={
+                      item.level.charAt(0) + item.level.slice(1).toLowerCase()
                     }
+                    avatar={item.avatar || null}
+                    isCurrentProfile={currentProfile?.id === item.id}
+                    onPress={() => handleProfilePress(item)}
+                    onEdit={() => handleEdit(item)}
+                    onDelete={() => handleDelete(item)}
                   />
-                </View>
-
-                <View style={styles.inputGroup}>
-                  <Text style={styles.label}>Age</Text>
-                  <TextInput
-                    style={styles.input}
-                    placeholder="Enter age"
-                    keyboardType="numeric"
-                    value={formData.age}
-                    onChangeText={(text) =>
-                      setFormData({ ...formData, age: text })
-                    }
-                  />
-                </View>
-
-                <View style={styles.inputGroup}>
-                  <Text style={styles.label}>Reading Level</Text>
-                  <View style={styles.levelButtons}>
-                    {readingLevels.map((level) => (
-                      <TouchableOpacity
-                        key={level}
-                        style={[
-                          styles.levelButton,
-                          formData.readingLevel === level &&
-                            styles.levelButtonActive,
-                        ]}
-                        onPress={() =>
-                          setFormData({ ...formData, readingLevel: level })
-                        }
-                      >
-                        <Text
-                          style={[
-                            styles.levelButtonText,
-                            formData.readingLevel === level &&
-                              styles.levelButtonTextActive,
-                          ]}
-                        >
-                          {level.charAt(0).toUpperCase() + level.slice(1)}
-                        </Text>
-                      </TouchableOpacity>
-                    ))}
-                  </View>
-                </View>
-              </ScrollView>
-
-              <View style={styles.modalActions}>
+                ))}
                 <TouchableOpacity
-                  style={[styles.actionButton, styles.cancelButton]}
-                  onPress={handleCancel}
-                  disabled={isSaving}
+                  style={styles.addButton}
+                  onPress={handleAddNew}
                 >
-                  <Text style={styles.cancelButtonText}>Cancel</Text>
-                </TouchableOpacity>
-
-                <TouchableOpacity
-                  style={[styles.actionButton, styles.saveButton]}
-                  onPress={handleSave}
-                  disabled={isSaving}
-                >
-                  {isSaving ? (
-                    <ActivityIndicator color="#fff" />
-                  ) : (
-                    <Text style={styles.saveButtonText}>
-                      {editingProfile ? "Update" : "Save"}
-                    </Text>
-                  )}
+                  <Text style={styles.addButtonText}>+ Add New Profile</Text>
                 </TouchableOpacity>
               </View>
+
+              {/* ── Account section — credentials OR option cards ── */}
+              <View style={styles.accountSection}>
+                <View style={styles.accountSectionHeader}>
+                  <Text style={styles.accountSectionIcon}>🔐</Text>
+                  <Text style={styles.accountSectionTitle}>Account</Text>
+                </View>
+
+                {!hasEmail ? (
+                  /* ── Set Credentials Form ── */
+                  <View style={styles.credentialsForm}>
+                    <Text style={styles.credentialsHint}>
+                      Link an email and password to secure your account and
+                      recover it on any device.
+                    </Text>
+
+                    <TextInput
+                      style={styles.credentialsInput}
+                      placeholder="Email address"
+                      placeholderTextColor={COLORS.textMuted}
+                      value={emailInput}
+                      onChangeText={setEmailInput}
+                      keyboardType="email-address"
+                      autoCapitalize="none"
+                      autoCorrect={false}
+                      onFocus={() => {
+                        setTimeout(() => {
+                          emailSectionRef.current?.measureLayout(
+                            scrollRef.current?.getScrollableNode?.() ??
+                              scrollRef.current,
+                            (_x, y) =>
+                              scrollRef.current?.scrollTo({
+                                y: y - 16,
+                                animated: true,
+                              }),
+                            () =>
+                              scrollRef.current?.scrollToEnd({
+                                animated: true,
+                              }),
+                          );
+                        }, 150);
+                      }}
+                    />
+
+                    <TextInput
+                      style={styles.credentialsInput}
+                      placeholder="Password (min. 6 characters)"
+                      placeholderTextColor={COLORS.textMuted}
+                      value={passwordInput}
+                      onChangeText={setPasswordInput}
+                      secureTextEntry
+                      autoCapitalize="none"
+                      autoCorrect={false}
+                    />
+
+                    <TouchableOpacity
+                      style={[
+                        styles.credentialsSaveBtn,
+                        (!emailInput.trim() ||
+                          !passwordInput.trim() ||
+                          isSavingEmail) &&
+                          styles.credentialsSaveBtnDisabled,
+                      ]}
+                      onPress={handleSaveCredentials}
+                      disabled={
+                        !emailInput.trim() ||
+                        !passwordInput.trim() ||
+                        isSavingEmail
+                      }
+                    >
+                      {isSavingEmail ? (
+                        <ActivityIndicator color="#fff" size="small" />
+                      ) : (
+                        <Text style={styles.credentialsSaveBtnText}>
+                          Link Account ➜
+                        </Text>
+                      )}
+                    </TouchableOpacity>
+                  </View>
+                ) : (
+                  /* ── Three Option Cards ── */
+                  <View>
+                    {/* Email linked indicator */}
+                    <View style={styles.emailLinkedRow}>
+                      <View style={styles.emailLinkedBadge}>
+                        <Text style={styles.emailLinkedIcon}>✓</Text>
+                      </View>
+                      <View style={{ flex: 1 }}>
+                        <Text style={styles.emailLinkedLabel}>
+                          Linked account
+                        </Text>
+                        <Text style={styles.emailLinkedValue}>
+                          {userAccount.email}
+                        </Text>
+                      </View>
+                    </View>
+
+                    {/* Option cards row */}
+                    <View style={styles.optionCardsRow}>
+                      <AccountOptionCard
+                        image={require("../assets/img/card-icon.png")}
+                        label="Plan and Billing"
+                        subtitle="Plan & billing"
+                        onPress={() =>
+                          router.push("/components/billing/PlanBillingScreen")
+                        }
+                      />
+                      <AccountOptionCard
+                        image={require("../assets/img/learning-path-icon-3.png")}
+                        label="Learning Path"
+                        subtitle="Levels & curriculum"
+                        onPress={() => router.push("/components/LearningPath")}
+                      />
+                      <AccountOptionCard
+                        image={require("../assets/img/progress-report-icon.png")}
+                        label="Progress Reports"
+                        subtitle="Progress & stats"
+                        onPress={() => router.push("/components/Reports")}
+                      />
+                    </View>
+                  </View>
+                )}
+              </View>
+
+              {/* ── Logout ── */}
+              <TouchableOpacity
+                style={styles.logoutBtn}
+                onPress={handleLogout}
+                activeOpacity={0.8}
+              >
+                <Text style={styles.logoutIcon}>⏻</Text>
+                <Text style={styles.logoutText}>Log Out</Text>
+              </TouchableOpacity>
+
+              <View style={{ height: 32 }} />
+            </ScrollView>
+          </KeyboardAvoidingView>
+
+          {/* ── Add / Edit Profile Modal ── */}
+          <Modal
+            animationType="slide"
+            transparent={true}
+            visible={modalVisible}
+            onRequestClose={handleCancel}
+          >
+            <View style={styles.modalOverlay}>
+              <View style={styles.modalContent}>
+                <Text style={styles.modalTitle}>
+                  {editingProfile ? "Edit Profile" : "Create New Profile"}
+                </Text>
+
+                <ScrollView showsVerticalScrollIndicator={false}>
+                  <View style={styles.inputGroup}>
+                    <Text style={styles.label}>Name</Text>
+                    <TextInput
+                      style={styles.input}
+                      placeholder="Enter name"
+                      placeholderTextColor={COLORS.textMuted}
+                      value={formData.name}
+                      onChangeText={(text) =>
+                        setFormData({ ...formData, name: text })
+                      }
+                    />
+                  </View>
+
+                  <View style={styles.inputGroup}>
+                    <Text style={styles.label}>Age</Text>
+                    <TextInput
+                      style={styles.input}
+                      placeholder="Enter age"
+                      placeholderTextColor={COLORS.textMuted}
+                      keyboardType="numeric"
+                      value={formData.age}
+                      onChangeText={(text) =>
+                        setFormData({ ...formData, age: text })
+                      }
+                    />
+                  </View>
+
+                  <View style={styles.inputGroup}>
+                    <Text style={styles.label}>Reading Level</Text>
+                    <View style={styles.levelButtons}>
+                      {readingLevels.map((level) => (
+                        <TouchableOpacity
+                          key={level}
+                          style={[
+                            styles.levelButton,
+                            formData.readingLevel === level &&
+                              styles.levelButtonActive,
+                          ]}
+                          onPress={() =>
+                            setFormData({ ...formData, readingLevel: level })
+                          }
+                        >
+                          <Text
+                            style={[
+                              styles.levelButtonText,
+                              formData.readingLevel === level &&
+                                styles.levelButtonTextActive,
+                            ]}
+                          >
+                            {level}
+                          </Text>
+                        </TouchableOpacity>
+                      ))}
+                    </View>
+                  </View>
+                </ScrollView>
+
+                <View style={styles.modalActions}>
+                  <TouchableOpacity
+                    style={[styles.actionButton, styles.cancelButton]}
+                    onPress={handleCancel}
+                    disabled={isSaving}
+                  >
+                    <Text style={styles.cancelButtonText}>Cancel</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    style={[styles.actionButton, styles.saveButton]}
+                    onPress={handleSave}
+                    disabled={isSaving}
+                  >
+                    {isSaving ? (
+                      <ActivityIndicator color="#fff" />
+                    ) : (
+                      <Text style={styles.saveButtonText}>
+                        {editingProfile ? "Update" : "Save"}
+                      </Text>
+                    )}
+                  </TouchableOpacity>
+                </View>
+              </View>
             </View>
-          </View>
-        </Modal>
-      </View>
+          </Modal>
+        </SafeAreaView>
+      </AppBackground>
     </ScreenWrapper>
   );
 };
 
 export default Account;
 
-// ----------------- Styles -----------------
+// ─────────────────────────────────────────────────────────────────────────────
+// STYLES
+// ─────────────────────────────────────────────────────────────────────────────
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    paddingTop: 20,
-    backgroundColor: "#FAF7F2",
-  },
+  safeArea: { flex: 1, paddingTop: 0 },
+
   title: {
     fontSize: 32,
     fontWeight: "bold",
-    color: "#154D71",
+    color: COLORS.textPrimary,
     textAlign: "center",
-    marginBottom: 15,
+    marginTop: 12,
+    marginBottom: 8,
+    textShadowColor: "rgba(0,188,212,0.4)",
+    textShadowOffset: { width: 0, height: 2 },
+    textShadowRadius: 8,
   },
+
   currentProfileBanner: {
-    backgroundColor: "#9652D9",
+    backgroundColor: COLORS.surfacePurple,
+    borderWidth: 1.5,
+    borderColor: COLORS.purple,
     padding: 12,
     marginHorizontal: 20,
-    marginBottom: 20,
+    marginTop: 16,
+    marginBottom: 8,
     borderRadius: 10,
   },
   currentProfileText: {
-    color: "#fff",
+    color: COLORS.purpleLight,
     fontSize: 16,
     fontWeight: "600",
     textAlign: "center",
   },
+
   listContent: {
     paddingHorizontal: 20,
+    paddingTop: 12,
     paddingBottom: 20,
   },
+
   addButton: {
-    backgroundColor: "#EDE4F0",
+    backgroundColor: "rgba(0,188,212,0.1)",
     borderRadius: 20,
     padding: 20,
     marginTop: 10,
     borderWidth: 2,
-    borderColor: "#fff",
+    borderColor: COLORS.teal,
     borderStyle: "dashed",
   },
   addButtonText: {
     fontSize: 18,
     fontWeight: "bold",
-    color: "#154D71",
+    color: COLORS.teal,
     textAlign: "center",
   },
+
+  // ── Account section wrapper ──────────────────────────────
+  accountSection: {
+    marginHorizontal: 20,
+    marginTop: 8,
+    marginBottom: 24,
+    backgroundColor: "rgba(255,255,255,0.05)",
+    borderRadius: 20,
+    borderWidth: 1.5,
+    borderColor: COLORS.borderTeal,
+    padding: 18,
+  },
+  accountSectionHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+    marginBottom: 16,
+  },
+  accountSectionIcon: { fontSize: 20 },
+  accountSectionTitle: {
+    fontSize: 18,
+    fontWeight: "700",
+    color: COLORS.textPrimary,
+  },
+
+  // ── Credentials form ─────────────────────────────────────
+  credentialsForm: { gap: 12 },
+  credentialsHint: {
+    fontSize: 13,
+    color: COLORS.textMuted,
+    lineHeight: 19,
+    marginBottom: 4,
+  },
+  credentialsInput: {
+    backgroundColor: COLORS.surfaceDim,
+    borderRadius: 12,
+    padding: 14,
+    fontSize: 15,
+    color: COLORS.textPrimary,
+    borderWidth: 1.5,
+    borderColor: COLORS.borderTeal,
+  },
+  credentialsSaveBtn: {
+    backgroundColor: COLORS.teal,
+    borderRadius: 12,
+    paddingVertical: 14,
+    alignItems: "center",
+    marginTop: 4,
+  },
+  credentialsSaveBtnDisabled: {
+    backgroundColor: "rgba(0,188,212,0.25)",
+  },
+  credentialsSaveBtnText: {
+    fontSize: 15,
+    fontWeight: "700",
+    color: "#fff",
+    letterSpacing: 0.3,
+  },
+
+  // ── Email linked indicator ───────────────────────────────
+  emailLinkedRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 12,
+    marginBottom: 20,
+    backgroundColor: "rgba(0,188,212,0.07)",
+    borderRadius: 12,
+    padding: 12,
+    borderWidth: 1,
+    borderColor: "rgba(0,188,212,0.25)",
+  },
+  emailLinkedBadge: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: "rgba(0,188,212,0.2)",
+    borderWidth: 1.5,
+    borderColor: COLORS.teal,
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  emailLinkedIcon: { color: COLORS.teal, fontSize: 15, fontWeight: "bold" },
+  emailLinkedLabel: { fontSize: 11, color: COLORS.textMuted, marginBottom: 2 },
+  emailLinkedValue: {
+    fontSize: 14,
+    fontWeight: "600",
+    color: COLORS.tealLight ?? COLORS.teal,
+  },
+
+  // ── Three option cards ───────────────────────────────────
+  optionCardsRow: {
+    flexDirection: "row",
+    gap: 10,
+  },
+
+  // ── Logout ───────────────────────────────────────────────
+  logoutBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 10,
+    marginHorizontal: 20,
+    marginTop: 8,
+    paddingVertical: 16,
+    borderRadius: 16,
+    borderWidth: 1.5,
+    borderColor: "rgba(255,80,80,0.4)",
+    backgroundColor: "rgba(255,80,80,0.08)",
+  },
+  logoutIcon: { fontSize: 18, color: "#FF6B6B" },
+  logoutText: {
+    fontSize: 16,
+    fontWeight: "700",
+    color: "#FF6B6B",
+    letterSpacing: 0.4,
+  },
+
+  // ── Profile modal ────────────────────────────────────────
   modalOverlay: {
     flex: 1,
-    backgroundColor: "rgba(0, 0, 0, 0.5)",
+    backgroundColor: "rgba(0,0,0,0.75)",
     justifyContent: "center",
     alignItems: "center",
     padding: 20,
   },
   modalContent: {
-    backgroundColor: "#fff",
+    backgroundColor: COLORS.darkBg2,
     borderRadius: 25,
     padding: 25,
     width: "100%",
     maxWidth: 400,
     maxHeight: "80%",
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.25,
-    shadowRadius: 4,
-    elevation: 5,
+    borderWidth: 1.5,
+    borderColor: COLORS.borderTealBold,
+    ...SHADOWS.tealGlow,
   },
   modalTitle: {
     fontSize: 26,
     fontWeight: "bold",
-    color: "#154D71",
+    color: COLORS.textPrimary,
     textAlign: "center",
     marginBottom: 25,
   },
-  inputGroup: {
-    marginBottom: 20,
-  },
+  inputGroup: { marginBottom: 20 },
   label: {
     fontSize: 16,
     fontWeight: "600",
-    color: "#333",
+    color: COLORS.textSecondary,
     marginBottom: 8,
   },
   input: {
-    backgroundColor: "#F5F5F5",
+    backgroundColor: COLORS.surfaceDim,
     borderRadius: 12,
     padding: 15,
     fontSize: 16,
-    borderWidth: 1,
-    borderColor: "#E0E0E0",
+    color: COLORS.textPrimary,
+    borderWidth: 1.5,
+    borderColor: COLORS.borderTeal,
   },
-  levelButtons: {
-    flexDirection: "row",
-    gap: 10,
-  },
+  levelButtons: { flexDirection: "row", gap: 10 },
   levelButton: {
     flex: 1,
     paddingVertical: 12,
     paddingHorizontal: 10,
     borderRadius: 12,
-    backgroundColor: "#F5F5F5",
+    backgroundColor: COLORS.surfaceDim,
     borderWidth: 2,
-    borderColor: "#E0E0E0",
+    borderColor: COLORS.borderTeal,
     alignItems: "center",
   },
-  levelButtonActive: {
-    backgroundColor: "#FF6B9D",
-    borderColor: "#FF6B9D",
-  },
-  levelButtonText: {
-    fontSize: 14,
-    fontWeight: "600",
-    color: "#666",
-  },
-  levelButtonTextActive: {
-    color: "#fff",
-  },
-  modalActions: {
-    flexDirection: "row",
-    gap: 10,
-    marginTop: 20,
-  },
+  levelButtonActive: { backgroundColor: COLORS.teal, borderColor: COLORS.teal },
+  levelButtonText: { fontSize: 14, fontWeight: "600", color: "#90CAD6" },
+  levelButtonTextActive: { color: "#fff" },
+  modalActions: { flexDirection: "row", gap: 10, marginTop: 20 },
   actionButton: {
     flex: 1,
     paddingVertical: 15,
@@ -432,19 +907,15 @@ const styles = StyleSheet.create({
     alignItems: "center",
   },
   cancelButton: {
-    backgroundColor: "#E0E0E0",
+    backgroundColor: COLORS.surfaceDim,
+    borderWidth: 1,
+    borderColor: "rgba(255,255,255,0.2)",
   },
   cancelButtonText: {
     fontSize: 16,
     fontWeight: "600",
-    color: "#666",
+    color: COLORS.textSecondary,
   },
-  saveButton: {
-    backgroundColor: "#FF6B9D",
-  },
-  saveButtonText: {
-    fontSize: 16,
-    fontWeight: "600",
-    color: "#fff",
-  },
+  saveButton: { backgroundColor: COLORS.teal },
+  saveButtonText: { fontSize: 16, fontWeight: "600", color: "#fff" },
 });

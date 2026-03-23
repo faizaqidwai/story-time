@@ -1,179 +1,702 @@
-import React, { useState, useEffect } from 'react';
+// components/WordGuessGame.jsx  (updated)
+//
+// Changes from original:
+//  • Reads story-specific word list from StoryActivityContext instead of
+//    the global words.json — each story now gets its own words.
+//  • When the game ends (win OR exit), calls completeActivity() with score
+//    and coin rewards, then navigates to the next activity (Article).
+//  • "Play Again" within the same session replays with the SAME story words.
+//  • If opened without a storySession (standalone mode) it falls back to
+//    the global WORDS pool exactly as before.
+
+import React, { useState, useEffect, useRef } from "react";
 import {
   View,
   Text,
   TouchableOpacity,
   StyleSheet,
   Image,
-  Alert,
   ScrollView,
-} from 'react-native';
-import { useLocalSearchParams } from "expo-router";
-import WORDS from '../data/words.json'; // <-- Import the JSON
+  useWindowDimensions,
+  Animated,
+  Easing,
+  Dimensions,
+  Platform,
+  StatusBar,
+} from "react-native";
+import { Audio } from "expo-av";
+import { useRouter, useLocalSearchParams } from "expo-router";
+import WORDS from "../data/words.json"; // fallback for standalone mode
+import GameEnd from "./GameEnd";
+import BadgePopup from "./BadgePopup";
+import {
+  useStoryActivity,
+  ACTIVITY,
+  ACTIVITY_ROUTES,
+} from "../_contexts/StoryActivityContext";
 
-// Flower images array - you'll need to replace these with your actual image paths
-const FLOWER_IMAGES = {
-  5: require('../../assets/img/flowerGuess/flower5p.png'), // Full flower
-  4: require('../../assets/img/flowerGuess/flower4p.png'),
-  3: require('../../assets/img/flowerGuess/flower3p.png'),
-  2: require('../../assets/img/flowerGuess/flower2p.png'),
-  1: require('../../assets/img/flowerGuess/flower1p.png'),
-  0: require('../../assets/img/flowerGuess/flower0p.png'), // No petals
+const { width: SW, height: SH } = Dimensions.get("window");
+const STATUS_BAR_HEIGHT =
+  Platform.OS === "android" ? (StatusBar.currentHeight ?? 24) : 50;
+
+const COLORS = {
+  darkBg: "#08081a",
+  darkBg2: "#0f0f2a",
+  surface: "rgba(255,255,255,0.05)",
+  surfaceDim: "rgba(255,255,255,0.08)",
+  teal: "#00BCD4",
+  tealLight: "#4DD0E1",
+  purple: "#9652D9",
+  purpleLight: "#BA86FF",
+  yellow: "#FFD54F",
+  yellowLight: "#FFE082",
+  pink: "#FF6B9D",
+  textPrimary: "#FFFFFF",
+  textSecondary: "#B0BEC5",
+  textMuted: "#607D8B",
+  borderTeal: "rgba(0,188,212,0.3)",
+  borderTealBold: "rgba(0,188,212,0.6)",
+  correct: "#4CAF50",
+  wrong: "#EF5350",
 };
 
-const WordGuessGame = () => {
-  // Get the word and hints from navigation params
- const randomIndex = Math.floor(Math.random() * WORDS.length);
-const initialData = WORDS[randomIndex];
+const COINS_PER_CORRECT = 10;
 
-const [word, setWord] = useState(initialData.word.toUpperCase());
-const [hints, setHints] = useState(initialData.hints);
-const [guessedLetters, setGuessedLetters] = useState([]);
-const [wrongLetters, setWrongLetters] = useState([]);
-const [remainingChances, setRemainingChances] = useState(5);
-const [gameStatus, setGameStatus] = useState('playing');
-const [revealedHints, setRevealedHints] = useState([0]);
-  // Alphabet for letter buttons
-  const alphabet = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'.split('');
+// ─────────────────────────────────────────────────────────────────────────────
+// FLYING COIN (unchanged)
+// ─────────────────────────────────────────────────────────────────────────────
+function FlyingCoin({ fromX, fromY, toX, toY, delay, onLand }) {
+  const animX = useRef(new Animated.Value(fromX - 13)).current;
+  const animY = useRef(new Animated.Value(fromY - 13)).current;
+  const op = useRef(new Animated.Value(0)).current;
+  const sc = useRef(new Animated.Value(0.6)).current;
 
-  // Check if the word is completely guessed
- useEffect(() => {
-    if (gameStatus === 'playing') {
-      const allGuessed = word
-        .split('')
-        .every((letter) => guessedLetters.includes(letter) || letter === ' ');
-
-      if (allGuessed && word.length > 0) {
-        setGameStatus('won');
-        Alert.alert('Congratulations!', 'You guessed the word correctly!');
-      }
-    }
-  }, [guessedLetters]);
-
-  // Check if game is lost
   useEffect(() => {
-    if (remainingChances === 0 && gameStatus === 'playing') {
-      setGameStatus('lost');
-      Alert.alert('Game Over', `The word was: ${word}`);
+    const duration = 480 + Math.random() * 160;
+    Animated.sequence([
+      Animated.delay(delay),
+      Animated.parallel([
+        Animated.timing(op, {
+          toValue: 1,
+          duration: 60,
+          useNativeDriver: true,
+        }),
+        Animated.spring(sc, {
+          toValue: 1,
+          friction: 6,
+          tension: 90,
+          useNativeDriver: true,
+        }),
+        Animated.timing(animX, {
+          toValue: toX - 13,
+          duration,
+          easing: Easing.out(Easing.quad),
+          useNativeDriver: true,
+        }),
+        Animated.timing(animY, {
+          toValue: toY - 13,
+          duration,
+          easing: Easing.out(Easing.quad),
+          useNativeDriver: true,
+        }),
+      ]),
+    ]).start(() => {
+      Animated.timing(op, {
+        toValue: 0,
+        duration: 70,
+        useNativeDriver: true,
+      }).start();
+      onLand?.();
+    });
+  }, []);
+
+  return (
+    <Animated.Image
+      source={require("../../assets/img/coin.png")}
+      style={{
+        position: "absolute",
+        top: 0,
+        left: 0,
+        width: 24,
+        height: 24,
+        opacity: op,
+        zIndex: 600,
+        pointerEvents: "none",
+        transform: [
+          { translateX: animX },
+          { translateY: animY },
+          { scale: sc },
+        ],
+      }}
+      resizeMode="contain"
+    />
+  );
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// DIALOGUE CLOUD (unchanged)
+// ─────────────────────────────────────────────────────────────────────────────
+function DialogueCloud({ text, visible, onMergeComplete, targetY }) {
+  const fadeAnim = useRef(new Animated.Value(0)).current;
+  const textFade = useRef(new Animated.Value(0)).current;
+  const slideY = useRef(new Animated.Value(0)).current;
+  const scale = useRef(new Animated.Value(0.75)).current;
+
+  useEffect(() => {
+    if (!visible || !text) return;
+    fadeAnim.setValue(0);
+    textFade.setValue(0);
+    slideY.setValue(0);
+    scale.setValue(0.75);
+    Animated.parallel([
+      Animated.timing(fadeAnim, {
+        toValue: 1,
+        duration: 380,
+        useNativeDriver: true,
+      }),
+      Animated.spring(scale, {
+        toValue: 1,
+        friction: 5,
+        tension: 55,
+        useNativeDriver: true,
+      }),
+    ]).start(() => {
+      Animated.timing(textFade, {
+        toValue: 1,
+        duration: 350,
+        useNativeDriver: true,
+      }).start(() => {
+        setTimeout(() => {
+          Animated.parallel([
+            Animated.timing(slideY, {
+              toValue: targetY ?? 160,
+              duration: 660,
+              easing: Easing.in(Easing.cubic),
+              useNativeDriver: true,
+            }),
+            Animated.sequence([
+              Animated.delay(300),
+              Animated.timing(fadeAnim, {
+                toValue: 0,
+                duration: 360,
+                useNativeDriver: true,
+              }),
+            ]),
+          ]).start(() => onMergeComplete?.());
+        }, 2500);
+      });
+    });
+  }, [visible, text]);
+
+  if (!visible) return null;
+  const bumps = [20, 28, 24, 32, 26, 30, 18];
+  return (
+    <Animated.View
+      pointerEvents="none"
+      style={[
+        styles.cloudWrapper,
+        { opacity: fadeAnim, transform: [{ translateY: slideY }, { scale }] },
+      ]}
+    >
+      <View style={styles.cloudBumpsRow}>
+        {bumps.map((size, i) => (
+          <View
+            key={i}
+            style={{
+              width: size,
+              height: size,
+              borderRadius: size / 2,
+              backgroundColor: "#FFFFFF",
+              marginHorizontal: -2,
+              alignSelf: i % 2 === 0 ? "flex-end" : "flex-start",
+              marginTop: i % 2 === 0 ? 0 : 4,
+            }}
+          />
+        ))}
+      </View>
+      <View style={styles.cloudBody}>
+        <Animated.Text style={[styles.cloudText, { opacity: textFade }]}>
+          {text}
+        </Animated.Text>
+      </View>
+      <View style={styles.cloudTailRow}>
+        <View style={styles.cloudTailTriangle} />
+      </View>
+    </Animated.View>
+  );
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// PULSING TITLE (unchanged)
+// ─────────────────────────────────────────────────────────────────────────────
+function PulsingTitle() {
+  const pulse = useRef(new Animated.Value(0)).current;
+  const sc = useRef(new Animated.Value(1)).current;
+  useEffect(() => {
+    Animated.loop(
+      Animated.parallel([
+        Animated.sequence([
+          Animated.timing(pulse, {
+            toValue: 1,
+            duration: 950,
+            easing: Easing.inOut(Easing.sin),
+            useNativeDriver: true,
+          }),
+          Animated.timing(pulse, {
+            toValue: 0,
+            duration: 950,
+            easing: Easing.inOut(Easing.sin),
+            useNativeDriver: true,
+          }),
+        ]),
+        Animated.sequence([
+          Animated.timing(sc, {
+            toValue: 1.045,
+            duration: 950,
+            easing: Easing.inOut(Easing.sin),
+            useNativeDriver: true,
+          }),
+          Animated.timing(sc, {
+            toValue: 1,
+            duration: 950,
+            easing: Easing.inOut(Easing.sin),
+            useNativeDriver: true,
+          }),
+        ]),
+      ]),
+    ).start();
+  }, []);
+  const opacity = pulse.interpolate({
+    inputRange: [0, 1],
+    outputRange: [0.55, 1],
+  });
+  return (
+    <Animated.Text
+      style={[styles.challengeTitle, { opacity, transform: [{ scale: sc }] }]}
+    >
+      Word Guess Challenge
+    </Animated.Text>
+  );
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// MAIN COMPONENT
+// ─────────────────────────────────────────────────────────────────────────────
+const WordGuessGame = ({ onExit }) => {
+  const router = useRouter();
+  const params = useLocalSearchParams();
+  const { width } = useWindowDimensions();
+  const isTablet = width >= 768;
+
+  // ── Activity context ─────────────────────────────────────────────────────
+  const { storySession, completeActivity } = useStoryActivity();
+
+  // ── Pick word source: story-specific or global fallback ──────────────────
+  // storySession.storyId matches what was set when user tapped the story card
+  const storyWordPool = storySession?.activities
+    ? null // will read from activityData below
+    : null;
+
+  // The story object is not passed directly to this screen, but storySession
+  // holds the storyId. The activityData was attached to the story in home.jsx
+  // and is available via the storySession's embedded reference.
+  // Since we can't pass the full story object through router params, we
+  // receive the word list via storySession.activityDataSnapshot (set below).
+  //
+  // For simplicity: home.jsx sets storySession via startStorySession(story, …)
+  // We snapshot activityData into the session object so it travels with it.
+  // See StoryActivityContext — startStorySession now accepts optional activityData.
+
+  const wordPool = (() => {
+    const snap = storySession?.activityDataSnapshot?.wordGuess;
+    if (snap && snap.length > 0) return snap;
+    return WORDS; // standalone fallback
+  })();
+
+  const getNewWord = () =>
+    wordPool[Math.floor(Math.random() * wordPool.length)];
+  const initialData = useRef(getNewWord()).current;
+
+  const [showGameEnd, setShowGameEnd] = useState(false);
+  const [endType, setEndType] = useState(null);
+  const [endWord, setEndWord] = useState(null);
+  const [showBadgePopup, setShowBadgePopup] = useState(false);
+
+  const [word, setWord] = useState(initialData.word.toUpperCase());
+  const [hints, setHints] = useState(initialData.hints);
+  const [guessedLetters, setGuessedLetters] = useState([]);
+  const [wrongLetters, setWrongLetters] = useState([]);
+  const [remainingChances, setRemainingChances] = useState(5);
+  const [gameStatus, setGameStatus] = useState("playing");
+
+  const [cloudText, setCloudText] = useState("");
+  const [cloudVisible, setCloudVisible] = useState(false);
+  const [hintsInBox, setHintsInBox] = useState([]);
+
+  const [flyingCoins, setFlyingCoins] = useState([]);
+  const [coinCount, setCoinCount] = useState(0);
+  const coinScaleAnim = useRef(new Animated.Value(1)).current;
+  const coinShakeAnim = useRef(new Animated.Value(0)).current;
+
+  const coinBadgeRef = useRef(null);
+  const letterBoxRefs = useRef({});
+  const coinIdRef = useRef(0);
+  const soundRef = useRef(null);
+
+  const alphabet = "ABCDEFGHIJKLMNOPQRSTUVWXYZ".split("");
+
+  useEffect(() => {
+    if (hints?.length > 0) {
+      setTimeout(() => {
+        setCloudText(hints[0]);
+        setCloudVisible(true);
+      }, 900);
     }
-  }, [remainingChances]);
+  }, []);
 
+  const handleCloudMerge = () => {
+    setCloudVisible(false);
+    setHintsInBox((prev) =>
+      prev.includes(cloudText) ? prev : [...prev, cloudText],
+    );
+  };
+
+  // ── Win / lose ─────────────────────────────────────────────────────────
+  useEffect(() => {
+    if (gameStatus !== "playing") return;
+    const allGuessed = word
+      .split("")
+      .every((l) => guessedLetters.includes(l) || l === " ");
+    if (allGuessed) {
+      setGameStatus("won");
+      setEndType("won");
+      setEndWord(word);
+      setShowGameEnd(true);
+    } else if (remainingChances === 0) {
+      setGameStatus("lost");
+      setEndType("lose");
+      setEndWord(word);
+      setShowGameEnd(true);
+    }
+  }, [guessedLetters, remainingChances]);
+
+  // ── Letter press ───────────────────────────────────────────────────────
   const handleLetterPress = (letter) => {
-    if (gameStatus !== 'playing') return;
-    if (guessedLetters.includes(letter) || wrongLetters.includes(letter)) return;
-
+    if (gameStatus !== "playing") return;
+    if (guessedLetters.includes(letter) || wrongLetters.includes(letter))
+      return;
     if (word.includes(letter)) {
-      setGuessedLetters([...guessedLetters, letter]);
+      setGuessedLetters((prev) => [...prev, letter]);
+      playSound(require("../../assets/sounds/correct.mp3"));
+      spawnCoins(letter);
     } else {
-      setWrongLetters([...wrongLetters, letter]);
       const newChances = remainingChances - 1;
+      setWrongLetters((prev) => [...prev, letter]);
       setRemainingChances(newChances);
-
-      if (newChances > 0 && revealedHints.length < hints.length) {
-        setRevealedHints([...revealedHints, revealedHints.length]);
+      playSound(require("../../assets/sounds/incorrect.mp3"));
+      const nextIdx = hintsInBox.length;
+      if (newChances > 0 && nextIdx < hints.length && hints[nextIdx]) {
+        setTimeout(() => {
+          setCloudText(hints[nextIdx]);
+          setCloudVisible(true);
+        }, 400);
       }
     }
   };
- const renderWord = () =>
-    word.split('').map((letter, index) => {
-      if (letter === ' ') return <View key={index} style={styles.space} />;
 
+  const spawnCoins = (letter) => {
+    coinBadgeRef.current?.measureInWindow((bx, by, bw, bh) => {
+      const toX = bx + bw / 2;
+      const toY = by + bh / 2;
+      const doSpawn = (fromX, fromY) => {
+        const newCoins = Array.from({ length: COINS_PER_CORRECT }, (_, i) => ({
+          id: ++coinIdRef.current,
+          fromX: fromX + (Math.random() - 0.5) * 28,
+          fromY: fromY + (Math.random() - 0.5) * 18,
+          toX,
+          toY,
+          delay: i * 75,
+        }));
+        setFlyingCoins((prev) => [...prev, ...newCoins]);
+      };
+      const ref = letterBoxRefs.current[letter];
+      if (ref) {
+        ref.measureInWindow((lx, ly, lw, lh) =>
+          doSpawn(lx + lw / 2, ly + lh / 2),
+        );
+      } else {
+        doSpawn(SW / 2, SH * 0.55);
+      }
+    });
+  };
+
+  const handleCoinLand = (id) => {
+    setFlyingCoins((prev) => prev.filter((c) => c.id !== id));
+    setCoinCount((prev) => prev + 1);
+    Animated.sequence([
+      Animated.spring(coinScaleAnim, {
+        toValue: 1.55,
+        friction: 3,
+        tension: 130,
+        useNativeDriver: true,
+      }),
+      Animated.spring(coinScaleAnim, {
+        toValue: 1,
+        friction: 5,
+        tension: 80,
+        useNativeDriver: true,
+      }),
+    ]).start();
+    Animated.sequence([
+      Animated.timing(coinShakeAnim, {
+        toValue: 7,
+        duration: 42,
+        useNativeDriver: true,
+      }),
+      Animated.timing(coinShakeAnim, {
+        toValue: -7,
+        duration: 42,
+        useNativeDriver: true,
+      }),
+      Animated.timing(coinShakeAnim, {
+        toValue: 0,
+        duration: 42,
+        useNativeDriver: true,
+      }),
+    ]).start();
+  };
+
+  const playSound = async (file) => {
+    try {
+      if (soundRef.current) {
+        await soundRef.current.unloadAsync();
+        soundRef.current = null;
+      }
+      const { sound } = await Audio.Sound.createAsync(file);
+      soundRef.current = sound;
+      await sound.playAsync();
+    } catch (_) {}
+  };
+
+  const renderWord = () =>
+    word.split("").map((letter, index) => {
+      if (letter === " ")
+        return <View key={index} style={{ width: isTablet ? 22 : 13 }} />;
       const isGuessed = guessedLetters.includes(letter);
       return (
-        <View key={index} style={styles.letterBox}>
-          <Text style={styles.letterText}>{isGuessed ? letter : ''}</Text>
-          <View style={styles.underline} />
+        <View
+          key={index}
+          ref={(r) => {
+            if (r && !letterBoxRefs.current[letter])
+              letterBoxRefs.current[letter] = r;
+          }}
+          style={[styles.letterBox, { marginHorizontal: isTablet ? 6 : 3 }]}
+        >
+          <Text style={[styles.letterText, { fontSize: isTablet ? 36 : 24 }]}>
+            {isGuessed ? letter : ""}
+          </Text>
+          <View
+            style={[
+              styles.underline,
+              isGuessed && styles.underlineGuessed,
+              { width: isTablet ? 38 : 24, height: isTablet ? 4 : 2 },
+            ]}
+          />
         </View>
       );
     });
 
+  // ── Proceed to next activity (Article / ListeningChallenge) ─────────────
+  const proceedToNextActivity = async () => {
+    if (!storySession) {
+      // Standalone mode — just replay
+      resetGame();
+      return;
+    }
+
+    await completeActivity(
+      ACTIVITY.WORD_STORY_CHALLENGE,
+      {
+        word,
+        won: gameStatus === "won",
+        coinsEarned: coinCount,
+        wrongLetters,
+        remainingChances,
+      },
+      { coins: coinCount },
+    );
+
+    const nextRoute = ACTIVITY_ROUTES[ACTIVITY.WORD_LISTENING_CHALLENGE];
+    router.replace({
+      pathname: `/components/${nextRoute}`,
+      params: {
+        storyId: storySession.storyId,
+        title: storySession.storyTitle,
+      },
+    });
+  };
+
   const resetGame = () => {
-  const newIndex = Math.floor(Math.random() * WORDS.length);
-  const newData = WORDS[newIndex];
+    const data = getNewWord();
+    letterBoxRefs.current = {};
+    setWord(data.word.toUpperCase());
+    setHints(data.hints);
+    setGuessedLetters([]);
+    setWrongLetters([]);
+    setRemainingChances(5);
+    setGameStatus("playing");
+    setHintsInBox([]);
+    setCloudVisible(false);
+    setCloudText("");
+    setFlyingCoins([]);
+    setEndWord(null);
+    setTimeout(() => {
+      setCloudText(data.hints[0]);
+      setCloudVisible(true);
+    }, 900);
+  };
 
-  setWord(newData.word.toUpperCase());
-  setHints(newData.hints);
-  setGuessedLetters([]);
-  setWrongLetters([]);
-  setRemainingChances(5);
-  setGameStatus('playing');
-  setRevealedHints([0]);
-};
-
-
-   
+  useEffect(() => {
+    return () => {
+      soundRef.current?.unloadAsync();
+    };
+  }, []);
 
   return (
-    <ScrollView style={styles.container}>
-      <View style={styles.content}>
-        {/* Flower Image */}
-        <View style={styles.flowerContainer}>
-          <Image
-            source={FLOWER_IMAGES[remainingChances]}
-            style={styles.flowerImage}
-            resizeMode="cover"
+    <View style={styles.root}>
+      {flyingCoins.map((c) => (
+        <FlyingCoin key={c.id} {...c} onLand={() => handleCoinLand(c.id)} />
+      ))}
+
+      <ScrollView
+        style={styles.scroll}
+        contentContainerStyle={styles.scrollContent}
+        showsVerticalScrollIndicator={false}
+      >
+        {/* TOP BAR */}
+        <View style={styles.topBar}>
+          <TouchableOpacity
+            style={styles.exitBtn}
+            onPress={() => (onExit ? onExit() : router.back())}
+            activeOpacity={0.75}
+          >
+            <Text style={styles.exitIcon}>✕</Text>
+            <Text style={styles.exitText}>Exit</Text>
+          </TouchableOpacity>
+          <Animated.View
+            ref={coinBadgeRef}
+            style={[
+              styles.coinBadge,
+              { transform: [{ translateX: coinShakeAnim }] },
+            ]}
+          >
+            <Image
+              source={require("../../assets/img/coin.png")}
+              style={styles.coinIcon}
+              resizeMode="contain"
+            />
+            <Animated.Text
+              style={[
+                styles.coinCount,
+                { transform: [{ scale: coinScaleAnim }] },
+              ]}
+            >
+              {coinCount}
+            </Animated.Text>
+          </Animated.View>
+        </View>
+
+        <View style={styles.titleSection}>
+          <PulsingTitle />
+        </View>
+
+        <View style={styles.birdSection}>
+          <DialogueCloud
+            text={cloudText}
+            visible={cloudVisible}
+            onMergeComplete={handleCloudMerge}
+            targetY={130}
           />
+          <Image
+            source={require("../../assets/img/bird_happy.png")}
+            style={[
+              styles.birdImg,
+              { width: isTablet ? 150 : 100, height: isTablet ? 150 : 100 },
+            ]}
+            resizeMode="contain"
+          />
+        </View>
+
+        <View style={[styles.hintsBox, { width: isTablet ? "78%" : "92%" }]}>
+          <View style={styles.hintsTitleRow}>
+            <Text style={styles.hintsBulb}>💡</Text>
+            <Text style={styles.hintsLabel}>Hints</Text>
+          </View>
+          {hintsInBox.length === 0 ? (
+            <Text style={styles.hintsEmpty}>Hints will merge here…</Text>
+          ) : (
+            hintsInBox.map((h, i) => (
+              <View key={i} style={styles.hintRow}>
+                <View style={styles.hintNumBadge}>
+                  <Text style={styles.hintNum}>{i + 1}</Text>
+                </View>
+                <Text
+                  style={[styles.hintText, { fontSize: isTablet ? 22 : 16 }]}
+                >
+                  {h}
+                </Text>
+              </View>
+            ))
+          )}
+        </View>
+
+        <View style={[styles.flowerCard, { width: isTablet ? "78%" : "92%" }]}>
+          <View style={styles.dotsRow}>
+            {Array.from({ length: 5 }).map((_, i) => (
+              <Text
+                key={i}
+                style={[
+                  styles.heart,
+                  i < remainingChances ? styles.heartOn : styles.heartOff,
+                ]}
+              >
+                ♥
+              </Text>
+            ))}
+          </View>
           <Text style={styles.chancesText}>
-            Chances Remaining: {remainingChances}
+            {remainingChances} chance{remainingChances !== 1 ? "s" : ""}{" "}
+            remaining
           </Text>
         </View>
 
-        {/* Hints */}
-        <View style={styles.hintsContainer}>
-          <Text style={styles.hintsTitle}>Hints:</Text>
-          {Array.isArray(hints) &&
-            hints.map(
-              (hint, index) =>
-                revealedHints.includes(index) && (
-                  <Text key={index} style={styles.hintText}>
-                    {index + 1}. {hint}
-                  </Text>
-                )
-            )}
-        </View>
+        <View style={styles.wordRow}>{renderWord()}</View>
 
-        {/* Word Display */}
-        <View style={styles.wordContainer}>
-          {renderWord()}
-        </View>
-
-        {/* Wrong Letters Display */}
-        {wrongLetters.length > 0 && (
-          <View style={styles.wrongLettersContainer}>
-            <Text style={styles.wrongLettersTitle}>Wrong Guesses:</Text>
-            <View style={styles.wrongLettersList}>
-              {wrongLetters.map((letter, index) => (
-                <Text key={index} style={styles.wrongLetter}>
-                  {letter}
-                </Text>
-              ))}
-            </View>
-          </View>
-        )}
-
-        {/* Alphabet Keyboard */}
-        <View style={styles.keyboardContainer}>
+        <View style={styles.keyboard}>
           {alphabet.map((letter) => {
             const isGuessed = guessedLetters.includes(letter);
             const isWrong = wrongLetters.includes(letter);
-            const isDisabled = isGuessed || isWrong || gameStatus !== 'playing';
-
+            const disabled = isGuessed || isWrong || gameStatus !== "playing";
             return (
               <TouchableOpacity
                 key={letter}
                 style={[
-                  styles.letterButton,
-                  isGuessed && styles.correctButton,
-                  isWrong && styles.wrongButton,
-                  isDisabled && styles.disabledButton,
+                  styles.key,
+                  { width: isTablet ? 52 : 35, height: isTablet ? 52 : 35 },
+                  isGuessed && styles.keyCorrect,
+                  isWrong && styles.keyWrong,
                 ]}
                 onPress={() => handleLetterPress(letter)}
-                disabled={isDisabled}
+                disabled={disabled}
+                activeOpacity={0.7}
               >
                 <Text
                   style={[
-                    styles.letterButtonText,
-                    (isGuessed || isWrong) && styles.usedLetterText,
+                    styles.keyText,
+                    { fontSize: isTablet ? 22 : 16 },
+                    isGuessed && styles.keyTextCorrect,
+                    isWrong && styles.keyTextWrong,
+                    disabled && !isGuessed && !isWrong && { opacity: 0.32 },
                   ]}
                 >
                   {letter}
@@ -183,194 +706,339 @@ const [revealedHints, setRevealedHints] = useState([0]);
           })}
         </View>
 
-        {/* Reset Button */}
-        {gameStatus !== 'playing' && (
-          <TouchableOpacity style={styles.resetButton} onPress={resetGame}>
-            <Text style={styles.resetButtonText}>Play Again</Text>
+        {gameStatus !== "playing" && (
+          <TouchableOpacity
+            style={styles.playAgainBtn}
+            onPress={resetGame}
+            activeOpacity={0.85}
+          >
+            <Text style={styles.playAgainText}>▶ Play Again</Text>
           </TouchableOpacity>
         )}
+        <View style={{ height: 44 }} />
+      </ScrollView>
 
-        {/* Game Status */}
-        {gameStatus === 'won' && (
-          <View style={styles.statusContainer}>
-            <Text style={styles.winText}>🎉 You Won! 🎉</Text>
-          </View>
-        )}
-        {gameStatus === 'lost' && (
-          <View style={styles.statusContainer}>
-            <Text style={styles.loseText}>Game Over!</Text>
-            <Text style={styles.correctWordText}>
-              The word was: {word.toUpperCase()}
-            </Text>
-          </View>
-        )}
-      </View>
-    </ScrollView>
+      <GameEnd
+        visible={showGameEnd}
+        badge={endType}
+        word={endWord}
+        onClose={() => {
+          setShowGameEnd(false);
+          resetGame();
+        }}
+        onBadge={
+          endType === "won"
+            ? () => {
+                setShowGameEnd(false);
+                setShowBadgePopup(true);
+              }
+            : undefined
+        }
+        // Custom subtitles when in story mode
+        winSubtitle={
+          storySession ? "Word cracked! Next: Listening Challenge →" : undefined
+        }
+        loseSubtitle={
+          storySession ? "Keep going! Next challenge awaits." : undefined
+        }
+      />
+
+      <BadgePopup
+        visible={showBadgePopup}
+        badge="word_guess_won"
+        onClose={() => {
+          setShowBadgePopup(false);
+          // In story mode: advance; in standalone: replay
+          if (storySession) {
+            proceedToNextActivity();
+          } else {
+            resetGame();
+          }
+        }}
+        onPlay={() => {
+          setShowBadgePopup(false);
+          proceedToNextActivity();
+        }}
+      />
+    </View>
   );
 };
 
+// ─────────────────────────────────────────────────────────────────────────────
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#FFFFFF',
+  root: { flex: 1, backgroundColor: COLORS.darkBg },
+  scroll: { flex: 1 },
+  scrollContent: { alignItems: "center", paddingBottom: 20 },
+  topBar: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    width: "100%",
+    paddingHorizontal: 18,
+    paddingTop: STATUS_BAR_HEIGHT + 12,
+    paddingBottom: 8,
   },
-  content: {
-    padding: 10,
-    alignItems: 'center',
-   
+  exitBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    backgroundColor: "rgba(255,255,255,0.07)",
+    borderRadius: 20,
+    borderWidth: 1,
+    borderColor: "rgba(255,255,255,0.14)",
+    paddingHorizontal: 14,
+    paddingVertical: 8,
   },
-  flowerContainer: {
-    alignItems: 'center',
-   // marginVertical: 10,
-  
+  exitIcon: { fontSize: 12, color: COLORS.textMuted, fontWeight: "700" },
+  exitText: {
+    fontSize: 13,
+    fontWeight: "700",
+    color: COLORS.textSecondary,
+    letterSpacing: 0.3,
   },
-  flowerImage: {
-    width: 200,
-    height: 180,
+  coinBadge: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    backgroundColor: "rgba(255,213,79,0.12)",
+    borderRadius: 22,
+    borderWidth: 1.5,
+    borderColor: "rgba(255,213,79,0.55)",
+    paddingHorizontal: 13,
+    paddingVertical: 7,
+    shadowColor: COLORS.yellow,
+    shadowOffset: { width: 0, height: 0 },
+    shadowOpacity: 0.45,
+    shadowRadius: 8,
+    elevation: 5,
   },
-  chancesText: {
-    fontSize: 18,
-    fontWeight: 'bold',
-    color: '#333',
-    marginTop: 10,
+  coinIcon: { width: 24, height: 24 },
+  coinCount: { fontSize: 15, fontWeight: "900", color: COLORS.yellow },
+  titleSection: { marginTop: 4, marginBottom: 4, alignItems: "center" },
+  challengeTitle: {
+    fontSize: 24,
+    fontWeight: "900",
+    color: COLORS.teal,
+    letterSpacing: 0.4,
+    textShadowColor: "rgba(0,188,212,0.75)",
+    textShadowOffset: { width: 0, height: 0 },
+    textShadowRadius: 18,
+    textAlign: "center",
   },
-  hintsContainer: {
-    width: '100%',
-    backgroundColor: '#fff',
-    padding: 15,
-    borderRadius: 10,
-    marginBottom: 20,
-   // marginHorizontal: 20,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
+  birdSection: {
+    alignItems: "center",
+    width: "100%",
+    justifyContent: "center",
+    paddingVertical: 14,
+    minHeight: 190,
+  },
+  birdImg: { zIndex: 1 },
+  cloudWrapper: {
+    alignSelf: "center",
+    alignItems: "center",
+    zIndex: 20,
+    marginBottom: 4,
+  },
+  cloudBumpsRow: {
+    flexDirection: "row",
+    justifyContent: "center",
+    alignItems: "flex-end",
+    marginBottom: -14,
+    paddingHorizontal: 8,
+    zIndex: 2,
+  },
+  cloudBody: {
+    backgroundColor: "#FFFFFF",
+    borderRadius: 16,
+    paddingTop: 20,
+    paddingBottom: 12,
+    paddingHorizontal: 18,
+    maxWidth: 260,
+    minWidth: 150,
+    zIndex: 1,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.18,
+    shadowRadius: 9,
+    elevation: 7,
+  },
+  cloudText: {
+    fontSize: 13,
+    fontWeight: "700",
+    color: "#1a1a2e",
+    textAlign: "center",
+    lineHeight: 19,
+  },
+  cloudTailRow: { alignItems: "center", marginTop: -1, zIndex: 0 },
+  cloudTailTriangle: {
+    width: 0,
+    height: 0,
+    borderLeftWidth: 11,
+    borderRightWidth: 11,
+    borderTopWidth: 13,
+    borderLeftColor: "transparent",
+    borderRightColor: "transparent",
+    borderTopColor: "#FFFFFF",
+  },
+  hintsBox: {
+    backgroundColor: COLORS.surface,
+    borderRadius: 16,
+    padding: 13,
+    borderWidth: 1.5,
+    borderColor: COLORS.borderTeal,
+    shadowColor: COLORS.teal,
+    shadowOffset: { width: 0, height: 0 },
+    shadowOpacity: 0.11,
+    shadowRadius: 9,
     elevation: 3,
   },
-  hintsTitle: {
-    fontSize: 18,
-    fontWeight: 'bold',
-    color: '#4a90e2',
-    marginBottom: 10,
+  hintsTitleRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 7,
+    marginBottom: 7,
   },
+  hintsBulb: { fontSize: 15 },
+  hintsLabel: {
+    fontSize: 12,
+    fontWeight: "800",
+    color: COLORS.teal,
+    letterSpacing: 1,
+    textTransform: "uppercase",
+  },
+  hintsEmpty: {
+    fontSize: 12,
+    color: COLORS.textMuted,
+    fontStyle: "italic",
+    textAlign: "center",
+    paddingVertical: 2,
+  },
+  hintRow: {
+    flexDirection: "row",
+    alignItems: "flex-start",
+    gap: 9,
+    marginBottom: 6,
+  },
+  hintNumBadge: {
+    width: 19,
+    height: 19,
+    borderRadius: 10,
+    backgroundColor: "rgba(0,188,212,0.18)",
+    borderWidth: 1,
+    borderColor: COLORS.teal,
+    alignItems: "center",
+    justifyContent: "center",
+    marginTop: 1,
+  },
+  hintNum: { fontSize: 10, fontWeight: "900", color: COLORS.teal },
   hintText: {
-    fontSize: 16,
-    color: '#666',
-    marginBottom: 5,
+    flex: 1,
+    color: COLORS.textSecondary,
+    lineHeight: 20,
+    fontWeight: "500",
   },
-  wordContainer: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    justifyContent: 'center',
-    marginBottom: 20,
+  flowerCard: {
+    padding: 12,
+    alignItems: "center",
+    borderColor: "rgba(150,82,217,0.26)",
+    marginBottom: 9,
+    shadowColor: COLORS.purple,
+    shadowOffset: { width: 0, height: 0 },
+    shadowOpacity: 0.16,
+    shadowRadius: 9,
+    elevation: 3,
   },
-  letterBox: {
-    alignItems: 'center',
-    marginHorizontal: 5,
-    marginVertical: 5,
+  dotsRow: { flexDirection: "row", gap: 7, marginTop: 8, marginBottom: 4 },
+  heart: { fontSize: 20 },
+  heartOn: {
+    color: "#FF6B9D",
+    textShadowColor: "rgba(255,107,157,0.8)",
+    textShadowOffset: { width: 0, height: 0 },
+    textShadowRadius: 6,
   },
+  heartOff: { color: "rgba(255,255,255,0.15)" },
+  chancesText: {
+    fontSize: 11,
+    fontWeight: "700",
+    color: COLORS.textMuted,
+    letterSpacing: 0.4,
+  },
+  wordRow: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    justifyContent: "center",
+    alignItems: "flex-end",
+    gap: 2,
+    paddingHorizontal: 10,
+    marginBottom: 9,
+  },
+  letterBox: { alignItems: "center", marginVertical: 3, minWidth: 24 },
   letterText: {
-    fontSize: 32,
-    fontWeight: 'bold',
-    color: '#333',
-    minWidth: 30,
-    textAlign: 'center',
+    fontWeight: "800",
+    color: COLORS.teal,
+    minHeight: 30,
+    textShadowColor: "rgba(0,188,212,0.5)",
+    textShadowOffset: { width: 0, height: 0 },
+    textShadowRadius: 18,
   },
   underline: {
-    width: 30,
-    height: 3,
-    backgroundColor: '#4a90e2',
-    marginTop: 5,
-  },
-  space: {
-    width: 15,
-  },
-  wrongLettersContainer: {
-    width: '100%',
-    backgroundColor: '#ffe6e6',
-    padding: 15,
-    borderRadius: 10,
-    marginBottom: 20,
-  },
-  wrongLettersTitle: {
-    fontSize: 16,
-    fontWeight: 'bold',
-    color: '#d32f2f',
+    backgroundColor: COLORS.teal,
+    marginTop: 4,
+    borderRadius: 2,
     marginBottom: 10,
   },
-  wrongLettersList: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
+  underlineGuessed: {
+    backgroundColor: COLORS.teal,
+    shadowColor: COLORS.teal,
+    shadowOffset: { width: 0, height: 0 },
+    shadowOpacity: 0.65,
+    shadowRadius: 4,
+    elevation: 2,
   },
-  wrongLetter: {
-    fontSize: 18,
-    color: '#d32f2f',
-    marginRight: 10,
-    fontWeight: 'bold',
+  keyboard: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    justifyContent: "center",
+    paddingHorizontal: 6,
+    marginBottom: 13,
+    gap: 5,
   },
-  keyboardContainer: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    justifyContent: 'center',
-    width: '100%',
-    marginBottom: 20,
+  key: {
+    backgroundColor: COLORS.surfaceDim,
+    borderRadius: 9,
+    justifyContent: "center",
+    alignItems: "center",
+    borderWidth: 1,
+    borderColor: "rgba(255,255,255,0.07)",
   },
-  letterButton: {
-    width: 40,
-    height: 40,
-    backgroundColor: '#4a90e2',
-    borderRadius: 5,
-    justifyContent: 'center',
-    alignItems: 'center',
-    margin: 3,
+  keyText: { color: COLORS.textPrimary, fontWeight: "700" },
+  keyCorrect: {
+    backgroundColor: "rgba(76,175,80,0.2)",
+    borderColor: COLORS.correct,
   },
-  letterButtonText: {
-    color: '#fff',
-    fontSize: 18,
-    fontWeight: 'bold',
+  keyTextCorrect: { color: COLORS.correct },
+  keyWrong: {
+    backgroundColor: "rgba(239,83,80,0.12)",
+    borderColor: "rgba(239,83,80,0.26)",
   },
-  correctButton: {
-    backgroundColor: '#4caf50',
+  keyTextWrong: { color: "rgba(239,83,80,0.35)" },
+  playAgainBtn: {
+    backgroundColor: COLORS.teal,
+    borderRadius: 30,
+    paddingHorizontal: 38,
+    paddingVertical: 14,
+    marginTop: 8,
+    shadowColor: COLORS.teal,
+    shadowOffset: { width: 0, height: 0 },
+    shadowOpacity: 0.6,
+    shadowRadius: 14,
+    elevation: 8,
   },
-  wrongButton: {
-    backgroundColor: '#d32f2f',
-  },
-  disabledButton: {
-    opacity: 0.5,
-  },
-  usedLetterText: {
-    color: '#fff',
-  },
-  resetButton: {
-    backgroundColor: '#ff9800',
-    paddingHorizontal: 30,
-    paddingVertical: 15,
-    borderRadius: 25,
-    marginTop: 20,
-  },
-  resetButtonText: {
-    color: '#fff',
-    fontSize: 18,
-    fontWeight: 'bold',
-  },
-  statusContainer: {
-    alignItems: 'center',
-    marginTop: 20,
-  },
-  winText: {
-    fontSize: 28,
-    fontWeight: 'bold',
-    color: '#4caf50',
-  },
-  loseText: {
-    fontSize: 28,
-    fontWeight: 'bold',
-    color: '#d32f2f',
-  },
-  correctWordText: {
-    fontSize: 20,
-    color: '#666',
-    marginTop: 10,
+  playAgainText: {
+    fontSize: 16,
+    fontWeight: "900",
+    color: COLORS.darkBg,
+    letterSpacing: 0.4,
   },
 });
 

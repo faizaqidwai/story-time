@@ -29,7 +29,6 @@ export async function fetchRegisterToken() {
     }),
   });
   await saveRegisterToken(response.token);
-
   return response;
 }
 

@@ -1,5 +1,6 @@
-import BookReader from './BookReader'
+import BookReader from "./BookReader";
+import StoryHome from "./StoryHome";
 
 export default function BookReaderRoute() {
-  return <BookReader />
+  return <StoryHome />;
 }

@@ -35,7 +35,14 @@ export const bookService = {
   },
 
   async getBookById(id) {
-    const data = await cdnFetch(`/books/${id}`);
+    console.log("GetBookById : " + id);
+    const accessToken = await getAccessToken();
+    const data = await apiFetch(`/books/${id}`, {
+      method: "GET",
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+      },
+    });
 
     return transformBook(data);
   },

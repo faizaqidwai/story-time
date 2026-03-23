@@ -1,4 +1,12 @@
-import React, { useEffect, useState, useRef } from 'react'
+// app/book/[id].jsx  (BookReader — updated)
+//
+// Changes from original:
+//  • Reads activityData from the story object (set by storyActivityData.js)
+//  • Calls completeActivity(ACTIVITY.STORY_READING, report, rewards) on finish
+//  • Routes to the next activity instead of showing a badge popup directly
+//  • Badge popup is removed — reward celebration now happens in StoryFinishOverlay
+
+import React, { useEffect, useState, useRef } from "react";
 import {
   StyleSheet,
   View,
@@ -8,72 +16,77 @@ import {
   FlatList,
   Dimensions,
   Pressable,
-} from 'react-native'
-import { ScrollView } from 'react-native'
-import { useLocalSearchParams, useRouter } from 'expo-router'
-import { Ionicons } from '@expo/vector-icons'
+  Platform,
+} from "react-native";
+import { ScrollView } from "react-native";
+import { Image as ExpoImage } from "expo-image";
+import { useLocalSearchParams, useRouter } from "expo-router";
+import { Ionicons } from "@expo/vector-icons";
 
-import InteractiveText from '../components/InteractiveText'
-import ScreenWrapper from '../components/ScreenWrapper'
-import BadgePopup from '../components/BadgePopup' // Add this import
-import { bookService } from '../services/bookService'
-import { useUser } from '../_contexts/UserContext' // Add this import
-import backgroundImage from '../../assets/img/storyPageBack4.jpg'
+import InteractiveText from "../components/InteractiveText";
+import ScreenWrapper from "../components/ScreenWrapper";
+import AppBackground from "../components/AppBackground";
+import { useUser } from "../_contexts/UserContext";
+import {
+  useStoryActivity,
+  ACTIVITY,
+  ACTIVITY_ROUTES,
+} from "../_contexts/StoryActivityContext";
+import { attachActivityDataToStories } from "../data/storyActivityData";
+import backgroundImage from "../../assets/img/storyPageBack4.jpg";
 
-const { width } = Dimensions.get('window')
+const { width } = Dimensions.get("window");
+
+// Coins earned for completing the story reading
+const READING_COINS = 50;
 
 export default function BookReader() {
-  const { id } = useLocalSearchParams()
-  const router = useRouter()
-  const flatListRef = useRef(null)
-  const { currentProfile, addCompletedStory } = useUser() // Add this
+  const { id, replay } = useLocalSearchParams();
+  const isReplay = replay === "1";
+  const router = useRouter();
+  const { currentProfile } = useUser();
+  const { storySession, completeActivity, currentStory } = useStoryActivity();
 
-  const [book, setBook] = useState(null)
-  const [pageIndex, setPageIndex] = useState(0)
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState(null)
-  const [wordTaps, setWordTaps] = useState([])
-  
-  // Add badge state
-  const [showBadgePopup, setShowBadgePopup] = useState(false)
-  const [earnedBadge, setEarnedBadge] = useState(null)
+  const [book, setBook] = useState(null);
+  const [pageIndex, setPageIndex] = useState(0);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+  const [wordTaps, setWordTaps] = useState([]);
+
+  const flatListRef = useRef(null);
 
   useEffect(() => {
-    const loadBook = async () => {
-      try {
-        const data = await bookService.getBookById(id)
-        setBook(data)
-      } catch (e) {
-        setError('Failed to load book')
-      } finally {
-        setLoading(false)
-      }
+    if (currentStory) {
+      const enriched = currentStory.activityData
+        ? currentStory
+        : attachActivityDataToStories([currentStory])[0];
+      setBook(enriched);
+      setLoading(false);
+    } else {
+      setError("Story not available offline");
+      setLoading(false);
     }
-    loadBook()
-  }, [id])
+  }, [currentStory]);
 
   const goToPage = (index) => {
-    flatListRef.current?.scrollToIndex({ index, animated: true })
-    setPageIndex(index)
-  }
+    flatListRef.current?.scrollToIndex({ index, animated: true });
+    setPageIndex(index);
+  };
 
   const handleWordTap = (word) => {
-    setWordTaps(prev => [...prev, word.toLowerCase()])
-  }
+    setWordTaps((prev) => [...prev, word.toLowerCase()]);
+  };
 
   const generateReadingReport = () => {
-    const allWords = book.pages.flatMap(p => p.text.split(' '))
-
+    const allWords = book.pages.flatMap((p) => p.text.split(" "));
     const frequency = wordTaps.reduce((acc, word) => {
-      acc[word] = (acc[word] || 0) + 1
-      return acc
-    }, {})
-
+      acc[word] = (acc[word] || 0) + 1;
+      return acc;
+    }, {});
     const mostTapped =
       Object.keys(frequency).length > 0
         ? Object.entries(frequency).sort((a, b) => b[1] - a[1])[0]
-        : null
-
+        : null;
     return {
       storyId: book.id,
       storyTitle: book.title,
@@ -82,56 +95,44 @@ export default function BookReader() {
       uniqueWordsTapped: Object.keys(frequency).length,
       mostTappedWord: mostTapped,
       wordFrequency: frequency,
-    }
-  }
+    };
+  };
 
-  const handleFinishStory = () => {
-    const report = generateReadingReport()
-    
-    // Check if this is the first story
-    const isFirstStory = !currentProfile?.readingHistory || 
-                         currentProfile.readingHistory.length === 0
-    
-    // Add story to profile
-    if (currentProfile) {
-      const storyData = {
+  const handleBack = () => {
+    router.back();
+  };
+
+  const handleFinishStory = async () => {
+    const report = generateReadingReport();
+
+    // Record which words the user tapped — add to rewards
+    const tappedWords = Object.keys(report.wordFrequency);
+
+    if (isReplay) {
+      router.back();
+      return;
+    }
+
+    // Mark story reading as complete in the session
+    await completeActivity(
+      ACTIVITY.STORY_READING,
+      { report },
+      {
+        coins: READING_COINS,
+        words: tappedWords,
+      },
+    );
+
+    // Route to the next activity: WordGuessGame (activity index 1)
+    const nextRoute = ACTIVITY_ROUTES[ACTIVITY.WORD_STORY_CHALLENGE];
+    router.replace({
+      pathname: `/components/${nextRoute}`,
+      params: {
         storyId: book.id,
-        storyTitle: book.title,
-        completedAt: new Date().toISOString(),
-        report,
-      }
-      addCompletedStory(currentProfile.id, storyData)
-      
-      // Show badge popup if it's their first story
-      if (isFirstStory) {
-        setEarnedBadge('first_story')
-        setShowBadgePopup(true)
-      } else {
-        // Go directly to report if not first story
-        router.push({
-          pathname: '/reading-report',
-          params: { report: JSON.stringify(report) },
-        })
-      }
-    } else {
-      // No profile selected, just go to report
-      router.push({
-        pathname: '/reading-report',
-        params: { report: JSON.stringify(report) },
-      })
-    }
-  }
-
-  const handleBadgeClose = () => {
-    setShowBadgePopup(false)
-    
-    // Navigate to report after closing badge
-    const report = generateReadingReport()
-    router.push({
-      pathname: '/reading-report',
-      params: { report: JSON.stringify(report) },
-    })
-  }
+        title: book.title,
+      },
+    });
+  };
 
   if (loading) {
     return (
@@ -139,7 +140,7 @@ export default function BookReader() {
         <ActivityIndicator size="large" />
         <Text>Loading story...</Text>
       </View>
-    )
+    );
   }
 
   if (error) {
@@ -150,174 +151,165 @@ export default function BookReader() {
           <Text style={styles.bigButtonText}>⬅ Go Back</Text>
         </Pressable>
       </View>
-    )
+    );
   }
 
-  if (!book) return null
+  if (!book) return null;
 
   return (
     <ScreenWrapper background={backgroundImage}>
-      <FlatList
-        ref={flatListRef}
-        data={book.pages}
-        horizontal
-        pagingEnabled
-        showsHorizontalScrollIndicator={false}
-        keyExtractor={(_, index) => index.toString()}
-        onMomentumScrollEnd={(e) => {
-          const index = Math.round(e.nativeEvent.contentOffset.x / width)
-          setPageIndex(index)
-        }}
-        renderItem={({ item }) => (
-          <StorySwipePage
-            page={item}
-            onWordTap={handleWordTap}
-          />
-        )}
-      />
+      <AppBackground>
+        {/* ── HEADER ── */}
+        <View style={styles.header}>
+          <Pressable style={styles.backButton} onPress={handleBack}>
+            <Ionicons name="chevron-back" size={22} color="#E0F7FA" />
+          </Pressable>
+          <Text style={styles.headerTitle} numberOfLines={1}>
+            {book.title}
+          </Text>
+          <View style={styles.headerSpacer} />
+        </View>
 
-      <View style={styles.buttons}>
-  {/* BACK BUTTON */}
-  <Pressable
-    disabled={pageIndex === 0}
-    onPress={() => goToPage(pageIndex - 1)}
-    style={[styles.bigButton, pageIndex === 0 && styles.disabledButton]}
-  >
-    <Ionicons name="chevron-back" size={36} color="#333" />
-  </Pressable>
+        <FlatList
+          ref={flatListRef}
+          data={book.pages}
+          horizontal
+          pagingEnabled
+          showsHorizontalScrollIndicator={false}
+          keyExtractor={(_, index) => index.toString()}
+          onMomentumScrollEnd={(e) => {
+            const index = Math.round(e.nativeEvent.contentOffset.x / width);
+            setPageIndex(index);
+          }}
+          renderItem={({ item }) => (
+            <StorySwipePage page={item} onWordTap={handleWordTap} />
+          )}
+        />
 
-  {/* PAGE NUMBER */}
-  <Text style={styles.pageNumber}>
-    {pageIndex + 1} / {book.pages.length}
-  </Text>
+        <View style={styles.buttons}>
+          {/* BACK BUTTON */}
+          <Pressable
+            disabled={pageIndex === 0}
+            onPress={() => goToPage(pageIndex - 1)}
+            style={[styles.bigButton, pageIndex === 0 && styles.disabledButton]}
+          >
+            <Ionicons name="chevron-back" size={36} color="#333" />
+          </Pressable>
 
-  {/* NEXT OR FINISH */}
-  {pageIndex === book.pages.length - 1 ? (
-    <Pressable
-      style={styles.bigButton}
-      onPress={handleFinishStory}
-    >
-      <Text style={styles.bigButtonText}>Finish ⭐</Text>
-    </Pressable>
-  ) : (
-    <Pressable
-      onPress={() => goToPage(pageIndex + 1)}
-      style={styles.bigButton}
-    >
-      <Ionicons name="chevron-forward" size={36} color="#333" />
-    </Pressable>
-  )}
-</View>
+          {/* PAGE NUMBER */}
+          <Text style={styles.pageNumber}>
+            {pageIndex + 1} / {book.pages.length}
+          </Text>
 
-
-      
-      
-      {/* Badge Popup */}
-      <BadgePopup
-        visible={showBadgePopup}
-        badge={earnedBadge}
-        onClose={handleBadgeClose}
-      />
+          {/* NEXT OR FINISH */}
+          {pageIndex === book.pages.length - 1 ? (
+            <Pressable style={styles.bigButton} onPress={handleFinishStory}>
+              <Text style={styles.bigButtonText}>Finish ⭐</Text>
+            </Pressable>
+          ) : (
+            <Pressable
+              onPress={() => goToPage(pageIndex + 1)}
+              style={styles.bigButton}
+            >
+              <Ionicons name="chevron-forward" size={36} color="#333" />
+            </Pressable>
+          )}
+        </View>
+      </AppBackground>
     </ScreenWrapper>
-  )
+  );
 }
 
-// ... rest of your code (StorySwipePage and styles remain the same)
 /* ===================== PAGE COMPONENT ===================== */
-
 const StorySwipePage = ({ page, onWordTap }) => {
   return (
     <View style={[styles.page, { width }]}>
       <View style={styles.imageSection}>
-        <Image source={{ uri: page.image }} style={styles.image} />
+        <ExpoImage
+          source={{ uri: page.image }}
+          style={styles.image}
+          contentFit="cover"
+          cachePolicy="disk"
+        />
       </View>
-
-      {/* 🔹 SCROLLABLE TEXT AREA */}
       <View style={styles.textSection}>
         <ScrollView
           showsVerticalScrollIndicator={true}
           contentContainerStyle={styles.textScrollContent}
         >
-          <InteractiveText
-            text={page.text}
-            onWordTap={onWordTap}
-          />
+          <InteractiveText text={page.text} onWordTap={onWordTap} />
         </ScrollView>
       </View>
     </View>
-  )
-}
+  );
+};
 
 /* ===================== STYLES ===================== */
-
 const styles = StyleSheet.create({
   page: { flex: 1 },
-
+  imageSection: { flex: 4, alignItems: "center" },
+  image: { width: "100%", height: "100%", resizeMode: "cover" },
   textSection: {
-  flex: 2.5,            // ⬅ give text more space
-  paddingHorizontal: 14,
-  paddingBottom: 10,
-},
-
-textScrollContent: {
-  paddingBottom: 40,    // ⬅ extra space so last line is readable
-},
-
-  imageSection: {
-    flex: 1,
-    alignItems: 'center',
-  },
-
-  image: {
-    width: '100%',
-    height: '100%',
-    resizeMode: 'cover',
-  },
-
-  textSection: {
-    flex: 1,
-    justifyContent: 'center',
+    flex: 2.5,
     paddingHorizontal: 14,
+    paddingBottom: 10,
   },
-
+  textScrollContent: { paddingBottom: 40 },
   buttons: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
     padding: 16,
   },
-
   bigButton: {
-    backgroundColor: '#FFD93D',
+    backgroundColor: "#FFD93D",
     paddingVertical: 15,
     paddingHorizontal: 20,
     borderRadius: 30,
     minWidth: 110,
-    alignItems: 'center',
+    alignItems: "center",
     elevation: 4,
-    height: 65
+    height: 65,
   },
-
   bigButtonText: {
     fontSize: 20,
-    fontWeight: 'bold',
-    color: '#333',
-      paddingVertical: 5,
-    
+    fontWeight: "bold",
+    color: "#333",
+    paddingVertical: 5,
   },
-
-  disabledButton: {
-    opacity: 0.4,
+  disabledButton: { opacity: 0.4 },
+  pageNumber: { fontSize: 16, fontWeight: "600" },
+  center: { flex: 1, justifyContent: "center", alignItems: "center" },
+  header: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    paddingHorizontal: 12,
+    paddingTop: Platform.OS === "ios" ? 54 : 20,
+    paddingBottom: 8,
   },
-
-  pageNumber: {
-    fontSize: 16,
-    fontWeight: '600',
+  backButton: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: "rgba(0,0,0,0.35)",
+    borderWidth: 1,
+    borderColor: "rgba(0,188,212,0.35)",
+    alignItems: "center",
+    justifyContent: "center",
+    flexShrink: 0,
   },
-
-  center: {
+  headerTitle: {
     flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
+    textAlign: "center",
+    fontSize: 15,
+    fontWeight: "800",
+    color: "#00BCD4",
+    letterSpacing: 0.3,
+    marginHorizontal: 8,
+    textShadowColor: "rgba(0,188,212,0.5)",
+    textShadowOffset: { width: 0, height: 0 },
+    textShadowRadius: 10,
   },
-})
+  headerSpacer: { width: 40, flexShrink: 0 },
+});

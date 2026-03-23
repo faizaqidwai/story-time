@@ -1,0 +1,118 @@
+{
+    "id": "13d2dbcf-a9c3-4f75-b51e-6f23c6a7fb13",
+    "name": "Bilal",
+    "age": null,
+    "dob": null,
+    "gender": "MALE",
+    "level": "EARLY",
+    "playLevel": 1,
+    "coins": 10,
+    "diamonds": 4,
+    "wordBag": {
+        "words": [
+            {
+                "name": "star",
+                "description": "",
+                "audio": "",
+                "image": "",
+                "category": {
+                    "id": "1",
+                    "name": "Space",
+                    "image": "",
+                    "description": ""
+                },
+                "playLevel": 1
+            }
+        ],
+        "categories": [
+            {
+                "id": "1",
+                "name": "Space",
+                "image": "",
+                "description": ""
+            }
+        ]
+    },
+    "achievements": [],
+    "favoriteBookIds": [],
+    "createdAt": null,
+    "updatedAt": null,
+    "storyActivities":[
+        {
+            "id": "13d2dbcf-a9c3-4f75-b51e-6f23c6a7fb13",
+            "storyId":"69904cc5e0dca7262b60b5e3",
+            "status": "inProgress",
+            "playLevel": 1,
+            "rewards":{
+                "coins": 100,
+                "diamonds": 0,
+                "words": []
+            },
+            "activities":[
+                {
+                    "type":"story_reading",
+                    "status": "Completed",
+                    "rewards":[
+                        {
+                            "coins": 100,
+                            "diamond": 0,
+                            "words": []
+                        }
+                    ]
+                },
+                {
+                    "type":"word_spelling_challenge",
+                    "status": "inProgress",
+                    "rewards":[
+                        {
+                            "coins": 100,
+                            "diamond": 0,
+                            "words": []
+                        }
+                    ]
+                },
+                {
+                    "type":"word_listening_challenge",
+                    "status": "pending",
+                    "rewards":[
+                        {
+                            "coins": 0,
+                            "diamond": 0,
+                            "words": []
+                        }
+                    ]
+                },
+                {
+                    "type":"word_understanding_challenge",
+                    "status": "pending",
+                    "rewards":[
+                        {
+                            "coins": 0,
+                            "diamond": 0,
+                            "words": []
+                        }
+                    ]
+                }
+            ]
+        }
+    ],
+    "readingHistory": [
+        {
+            "storyId": "69904cc5e0dca7262b60b5e3",
+            "storyTitle": "Sleepy Moon",
+            "completedAt": "2026-03-08T17:49:11.498Z",
+            "report": {
+                "storyId": "69904cc5e0dca7262b60b5e3",
+                "storyTitle": "Sleepy Moon",
+                "totalWords": 24,
+                "totalTaps": 0,
+                "uniqueWordsTapped": 0,
+                "mostTappedWord": null,
+                "wordFrequency": {}
+            }
+        }
+    ],
+    "badges": [
+        "first_story"
+    ]
+}

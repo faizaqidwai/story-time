@@ -1,0 +1,522 @@
+[
+  {
+    "id": 1,
+    "object": "Apple",
+    "emoji": "🍎",
+    "image": "apple",
+    "options": [
+      { "id": "a", "text": "Apple is red.", "correct": true },
+      { "id": "b", "text": "Apple is sweet.", "correct": true },
+      { "id": "c", "text": "Apple is a fruit.", "correct": true },
+      { "id": "d", "text": "Apple can fly.", "correct": false },
+      { "id": "e", "text": "Apple lives in the sea.", "correct": false }
+    ]
+  },
+  {
+    "id": 2,
+    "object": "Sun",
+    "emoji": "☀️",
+    "image": "sun",
+    "options": [
+      { "id": "a", "text": "Sun is very hot.", "correct": true },
+      { "id": "b", "text": "Sun gives us light.", "correct": true },
+      { "id": "c", "text": "Sun is a big star.", "correct": true },
+      { "id": "d", "text": "Sun is cold like ice.", "correct": false },
+      { "id": "e", "text": "Sun is found underground.", "correct": false }
+    ]
+  },
+  {
+    "id": 3,
+    "object": "Dog",
+    "emoji": "🐶",
+    "image": "dog",
+    "options": [
+      { "id": "a", "text": "Dog is a pet animal.", "correct": true },
+      { "id": "b", "text": "Dog has four legs.", "correct": true },
+      { "id": "c", "text": "Dog barks loudly.", "correct": true },
+      { "id": "d", "text": "Dog can breathe underwater.", "correct": false },
+      { "id": "e", "text": "Dog has feathers on its body.", "correct": false }
+    ]
+  },
+  {
+    "id": 4,
+    "object": "Banana",
+    "emoji": "🍌",
+    "image": "banana",
+    "options": [
+      { "id": "a", "text": "Banana is yellow.", "correct": true },
+      { "id": "b", "text": "Banana is sweet to eat.", "correct": true },
+      { "id": "c", "text": "Banana is a fruit.", "correct": true },
+      { "id": "d", "text": "Banana is sour like a lemon.", "correct": false },
+      { "id": "e", "text": "Banana grows in cold snow.", "correct": false }
+    ]
+  },
+  {
+    "id": 5,
+    "object": "Moon",
+    "emoji": "🌙",
+    "image": "moon",
+    "options": [
+      { "id": "a", "text": "Moon shines at night.", "correct": true },
+      { "id": "b", "text": "Moon is round in shape.", "correct": true },
+      { "id": "c", "text": "Moon is in the sky.", "correct": true },
+      { "id": "d", "text": "Moon is hotter than the sun.", "correct": false },
+      { "id": "e", "text": "Moon makes a loud noise.", "correct": false }
+    ]
+  },
+  {
+    "id": 6,
+    "object": "Fish",
+    "emoji": "🐟",
+    "image": "fish",
+    "options": [
+      { "id": "a", "text": "Fish lives in water.", "correct": true },
+      { "id": "b", "text": "Fish has fins to swim.", "correct": true },
+      { "id": "c", "text": "Fish breathes through gills.", "correct": true },
+      { "id": "d", "text": "Fish can climb tall trees.", "correct": false },
+      { "id": "e", "text": "Fish has soft furry skin.", "correct": false }
+    ]
+  },
+  {
+    "id": 7,
+    "object": "Flower",
+    "emoji": "🌸",
+    "image": "flower",
+    "options": [
+      { "id": "a", "text": "Flower smells very nice.", "correct": true },
+      { "id": "b", "text": "Flower has colourful petals.", "correct": true },
+      { "id": "c", "text": "Flower grows in a garden.", "correct": true },
+      { "id": "d", "text": "Flower can run very fast.", "correct": false },
+      { "id": "e", "text": "Flower eats other animals.", "correct": false }
+    ]
+  },
+  {
+    "id": 8,
+    "object": "Rain",
+    "emoji": "🌧️",
+    "image": "rain",
+    "options": [
+      { "id": "a", "text": "Rain falls from the sky.", "correct": true },
+      { "id": "b", "text": "Rain makes the ground wet.", "correct": true },
+      { "id": "c", "text": "Rain helps plants grow.", "correct": true },
+      { "id": "d", "text": "Rain is dry and dusty.", "correct": false },
+      { "id": "e", "text": "Rain comes from inside the earth.", "correct": false }
+    ]
+  },
+  {
+    "id": 9,
+    "object": "Book",
+    "emoji": "📚",
+    "image": "book",
+    "options": [
+      { "id": "a", "text": "Book has many pages.", "correct": true },
+      { "id": "b", "text": "Book helps us learn.", "correct": true },
+      { "id": "c", "text": "Book has words and pictures.", "correct": true },
+      { "id": "d", "text": "Book can jump and hop.", "correct": false },
+      { "id": "e", "text": "Book grows on trees like fruit.", "correct": false }
+    ]
+  },
+  {
+    "id": 10,
+    "object": "Bird",
+    "emoji": "🐦",
+    "image": "bird",
+    "options": [
+      { "id": "a", "text": "Bird has wings to fly.", "correct": true },
+      { "id": "b", "text": "Bird lays eggs.", "correct": true },
+      { "id": "c", "text": "Bird has feathers on its body.", "correct": true },
+      { "id": "d", "text": "Bird swims deep in the ocean.", "correct": false },
+      { "id": "e", "text": "Bird has sharp claws like a lion.", "correct": false }
+    ]
+  },
+  {
+    "id": 11,
+    "object": "Tree",
+    "emoji": "🌳",
+    "image": "tree",
+    "options": [
+      { "id": "a", "text": "Tree has roots in the ground.", "correct": true },
+      { "id": "b", "text": "Tree gives us shade and oxygen.", "correct": true },
+      { "id": "c", "text": "Tree has branches and leaves.", "correct": true },
+      { "id": "d", "text": "Tree can walk from place to place.", "correct": false },
+      { "id": "e", "text": "Tree lives inside the ocean.", "correct": false }
+    ]
+  },
+  {
+    "id": 12,
+    "object": "Butterfly",
+    "emoji": "🦋",
+    "image": "butterfly",
+    "options": [
+      { "id": "a", "text": "Butterfly has beautiful colourful wings.", "correct": true },
+      { "id": "b", "text": "Butterfly flies from flower to flower.", "correct": true },
+      { "id": "c", "text": "Butterfly starts life as a caterpillar.", "correct": true },
+      { "id": "d", "text": "Butterfly lives deep under the sea.", "correct": false },
+      { "id": "e", "text": "Butterfly is a very loud animal.", "correct": false }
+    ]
+  },
+  {
+    "id": 13,
+    "object": "Elephant",
+    "emoji": "🐘",
+    "image": "elephant",
+    "options": [
+      { "id": "a", "text": "Elephant is very big and heavy.", "correct": true },
+      { "id": "b", "text": "Elephant has a long trunk.", "correct": true },
+      { "id": "c", "text": "Elephant lives in the jungle.", "correct": true },
+      { "id": "d", "text": "Elephant can fly high in the sky.", "correct": false },
+      { "id": "e", "text": "Elephant is the smallest animal.", "correct": false }
+    ]
+  },
+  {
+    "id": 14,
+    "object": "Ice Cream",
+    "emoji": "🍦",
+    "image": "icecream",
+    "options": [
+      { "id": "a", "text": "Ice cream is cold and sweet.", "correct": true },
+      { "id": "b", "text": "Ice cream melts in the heat.", "correct": true },
+      { "id": "c", "text": "Ice cream comes in many flavours.", "correct": true },
+      { "id": "d", "text": "Ice cream is eaten hot from the oven.", "correct": false },
+      { "id": "e", "text": "Ice cream is spicy and sour.", "correct": false }
+    ]
+  },
+  {
+    "id": 15,
+    "object": "Bicycle",
+    "emoji": "🚲",
+    "image": "bicycle",
+    "options": [
+      { "id": "a", "text": "Bicycle has two wheels.", "correct": true },
+      { "id": "b", "text": "Bicycle is used for riding.", "correct": true },
+      { "id": "c", "text": "Bicycle is moved by pedalling.", "correct": true },
+      { "id": "d", "text": "Bicycle can float on water.", "correct": false },
+      { "id": "e", "text": "Bicycle has wings to fly.", "correct": false }
+    ]
+  },
+  {
+    "id": 16,
+    "object": "Cloud",
+    "emoji": "☁️",
+    "image": "cloud",
+    "options": [
+      { "id": "a", "text": "Cloud floats in the sky.", "correct": true },
+      { "id": "b", "text": "Cloud is made of tiny water drops.", "correct": true },
+      { "id": "c", "text": "Cloud can bring rain.", "correct": true },
+      { "id": "d", "text": "Cloud is heavy like a big rock.", "correct": false },
+      { "id": "e", "text": "Cloud stays still and never moves.", "correct": false }
+    ]
+  },
+  {
+    "id": 17,
+    "object": "Lion",
+    "emoji": "🦁",
+    "image": "lion",
+    "options": [
+      { "id": "a", "text": "Lion is called the king of the jungle.", "correct": true },
+      { "id": "b", "text": "Lion has a big mane around its face.", "correct": true },
+      { "id": "c", "text": "Lion is a wild animal.", "correct": true },
+      { "id": "d", "text": "Lion loves to eat fruits and vegetables.", "correct": false },
+      { "id": "e", "text": "Lion is smaller than a mouse.", "correct": false }
+    ]
+  },
+  {
+    "id": 18,
+    "object": "Rocket",
+    "emoji": "🚀",
+    "image": "rocket",
+    "options": [
+      { "id": "a", "text": "Rocket flies very fast into space.", "correct": true },
+      { "id": "b", "text": "Rocket shoots fire from the bottom.", "correct": true },
+      { "id": "c", "text": "Rocket carries astronauts to space.", "correct": true },
+      { "id": "d", "text": "Rocket is used to plow farm fields.", "correct": false },
+      { "id": "e", "text": "Rocket moves slowly like a turtle.", "correct": false }
+    ]
+  },
+  {
+    "id": 19,
+    "object": "Snake",
+    "emoji": "🐍",
+    "image": "snake",
+    "options": [
+      { "id": "a", "text": "Snake has no legs.", "correct": true },
+      { "id": "b", "text": "Snake moves by slithering on the ground.", "correct": true },
+      { "id": "c", "text": "Snake has scaly skin.", "correct": true },
+      { "id": "d", "text": "Snake has fluffy feathers like a bird.", "correct": false },
+      { "id": "e", "text": "Snake lives only in the ocean.", "correct": false }
+    ]
+  },
+  {
+    "id": 20,
+    "object": "Cake",
+    "emoji": "🎂",
+    "image": "cake",
+    "options": [
+      { "id": "a", "text": "Cake is sweet and delicious.", "correct": true },
+      { "id": "b", "text": "Cake is baked in an oven.", "correct": true },
+      { "id": "c", "text": "Cake is eaten at celebrations.", "correct": true },
+      { "id": "d", "text": "Cake is very salty and bitter.", "correct": false },
+      { "id": "e", "text": "Cake is made by freezing water.", "correct": false }
+    ]
+  },
+  {
+    "id": 21,
+    "object": "Frog",
+    "emoji": "🐸",
+    "image": "frog",
+    "options": [
+      { "id": "a", "text": "Frog can jump very high.", "correct": true },
+      { "id": "b", "text": "Frog lives near water.", "correct": true },
+      { "id": "c", "text": "Frog makes a croaking sound.", "correct": true },
+      { "id": "d", "text": "Frog has a long bushy tail.", "correct": false },
+      { "id": "e", "text": "Frog can roar loudly like a lion.", "correct": false }
+    ]
+  },
+  {
+    "id": 22,
+    "object": "Carrot",
+    "emoji": "🥕",
+    "image": "carrot",
+    "options": [
+      { "id": "a", "text": "Carrot is orange in colour.", "correct": true },
+      { "id": "b", "text": "Carrot grows under the ground.", "correct": true },
+      { "id": "c", "text": "Carrot is a healthy vegetable.", "correct": true },
+      { "id": "d", "text": "Carrot tastes like chocolate.", "correct": false },
+      { "id": "e", "text": "Carrot grows on tall trees.", "correct": false }
+    ]
+  },
+  {
+    "id": 23,
+    "object": "Aeroplane",
+    "emoji": "✈️",
+    "image": "aeroplane",
+    "options": [
+      { "id": "a", "text": "Aeroplane flies high in the sky.", "correct": true },
+      { "id": "b", "text": "Aeroplane has wings on both sides.", "correct": true },
+      { "id": "c", "text": "Aeroplane carries passengers.", "correct": true },
+      { "id": "d", "text": "Aeroplane moves by walking on legs.", "correct": false },
+      { "id": "e", "text": "Aeroplane sails on top of the sea.", "correct": false }
+    ]
+  },
+  {
+    "id": 24,
+    "object": "Rabbit",
+    "emoji": "🐰",
+    "image": "rabbit",
+    "options": [
+      { "id": "a", "text": "Rabbit has long fluffy ears.", "correct": true },
+      { "id": "b", "text": "Rabbit loves to eat carrots.", "correct": true },
+      { "id": "c", "text": "Rabbit can hop very quickly.", "correct": true },
+      { "id": "d", "text": "Rabbit has sharp horns on its head.", "correct": false },
+      { "id": "e", "text": "Rabbit swims faster than a fish.", "correct": false }
+    ]
+  },
+  {
+    "id": 25,
+    "object": "Pencil",
+    "emoji": "✏️",
+    "image": "pencil",
+    "options": [
+      { "id": "a", "text": "Pencil is used for writing.", "correct": true },
+      { "id": "b", "text": "Pencil has a sharp tip.", "correct": true },
+      { "id": "c", "text": "Pencil can be sharpened when blunt.", "correct": true },
+      { "id": "d", "text": "Pencil is used to cook food.", "correct": false },
+      { "id": "e", "text": "Pencil can walk around on its own.", "correct": false }
+    ]
+  },
+  {
+    "id": 26,
+    "object": "Watermelon",
+    "emoji": "🍉",
+    "image": "watermelon",
+    "options": [
+      { "id": "a", "text": "Watermelon is green on the outside.", "correct": true },
+      { "id": "b", "text": "Watermelon is red and juicy inside.", "correct": true },
+      { "id": "c", "text": "Watermelon is sweet and refreshing.", "correct": true },
+      { "id": "d", "text": "Watermelon is as hard as a rock inside.", "correct": false },
+      { "id": "e", "text": "Watermelon grows on tall pine trees.", "correct": false }
+    ]
+  },
+  {
+    "id": 27,
+    "object": "Train",
+    "emoji": "🚂",
+    "image": "train",
+    "options": [
+      { "id": "a", "text": "Train moves on railway tracks.", "correct": true },
+      { "id": "b", "text": "Train is long and has many coaches.", "correct": true },
+      { "id": "c", "text": "Train makes a loud choo-choo sound.", "correct": true },
+      { "id": "d", "text": "Train flies above the clouds.", "correct": false },
+      { "id": "e", "text": "Train is powered by eating grass.", "correct": false }
+    ]
+  },
+  {
+    "id": 28,
+    "object": "Turtle",
+    "emoji": "🐢",
+    "image": "turtle",
+    "options": [
+      { "id": "a", "text": "Turtle moves very slowly.", "correct": true },
+      { "id": "b", "text": "Turtle has a hard shell on its back.", "correct": true },
+      { "id": "c", "text": "Turtle can live both on land and in water.", "correct": true },
+      { "id": "d", "text": "Turtle is the fastest animal alive.", "correct": false },
+      { "id": "e", "text": "Turtle has long wings and can soar.", "correct": false }
+    ]
+  },
+  {
+    "id": 29,
+    "object": "Star",
+    "emoji": "⭐",
+    "image": "star",
+    "options": [
+      { "id": "a", "text": "Star twinkles in the night sky.", "correct": true },
+      { "id": "b", "text": "Star is very far away from Earth.", "correct": true },
+      { "id": "c", "text": "Star is made of hot glowing gas.", "correct": true },
+      { "id": "d", "text": "Star can be picked up with your hands.", "correct": false },
+      { "id": "e", "text": "Star only appears during the daytime.", "correct": false }
+    ]
+  },
+  {
+    "id": 30,
+    "object": "Pizza",
+    "emoji": "🍕",
+    "image": "pizza",
+    "options": [
+      { "id": "a", "text": "Pizza is round and flat.", "correct": true },
+      { "id": "b", "text": "Pizza is baked in an oven.", "correct": true },
+      { "id": "c", "text": "Pizza has cheese on top.", "correct": true },
+      { "id": "d", "text": "Pizza is a type of cold drink.", "correct": false },
+      { "id": "e", "text": "Pizza is eaten only for breakfast.", "correct": false }
+    ]
+  },
+  {
+    "id": 31,
+    "object": "Cow",
+    "emoji": "🐄",
+    "image": "cow",
+    "options": [
+      { "id": "a", "text": "Cow gives us milk.", "correct": true },
+      { "id": "b", "text": "Cow is a farm animal.", "correct": true },
+      { "id": "c", "text": "Cow says moo.", "correct": true },
+      { "id": "d", "text": "Cow can swim faster than a shark.", "correct": false },
+      { "id": "e", "text": "Cow lives inside a volcano.", "correct": false }
+    ]
+  },
+  {
+    "id": 32,
+    "object": "Rainbow",
+    "emoji": "🌈",
+    "image": "rainbow",
+    "options": [
+      { "id": "a", "text": "Rainbow appears after rain.", "correct": true },
+      { "id": "b", "text": "Rainbow has seven colours.", "correct": true },
+      { "id": "c", "text": "Rainbow forms an arc in the sky.", "correct": true },
+      { "id": "d", "text": "Rainbow makes a loud thundering sound.", "correct": false },
+      { "id": "e", "text": "Rainbow only has one colour.", "correct": false }
+    ]
+  },
+  {
+    "id": 33,
+    "object": "Spider",
+    "emoji": "🕷️",
+    "image": "spider",
+    "options": [
+      { "id": "a", "text": "Spider has eight legs.", "correct": true },
+      { "id": "b", "text": "Spider spins a web to catch food.", "correct": true },
+      { "id": "c", "text": "Spider is a small creature.", "correct": true },
+      { "id": "d", "text": "Spider has colourful feathers like a parrot.", "correct": false },
+      { "id": "e", "text": "Spider runs as fast as a cheetah.", "correct": false }
+    ]
+  },
+  {
+    "id": 34,
+    "object": "Strawberry",
+    "emoji": "🍓",
+    "image": "strawberry",
+    "options": [
+      { "id": "a", "text": "Strawberry is bright red in colour.", "correct": true },
+      { "id": "b", "text": "Strawberry is sweet and slightly sour.", "correct": true },
+      { "id": "c", "text": "Strawberry has tiny seeds on its skin.", "correct": true },
+      { "id": "d", "text": "Strawberry tastes like a raw potato.", "correct": false },
+      { "id": "e", "text": "Strawberry grows at the bottom of the ocean.", "correct": false }
+    ]
+  },
+  {
+    "id": 35,
+    "object": "Penguin",
+    "emoji": "🐧",
+    "image": "penguin",
+    "options": [
+      { "id": "a", "text": "Penguin lives in very cold places.", "correct": true },
+      { "id": "b", "text": "Penguin is a bird that cannot fly.", "correct": true },
+      { "id": "c", "text": "Penguin is a great swimmer.", "correct": true },
+      { "id": "d", "text": "Penguin can breathe fire.", "correct": false },
+      { "id": "e", "text": "Penguin loves to climb tall trees.", "correct": false }
+    ]
+  },
+  {
+    "id": 36,
+    "object": "Chair",
+    "emoji": "🪑",
+    "image": "chair",
+    "options": [
+      { "id": "a", "text": "Chair has four legs.", "correct": true },
+      { "id": "b", "text": "Chair is used for sitting.", "correct": true },
+      { "id": "c", "text": "Chair is found in homes and schools.", "correct": true },
+      { "id": "d", "text": "Chair can run around the room.", "correct": false },
+      { "id": "e", "text": "Chair is used for cooking food.", "correct": false }
+    ]
+  },
+  {
+    "id": 37,
+    "object": "Volcano",
+    "emoji": "🌋",
+    "image": "volcano",
+    "options": [
+      { "id": "a", "text": "Volcano shoots out hot lava.", "correct": true },
+      { "id": "b", "text": "Volcano is a mountain with an opening at the top.", "correct": true },
+      { "id": "c", "text": "Volcano can be very dangerous.", "correct": true },
+      { "id": "d", "text": "Volcano is found deep under the sea only.", "correct": false },
+      { "id": "e", "text": "Volcano shoots out cold water like a fountain.", "correct": false }
+    ]
+  },
+  {
+    "id": 38,
+    "object": "Bee",
+    "emoji": "🐝",
+    "image": "bee",
+    "options": [
+      { "id": "a", "text": "Bee makes sweet honey.", "correct": true },
+      { "id": "b", "text": "Bee has wings and can fly.", "correct": true },
+      { "id": "c", "text": "Bee has black and yellow stripes.", "correct": true },
+      { "id": "d", "text": "Bee is bigger than an elephant.", "correct": false },
+      { "id": "e", "text": "Bee lives inside a fish tank.", "correct": false }
+    ]
+  },
+  {
+    "id": 39,
+    "object": "Snowman",
+    "emoji": "⛄",
+    "image": "snowman",
+    "options": [
+      { "id": "a", "text": "Snowman is made of snow.", "correct": true },
+      { "id": "b", "text": "Snowman melts in the sun.", "correct": true },
+      { "id": "c", "text": "Snowman has a carrot for a nose.", "correct": true },
+      { "id": "d", "text": "Snowman can walk and talk.", "correct": false },
+      { "id": "e", "text": "Snowman is built in the desert heat.", "correct": false }
+    ]
+  },
+  {
+    "id": 40,
+    "object": "Drum",
+    "emoji": "🥁",
+    "image": "drum",
+    "options": [
+      { "id": "a", "text": "Drum makes a loud booming sound.", "correct": true },
+      { "id": "b", "text": "Drum is a musical instrument.", "correct": true },
+      { "id": "c", "text": "Drum is played by hitting it.", "correct": true },
+      { "id": "d", "text": "Drum is used to cut vegetables.", "correct": false },
+      { "id": "e", "text": "Drum can run and jump on stage.", "correct": false }
+    ]
+  }
+]

@@ -2,6 +2,9 @@ import React, { createContext, useState, useContext, useEffect } from "react";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { deleteProfileApi } from "../services/profileService";
 import { getPrimaryUserAccountId } from "../services/identityStorage";
+import { APP_CONFIG } from "../config/appConfig";
+import mockProfile from "../data/mock-profile.json";
+import { checkAndClearStalePending } from "../services/levelProgressionService";
 
 const UserContext = createContext();
 
@@ -39,10 +42,10 @@ export const UserProvider = ({ children }) => {
       const primaryUserAccountId = await getPrimaryUserAccountId();
       console.log(JSON.stringify(primaryUserAccountId));
 
-      console.log(
-        "UserContext loadData | storedProfiles = " +
-          JSON.stringify(storedProfiles),
-      );
+      // console.log(
+      //   "UserContext loadData | storedProfiles = " +
+      //     JSON.stringify(storedProfiles),
+      // );
 
       if (!storedProfiles || storedProfiles === "[]") {
         // Logout scenario - No profile exist but there is a primary user account id
@@ -63,12 +66,17 @@ export const UserProvider = ({ children }) => {
         setIsFirstTime(false);
 
         // Load current profile
-        const storedCurrentProfile = await AsyncStorage.getItem(
-          STORAGE_KEYS.CURRENT_PROFILE,
-        );
-        if (storedCurrentProfile) {
-          const parsedCurrentProfile = JSON.parse(storedCurrentProfile);
-          setCurrentProfile(parsedCurrentProfile);
+        if (APP_CONFIG.MOCK_ENABLED) {
+          setCurrentProfile(mockProfile);
+        } else {
+          const storedCurrentProfile = await AsyncStorage.getItem(
+            STORAGE_KEYS.CURRENT_PROFILE,
+          );
+
+          if (storedCurrentProfile) {
+            const parsedCurrentProfile = JSON.parse(storedCurrentProfile);
+            setCurrentProfile(parsedCurrentProfile);
+          }
         }
       }
     } catch (error) {
@@ -120,6 +128,9 @@ export const UserProvider = ({ children }) => {
         STORAGE_KEYS.CURRENT_PROFILE,
         JSON.stringify(profile),
       );
+      // If another device already progressed this profile's level, clear
+      // any stale pending-progression flag so the banner doesn't appear.
+      await checkAndClearStalePending(profile.id, profile.playLevel ?? 1);
     } catch (error) {
       console.error("Error saving current profile:", error);
     }
@@ -127,13 +138,21 @@ export const UserProvider = ({ children }) => {
 
   const setLoginUserAccount = async (userAccount) => {
     try {
+      // Set Login User Account in Context
       setUserAccount(userAccount);
       await AsyncStorage.setItem(
         STORAGE_KEYS.USER_ACCOUNT,
         JSON.stringify(userAccount),
       );
 
-      const loginProfile = await addProfile(userAccount.profiles[0]);
+      // Set Login User Account Profiles in Context
+      setProfiles(userAccount.profiles);
+      await AsyncStorage.setItem(
+        STORAGE_KEYS.PROFILES,
+        JSON.stringify(userAccount.profiles),
+      );
+      const loginProfile = userAccount.profiles[0];
+      //const loginProfile = await addProfile(userAccount.profiles[0]);
       // set login profile in selected profile
       await selectProfile(loginProfile);
 
@@ -275,12 +294,37 @@ export const UserProvider = ({ children }) => {
         STORAGE_KEYS.FIRST_TIME,
         STORAGE_KEYS.USER_ACCOUNT,
       ]);
+      //await AsyncStorage.clear();
       setProfiles([]);
       setCurrentProfile(null);
       setUserAccount(null);
       setIsFirstTime(true);
     } catch (error) {
       console.error("Error clearing data:", error);
+    }
+  };
+
+  const setMockCurrentProfile = async () => {
+    let storedCurrentProfile = await AsyncStorage.getItem(
+      STORAGE_KEYS.CURRENT_PROFILE,
+    );
+    if (!storedCurrentProfile) {
+      // store mock profile in AsyncStorage
+      await AsyncStorage.setItem(
+        STORAGE_KEYS.CURRENT_PROFILE,
+        JSON.stringify(mockProfile),
+      );
+
+      // also add it to profiles list if empty
+      if (!storedProfiles || storedProfiles === "[]") {
+        await AsyncStorage.setItem(
+          STORAGE_KEYS.PROFILES,
+          JSON.stringify([mockProfile]),
+        );
+      }
+
+      storedCurrentProfile = JSON.stringify(mockProfile);
+      return storedCurrentProfile;
     }
   };
 
