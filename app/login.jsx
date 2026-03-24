@@ -15,6 +15,7 @@ import React, { useEffect, useState } from "react";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useRouter } from "expo-router";
 import { useUser } from "./_contexts/UserContext";
+import { useApiCall } from "./_hooks/useApiCall";
 import AppBackground from "./components/AppBackground";
 import { COLORS, SHADOWS } from "./theme";
 import {
@@ -26,6 +27,7 @@ import { saveAccessToken } from "./services/tokenStorage";
 
 const Login = () => {
   const router = useRouter();
+  const { execute } = useApiCall();
   const { setLoginUserAccount } = useUser();
   const { clearAllData } = useUser();
 
@@ -39,18 +41,23 @@ const Login = () => {
   }, []);
 
   const handlePrimaryLogin = async () => {
-    try {
-      setIsLoading(true);
-      const loginResponse = await loginWithPrimaryAccount();
-      await saveAccessToken(loginResponse.token);
-      const userAccount = await fetchUserAccount();
-      await setLoginUserAccount(userAccount);
-      router.replace("/home");
-    } catch (error) {
-      Alert.alert("Error", "Unable to login with primary account.");
-    } finally {
-      setIsLoading(false);
-    }
+    setIsLoading(true);
+    await execute(
+      async () => {
+        const loginResponse = await loginWithPrimaryAccount();
+        await saveAccessToken(loginResponse.token);
+        const userAccount = await fetchUserAccount();
+        await setLoginUserAccount(userAccount);
+      },
+      {
+        successDisplay: "toast",
+        successMessage: "Login Successful",
+        errorDisplay: "toast",
+        onSuccess: () => router.replace("/home"),
+        onError: (err) => setIsLoading(false),
+      },
+    );
+    setIsLoading(false);
   };
 
   const handleEmailLogin = async () => {

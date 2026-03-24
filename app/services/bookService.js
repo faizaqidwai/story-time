@@ -1,49 +1,28 @@
-import { cdnFetch, apiFetch } from "./api";
-import { API_CONFIG } from "../config/apiConfig";
-import { getAccessToken } from "./tokenStorage";
+// app/services/bookService.js
+
+import { apiClient } from "./apiClient";
+import { CDN_BASE_URL } from "../config/env";
 
 const withBaseUrl = (path) => {
   if (!path) return null;
-
-  // If already full URL, return as-is
   if (path.startsWith("http")) return path;
-
-  return `${API_CONFIG.BASE_URL}${path}`;
+  return `${CDN_BASE_URL}${path}`;
 };
 
 const transformBook = (book) => ({
   ...book,
   cover: withBaseUrl(book.cover),
-  pages: book.pages.map((p) => ({
-    ...p,
-    image: withBaseUrl(p.image),
-  })),
+  pages: book.pages.map((p) => ({ ...p, image: withBaseUrl(p.image) })),
 });
 
 export const bookService = {
   async getBooks(currentProfileId) {
-    const accessToken = await getAccessToken();
-
-    const data = await apiFetch(`/books/profile/${currentProfileId}`, {
-      method: "GET",
-      headers: {
-        Authorization: `Bearer ${accessToken}`,
-      },
-    });
-
+    const data = await apiClient.get(`/books/profile/${currentProfileId}`);
     return data.map(transformBook);
   },
 
   async getBookById(id) {
-    console.log("GetBookById : " + id);
-    const accessToken = await getAccessToken();
-    const data = await apiFetch(`/books/${id}`, {
-      method: "GET",
-      headers: {
-        Authorization: `Bearer ${accessToken}`,
-      },
-    });
-
+    const data = await apiClient.get(`/books/${id}`);
     return transformBook(data);
   },
 };

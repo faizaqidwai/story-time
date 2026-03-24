@@ -40,6 +40,7 @@ import { setUserAccountCredentials } from "./services/userAccountService";
 import { COLORS, SHADOWS } from "./theme";
 import { logoutUser } from "./services/authService";
 import { clearAuthTokens } from "./services/tokenStorage";
+import { useApiCall } from "./_hooks/useApiCall";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Inline toast — no external library
@@ -157,6 +158,7 @@ const optCardS = StyleSheet.create({
 // ─────────────────────────────────────────────────────────────────────────────
 const Account = () => {
   const router = useRouter();
+  const { execute } = useApiCall();
   const {
     profiles,
     addProfile,
@@ -222,23 +224,28 @@ const Account = () => {
     }
 
     setIsSavingEmail(true);
-    try {
-      await setUserAccountCredentials(trimmedEmail, trimmedPassword);
-
-      // Update userAccount in context so hasEmail becomes true
-      // and the credentials form is replaced by the option cards.
-      if (setUserAccount) {
-        setUserAccount((prev) => ({ ...prev, email: trimmedEmail }));
-      }
-
-      showToast("Email linked successfully! 🎉");
-      setEmailInput("");
-      setPasswordInput("");
-    } catch (e) {
-      showToast("Failed to save credentials. Please try again.", "error");
-    } finally {
-      setIsSavingEmail(false);
-    }
+    await execute(
+      () => setUserAccountCredentials(trimmedEmail, trimmedPassword),
+      {
+        successDisplay: "sheet",
+        successMessage: "Email Linked Successfully! 🎉",
+        successSubMessage:
+          "Your account is now secured and can be recovered on any device.",
+        errorDisplay: "sheet",
+        errorMessage: "Failed to Save Credentials",
+        errorSubMessage: "Please check your details and try again.",
+        errorRetry: true,
+        onSuccess: async () => {
+          if (setUserAccount) {
+            setUserAccount((prev) => ({ ...prev, email: trimmedEmail }));
+          }
+          setEmailInput("");
+          setPasswordInput("");
+        },
+        onError: () => setIsSavingEmail(false),
+      },
+    );
+    setIsSavingEmail(false);
   };
 
   // ── Profile handlers ──────────────────────────────────────
@@ -313,37 +320,51 @@ const Account = () => {
       Alert.alert("Error", "Please enter a valid age");
       return;
     }
+
     setIsSaving(true);
-    try {
-      const savedProfile = await saveProfile(formData);
-      const profileForContext = {
-        id: savedProfile.id,
-        name: savedProfile.name,
-        age: savedProfile.age,
-        dob: savedProfile.dob || null,
-        level: savedProfile.level,
-        playLevel: savedProfile.playLevel,
-        coins: savedProfile.coins,
-        diamonds: savedProfile.diamonds,
-        wordBag: { words: savedProfile?.words },
-        achievements: savedProfile.achievements || [],
-        favoriteBookIds: savedProfile.favoriteBookIds || [],
-        createdAt: savedProfile.createdAt || null,
-        updatedAt: savedProfile.updatedAt || null,
-      };
-      if (editingProfile) {
-        await updateProfile(profileForContext);
-      } else {
-        await addProfile(profileForContext);
-      }
-      setModalVisible(false);
-      setFormData({ id: "", name: "", age: "", readingLevel: "Early" });
-      setEditingProfile(null);
-    } catch (error) {
-      Alert.alert("Error", "Unable to save profile. Please try again.");
-    } finally {
-      setIsSaving(false);
-    }
+    await execute(() => saveProfile(formData), {
+      successDisplay: "sheet",
+      successMessage: editingProfile ? "Profile Updated!" : "Profile Created!",
+      successSubMessage: editingProfile
+        ? "Your changes have been saved."
+        : "You're all set to start reading!",
+      errorDisplay: "sheet",
+      errorMessage: editingProfile
+        ? "Unable to Update Profile"
+        : "Unable to Create Profile",
+      onSuccess: async (savedProfile) => {
+        const profileForContext = {
+          id: savedProfile.id,
+          name: savedProfile.name,
+          age: savedProfile.age,
+          dob: savedProfile.dob || null,
+          level: savedProfile.level,
+          playLevel: savedProfile.playLevel,
+          coins: savedProfile.coins,
+          diamonds: savedProfile.diamonds,
+          wordBag: { words: savedProfile?.words },
+          achievements: savedProfile.achievements || [],
+          favoriteBookIds: savedProfile.favoriteBookIds || [],
+          createdAt: savedProfile.createdAt || null,
+          updatedAt: savedProfile.updatedAt || null,
+        };
+        if (editingProfile) {
+          await updateProfile(profileForContext);
+        } else {
+          await addProfile(profileForContext);
+        }
+        // Close modal INSIDE onSuccess — runs before sheet renders
+        setModalVisible(false);
+        setFormData({ id: "", name: "", age: "", readingLevel: "Early" });
+        setEditingProfile(null);
+      },
+      onError: () => {
+        setIsSaving(false);
+        // Close modal first so error sheet is not blocked by it
+        setModalVisible(false);
+      },
+    });
+    setIsSaving(false);
   };
 
   const handleCancel = () => {
@@ -359,13 +380,15 @@ const Account = () => {
         text: "Log Out",
         style: "destructive",
         onPress: async () => {
-          try {
-            await logoutUser();
-            await clearAuthTokens();
-            router.replace("../login");
-          } catch (error) {
-            console.log("Logout failed", error);
-          }
+          await execute(() => logoutUser(), {
+            successDisplay: "none",
+            errorDisplay: "toast",
+            successMessage: "Unable to logout, please try again",
+            onSuccess: async () => {
+              await clearAuthTokens();
+              router.replace("../login");
+            },
+          });
         },
       },
     ]);
