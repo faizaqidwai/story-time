@@ -3,6 +3,34 @@ import { UserProvider } from "./_contexts/UserContext";
 import { StoryActivityProvider } from "./_contexts/StoryActivityContext";
 import { NotificationProvider } from "./_contexts/NotificationContext";
 import { COLORS } from "./theme";
+import { View, Text, StyleSheet } from "react-native";
+
+// ── FREE tier badge — shown in account screen header right ─────────────────
+function FreeBadge() {
+  return (
+    <View style={badge.wrap}>
+      <Text style={badge.text}>FREE</Text>
+    </View>
+  );
+}
+
+const badge = StyleSheet.create({
+  wrap: {
+    marginRight: 16,
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 20,
+    borderWidth: 1,
+    borderColor: "rgba(0,188,212,0.5)",
+    backgroundColor: "rgba(0,188,212,0.1)",
+  },
+  text: {
+    fontSize: 11,
+    fontWeight: "900",
+    color: "#00BCD4",
+    letterSpacing: 1.2,
+  },
+});
 
 const RootLayout = () => {
   return (
@@ -37,7 +65,7 @@ const RootLayout = () => {
               name="account"
               options={{
                 headerShown: true,
-                title: "Accounts",
+                title: "", // ← removed "Accounts" text
                 headerBackTitle: "",
                 animation: "slide_from_left",
                 headerStyle: {
@@ -52,6 +80,7 @@ const RootLayout = () => {
                 },
                 headerTintColor: COLORS.teal,
                 headerShadowVisible: true,
+                headerRight: () => <FreeBadge />, // ← FREE badge on right
               }}
             />
 

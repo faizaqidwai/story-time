@@ -1,17 +1,4 @@
 // app/account.jsx
-//
-// Account screen.
-//
-// State machine:
-//   hasEmail=false → show Set Credentials form
-//   hasEmail=true  → show three account option cards
-//
-// Three option cards (shown after email is linked):
-//   1. My Account    — email, plan, subscription upgrade
-//   2. Learning Path — curriculum / level map overview
-//   3. Reports       — child's progress & activity stats
-//
-// Profiles section and Logout are always shown.
 
 import {
   StyleSheet,
@@ -28,7 +15,7 @@ import {
   Animated,
   Image,
 } from "react-native";
-import React, { useState, useRef, useEffect } from "react";
+import React, { useState, useRef } from "react";
 import { useRouter } from "expo-router";
 import { SafeAreaView } from "react-native-safe-area-context";
 import ScreenWrapper from "./components/ScreenWrapper";
@@ -43,57 +30,7 @@ import { clearAuthTokens } from "./services/tokenStorage";
 import { useApiCall } from "./_hooks/useApiCall";
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Inline toast — no external library
-// ─────────────────────────────────────────────────────────────────────────────
-function ToastBanner({ message, type }) {
-  const op = useRef(new Animated.Value(0)).current;
-
-  useEffect(() => {
-    Animated.sequence([
-      Animated.timing(op, { toValue: 1, duration: 200, useNativeDriver: true }),
-      Animated.delay(2400),
-      Animated.timing(op, { toValue: 0, duration: 300, useNativeDriver: true }),
-    ]).start();
-  }, []);
-
-  const bg = type === "error" ? "rgba(239,83,80,0.96)" : "rgba(0,188,212,0.96)";
-
-  return (
-    <Animated.View
-      style={[toastS.wrap, { backgroundColor: bg, opacity: op }]}
-      pointerEvents="none"
-    >
-      <Text style={toastS.text}>{message}</Text>
-    </Animated.View>
-  );
-}
-
-const toastS = StyleSheet.create({
-  wrap: {
-    position: "absolute",
-    top: 56,
-    left: 20,
-    right: 20,
-    borderRadius: 14,
-    paddingVertical: 13,
-    paddingHorizontal: 18,
-    zIndex: 9999,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 8,
-    elevation: 14,
-  },
-  text: {
-    color: "#fff",
-    fontSize: 14,
-    fontWeight: "700",
-    textAlign: "center",
-  },
-});
-
-// ─────────────────────────────────────────────────────────────────────────────
-// Account Option Card — square-ish card with icon, label, subtitle
+// Account Option Card
 // ─────────────────────────────────────────────────────────────────────────────
 function AccountOptionCard({ image, label, onPress }) {
   const scale = useRef(new Animated.Value(1)).current;
@@ -168,25 +105,13 @@ const Account = () => {
     currentProfile,
     userAccount,
     setUserAccount,
-    clearAllData,
   } = useUser();
-
-  // ── Toast state ───────────────────────────────────────────
-  const [toastKey, setToastKey] = useState(0);
-  const [toastMsg, setToastMsg] = useState(null);
-  const [toastType, setToastType] = useState("success");
-  const showToast = (message, type = "success") => {
-    setToastMsg(message);
-    setToastType(type);
-    setToastKey((k) => k + 1); // remount to restart animation
-  };
 
   // ── Credentials form state ────────────────────────────────
   const [emailInput, setEmailInput] = useState("");
   const [passwordInput, setPasswordInput] = useState("");
   const [isSavingEmail, setIsSavingEmail] = useState(false);
 
-  // hasEmail drives which section to show
   const hasEmail = userAccount?.email && userAccount.email.trim().length > 0;
 
   const scrollRef = useRef(null);
@@ -204,22 +129,22 @@ const Account = () => {
   const [isSaving, setIsSaving] = useState(false);
   const readingLevels = ["Early", "Middle", "Advance"];
 
-  // ── Set credentials handler ───────────────────────────────
+  // ── Credentials handler ───────────────────────────────────
   const handleSaveCredentials = async () => {
     const trimmedEmail = emailInput.trim();
     const trimmedPassword = passwordInput.trim();
 
     if (!trimmedEmail) {
-      showToast("Please enter an email address", "error");
+      Alert.alert("Error", "Please enter an email address");
       return;
     }
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     if (!emailRegex.test(trimmedEmail)) {
-      showToast("Please enter a valid email address", "error");
+      Alert.alert("Error", "Please enter a valid email address");
       return;
     }
     if (!trimmedPassword || trimmedPassword.length < 6) {
-      showToast("Password must be at least 6 characters", "error");
+      Alert.alert("Error", "Password must be at least 6 characters");
       return;
     }
 
@@ -236,9 +161,8 @@ const Account = () => {
         errorSubMessage: "Please check your details and try again.",
         errorRetry: true,
         onSuccess: async () => {
-          if (setUserAccount) {
+          if (setUserAccount)
             setUserAccount((prev) => ({ ...prev, email: trimmedEmail }));
-          }
           setEmailInput("");
           setPasswordInput("");
         },
@@ -253,13 +177,11 @@ const Account = () => {
     selectProfile(profile);
     router.push("/home");
   };
-
   const handleAddNew = () => {
     setEditingProfile(null);
     setFormData({ id: "", name: "", age: "", readingLevel: "Early" });
     setModalVisible(true);
   };
-
   const handleEdit = (profile) => {
     setEditingProfile(profile);
     setFormData({
@@ -289,22 +211,13 @@ const Account = () => {
           text: "Delete",
           style: "destructive",
           onPress: async () => {
-            try {
-              await deleteProfile(profile.id);
-              showToast("Profile deleted successfully.");
-            } catch (error) {
-              if (error.message === "PRIMARY_PROFILE_DELETE_NOT_ALLOWED") {
-                Alert.alert(
-                  "Not Allowed",
-                  "You cannot delete the primary profile of this account.",
-                );
-              } else {
-                showToast(
-                  "Unable to delete profile. Please try again.",
-                  "error",
-                );
-              }
-            }
+            await execute(() => deleteProfile(profile.id), {
+              successDisplay: "toast",
+              successMessage: "Profile deleted successfully.",
+              errorDisplay: "toast",
+              errorMessage: "Unable to delete profile. Please try again.",
+              errorRetry: false,
+            });
           },
         },
       ],
@@ -348,19 +261,14 @@ const Account = () => {
           createdAt: savedProfile.createdAt || null,
           updatedAt: savedProfile.updatedAt || null,
         };
-        if (editingProfile) {
-          await updateProfile(profileForContext);
-        } else {
-          await addProfile(profileForContext);
-        }
-        // Close modal INSIDE onSuccess — runs before sheet renders
+        if (editingProfile) await updateProfile(profileForContext);
+        else await addProfile(profileForContext);
         setModalVisible(false);
         setFormData({ id: "", name: "", age: "", readingLevel: "Early" });
         setEditingProfile(null);
       },
       onError: () => {
         setIsSaving(false);
-        // Close modal first so error sheet is not blocked by it
         setModalVisible(false);
       },
     });
@@ -383,7 +291,6 @@ const Account = () => {
           await execute(() => logoutUser(), {
             successDisplay: "none",
             errorDisplay: "toast",
-            successMessage: "Unable to logout, please try again",
             onSuccess: async () => {
               await clearAuthTokens();
               router.replace("../login");
@@ -399,11 +306,6 @@ const Account = () => {
     <ScreenWrapper>
       <AppBackground>
         <SafeAreaView style={styles.safeArea} edges={[]}>
-          {/* Toast — absolutely positioned, renders above all content */}
-          {toastMsg && (
-            <ToastBanner key={toastKey} message={toastMsg} type={toastType} />
-          )}
-
           <KeyboardAvoidingView
             style={{ flex: 1 }}
             behavior={Platform.OS === "ios" ? "padding" : "height"}
@@ -414,6 +316,33 @@ const Account = () => {
               showsVerticalScrollIndicator={false}
               keyboardShouldPersistTaps="handled"
             >
+              {/* ── ACCOUNT OPTION CARDS — always visible, top of screen ── */}
+              <View style={styles.optionCardsSection}>
+                <View style={styles.optionCardsRow}>
+                  <AccountOptionCard
+                    image={require("../assets/img/card-icon.png")}
+                    label="Plan and Billing"
+                    onPress={() =>
+                      router.push("/components/billing/PlanBillingScreen")
+                    }
+                  />
+                  <AccountOptionCard
+                    image={require("../assets/img/learning-path-icon-3.png")}
+                    label="Learning Path Levels"
+                    onPress={() => router.push("/components/LearningPath")}
+                  />
+                  <AccountOptionCard
+                    image={require("../assets/img/progress-report-icon.png")}
+                    label="Progress Reports"
+                    onPress={() => router.push("/components/Reports")}
+                  />
+                </View>
+              </View>
+
+              {/* ── DIVIDER ── */}
+              <View style={styles.divider} />
+
+              {/* ── WHO'S READING ── */}
               <Text style={styles.title}>Who's Reading?</Text>
 
               {currentProfile && (
@@ -452,7 +381,7 @@ const Account = () => {
                 </TouchableOpacity>
               </View>
 
-              {/* ── Account section — credentials OR option cards ── */}
+              {/* ── ACCOUNT SECTION — credentials / email linked ── */}
               <View style={styles.accountSection}>
                 <View style={styles.accountSectionHeader}>
                   <Text style={styles.accountSectionIcon}>🔐</Text>
@@ -460,13 +389,12 @@ const Account = () => {
                 </View>
 
                 {!hasEmail ? (
-                  /* ── Set Credentials Form ── */
+                  /* Set Credentials Form */
                   <View style={styles.credentialsForm}>
                     <Text style={styles.credentialsHint}>
                       Link an email and password to secure your account and
                       recover it on any device.
                     </Text>
-
                     <TextInput
                       style={styles.credentialsInput}
                       placeholder="Email address"
@@ -494,7 +422,6 @@ const Account = () => {
                         }, 150);
                       }}
                     />
-
                     <TextInput
                       style={styles.credentialsInput}
                       placeholder="Password (min. 6 characters)"
@@ -505,7 +432,6 @@ const Account = () => {
                       autoCapitalize="none"
                       autoCorrect={false}
                     />
-
                     <TouchableOpacity
                       style={[
                         styles.credentialsSaveBtn,
@@ -531,45 +457,18 @@ const Account = () => {
                     </TouchableOpacity>
                   </View>
                 ) : (
-                  /* ── Three Option Cards ── */
-                  <View>
-                    {/* Email linked indicator */}
-                    <View style={styles.emailLinkedRow}>
-                      <View style={styles.emailLinkedBadge}>
-                        <Text style={styles.emailLinkedIcon}>✓</Text>
-                      </View>
-                      <View style={{ flex: 1 }}>
-                        <Text style={styles.emailLinkedLabel}>
-                          Linked account
-                        </Text>
-                        <Text style={styles.emailLinkedValue}>
-                          {userAccount.email}
-                        </Text>
-                      </View>
+                  /* Email linked indicator */
+                  <View style={styles.emailLinkedRow}>
+                    <View style={styles.emailLinkedBadge}>
+                      <Text style={styles.emailLinkedIcon}>✓</Text>
                     </View>
-
-                    {/* Option cards row */}
-                    <View style={styles.optionCardsRow}>
-                      <AccountOptionCard
-                        image={require("../assets/img/card-icon.png")}
-                        label="Plan and Billing"
-                        subtitle="Plan & billing"
-                        onPress={() =>
-                          router.push("/components/billing/PlanBillingScreen")
-                        }
-                      />
-                      <AccountOptionCard
-                        image={require("../assets/img/learning-path-icon-3.png")}
-                        label="Learning Path"
-                        subtitle="Levels & curriculum"
-                        onPress={() => router.push("/components/LearningPath")}
-                      />
-                      <AccountOptionCard
-                        image={require("../assets/img/progress-report-icon.png")}
-                        label="Progress Reports"
-                        subtitle="Progress & stats"
-                        onPress={() => router.push("/components/Reports")}
-                      />
+                    <View style={{ flex: 1 }}>
+                      <Text style={styles.emailLinkedLabel}>
+                        Linked account
+                      </Text>
+                      <Text style={styles.emailLinkedValue}>
+                        {userAccount.email}
+                      </Text>
                     </View>
                   </View>
                 )}
@@ -615,7 +514,6 @@ const Account = () => {
                       }
                     />
                   </View>
-
                   <View style={styles.inputGroup}>
                     <Text style={styles.label}>Age</Text>
                     <TextInput
@@ -629,7 +527,6 @@ const Account = () => {
                       }
                     />
                   </View>
-
                   <View style={styles.inputGroup}>
                     <Text style={styles.label}>Reading Level</Text>
                     <View style={styles.levelButtons}>
@@ -699,12 +596,32 @@ export default Account;
 const styles = StyleSheet.create({
   safeArea: { flex: 1, paddingTop: 0 },
 
+  // ── Account option cards — top section, no box ───────────
+  optionCardsSection: {
+    paddingHorizontal: 20,
+    paddingTop: 16,
+    paddingBottom: 20,
+  },
+  optionCardsRow: {
+    flexDirection: "row",
+    gap: 10,
+  },
+
+  // ── Divider — same color as profile card borders ─────────
+  divider: {
+    height: 1,
+    marginHorizontal: 20,
+    backgroundColor: "rgba(0,188,212,0.2)",
+    marginBottom: 4,
+  },
+
+  // ── Who's Reading title ───────────────────────────────────
   title: {
     fontSize: 32,
     fontWeight: "bold",
     color: COLORS.textPrimary,
     textAlign: "center",
-    marginTop: 12,
+    marginTop: 16,
     marginBottom: 8,
     textShadowColor: "rgba(0,188,212,0.4)",
     textShadowOffset: { width: 0, height: 2 },
@@ -750,7 +667,7 @@ const styles = StyleSheet.create({
     textAlign: "center",
   },
 
-  // ── Account section wrapper ──────────────────────────────
+  // ── Account section box ───────────────────────────────────
   accountSection: {
     marginHorizontal: 20,
     marginTop: 8,
@@ -774,7 +691,7 @@ const styles = StyleSheet.create({
     color: COLORS.textPrimary,
   },
 
-  // ── Credentials form ─────────────────────────────────────
+  // ── Credentials form ──────────────────────────────────────
   credentialsForm: { gap: 12 },
   credentialsHint: {
     fontSize: 13,
@@ -798,9 +715,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
     marginTop: 4,
   },
-  credentialsSaveBtnDisabled: {
-    backgroundColor: "rgba(0,188,212,0.25)",
-  },
+  credentialsSaveBtnDisabled: { backgroundColor: "rgba(0,188,212,0.25)" },
   credentialsSaveBtnText: {
     fontSize: 15,
     fontWeight: "700",
@@ -808,12 +723,11 @@ const styles = StyleSheet.create({
     letterSpacing: 0.3,
   },
 
-  // ── Email linked indicator ───────────────────────────────
+  // ── Email linked indicator ────────────────────────────────
   emailLinkedRow: {
     flexDirection: "row",
     alignItems: "center",
     gap: 12,
-    marginBottom: 20,
     backgroundColor: "rgba(0,188,212,0.07)",
     borderRadius: 12,
     padding: 12,
@@ -838,13 +752,7 @@ const styles = StyleSheet.create({
     color: COLORS.tealLight ?? COLORS.teal,
   },
 
-  // ── Three option cards ───────────────────────────────────
-  optionCardsRow: {
-    flexDirection: "row",
-    gap: 10,
-  },
-
-  // ── Logout ───────────────────────────────────────────────
+  // ── Logout ────────────────────────────────────────────────
   logoutBtn: {
     flexDirection: "row",
     alignItems: "center",
@@ -866,7 +774,7 @@ const styles = StyleSheet.create({
     letterSpacing: 0.4,
   },
 
-  // ── Profile modal ────────────────────────────────────────
+  // ── Profile modal ─────────────────────────────────────────
   modalOverlay: {
     flex: 1,
     backgroundColor: "rgba(0,0,0,0.75)",

@@ -42,10 +42,30 @@ const C = {
 };
 
 const TOAST_CONFIG = {
-  success: { bg: "rgba(0,188,212,0.96)", border: "#00BCD4", icon: "✓" },
   error: { bg: "rgba(239,83,80,0.96)", border: "#EF5350", icon: "✕" },
   info: { bg: "rgba(150,82,217,0.96)", border: "#9652D9", icon: "ℹ" },
   warning: { bg: "rgba(255,213,79,0.96)", border: "#FFD54F", icon: "⚠" },
+};
+
+// Matte dark green for success toast — same design language as the
+// email linked indicator: translucent dark body, muted border, soft text
+const SUCCESS_TOAST = {
+  bg: "rgba(10, 28, 14, 0.98)", // darker — almost black with green tint
+  border: "rgba(76,175,80,0.4)",
+  badgeBg: "rgba(76,175,80,0.12)",
+  badgeBorder: "rgba(76,175,80,0.35)",
+  tickColor: "#66BB6A", // slightly deeper sage green
+  textColor: "#A5D6A7", // softer mint, less bright
+};
+
+// Matte dark red for error toast — mirrors success toast design language
+const ERROR_TOAST = {
+  bg: "rgba(40, 10, 10, 0.98)", // near-black dark red body
+  border: "rgba(239,83,80,0.4)", // muted red outline
+  badgeBg: "rgba(239,83,80,0.12)", // translucent badge behind cross
+  badgeBorder: "rgba(239,83,80,0.35)", // badge border
+  crossColor: "#EF9A9A", // soft rose red cross
+  textColor: "#FFCDD2", // light rose — readable on dark bg
 };
 
 // Error icon per error type — used for the icon bubble only
@@ -62,7 +82,84 @@ const ERROR_ICON_MAP = {
 // ─────────────────────────────────────────────────────────────────────────────
 function ToastBanner({ message, type }) {
   const insets = useSafeAreaInsets();
-  const cfg = TOAST_CONFIG[type] ?? TOAST_CONFIG.error;
+
+  // Success uses its own matte dark green design
+  if (type === "success") {
+    return (
+      <Animated.View
+        pointerEvents="none"
+        style={[
+          ts.toast,
+          {
+            backgroundColor: SUCCESS_TOAST.bg,
+            borderColor: SUCCESS_TOAST.border,
+            top: insets.top + 8,
+          },
+        ]}
+      >
+        {/* Tick badge — mirrors email linked indicator style */}
+        <View
+          style={[
+            ts.successBadge,
+            {
+              backgroundColor: SUCCESS_TOAST.badgeBg,
+              borderColor: SUCCESS_TOAST.badgeBorder,
+            },
+          ]}
+        >
+          <Text style={[ts.successTick, { color: SUCCESS_TOAST.tickColor }]}>
+            ✓
+          </Text>
+        </View>
+        <Text
+          style={[ts.text, { color: SUCCESS_TOAST.textColor }]}
+          numberOfLines={3}
+        >
+          {message}
+        </Text>
+      </Animated.View>
+    );
+  }
+
+  // Error — badge design matching success toast but red
+  if (type === "error") {
+    return (
+      <Animated.View
+        pointerEvents="none"
+        style={[
+          ts.toast,
+          {
+            backgroundColor: ERROR_TOAST.bg,
+            borderColor: ERROR_TOAST.border,
+            top: insets.top + 8,
+          },
+        ]}
+      >
+        <View
+          style={[
+            ts.successBadge,
+            {
+              backgroundColor: ERROR_TOAST.badgeBg,
+              borderColor: ERROR_TOAST.badgeBorder,
+            },
+          ]}
+        >
+          <Text style={[ts.successTick, { color: ERROR_TOAST.crossColor }]}>
+            ✕
+          </Text>
+        </View>
+        <Text
+          style={[ts.text, { color: ERROR_TOAST.textColor }]}
+          numberOfLines={3}
+        >
+          {message}
+        </Text>
+      </Animated.View>
+    );
+  }
+
+  // Info / warning
+  const cfg = TOAST_CONFIG[type] ?? TOAST_CONFIG.info;
   return (
     <Animated.View
       pointerEvents="none"
@@ -87,25 +184,36 @@ const ts = StyleSheet.create({
   toast: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 10,
+    gap: 12,
     borderRadius: 14,
     borderWidth: 1,
-    paddingVertical: 13,
-    paddingHorizontal: 16,
+    paddingVertical: 12,
+    paddingHorizontal: 14,
     width: "100%",
     maxWidth: 480,
     shadowColor: "#000",
     shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 8,
+    shadowOpacity: 0.35,
+    shadowRadius: 10,
     elevation: 14,
   },
+  // Success badge — circular tick, same as emailLinkedBadge in account.jsx
+  successBadge: {
+    width: 30,
+    height: 30,
+    borderRadius: 15,
+    borderWidth: 1.5,
+    alignItems: "center",
+    justifyContent: "center",
+    flexShrink: 0,
+  },
+  successTick: { fontSize: 14, fontWeight: "900" },
   icon: { fontSize: 14, color: "#fff", fontWeight: "900", flexShrink: 0 },
   text: {
     flex: 1,
     color: "#fff",
     fontSize: 14,
-    fontWeight: "700",
+    fontWeight: "600",
     lineHeight: 20,
   },
 });
@@ -114,9 +222,9 @@ const ts = StyleSheet.create({
 // SUCCESS SHEET ANIMATIONS
 // ─────────────────────────────────────────────────────────────────────────────
 const BURST_ICONS = [
-  { emoji: "⭐", angle: 0 },
-  { emoji: "✨", angle: 45 },
-  { emoji: "🌟", angle: 90 },
+  { emoji: "🌿", angle: 0 },
+  { emoji: "🌿", angle: 45 },
+  { emoji: "🌿", angle: 90 },
   { emoji: "💫", angle: 135 },
   { emoji: "⭐", angle: 180 },
   { emoji: "✨", angle: 225 },
@@ -237,14 +345,14 @@ function AnimatedRing({ trigger, size = 118 }) {
         justifyContent: "center",
       }}
     >
-      <View style={[base, { borderColor: "rgba(76,175,80,0.12)" }]} />
+      <View style={[base, { borderColor: "rgba(76,175,80,0.08)" }]} />
       <Animated.View
         style={[
           base,
           {
             borderColor: "transparent",
-            borderTopColor: C.green,
-            borderLeftColor: C.green,
+            borderTopColor: "#66BB6A",
+            borderLeftColor: "#66BB6A",
             opacity: arcs[0],
             transform: [
               { rotate: "-45deg" },
@@ -263,8 +371,8 @@ function AnimatedRing({ trigger, size = 118 }) {
           base,
           {
             borderColor: "transparent",
-            borderTopColor: C.green,
-            borderRightColor: C.green,
+            borderTopColor: "#66BB6A",
+            borderRightColor: "#66BB6A",
             opacity: arcs[1],
             transform: [
               { rotate: "-45deg" },
@@ -283,8 +391,8 @@ function AnimatedRing({ trigger, size = 118 }) {
           base,
           {
             borderColor: "transparent",
-            borderBottomColor: C.green,
-            borderRightColor: C.green,
+            borderBottomColor: "#66BB6A",
+            borderRightColor: "#66BB6A",
             opacity: arcs[2],
             transform: [
               { rotate: "-45deg" },
@@ -303,8 +411,8 @@ function AnimatedRing({ trigger, size = 118 }) {
           base,
           {
             borderColor: "transparent",
-            borderBottomColor: C.green,
-            borderLeftColor: C.green,
+            borderBottomColor: "#66BB6A",
+            borderLeftColor: "#66BB6A",
             opacity: arcs[3],
             transform: [
               { rotate: "-45deg" },
@@ -360,10 +468,10 @@ function AnimatedTick({ trigger }) {
     <Animated.Text
       style={{
         fontSize: 44,
-        color: C.green,
+        color: "#66BB6A",
         fontWeight: "900",
         opacity: op,
-        textShadowColor: "rgba(76,175,80,0.6)",
+        textShadowColor: "rgba(76,175,80,0.35)",
         textShadowOffset: { width: 0, height: 0 },
         textShadowRadius: 12,
         transform: [
@@ -380,6 +488,193 @@ function AnimatedTick({ trigger }) {
       }}
     >
       ✓
+    </Animated.Text>
+  );
+}
+
+function AnimatedErrorRing({ trigger, size = 118 }) {
+  const thick = size * 0.07;
+  const arcs = useRef([0, 1, 2, 3].map(() => new Animated.Value(0))).current;
+
+  useEffect(() => {
+    if (!trigger) return;
+    arcs.forEach((a) => a.setValue(0));
+    Animated.parallel(
+      arcs.map((a, i) =>
+        Animated.sequence([
+          Animated.delay(i * 85),
+          Animated.spring(a, {
+            toValue: 1,
+            friction: 5,
+            tension: 80,
+            useNativeDriver: true,
+          }),
+        ]),
+      ),
+    ).start();
+  }, [trigger]);
+
+  const base = {
+    position: "absolute",
+    width: size,
+    height: size,
+    borderRadius: size / 2,
+    borderWidth: thick,
+    transform: [{ rotate: "-45deg" }],
+  };
+
+  return (
+    <View
+      style={{
+        width: size,
+        height: size,
+        alignItems: "center",
+        justifyContent: "center",
+      }}
+    >
+      <View style={[base, { borderColor: "rgba(239,83,80,0.08)" }]} />
+      <Animated.View
+        style={[
+          base,
+          {
+            borderColor: "transparent",
+            borderTopColor: "#EF9A9A",
+            borderLeftColor: "#EF9A9A",
+            opacity: arcs[0],
+            transform: [
+              { rotate: "-45deg" },
+              {
+                scale: arcs[0].interpolate({
+                  inputRange: [0, 1],
+                  outputRange: [0.85, 1],
+                }),
+              },
+            ],
+          },
+        ]}
+      />
+      <Animated.View
+        style={[
+          base,
+          {
+            borderColor: "transparent",
+            borderTopColor: "#EF9A9A",
+            borderRightColor: "#EF9A9A",
+            opacity: arcs[1],
+            transform: [
+              { rotate: "-45deg" },
+              {
+                scale: arcs[1].interpolate({
+                  inputRange: [0, 1],
+                  outputRange: [0.85, 1],
+                }),
+              },
+            ],
+          },
+        ]}
+      />
+      <Animated.View
+        style={[
+          base,
+          {
+            borderColor: "transparent",
+            borderBottomColor: "#EF9A9A",
+            borderRightColor: "#EF9A9A",
+            opacity: arcs[2],
+            transform: [
+              { rotate: "-45deg" },
+              {
+                scale: arcs[2].interpolate({
+                  inputRange: [0, 1],
+                  outputRange: [0.85, 1],
+                }),
+              },
+            ],
+          },
+        ]}
+      />
+      <Animated.View
+        style={[
+          base,
+          {
+            borderColor: "transparent",
+            borderBottomColor: "#EF9A9A",
+            borderLeftColor: "#EF9A9A",
+            opacity: arcs[3],
+            transform: [
+              { rotate: "-45deg" },
+              {
+                scale: arcs[3].interpolate({
+                  inputRange: [0, 1],
+                  outputRange: [0.85, 1],
+                }),
+              },
+            ],
+          },
+        ]}
+      />
+    </View>
+  );
+}
+
+function AnimatedCross({ trigger }) {
+  const sc = useRef(new Animated.Value(0)).current;
+  const op = useRef(new Animated.Value(0)).current;
+  const rot = useRef(new Animated.Value(0.8)).current;
+
+  useEffect(() => {
+    if (!trigger) return;
+    sc.setValue(0);
+    op.setValue(0);
+    rot.setValue(0.8);
+    Animated.sequence([
+      Animated.delay(400),
+      Animated.parallel([
+        Animated.spring(sc, {
+          toValue: 1,
+          friction: 4,
+          tension: 80,
+          useNativeDriver: true,
+        }),
+        Animated.timing(op, {
+          toValue: 1,
+          duration: 200,
+          useNativeDriver: true,
+        }),
+        Animated.spring(rot, {
+          toValue: 1,
+          friction: 6,
+          tension: 70,
+          useNativeDriver: true,
+        }),
+      ]),
+    ]).start();
+  }, [trigger]);
+
+  return (
+    <Animated.Text
+      style={{
+        fontSize: 44,
+        color: "#EF9A9A",
+        fontWeight: "900",
+        opacity: op,
+        textShadowColor: "rgba(239,83,80,0.35)",
+        textShadowOffset: { width: 0, height: 0 },
+        textShadowRadius: 12,
+        transform: [
+          {
+            scale: sc.interpolate({ inputRange: [0, 1], outputRange: [0, 1] }),
+          },
+          {
+            rotate: rot.interpolate({
+              inputRange: [0, 1],
+              outputRange: ["-30deg", "0deg"],
+            }),
+          },
+        ],
+      }}
+    >
+      ✕
     </Animated.Text>
   );
 }
@@ -494,7 +789,16 @@ function Sheet({ visible, type, config, onDismiss }) {
             { borderColor, shadowColor, transform: [{ translateY: slideY }] },
           ]}
         >
-          <View style={[ss.handle, { backgroundColor: borderColor }]} />
+          <View
+            style={[
+              ss.handle,
+              {
+                backgroundColor: isSuccess
+                  ? "rgba(76,175,80,0.35)"
+                  : borderColor,
+              },
+            ]}
+          />
 
           <View style={ss.content}>
             {isSuccess ? (
@@ -521,16 +825,13 @@ function Sheet({ visible, type, config, onDismiss }) {
                 </View>
               </View>
             ) : (
-              // ── Error icon bubble ────────────────────────────────────
-              <View
-                style={[
-                  ss.errorIconWrap,
-                  { borderColor: errIconCfg.color + "80" },
-                ]}
-              >
-                <Text style={ss.errorIcon}>
-                  {config.icon ?? errIconCfg.icon}
-                </Text>
+              // ── Error visuals — animated ring + cross matching success ──
+              <View style={ss.ringCluster}>
+                <View style={ss.errorGlowCircle} />
+                <AnimatedErrorRing trigger={trigger} size={118} />
+                <View style={ss.centreWrap}>
+                  <AnimatedCross trigger={trigger} />
+                </View>
               </View>
             )}
 
@@ -555,7 +856,7 @@ function Sheet({ visible, type, config, onDismiss }) {
             <View style={ss.btnRow}>
               {!isSuccess && config.onRetry && (
                 <TouchableOpacity
-                  style={[ss.retryBtn, { borderColor: errIconCfg.color }]}
+                  style={[ss.retryBtn]}
                   onPress={handleRetry}
                   disabled={retrying}
                   activeOpacity={0.85}
@@ -563,9 +864,7 @@ function Sheet({ visible, type, config, onDismiss }) {
                   {retrying ? (
                     <ActivityIndicator color={errIconCfg.color} size="small" />
                   ) : (
-                    <Text style={[ss.retryText, { color: errIconCfg.color }]}>
-                      Try Again
-                    </Text>
+                    <Text style={ss.retryText}>Try Again</Text>
                   )}
                 </TouchableOpacity>
               )}
@@ -574,13 +873,13 @@ function Sheet({ visible, type, config, onDismiss }) {
                   ss.dismissBtn,
                   { flex: 1 },
                   isSuccess && {
-                    backgroundColor: C.green,
-                    borderColor: C.green,
-                    shadowColor: C.green,
-                    shadowOffset: { width: 0, height: 0 },
-                    shadowOpacity: 0.55,
-                    shadowRadius: 14,
-                    elevation: 8,
+                    backgroundColor: "rgba(76,175,80,0.15)",
+                    borderColor: "rgba(76,175,80,0.45)",
+                    shadowColor: "#000",
+                    shadowOffset: { width: 0, height: 2 },
+                    shadowOpacity: 0.2,
+                    shadowRadius: 4,
+                    elevation: 4,
                   },
                 ]}
                 onPress={handleDismiss}
@@ -589,7 +888,7 @@ function Sheet({ visible, type, config, onDismiss }) {
                 <Text
                   style={[
                     ss.dismissText,
-                    isSuccess && { color: "#08081a", fontWeight: "900" },
+                    isSuccess && { color: "#A5D6A7", fontWeight: "800" },
                   ]}
                 >
                   {isSuccess ? "Continue" : "Dismiss"}
@@ -615,7 +914,7 @@ const ss = StyleSheet.create({
     left: 0,
     right: 0,
     height: SHEET_H,
-    backgroundColor: C.bg,
+    backgroundColor: "rgba(8, 12, 18, 0.92)",
     borderTopLeftRadius: 32,
     borderTopRightRadius: 32,
     borderTopWidth: 1.5,
@@ -651,7 +950,14 @@ const ss = StyleSheet.create({
     width: 130,
     height: 130,
     borderRadius: 65,
-    backgroundColor: "rgba(76,175,80,0.18)",
+    backgroundColor: "rgba(76,175,80,0.10)",
+  },
+  errorGlowCircle: {
+    position: "absolute",
+    width: 130,
+    height: 130,
+    borderRadius: 65,
+    backgroundColor: "rgba(239,83,80,0.08)",
   },
   burstWrap: {
     position: "absolute",
@@ -710,11 +1016,12 @@ const ss = StyleSheet.create({
     flex: 1,
     borderRadius: 14,
     borderWidth: 1.5,
+    borderColor: "rgba(0,188,212,0.44)",
     paddingVertical: 14,
     alignItems: "center",
-    backgroundColor: "rgba(255,255,255,0.04)",
+    backgroundColor: "rgba(0,188,212,0.08)",
   },
-  retryText: { fontSize: 15, fontWeight: "800" },
+  retryText: { fontSize: 15, fontWeight: "800", color: "#00BCD4" },
   dismissBtn: {
     borderRadius: 14,
     borderWidth: 1,
