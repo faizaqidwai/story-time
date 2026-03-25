@@ -33,7 +33,7 @@ const STEPS = [
 ];
 
 // ─────────────────────────────────────────────────────────────
-// Play button
+// Play button  (unchanged)
 // ─────────────────────────────────────────────────────────────
 function PlayButton({ onPress }) {
   const pulse = useRef(new Animated.Value(1)).current;
@@ -104,8 +104,22 @@ function PlayButton({ onPress }) {
 // ─────────────────────────────────────────────────────────────
 // MAIN COMPONENT
 // ─────────────────────────────────────────────────────────────
-export default function MainStoryCard({ title, description, image, onPress }) {
+export default function MainStoryCard({
+  title,
+  description,
+  image,
+  onPress,
+  // Tutorial refs — wired from home.jsx so HomeTutorial can
+  // measureInWindow() each activity icon card for spotlight highlighting.
+  readIconRef,
+  guessIconRef,
+  listenIconRef,
+  describeIconRef,
+}) {
   const cardW = Math.min(SW - 45, 420);
+
+  // Keep refs in order matching STEPS so we can attach them in the map.
+  const stepRefs = [readIconRef, guessIconRef, listenIconRef, describeIconRef];
 
   return (
     <View style={[s.wrapper, { width: cardW }]}>
@@ -141,10 +155,19 @@ export default function MainStoryCard({ title, description, image, onPress }) {
           </Text>
         </View>
 
-        {/* ACTIVITY STEPS — 4 image icon cards in a single row */}
+        {/* ACTIVITY STEPS — 4 icon cards */}
         <View style={s.stepsRow}>
           {STEPS.map((step, i) => (
-            <View key={i} style={s.stepCard}>
+            <View
+              key={i}
+              // ── TUTORIAL FIX: attach the ref so measureInWindow works ──
+              // stepRefs[i] is the corresponding ref passed from home.jsx.
+              // collapsable={false} is required on Android for measureInWindow.
+              // If ref is null/undefined (no tutorial active) this is a no-op.
+              ref={stepRefs[i] ?? null}
+              collapsable={false}
+              style={s.stepCard}
+            >
               <Image
                 source={step.image}
                 style={s.stepImage}
@@ -165,7 +188,7 @@ export default function MainStoryCard({ title, description, image, onPress }) {
 }
 
 // ─────────────────────────────────────────────────────────────
-// STYLES
+// STYLES  (unchanged)
 // ─────────────────────────────────────────────────────────────
 const s = StyleSheet.create({
   wrapper: {
@@ -191,8 +214,6 @@ const s = StyleSheet.create({
     elevation: 12,
     paddingBottom: 20,
   },
-
-  // ── Image frame ─────────────────────────────────────────
   imageFrame: {
     marginHorizontal: 16,
     marginTop: 16,
@@ -278,8 +299,6 @@ const s = StyleSheet.create({
     color: "#0d0d1a",
     letterSpacing: 1.5,
   },
-
-  // ── Body ────────────────────────────────────────────────
   body: { paddingHorizontal: 20, paddingTop: 12, paddingBottom: 10 },
   desc: {
     fontSize: 12,
@@ -287,8 +306,6 @@ const s = StyleSheet.create({
     lineHeight: 18,
     fontStyle: "italic",
   },
-
-  // ── Activity step cards ─────────────────────────────────
   stepsRow: {
     flexDirection: "row",
     alignItems: "stretch",
@@ -299,7 +316,7 @@ const s = StyleSheet.create({
   },
   stepCard: {
     flex: 1,
-    height: 100, // fixed height — prevents icon overflow
+    height: 100,
     alignItems: "center",
     justifyContent: "center",
     paddingVertical: 10,
@@ -308,13 +325,10 @@ const s = StyleSheet.create({
     borderRadius: 14,
     borderWidth: 1,
     borderColor: "rgba(255,255,255,0.08)",
-    overflow: "hidden", // clip anything that escapes
+    overflow: "hidden",
     gap: 6,
   },
-  stepImage: {
-    width: 52, // fixed pixel size — consistent on all screen sizes
-    height: 52,
-  },
+  stepImage: { width: 52, height: 52 },
   stepLabel: {
     fontSize: 11,
     fontWeight: "800",
@@ -322,8 +336,6 @@ const s = StyleSheet.create({
     letterSpacing: 0.2,
     textAlign: "center",
   },
-
-  // ── Play button ─────────────────────────────────────────
   tapHint: {
     backgroundColor: T.teal,
     width: "100%",

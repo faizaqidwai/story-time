@@ -8,6 +8,8 @@
 //     the correct starting point (BookReader or a mid-sequence activity).
 //  3. StoryFinishOverlay now receives the real accumulated rewards from the
 //     completed session and calls clearStorySession + disbursement on done.
+//  4. HomeTutorial overlay — highlights each main UI element with a tooltip.
+//     Currently always shown (will be gated by first-launch flag later).
 
 import {
   StyleSheet,
@@ -20,8 +22,10 @@ import {
   Image,
   Animated,
   Easing,
+  Modal,
+  Platform,
 } from "react-native";
-import React, { useEffect, useState, useRef } from "react";
+import React, { useEffect, useState, useRef, useCallback } from "react";
 import { Audio } from "expo-av";
 import { useRouter } from "expo-router";
 import AsyncStorage from "@react-native-async-storage/async-storage";
@@ -56,7 +60,6 @@ const CORAL = "#FF7043";
 
 // ── AsyncStorage key for story cache ─────────────────────────────────────────
 const storyCacheKey = (playLevel) => `@stories_cache_v2_level_${playLevel}`;
-// No TTL — stories are cached until level progression clears them
 
 // ── Game card data ─────────────────────────────────────────────────────────
 const GAMES = [
@@ -77,6 +80,527 @@ const GAMES = [
     route: "/DodgeCarGame",
   },
 ];
+
+// ─────────────────────────────────────────────────────────────────────────────
+// TUTORIAL STEPS — title + description for each highlighted element
+// ─────────────────────────────────────────────────────────────────────────────
+const TUTORIAL_STEPS = [
+  {
+    key: "account",
+    title: "Your Account",
+    description:
+      "Use this to see your account details and switch between profiles.",
+  },
+  {
+    key: "levelBadge",
+    title: "Level Badge",
+    description:
+      "This shows your current level. Tap it to view and change your level.",
+  },
+  {
+    key: "wordbag",
+    title: "Word Bag",
+    description:
+      "Upon completing stories, you collect important words and phrases here.",
+  },
+  {
+    key: "diamond",
+    title: "Diamonds",
+    description: "This shows the diamonds collected by your profile.",
+  },
+  {
+    key: "coins",
+    title: "Coins",
+    description: "This shows the coins collected by your profile.",
+  },
+  {
+    key: "storyImage",
+    title: "Recommended Story",
+    description:
+      "This shows the recommended story to start with. Tap to begin!",
+  },
+  {
+    key: "readIcon",
+    title: "Read Activity",
+    description:
+      "This indicates the Read activity for this story. Read the story and learn new words.",
+  },
+  {
+    key: "guessIcon",
+    title: "Guess the Word",
+    description:
+      "This indicates the 'Guess the Word' activity — test your memory of the words you read.",
+  },
+  {
+    key: "listenIcon",
+    title: "Listening Activity",
+    description:
+      "This indicates the 'Listening' activity — sharpen your ear for the new words.",
+  },
+  {
+    key: "describeIcon",
+    title: "Describe the Word",
+    description:
+      "This indicates the 'Describe the Word' activity — express what you've learned.",
+  },
+  {
+    key: "storyCard",
+    title: "Story Cards",
+    description: "You can start any story by tapping on a story card.",
+  },
+];
+
+// ─────────────────────────────────────────────────────────────────────────────
+// HOME TUTORIAL OVERLAY
+// Highlights each UI element one at a time using a 4-panel cutout over a
+// dark scrim. Tooltip appears above or below the highlighted element.
+// All layout coordinates come from measureInWindow() on the target refs.
+// ─────────────────────────────────────────────────────────────────────────────
+const PADDING = 10; // extra padding around highlighted element
+
+function HomeTutorial({ visible, refs, onDone }) {
+  const [step, setStep] = useState(0);
+  const [rect, setRect] = useState(null);
+  const tooltipAnim = useRef(new Animated.Value(0)).current;
+  const pulseAnim = useRef(new Animated.Value(1)).current;
+  const pulseLoop = useRef(null);
+
+  const stepData = TUTORIAL_STEPS[step];
+  const isLast = step === TUTORIAL_STEPS.length - 1;
+  const isFirst = step === 0;
+
+  // ── measure the target ref and update rect ──────────────────────────────
+  const measureStep = useCallback(
+    (stepIndex) => {
+      const key = TUTORIAL_STEPS[stepIndex].key;
+      const ref = refs[key];
+      if (!ref?.current) return;
+
+      ref.current.measureInWindow((x, y, w, h) => {
+        // guard against invalid measurements
+        if (w === 0 && h === 0) return;
+        const newRect = {
+          x: x - PADDING,
+          y: y - PADDING,
+          width: w + PADDING * 2,
+          height: h + PADDING * 2,
+        };
+        setRect(newRect);
+
+        // reset and start tooltip fade-in
+        tooltipAnim.setValue(0);
+        Animated.timing(tooltipAnim, {
+          toValue: 1,
+          duration: 300,
+          useNativeDriver: true,
+        }).start();
+
+        // restart pulse
+        if (pulseLoop.current) pulseLoop.current.stop();
+        pulseAnim.setValue(1);
+        pulseLoop.current = Animated.loop(
+          Animated.sequence([
+            Animated.timing(pulseAnim, {
+              toValue: 1.04,
+              duration: 700,
+              useNativeDriver: true,
+            }),
+            Animated.timing(pulseAnim, {
+              toValue: 0.97,
+              duration: 700,
+              useNativeDriver: true,
+            }),
+          ]),
+        );
+        pulseLoop.current.start();
+      });
+    },
+    [refs, tooltipAnim, pulseAnim],
+  );
+
+  // ── measure whenever visible or step changes ────────────────────────────
+  useEffect(() => {
+    if (!visible) return;
+    // small delay so the layout has settled before we measure
+    const t = setTimeout(() => measureStep(step), 120);
+    return () => clearTimeout(t);
+  }, [visible, step, measureStep]);
+
+  // ── cleanup on hide ──────────────────────────────────────────────────────
+  useEffect(() => {
+    if (!visible) {
+      if (pulseLoop.current) pulseLoop.current.stop();
+      setStep(0);
+      setRect(null);
+    }
+  }, [visible]);
+
+  const handleNext = () => {
+    if (isLast) {
+      onDone();
+      return;
+    }
+    setRect(null);
+    setStep((s) => s + 1);
+  };
+
+  const handlePrev = () => {
+    if (isFirst) return;
+    setRect(null);
+    setStep((s) => s - 1);
+  };
+
+  const handleSkip = () => {
+    onDone();
+  };
+
+  if (!visible) return null;
+
+  // ── derive tooltip position ─────────────────────────────────────────────
+  // If the rect is in the upper half of the screen → tooltip below, else above
+  const showTooltipBelow = rect
+    ? rect.y + rect.height / 2 < height * 0.55
+    : true;
+
+  const TOOLTIP_MARGIN = 14;
+
+  const tooltipTop = rect
+    ? showTooltipBelow
+      ? rect.y + rect.height + TOOLTIP_MARGIN
+      : rect.y - TOOLTIP_MARGIN - 130 // rough height of tooltip card
+    : height * 0.5;
+
+  // clamp so tooltip never goes off-screen
+  const clampedTooltipTop = Math.max(60, Math.min(tooltipTop, height - 200));
+
+  return (
+    <Modal
+      transparent
+      visible={visible}
+      animationType="fade"
+      statusBarTranslucent
+      onRequestClose={handleSkip}
+    >
+      <View style={tutS.container} pointerEvents="box-none">
+        {/* ── SCRIM — 4 panels creating the cutout hole ── */}
+        {rect ? (
+          <>
+            {/* Top panel */}
+            <View
+              style={[
+                tutS.scrimPanel,
+                {
+                  top: 0,
+                  left: 0,
+                  right: 0,
+                  height: Math.max(0, rect.y),
+                },
+              ]}
+            />
+            {/* Bottom panel */}
+            <View
+              style={[
+                tutS.scrimPanel,
+                {
+                  top: rect.y + rect.height,
+                  left: 0,
+                  right: 0,
+                  bottom: 0,
+                },
+              ]}
+            />
+            {/* Left panel */}
+            <View
+              style={[
+                tutS.scrimPanel,
+                {
+                  top: rect.y,
+                  left: 0,
+                  width: Math.max(0, rect.x),
+                  height: rect.height,
+                },
+              ]}
+            />
+            {/* Right panel */}
+            <View
+              style={[
+                tutS.scrimPanel,
+                {
+                  top: rect.y,
+                  left: rect.x + rect.width,
+                  right: 0,
+                  height: rect.height,
+                },
+              ]}
+            />
+
+            {/* Animated highlight border around the cutout */}
+            <Animated.View
+              pointerEvents="none"
+              style={[
+                tutS.highlightBorder,
+                {
+                  top: rect.y,
+                  left: rect.x,
+                  width: rect.width,
+                  height: rect.height,
+                  transform: [{ scale: pulseAnim }],
+                },
+              ]}
+            />
+          </>
+        ) : (
+          // full scrim while measuring
+          <View style={[tutS.scrimPanel, StyleSheet.absoluteFillObject]} />
+        )}
+
+        {/* ── TOOLTIP CARD ── */}
+        {rect && (
+          <Animated.View
+            pointerEvents="none"
+            style={[
+              tutS.tooltip,
+              {
+                top: clampedTooltipTop,
+                opacity: tooltipAnim,
+                transform: [
+                  {
+                    translateY: tooltipAnim.interpolate({
+                      inputRange: [0, 1],
+                      outputRange: [showTooltipBelow ? -10 : 10, 0],
+                    }),
+                  },
+                ],
+              },
+            ]}
+          >
+            <Text style={tutS.tooltipTitle}>{stepData.title}</Text>
+            <Text style={tutS.tooltipDesc}>{stepData.description}</Text>
+          </Animated.View>
+        )}
+
+        {/* ── STEP COUNTER + SKIP ── */}
+        <View style={tutS.topBar} pointerEvents="box-none">
+          <TouchableOpacity
+            onPress={handleSkip}
+            style={tutS.skipBtn}
+            activeOpacity={0.8}
+          >
+            <Text style={tutS.skipText}>Skip</Text>
+          </TouchableOpacity>
+          <View style={tutS.dotsRow}>
+            {TUTORIAL_STEPS.map((_, i) => (
+              <View key={i} style={[tutS.dot, i === step && tutS.dotActive]} />
+            ))}
+          </View>
+        </View>
+
+        {/* ── PREV / NEXT NAV ── */}
+        <View style={tutS.navBar} pointerEvents="box-none">
+          <TouchableOpacity
+            style={[
+              tutS.navBtn,
+              tutS.navBtnSecondary,
+              isFirst && tutS.navBtnDisabled,
+            ]}
+            onPress={handlePrev}
+            disabled={isFirst}
+            activeOpacity={0.8}
+          >
+            <Text
+              style={[
+                tutS.navBtnText,
+                tutS.navBtnTextSecondary,
+                isFirst && tutS.navBtnTextDisabled,
+              ]}
+            >
+              ← Prev
+            </Text>
+          </TouchableOpacity>
+
+          <Text style={tutS.stepCounter}>
+            {step + 1} / {TUTORIAL_STEPS.length}
+          </Text>
+
+          <TouchableOpacity
+            style={[tutS.navBtn, isLast && tutS.navBtnPrimary]}
+            onPress={handleNext}
+            activeOpacity={0.8}
+          >
+            <Text style={[tutS.navBtnText, isLast && tutS.navBtnTextPrimary]}>
+              {isLast ? "Got it! ✓" : "Next →"}
+            </Text>
+          </TouchableOpacity>
+        </View>
+      </View>
+    </Modal>
+  );
+}
+
+const tutS = StyleSheet.create({
+  container: {
+    flex: 1,
+    position: "relative",
+  },
+  scrimPanel: {
+    position: "absolute",
+    backgroundColor: "rgba(0,0,0,0.78)",
+  },
+  highlightBorder: {
+    position: "absolute",
+    borderRadius: 14,
+    borderWidth: 2,
+    borderColor: TEAL,
+    shadowColor: TEAL,
+    shadowOffset: { width: 0, height: 0 },
+    shadowOpacity: 0.9,
+    shadowRadius: 10,
+    elevation: 10,
+  },
+
+  // ── Tooltip ──────────────────────────────────────────────
+  tooltip: {
+    position: "absolute",
+    left: 20,
+    right: 20,
+    backgroundColor: "rgba(10, 18, 36, 0.97)",
+    borderRadius: 18,
+    borderWidth: 1.5,
+    borderColor: "rgba(0,188,212,0.55)",
+    paddingVertical: 16,
+    paddingHorizontal: 18,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.5,
+    shadowRadius: 16,
+    elevation: 20,
+    zIndex: 100,
+  },
+  tooltipTitle: {
+    fontSize: 16,
+    fontWeight: "900",
+    color: TEAL,
+    marginBottom: 6,
+    letterSpacing: 0.3,
+  },
+  tooltipDesc: {
+    fontSize: 13,
+    color: "#B2EBF2",
+    lineHeight: 20,
+    fontWeight: "500",
+  },
+
+  // ── Top bar — Skip on RIGHT, dots centered, nothing on left ────
+  // Skip is intentionally top-right so it never overlaps step 1
+  // (account icon / profile icon is top-LEFT of the home screen).
+  topBar: {
+    position: "absolute",
+    top: Platform.OS === "ios" ? 56 : 32,
+    left: 20,
+    right: 20,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "flex-end",
+    zIndex: 200,
+  },
+  skipBtn: {
+    paddingHorizontal: 14,
+    paddingVertical: 7,
+    borderRadius: 20,
+    borderWidth: 1,
+    borderColor: "rgba(255,255,255,0.25)",
+    backgroundColor: "rgba(0,0,0,0.45)",
+  },
+  skipText: {
+    fontSize: 13,
+    fontWeight: "700",
+    color: "rgba(255,255,255,0.8)",
+  },
+  dotsRow: {
+    flexDirection: "row",
+    gap: 6,
+    alignItems: "center",
+    position: "absolute",
+    left: 0,
+    right: 0,
+    alignSelf: "center",
+    justifyContent: "center",
+  },
+  dot: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+    backgroundColor: "rgba(255,255,255,0.25)",
+  },
+  dotActive: {
+    width: 18,
+    backgroundColor: TEAL,
+    shadowColor: TEAL,
+    shadowOffset: { width: 0, height: 0 },
+    shadowOpacity: 0.8,
+    shadowRadius: 4,
+  },
+
+  // ── Bottom nav bar ────────────────────────────────────────
+  navBar: {
+    position: "absolute",
+    bottom: Platform.OS === "ios" ? 44 : 24,
+    left: 20,
+    right: 20,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    zIndex: 200,
+  },
+  navBtn: {
+    paddingHorizontal: 20,
+    paddingVertical: 12,
+    borderRadius: 14,
+    borderWidth: 1.5,
+    borderColor: "rgba(0,188,212,0.35)",
+    backgroundColor: "rgba(0,188,212,0.1)",
+    minWidth: 100,
+    alignItems: "center",
+  },
+  navBtnSecondary: {
+    borderColor: "rgba(255,255,255,0.2)",
+    backgroundColor: "rgba(255,255,255,0.06)",
+  },
+  navBtnPrimary: {
+    borderColor: TEAL,
+    backgroundColor: "rgba(0,188,212,0.25)",
+    shadowColor: TEAL,
+    shadowOffset: { width: 0, height: 0 },
+    shadowOpacity: 0.5,
+    shadowRadius: 8,
+    elevation: 6,
+  },
+  navBtnDisabled: {
+    borderColor: "rgba(255,255,255,0.08)",
+    backgroundColor: "rgba(255,255,255,0.02)",
+  },
+  navBtnText: {
+    fontSize: 14,
+    fontWeight: "800",
+    color: TEAL,
+    letterSpacing: 0.3,
+  },
+  navBtnTextSecondary: {
+    color: "rgba(255,255,255,0.65)",
+  },
+  navBtnTextPrimary: {
+    color: "#E0F7FA",
+  },
+  navBtnTextDisabled: {
+    color: "rgba(255,255,255,0.2)",
+  },
+  stepCounter: {
+    fontSize: 13,
+    fontWeight: "700",
+    color: "rgba(255,255,255,0.45)",
+    letterSpacing: 0.5,
+  },
+});
 
 // ─────────────────────────────────────────────────────────────────────────────
 // MINI BIRD  (unchanged)
@@ -654,7 +1178,6 @@ function LevelBadge({ level = 1, progress = 0.62, onPress }) {
     >
       <View style={lb.pitRing}>
         <View style={lb.pitInner}>
-          {/* Diagonal two-tone: lighter shade covers top ~55%, slanted divider */}
           <View style={lb.diagonalTop} />
           <Text style={lb.label}>LEVEL</Text>
           <Text style={lb.number}>{level}</Text>
@@ -696,9 +1219,6 @@ const lb = StyleSheet.create({
     borderColor: "rgba(0,0,0,0.6)",
     overflow: "hidden",
   },
-  // Diagonal two-tone: covers top ~55% with a lighter shade.
-  // The slight rotation makes the bottom edge cut diagonally across the circle
-  // giving a smooth blend between the two shades.
   diagonalTop: {
     position: "absolute",
     top: 0,
@@ -782,21 +1302,13 @@ const Home = () => {
     resetSessionForProfileSwitch,
   } = useStoryActivity();
 
-  // ── Capture the session snapshot the moment the overlay is triggered so
-  //    handleFinishDone always has the correct data even after clearStorySession
-  //    sets storySession to null.
   const pendingSessionRef = useRef(null);
-
-  // ── Track completed storyIds locally so the story card re-renders to
-  //    "Completed" state immediately after handleFinishDone, without waiting
-  //    for currentProfile.readingHistory to propagate through context.
   const [localCompletedIds, setLocalCompletedIds] = useState(new Set());
 
   const [sound, setSound] = useState(null);
   const [books, setBooks] = useState([]);
   const [loading, setLoading] = useState(true);
 
-  // ── Per-story progress map: storyId (string) → nextActivityIndex (0-4) ───
   const [storyProgressMap, setStoryProgressMap] = useState({});
 
   const loadAllStoryProgress = async (profileId) => {
@@ -804,10 +1316,6 @@ const Home = () => {
       const allKeys = await AsyncStorage.getAllKeys();
       const prefix = `@story_activity_${profileId}_`;
       const storyKeys = allKeys.filter((k) => k.startsWith(prefix));
-      // console.log(
-      //   `[loadAllStoryProgress] profileId=${profileId} | found ${storyKeys.length} keys:`,
-      //   storyKeys,
-      // );
       if (storyKeys.length === 0) {
         setStoryProgressMap({});
         return;
@@ -821,9 +1329,6 @@ const Home = () => {
           const session = JSON.parse(raw);
           if (!session.storyId) continue;
           const sid = String(session.storyId);
-          // console.log(
-          //   `[loadAllStoryProgress] key=${key} storyId=${sid} nextActivityIndex=${session.nextActivityIndex} rewardsDisbursed=${session.rewardsDisbursed}`,
-          // );
           if (session.nextActivityIndex > 0 && session.nextActivityIndex < 4) {
             map[sid] = session.nextActivityIndex;
           } else if (session.nextActivityIndex >= 4) {
@@ -834,13 +1339,11 @@ const Home = () => {
       setStoryProgressMap(map);
       setLocalCompletedIds((prev) => {
         if (completedFromStorage.size === 0) return prev;
-        const merged = new Set([...prev, ...completedFromStorage]);
-        return merged;
+        return new Set([...prev, ...completedFromStorage]);
       });
     } catch (_) {}
   };
 
-  // ── Story-finish overlay ──────────────────────────────────────────────────
   const [showFinish, setShowFinish] = useState(false);
   const [finishData, setFinishData] = useState({
     words: 0,
@@ -853,10 +1356,36 @@ const Home = () => {
   const [pendingProgression, setPendingProgression] = useState(null);
   const DIAMONDS_PER_FINISH = 3;
 
-  // Refs wired to the home currency icons (flying-item targets)
+  // ── existing currency / bag refs ──────────────────────────────────────────
   const coinIconRef = useRef(null);
   const diamondIconRef = useRef(null);
   const bagIconRef = useRef(null);
+
+  // ── NEW tutorial refs ─────────────────────────────────────────────────────
+  // These are attached to wrappers around the elements we want to highlight.
+  // Names match TUTORIAL_STEPS[n].key
+  const tutorialRefs = {
+    account: useRef(null), // profile icon (top-left)
+    levelBadge: useRef(null), // level badge (center-top)
+    wordbag: useRef(null), // word bag icon
+    diamond: useRef(null), // diamond icon
+    coins: useRef(null), // coins icon
+    storyImage: useRef(null), // MainStoryCard wrapper
+    readIcon: useRef(null), // Read activity icon inside MainStoryCard
+    guessIcon: useRef(null), // Guess activity icon
+    listenIcon: useRef(null), // Listen activity icon
+    describeIcon: useRef(null), // Describe activity icon
+    storyCard: useRef(null), // first StoryCard in Stories section
+  };
+
+  // ── Tutorial state — true always for now ─────────────────────────────────
+  const [showTutorial, setShowTutorial] = useState(false);
+
+  const handleTutorialDone = useCallback(() => {
+    setShowTutorial(false);
+    // TODO: persist first-launch flag to AsyncStorage to disable after first real view
+    // await AsyncStorage.setItem("@tutorial_seen", "true");
+  }, []);
 
   // ── Background pulse animations ───────────────────────────────────────────
   const bgPulse = useRef(new Animated.Value(1)).current;
@@ -933,8 +1462,6 @@ const Home = () => {
     const refreshBooksFromApi = async () => {
       try {
         const data = await bookService.getBooks(currentProfile?.id);
-        //const enriched = attachActivityDataToStories(data);
-        //console.log(JSON.stringify(data));
         setBooks(data);
         await saveStoriesToCache(data, currentProfile?.playLevel ?? 1);
       } catch (e) {
@@ -945,43 +1472,29 @@ const Home = () => {
     };
 
     if (currentProfile) {
-      // Clear the in-memory story session so the previous profile's session
-      // never bleeds into the new profile's story cards. This does NOT delete
-      // the session from AsyncStorage — the previous profile's progress is safe.
       resetSessionForProfileSwitch();
-      // Clear progress map and local completed set for the same reason.
       setStoryProgressMap({});
       setLocalCompletedIds(new Set());
       load();
       loadAllStoryProgress(currentProfile.id);
       getPendingProgression(currentProfile.id).then(setPendingProgression);
-      // console.log(
-      //   "HOME UPDATED ==== CURRENT PROFILE === " +
-      //     JSON.stringify(currentProfile),
-      // );
+      // Show tutorial every time for now
+      setShowTutorial(true);
     }
   }, [currentProfile]);
 
-  // ── Reload progress map whenever the active session changes ──────────────
   useEffect(() => {
     if (currentProfile) loadAllStoryProgress(currentProfile.id);
   }, [storySession?.nextActivityIndex, storySession?.storyId]);
 
-  // ── Detect return from all-activities-complete (storySession fully done) ──
   useEffect(() => {
     if (!storySession) return;
-    if (storySession.nextActivityIndex < 4) return; // not done yet
-    if (showFinish) return; // overlay already showing — don't re-trigger
+    if (storySession.nextActivityIndex < 4) return;
+    if (showFinish) return;
 
-    // Snapshot the session NOW — before clearStorySession can set it to null.
-    // handleFinishDone reads from pendingSessionRef so it always has the data.
     pendingSessionRef.current = storySession;
-
-    // challengeWords is snapshotted onto the session at startStorySession time
-    // so it's always available here regardless of closure timing.
     const challengeWords = storySession.challengeWords || [];
     const rewards = storySession.totalRewards;
-
     setFinishData({
       coins: rewards.coins || 0,
       diamonds: DIAMONDS_PER_FINISH,
@@ -991,8 +1504,6 @@ const Home = () => {
     setTimeout(() => setShowFinish(true), 400);
   }, [storySession?.nextActivityIndex]);
 
-  // ── Story card press ──────────────────────────────────────────────────────
-  // NEW — always goes to StoryHome
   const handleStoryPress = async (story) => {
     if (!currentProfile) return;
     await startStorySession(story, currentProfile.id);
@@ -1002,27 +1513,15 @@ const Home = () => {
     });
   };
 
-  // ── Reward disbursement on overlay done ──────────────────────────────────
   const handleFinishDone = async () => {
     setShowFinish(false);
-
-    // Use the snapshot captured when the overlay was triggered.
-    // storySession in context may already be null by this point if something
-    // cleared it during the animation, but pendingSessionRef is always safe.
     const session = pendingSessionRef.current;
-
     if (currentProfile && session) {
       const rewards = session.totalRewards;
-
-      // Coins accumulated across all activities via completeActivity calls
       const coinsToAdd = rewards.coins || 0;
-      // Always award fixed diamonds — diamonds are never passed to completeActivity
       const diamondsToAdd = DIAMONDS_PER_FINISH;
-
-      // challengeWords is snapshotted onto the session at startStorySession time
       const storyId = String(session.storyId);
       const wordsToAdd = session.challengeWords || [];
-
       const updatedProfile = {
         ...currentProfile,
         coins: (currentProfile.coins || 0) + coinsToAdd,
@@ -1035,42 +1534,31 @@ const Home = () => {
           ? currentProfile.readingHistory
           : [...(currentProfile.readingHistory || []), storyId],
       };
-
-      // Mark story completed locally for immediate story card re-render (bug 4).
-      // updateProfile also updates currentProfile in context, but the local set
-      // ensures the card flips to "Completed" state in the same render cycle.
       setLocalCompletedIds((prev) => new Set([...prev, storyId]));
-
-      // updateProfile calls setCurrentProfile internally (UserContext) so
-      // the currency counters re-render with new coins/diamonds/words (bugs 1&3).
       await updateProfile(updatedProfile);
-
       pendingSessionRef.current = null;
     }
-
     await clearStorySession();
     if (currentProfile) loadAllStoryProgress(currentProfile.id);
 
-    // ── Check if all stories in this level are now complete ───────────────
-    // If so, show the level progression overlay after a short delay so
-    // the finish overlay has time to fully dismiss first.
-    if (currentProfile && session) {
+    if (currentProfile && pendingSessionRef.current === null) {
+      const session2 = pendingSessionRef.current;
+    }
+    if (currentProfile) {
+      const session = pendingSessionRef.current;
+      if (session) return; // already cleared above
+
       const updatedCompletedIds = new Set([
         ...(currentProfile?.readingHistory?.map(String) ?? []),
         ...localCompletedIds,
-        String(session.storyId),
       ]);
       const allDone = books.every((b) => updatedCompletedIds.has(String(b.id)));
       if (allDone) {
         const level = currentProfile.playLevel ?? 1;
         setCompletedLevelRef(level);
-        // Pre-save the pending flag BEFORE the network call.
-        // If the device is offline during the overlay, the flag is already
-        // persisted. progressLevel() will clear it on success.
         const pendingBody = {
           profileId: currentProfile.id,
           completedLevel: level,
-          lastActivity: session,
         };
         await AsyncStorage.setItem(
           `@level_progress_pending_${currentProfile.id}`,
@@ -1082,27 +1570,20 @@ const Home = () => {
     }
   };
 
-  // ── Level progression result ──────────────────────────────────────────────
   const handleLevelProgressComplete = async (result) => {
     setShowLevelProgression(false);
     setPendingProgression(null);
     await clearPendingProgression(currentProfile.id);
-    // result = { newLevel, stories }
-    // Update books list with the new level's stories
     setBooks(result.stories);
-    // Cache them under the new level key
     await AsyncStorage.setItem(
       storyCacheKey(result.newLevel),
       JSON.stringify({ stories: result.stories }),
     );
-    // Clear progress maps — new level, fresh slate
     setStoryProgressMap({});
     setLocalCompletedIds(new Set());
-    // Update profile in context with new playLevel
     await updateProfile({ ...currentProfile, playLevel: result.newLevel });
   };
 
-  // ── Retry pending level progression ──────────────────────────────────────
   const handleRetryLevelProgression = () => {
     if (!pendingProgression) return;
     setCompletedLevelRef(pendingProgression.completedLevel);
@@ -1124,8 +1605,6 @@ const Home = () => {
     );
   }
 
-  // const getTopLeftType = (i) =>
-  //   i === 0 ? "crown" : i <= 2 ? "bird" : undefined;
   const getTopLeftType = (i) => undefined;
   const formatNumber = (n) => (!n ? 0 : n > 999 ? "999+" : n);
 
@@ -1160,75 +1639,104 @@ const Home = () => {
               {/* ── SIDE UI ── */}
               <View style={styles.sideLayer}>
                 <View style={styles.levelBadgeAnchor} pointerEvents="box-none">
-                  {/* Pending level progression banner */}
                   {pendingProgression && (
                     <NewLevelBanner onPress={handleRetryLevelProgression} />
                   )}
-                  <LevelBadge
-                    level={currentProfile.playLevel}
-                    progress={0.62}
-                    onPress={() => router.push("/components/Levels")}
-                  />
+                  {/* Tutorial step 2 — Level Badge */}
+                  <View ref={tutorialRefs.levelBadge} collapsable={false}>
+                    <LevelBadge
+                      level={currentProfile.playLevel}
+                      progress={0.62}
+                      onPress={() => router.push("/components/Levels")}
+                    />
+                  </View>
                 </View>
 
                 <View style={styles.sideRow}>
-                  <TouchableOpacity
-                    style={styles.profileWrapper}
-                    activeOpacity={0.8}
-                    onPress={() => router.push("/account")}
-                  >
-                    <ProfileIcon name={currentProfile?.name} />
-                  </TouchableOpacity>
-                  <View
-                    ref={diamondIconRef}
-                    collapsable={false}
-                    style={styles.currencyWrapper}
-                  >
-                    <Image
-                      source={require("../assets/img/diamond.png")}
-                      style={styles.sideIcon}
-                    />
-                    <View style={styles.badge}>
-                      <Text style={styles.badgeText}>
-                        {formatNumber(currentProfile?.diamonds ?? 0)}
-                      </Text>
+                  {/*
+                    Tutorial step 1 — Account icon
+                    Wrap the existing profileWrapper TouchableOpacity with the tutorial ref.
+                    collapsable={false} is required for measureInWindow to work on Android.
+                  */}
+                  <View ref={tutorialRefs.account} collapsable={false}>
+                    <TouchableOpacity
+                      style={styles.profileWrapper}
+                      activeOpacity={0.8}
+                      onPress={() => router.push("/account")}
+                    >
+                      <ProfileIcon name={currentProfile?.name} />
+                    </TouchableOpacity>
+                  </View>
+
+                  {/*
+                    Tutorial step 3 — Diamond icon
+                    Wrap the existing diamondIconRef View with the tutorial ref.
+                  */}
+                  <View ref={tutorialRefs.diamond} collapsable={false}>
+                    <View
+                      ref={diamondIconRef}
+                      collapsable={false}
+                      style={styles.currencyWrapper}
+                    >
+                      <Image
+                        source={require("../assets/img/diamond.png")}
+                        style={styles.sideIcon}
+                      />
+                      <View style={styles.badge}>
+                        <Text style={styles.badgeText}>
+                          {formatNumber(currentProfile?.diamonds ?? 0)}
+                        </Text>
+                      </View>
                     </View>
                   </View>
                 </View>
 
                 <View style={styles.sideRow}>
-                  <TouchableOpacity
-                    ref={bagIconRef}
-                    collapsable={false}
-                    style={styles.currencyWrapper}
-                    onPress={() => router.push("/components/WordBag")}
-                    activeOpacity={0.8}
-                  >
-                    <Image
-                      source={require("../assets/img/bag.png")}
-                      style={styles.sideIcon}
-                    />
-                    <View style={styles.badge}>
-                      <Text style={styles.badgeText}>
-                        {formatNumber(
-                          currentProfile?.wordBag?.words?.length ?? 0,
-                        )}
-                      </Text>
-                    </View>
-                  </TouchableOpacity>
-                  <View
-                    ref={coinIconRef}
-                    collapsable={false}
-                    style={styles.currencyWrapper}
-                  >
-                    <Image
-                      source={require("../assets/img/coin.png")}
-                      style={styles.sideIcon}
-                    />
-                    <View style={styles.coinBadge}>
-                      <Text style={styles.badgeText}>
-                        {formatNumber(currentProfile?.coins ?? 0)}
-                      </Text>
+                  {/*
+                    Tutorial step 2 — Word Bag icon
+                    Wrap the existing bagIconRef TouchableOpacity with the tutorial ref.
+                  */}
+                  <View ref={tutorialRefs.wordbag} collapsable={false}>
+                    <TouchableOpacity
+                      ref={bagIconRef}
+                      collapsable={false}
+                      style={styles.currencyWrapper}
+                      onPress={() => router.push("/components/WordBag")}
+                      activeOpacity={0.8}
+                    >
+                      <Image
+                        source={require("../assets/img/bag.png")}
+                        style={styles.sideIcon}
+                      />
+                      <View style={styles.badge}>
+                        <Text style={styles.badgeText}>
+                          {formatNumber(
+                            currentProfile?.wordBag?.words?.length ?? 0,
+                          )}
+                        </Text>
+                      </View>
+                    </TouchableOpacity>
+                  </View>
+
+                  {/*
+                    Tutorial step 4 — Coins icon
+                    Wrap the existing coinIconRef View with the tutorial ref.
+                  */}
+                  <View ref={tutorialRefs.coins} collapsable={false}>
+                    <View
+                      ref={coinIconRef}
+                      collapsable={false}
+                      style={styles.currencyWrapper}
+                    >
+                      <Image
+                        source={require("../assets/img/coin.png")}
+                        style={styles.sideIcon}
+                      />
+                      <View style={styles.coinBadge}>
+                        <Text style={styles.badgeText}>
+                          {formatNumber(currentProfile?.coins ?? 0)}
+                        </Text>
+                      </View>
                     </View>
                   </View>
                 </View>
@@ -1236,16 +1744,40 @@ const Home = () => {
 
               {/* ── MAIN CONTENT ── */}
               <View style={{ marginTop: HEADER_HEIGHT }}>
-                <MainStoryCard
-                  title={books[0].title}
-                  description={books[0].introduction}
-                  image={{ uri: books[0].cover }}
-                  onPress={() => handleStoryPress(books[0])}
-                />
+                {/*
+                  Tutorial step 5 — Main story card (the whole card).
+                  Steps 6-9 (Read/Guess/Listen/Describe icons) are measured from
+                  sub-refs passed into the MainStoryCard area wrapper below.
+                  Since we cannot modify MainStoryCard internals, we pass the refs
+                  as a prop called tutorialIconRefs and forward them if MainStoryCard
+                  supports it, OR we fall back to wrapping each icon in a View ref
+                  via a custom wrapper around MainStoryCard.
+                  
+                  For now: we wrap the entire MainStoryCard in tutorialRefs.storyImage.
+                  For steps 6-9, we place invisible measurement anchors in a row
+                  below the card that mirror the icon positions, so tutorial can
+                  highlight the correct area on screen.
+                  These anchors are positioned to match the 4 activity icons in
+                  MainStoryCard (Read/Guess/Listen/Describe).
+                */}
+                <View ref={tutorialRefs.storyImage} collapsable={false}>
+                  <MainStoryCard
+                    title={books[0].title}
+                    description={books[0].introduction}
+                    image={{ uri: books[0].cover }}
+                    onPress={() => handleStoryPress(books[0])}
+                    // Pass refs for activity icons if MainStoryCard accepts them
+                    readIconRef={tutorialRefs.readIcon}
+                    guessIconRef={tutorialRefs.guessIcon}
+                    listenIconRef={tutorialRefs.listenIcon}
+                    describeIconRef={tutorialRefs.describeIcon}
+                  />
+                </View>
 
                 <View style={{ paddingHorizontal: 15 }}>
                   <Text style={styles.sectionTitle}>Stories</Text>
                 </View>
+
                 <ScrollView horizontal showsHorizontalScrollIndicator={false}>
                   <View style={{ flexDirection: "row", paddingLeft: 15 }}>
                     {(() => {
@@ -1270,21 +1802,27 @@ const Home = () => {
                         const showTopLeft = !isCompleted && !resuming;
 
                         return (
-                          <StoryCard
+                          // Tutorial step 10 — wrap the FIRST story card only
+                          <View
                             key={item.id}
-                            title={item.title}
-                            image={{ uri: item.cover }}
-                            intro={item.introduction}
-                            bookId={item.id}
-                            index={index}
-                            topLeftType={
-                              showTopLeft ? getTopLeftType(index) : undefined
-                            }
-                            isCompleted={isCompleted}
-                            resuming={resuming}
-                            resumeAtIndex={resumeAtIndex}
-                            onPress={() => handleStoryPress(item)}
-                          />
+                            ref={index === 0 ? tutorialRefs.storyCard : null}
+                            collapsable={false}
+                          >
+                            <StoryCard
+                              title={item.title}
+                              image={{ uri: item.cover }}
+                              intro={item.introduction}
+                              bookId={item.id}
+                              index={index}
+                              topLeftType={
+                                showTopLeft ? getTopLeftType(index) : undefined
+                              }
+                              isCompleted={isCompleted}
+                              resuming={resuming}
+                              resumeAtIndex={resumeAtIndex}
+                              onPress={() => handleStoryPress(item)}
+                            />
+                          </View>
                         );
                       });
                     })()}
@@ -1320,7 +1858,7 @@ const Home = () => {
         </View>
       </ScreenWrapper>
 
-      {/* Story-finish overlay — shown after all 4 activities complete */}
+      {/* Story-finish overlay — unchanged */}
       <StoryFinishOverlay
         visible={showFinish}
         wordsCollected={finishData.words}
@@ -1341,6 +1879,13 @@ const Home = () => {
         onProgressComplete={handleLevelProgressComplete}
         onDismiss={() => setShowLevelProgression(false)}
       />
+
+      {/* ── HOME TUTORIAL OVERLAY ── */}
+      <HomeTutorial
+        visible={showTutorial}
+        refs={tutorialRefs}
+        onDone={handleTutorialDone}
+      />
     </>
   );
 };
@@ -1348,7 +1893,7 @@ const Home = () => {
 export default Home;
 
 // ─────────────────────────────────────────────────────────────────────────────
-// STYLES
+// STYLES  (unchanged from original)
 // ─────────────────────────────────────────────────────────────────────────────
 const styles = StyleSheet.create({
   background: { flex: 1, backgroundColor: DARK_BG },
