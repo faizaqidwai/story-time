@@ -24,7 +24,7 @@ import ProfileCard from "./components/ProfileCard";
 import { useUser } from "./_contexts/UserContext";
 import { saveProfile } from "./services/profileService";
 import { setUserAccountCredentials } from "./services/userAccountService";
-import { COLORS, SHADOWS } from "./theme";
+import { COLORS, SHADOWS, FONTS } from "./theme";
 import { logoutUser } from "./services/authService";
 import { clearAuthTokens } from "./services/tokenStorage";
 import { useApiCall } from "./_hooks/useApiCall";
@@ -81,9 +81,10 @@ const optCardS = StyleSheet.create({
     gap: 10,
   },
   iconImage: { width: 52, height: 52 },
+  // Option card label — bold, teal
   label: {
+    fontFamily: FONTS.bold,
     fontSize: 13,
-    fontWeight: "800",
     letterSpacing: 0.2,
     textAlign: "center",
     color: COLORS.teal,
@@ -615,10 +616,10 @@ const styles = StyleSheet.create({
     marginBottom: 4,
   },
 
-  // ── Who's Reading title ───────────────────────────────────
+  // ── Who's Reading title — bold, large, prominent ─────────
   title: {
+    fontFamily: FONTS.bold,
     fontSize: 32,
-    fontWeight: "bold",
     color: COLORS.textPrimary,
     textAlign: "center",
     marginTop: 16,
@@ -638,10 +639,11 @@ const styles = StyleSheet.create({
     marginBottom: 8,
     borderRadius: 10,
   },
+  // Current profile indicator text — regular weight
   currentProfileText: {
+    fontFamily: FONTS.regular,
     color: COLORS.purpleLight,
     fontSize: 16,
-    fontWeight: "600",
     textAlign: "center",
   },
 
@@ -660,9 +662,10 @@ const styles = StyleSheet.create({
     borderColor: COLORS.teal,
     borderStyle: "dashed",
   },
+  // Add profile CTA — bold, teal
   addButtonText: {
+    fontFamily: FONTS.bold,
     fontSize: 18,
-    fontWeight: "bold",
     color: COLORS.teal,
     textAlign: "center",
   },
@@ -685,21 +688,26 @@ const styles = StyleSheet.create({
     marginBottom: 16,
   },
   accountSectionIcon: { fontSize: 20 },
+  // Section title — bold
   accountSectionTitle: {
+    fontFamily: FONTS.bold,
     fontSize: 18,
-    fontWeight: "700",
     color: COLORS.textPrimary,
   },
 
   // ── Credentials form ──────────────────────────────────────
   credentialsForm: { gap: 12 },
+  // Helper hint text — light, muted
   credentialsHint: {
+    fontFamily: FONTS.light,
     fontSize: 13,
     color: COLORS.textMuted,
     lineHeight: 19,
     marginBottom: 4,
   },
+  // Input field — regular weight for typed text
   credentialsInput: {
+    fontFamily: FONTS.regular,
     backgroundColor: COLORS.surfaceDim,
     borderRadius: 12,
     padding: 14,
@@ -716,9 +724,10 @@ const styles = StyleSheet.create({
     marginTop: 4,
   },
   credentialsSaveBtnDisabled: { backgroundColor: "rgba(0,188,212,0.25)" },
+  // Save button text — bold CTA
   credentialsSaveBtnText: {
+    fontFamily: FONTS.bold,
     fontSize: 15,
-    fontWeight: "700",
     color: "#fff",
     letterSpacing: 0.3,
   },
@@ -744,11 +753,23 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     alignItems: "center",
   },
-  emailLinkedIcon: { color: COLORS.teal, fontSize: 15, fontWeight: "bold" },
-  emailLinkedLabel: { fontSize: 11, color: COLORS.textMuted, marginBottom: 2 },
+  // Tick glyph inside badge — bold
+  emailLinkedIcon: {
+    fontFamily: FONTS.bold,
+    color: COLORS.teal,
+    fontSize: 15,
+  },
+  // "Linked account" sublabel — light, muted
+  emailLinkedLabel: {
+    fontFamily: FONTS.light,
+    fontSize: 11,
+    color: COLORS.textMuted,
+    marginBottom: 2,
+  },
+  // Email address value — regular
   emailLinkedValue: {
+    fontFamily: FONTS.regular,
     fontSize: 14,
-    fontWeight: "600",
     color: COLORS.tealLight ?? COLORS.teal,
   },
 
@@ -767,9 +788,10 @@ const styles = StyleSheet.create({
     backgroundColor: "rgba(255,80,80,0.08)",
   },
   logoutIcon: { fontSize: 18, color: "#FF6B6B" },
+  // Log out label — bold, red
   logoutText: {
+    fontFamily: FONTS.bold,
     fontSize: 16,
-    fontWeight: "700",
     color: "#FF6B6B",
     letterSpacing: 0.4,
   },
@@ -793,21 +815,25 @@ const styles = StyleSheet.create({
     borderColor: COLORS.borderTealBold,
     ...SHADOWS.tealGlow,
   },
+  // Modal title — bold, large
   modalTitle: {
+    fontFamily: FONTS.bold,
     fontSize: 26,
-    fontWeight: "bold",
     color: COLORS.textPrimary,
     textAlign: "center",
     marginBottom: 25,
   },
   inputGroup: { marginBottom: 20 },
+  // Form field label — bold
   label: {
+    fontFamily: FONTS.bold,
     fontSize: 16,
-    fontWeight: "600",
     color: COLORS.textSecondary,
     marginBottom: 8,
   },
+  // Text input — regular weight for user-typed content
   input: {
+    fontFamily: FONTS.regular,
     backgroundColor: COLORS.surfaceDim,
     borderRadius: 12,
     padding: 15,
@@ -828,7 +854,12 @@ const styles = StyleSheet.create({
     alignItems: "center",
   },
   levelButtonActive: { backgroundColor: COLORS.teal, borderColor: COLORS.teal },
-  levelButtonText: { fontSize: 14, fontWeight: "600", color: "#90CAD6" },
+  // Level pill text — regular, muted when inactive
+  levelButtonText: {
+    fontFamily: FONTS.regular,
+    fontSize: 14,
+    color: "#90CAD6",
+  },
   levelButtonTextActive: { color: "#fff" },
   modalActions: { flexDirection: "row", gap: 10, marginTop: 20 },
   actionButton: {
@@ -842,11 +873,17 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: "rgba(255,255,255,0.2)",
   },
+  // Cancel button text — regular, secondary colour
   cancelButtonText: {
+    fontFamily: FONTS.regular,
     fontSize: 16,
-    fontWeight: "600",
     color: COLORS.textSecondary,
   },
   saveButton: { backgroundColor: COLORS.teal },
-  saveButtonText: { fontSize: 16, fontWeight: "600", color: "#fff" },
+  // Save / Update button text — bold, white CTA
+  saveButtonText: {
+    fontFamily: FONTS.bold,
+    fontSize: 16,
+    color: "#fff",
+  },
 });

@@ -29,6 +29,7 @@ import {
   Image,
   Modal,
 } from "react-native";
+import { FONTS } from "../theme";
 
 const { width: SW, height: SH } = Dimensions.get("window");
 
@@ -49,15 +50,10 @@ const C = {
   textMuted: "#7a9aaa",
 };
 
-// How tall the bottom sheet is (percent of screen height)
 const SHEET_HEIGHT = SH * 0.72;
-// Top clear zone height — all 4 icons sit above this line
 const TOP_CLEAR = SH - SHEET_HEIGHT;
-
-// Cap on the number of flying icons per step
 const FLY_CAP = 10;
 
-// Fallback sample words
 const SAMPLE_WORDS = [
   "elephant",
   "jungle",
@@ -70,7 +66,7 @@ const SAMPLE_WORDS = [
 ];
 
 // ─────────────────────────────────────────────────────────────────────────────
-// FlyingItem — flies from card up to a home icon, calls onLand when done
+// FlyingItem
 // ─────────────────────────────────────────────────────────────────────────────
 function FlyingItem({ source, size, fromX, fromY, toX, toY, delay, onLand }) {
   const tx = useRef(new Animated.Value(fromX - size / 2)).current;
@@ -136,7 +132,7 @@ function FlyingItem({ source, size, fromX, fromY, toX, toY, delay, onLand }) {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// PileIcon — 5 overlapping copies arranged as a pile
+// PileIcon
 // ─────────────────────────────────────────────────────────────────────────────
 const PILE_OFFSETS = [
   { x: 0, y: 0, rot: "0deg", sc: 1.0 },
@@ -224,11 +220,16 @@ const wS = StyleSheet.create({
     paddingVertical: 6,
     margin: 4,
   },
-  text: { color: C.teal, fontWeight: "800", fontSize: 14 },
+  // Word chip label — bold, teal
+  text: {
+    fontFamily: FONTS.bold,
+    color: C.teal,
+    fontSize: 14,
+  },
 });
 
 // ─────────────────────────────────────────────────────────────────────────────
-// FloatingCounter — pops up "+N" near a target badge when items land
+// FloatingCounter
 // ─────────────────────────────────────────────────────────────────────────────
 function FloatingCounter({ value, color, x, y, visible }) {
   const op = useRef(new Animated.Value(0)).current;
@@ -292,11 +293,15 @@ const fcS = StyleSheet.create({
     borderWidth: 1.5,
     borderColor: "rgba(255,255,255,0.2)",
   },
-  text: { fontSize: 15, fontWeight: "900" },
+  // Counter "+N" — bold, coloured dynamically
+  text: {
+    fontFamily: FONTS.bold,
+    fontSize: 15,
+  },
 });
 
 // ─────────────────────────────────────────────────────────────────────────────
-// StepCard — the content panel for one reward step
+// StepCard
 // ─────────────────────────────────────────────────────────────────────────────
 const StepCard = React.forwardRef(function StepCard(
   { config, enterAnim, opAnim },
@@ -347,9 +352,10 @@ const pS = StyleSheet.create({
     padding: 24,
     alignItems: "center",
   },
+  // "🎉 Story Complete!" — bold, prominent heading
   heading: {
+    fontFamily: FONTS.bold,
     fontSize: 22,
-    fontWeight: "900",
     color: C.textPri,
     marginBottom: 18,
     letterSpacing: 0.3,
@@ -358,11 +364,17 @@ const pS = StyleSheet.create({
     textShadowRadius: 10,
   },
   pileWrap: { marginBottom: 14, alignItems: "center" },
-  countText: { fontSize: 42, fontWeight: "900", letterSpacing: 0.5 },
+  // Large reward count — bold, accent coloured
+  countText: {
+    fontFamily: FONTS.bold,
+    fontSize: 42,
+    letterSpacing: 0.5,
+  },
+  // Sub-label — regular, muted
   subLabel: {
+    fontFamily: FONTS.regular,
     fontSize: 16,
     color: C.textMuted,
-    fontWeight: "600",
     marginTop: 4,
     marginBottom: 10,
   },
@@ -373,7 +385,13 @@ const pS = StyleSheet.create({
     marginVertical: 8,
     maxWidth: SW - 60,
   },
-  flyHint: { fontSize: 13, fontWeight: "700", marginTop: 10, opacity: 0.65 },
+  // Fly hint — bold, accent coloured, slightly faded
+  flyHint: {
+    fontFamily: FONTS.bold,
+    fontSize: 13,
+    marginTop: 10,
+    opacity: 0.65,
+  },
 });
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -390,19 +408,16 @@ const StoryFinishOverlay = ({
   wordTargetRef,
   onDone,
 }) => {
-  // step: -1=hidden, 0=coins, 1=diamonds, 2=words
   const [step, setStep] = useState(-1);
   const [flyingItems, setFlyingItems] = useState([]);
   const flyIdRef = useRef(0);
   const landedRef = useRef(0);
   const advancingRef = useRef(false);
 
-  // Measured positions of home icons
   const coinTarget = useRef({ x: SW * 0.88, y: 100 });
   const diamondTarget = useRef({ x: SW * 0.88, y: 45 });
   const wordTarget = useRef({ x: SW * 0.12, y: 100 });
 
-  // Counter floating labels — shown near badge when items land
   const [counterState, setCounterState] = useState({
     visible: false,
     value: 0,
@@ -412,19 +427,14 @@ const StoryFinishOverlay = ({
   });
   const counterKeyRef = useRef(0);
 
-  // Spawn origin — inside the sheet
   const spawnOrigin = useRef({ x: SW / 2, y: SH * 0.65 });
   const cardRef = useRef(null);
 
-  // Sheet slide animation
   const sheetY = useRef(new Animated.Value(SHEET_HEIGHT)).current;
   const scrOp = useRef(new Animated.Value(0)).current;
-
-  // Card content fade/scale
   const enterAnim = useRef(new Animated.Value(0.85)).current;
   const opAnim = useRef(new Animated.Value(0)).current;
 
-  // ── Sounds ────────────────────────────────────────────────
   const sndSwish = useRef(null);
   const sndCoins = useRef(null);
   const sndDiamond = useRef(null);
@@ -463,7 +473,6 @@ const StoryFinishOverlay = ({
     } catch (_) {}
   };
 
-  // ── Measure positions of home icons ─────────────────────
   const measureAll = () => {
     coinTargetRef?.current?.measureInWindow((x, y, w, h) => {
       if (w) coinTarget.current = { x: x + w / 2, y: y + h / 2 };
@@ -479,10 +488,8 @@ const StoryFinishOverlay = ({
     });
   };
 
-  // ── Kick off when visible ────────────────────────────────
   useEffect(() => {
     if (!visible) {
-      // Slide sheet back down
       Animated.timing(sheetY, {
         toValue: SHEET_HEIGHT,
         duration: 350,
@@ -499,7 +506,6 @@ const StoryFinishOverlay = ({
     setFlyingItems([]);
     setCounterState((s) => ({ ...s, visible: false }));
 
-    // Fade backdrop + slide sheet up
     scrOp.setValue(0);
     sheetY.setValue(SHEET_HEIGHT);
     Animated.parallel([
@@ -520,7 +526,6 @@ const StoryFinishOverlay = ({
     });
   }, [visible]);
 
-  // ── Animate card content in whenever step advances ───────
   useEffect(() => {
     if (step < 0 || step > 2) return;
     advancingRef.current = false;
@@ -548,7 +553,6 @@ const StoryFinishOverlay = ({
     });
   }, [step]);
 
-  // ── Spawn flying items ───────────────────────────────────
   const spawnForStep = (s) => {
     const configs = [
       {
@@ -574,8 +578,6 @@ const StoryFinishOverlay = ({
     const flyCount = Math.min(count, FLY_CAP);
     const origin = spawnOrigin.current;
 
-    // If count is 0 there are no items to fly so handleLand will never fire.
-    // Auto-advance to the next step so the overlay never gets stuck.
     if (flyCount === 0) {
       if (advancingRef.current) return;
       advancingRef.current = true;
@@ -617,7 +619,6 @@ const StoryFinishOverlay = ({
     setFlyingItems(items);
   };
 
-  // ── Handle each item landing ─────────────────────────────
   const handleLand = useCallback(
     (id, total, itemStep) => {
       const stepSounds = [sndCoins, sndDiamond, sndPop];
@@ -627,7 +628,6 @@ const StoryFinishOverlay = ({
 
       playSound(stepSounds[itemStep]);
 
-      // Show floating "+N" counter near the badge
       const tgt = stepTargets[itemStep].current;
       setCounterState({
         visible: true,
@@ -643,7 +643,6 @@ const StoryFinishOverlay = ({
       if (landedRef.current < total || advancingRef.current) return;
       advancingRef.current = true;
 
-      // Brief pause so counter is visible, then exit card
       setTimeout(() => {
         setCounterState((s) => ({ ...s, visible: false }));
         Animated.parallel([
@@ -662,7 +661,6 @@ const StoryFinishOverlay = ({
           setFlyingItems([]);
           setStep((prev) => {
             if (prev < 2) return prev + 1;
-            // All steps done — slide sheet down
             Animated.parallel([
               Animated.timing(sheetY, {
                 toValue: SHEET_HEIGHT,
@@ -684,7 +682,6 @@ const StoryFinishOverlay = ({
     [coinsEarned, diamondsEarned, wordsCollected],
   );
 
-  // ── Step configs ────────────────────────────────────────
   const displayWords =
     sampleWords?.slice(0, 8) ??
     SAMPLE_WORDS.slice(0, Math.min(wordsCollected, 8));
@@ -733,22 +730,16 @@ const StoryFinishOverlay = ({
       animationType="none"
       onRequestClose={() => {}}
     >
-      {/* Full-screen shell — flying items travel anywhere */}
       <View style={styles.shell} pointerEvents="box-none">
-        {/* Scrim covers only the area ABOVE the sheet */}
         <Animated.View
           style={[styles.scrim, { opacity: scrOp }]}
           pointerEvents="none"
         />
 
-        {/* Bottom sheet — slides up from bottom */}
         <Animated.View
           style={[styles.sheet, { transform: [{ translateY: sheetY }] }]}
         >
-          {/* Drag handle */}
           <View style={styles.handle} />
-
-          {/* Content */}
           {cfg != null && (
             <StepCard
               ref={cardRef}
@@ -759,7 +750,6 @@ const StoryFinishOverlay = ({
           )}
         </Animated.View>
 
-        {/* Flying items — full-screen layer on top */}
         {flyingItems.map((item) => (
           <FlyingItem
             key={item.id}
@@ -774,7 +764,6 @@ const StoryFinishOverlay = ({
           />
         ))}
 
-        {/* Floating counter badge near icon */}
         {counterState.visible && (
           <FloatingCounter
             key={counterState.key}
@@ -798,7 +787,6 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: "transparent",
   },
-  // Subtle dark scrim over top portion only (above sheet)
   scrim: {
     position: "absolute",
     top: 0,
@@ -807,7 +795,6 @@ const styles = StyleSheet.create({
     height: TOP_CLEAR + 20,
     backgroundColor: "rgba(0,0,0,0.25)",
   },
-  // The bottom sheet panel
   sheet: {
     position: "absolute",
     bottom: 0,
@@ -815,7 +802,6 @@ const styles = StyleSheet.create({
     right: 0,
     height: SHEET_HEIGHT,
     backgroundColor: C.bg,
-    // Rounded top corners — like a native bottom sheet
     borderTopLeftRadius: 28,
     borderTopRightRadius: 28,
     borderTopWidth: 1.5,

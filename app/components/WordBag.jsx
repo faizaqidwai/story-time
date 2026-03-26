@@ -21,6 +21,7 @@ import {
 import * as Speech from "expo-speech";
 import { useRouter } from "expo-router";
 import { useUser } from "../_contexts/UserContext";
+import { FONTS } from "../theme";
 
 const { width: SW, height: SH } = Dimensions.get("window");
 const STATUS_BAR_HEIGHT =
@@ -151,12 +152,9 @@ function WordCard({ word, index, onDescribe, playingId, onPlay }) {
 
   return (
     <Animated.View
-      style={[
-        cardS.wrapper,
-        { opacity: op, transform: [{ scale }] },
-      ]}
+      style={[cardS.wrapper, { opacity: op, transform: [{ scale }] }]}
     >
-      {/* Emoji + name — same style as DescribeObjectGame object card */}
+      {/* Emoji + name */}
       <View style={cardS.emojiRing}>
         <Text style={cardS.emoji}>{word.image || "📖"}</Text>
       </View>
@@ -167,7 +165,9 @@ function WordCard({ word, index, onDescribe, playingId, onPlay }) {
         {/* Audio / Phonics */}
         <TouchableOpacity
           style={[cardS.actionBtn, isPlaying && cardS.actionBtnActive]}
-          onPress={() => onPlay(word.id ?? word.name, word.phonics || [word.name])}
+          onPress={() =>
+            onPlay(word.id ?? word.name, word.phonics || [word.name])
+          }
           onPressIn={pressIn}
           onPressOut={pressOut}
           activeOpacity={0.8}
@@ -226,9 +226,10 @@ const cardS = StyleSheet.create({
     elevation: 3,
   },
   emoji: { fontSize: 38 },
+  // Word name — bold, prominent, glowing
   name: {
+    fontFamily: FONTS.bold,
     fontSize: 18,
-    fontWeight: "900",
     color: C.textPri,
     letterSpacing: 0.5,
     marginBottom: 14,
@@ -256,9 +257,10 @@ const cardS = StyleSheet.create({
     borderColor: C.tealBorder,
   },
   actionIcon: { fontSize: 16 },
+  // Action button label — bold, muted
   actionLabel: {
+    fontFamily: FONTS.bold,
     fontSize: 10,
-    fontWeight: "700",
     color: C.textMuted,
     letterSpacing: 0.3,
   },
@@ -314,15 +316,25 @@ function DescribeModal({ word, visible, onClose, playingId, onPlay }) {
       onRequestClose={onClose}
     >
       <Animated.View style={[modalS.scrim, { opacity: scrOp }]}>
-        <TouchableOpacity style={{ flex: 1 }} onPress={onClose} activeOpacity={1} />
+        <TouchableOpacity
+          style={{ flex: 1 }}
+          onPress={onClose}
+          activeOpacity={1}
+        />
       </Animated.View>
 
-      <Animated.View style={[modalS.sheet, { transform: [{ translateY: slideY }] }]}>
+      <Animated.View
+        style={[modalS.sheet, { transform: [{ translateY: slideY }] }]}
+      >
         {/* Handle */}
         <View style={modalS.handle} />
 
         {/* Close */}
-        <TouchableOpacity style={modalS.closeBtn} onPress={onClose} activeOpacity={0.7}>
+        <TouchableOpacity
+          style={modalS.closeBtn}
+          onPress={onClose}
+          activeOpacity={0.7}
+        >
           <Text style={modalS.closeText}>✕</Text>
         </TouchableOpacity>
 
@@ -330,7 +342,7 @@ function DescribeModal({ word, visible, onClose, playingId, onPlay }) {
           contentContainerStyle={modalS.content}
           showsVerticalScrollIndicator={false}
         >
-          {/* Big emoji card */}
+          {/* Big emoji */}
           <View style={modalS.bigEmojiRing}>
             <Text style={modalS.bigEmoji}>{word.image || "📖"}</Text>
           </View>
@@ -351,7 +363,9 @@ function DescribeModal({ word, visible, onClose, playingId, onPlay }) {
           {/* Audio button */}
           <TouchableOpacity
             style={[modalS.audioBtn, isPlaying && modalS.audioBtnActive]}
-            onPress={() => onPlay(word.id ?? word.name, word.phonics || [word.name])}
+            onPress={() =>
+              onPlay(word.id ?? word.name, word.phonics || [word.name])
+            }
             activeOpacity={0.8}
           >
             <Text style={modalS.audioBtnIcon}>{isPlaying ? "🔊" : "🔈"}</Text>
@@ -451,7 +465,12 @@ const modalS = StyleSheet.create({
     borderColor: "rgba(255,255,255,0.12)",
     zIndex: 10,
   },
-  closeText: { fontSize: 13, color: C.textMuted, fontWeight: "700" },
+  // Close ✕ — bold
+  closeText: {
+    fontFamily: FONTS.bold,
+    fontSize: 13,
+    color: C.textMuted,
+  },
   content: {
     alignItems: "center",
     paddingHorizontal: 24,
@@ -475,9 +494,10 @@ const modalS = StyleSheet.create({
     elevation: 6,
   },
   bigEmoji: { fontSize: 58 },
+  // Large word name in modal — bold, glowing
   bigName: {
+    fontFamily: FONTS.bold,
     fontSize: 36,
-    fontWeight: "900",
     color: C.textPri,
     letterSpacing: 0.5,
     marginBottom: 14,
@@ -500,9 +520,10 @@ const modalS = StyleSheet.create({
     paddingHorizontal: 12,
     paddingVertical: 5,
   },
+  // Phonics chip text — bold, teal, spaced
   phonicsText: {
+    fontFamily: FONTS.bold,
     fontSize: 15,
-    fontWeight: "800",
     color: C.teal,
     letterSpacing: 1,
   },
@@ -523,9 +544,10 @@ const modalS = StyleSheet.create({
     borderColor: C.tealBorder,
   },
   audioBtnIcon: { fontSize: 20 },
+  // Audio button label — bold
   audioBtnText: {
+    fontFamily: FONTS.bold,
     fontSize: 15,
-    fontWeight: "800",
     color: C.textSec,
     letterSpacing: 0.3,
   },
@@ -533,20 +555,22 @@ const modalS = StyleSheet.create({
     width: "100%",
     marginBottom: 20,
   },
+  // Section label — bold, spaced caps, teal
   sectionLabel: {
+    fontFamily: FONTS.bold,
     fontSize: 11,
-    fontWeight: "900",
     color: C.teal,
     letterSpacing: 2,
     textTransform: "uppercase",
     marginBottom: 8,
     opacity: 0.8,
   },
+  // Explanation body — regular, readable
   explanationText: {
+    fontFamily: FONTS.regular,
     fontSize: 15,
     color: C.textSec,
     lineHeight: 22,
-    fontWeight: "500",
     backgroundColor: C.surface,
     borderRadius: 14,
     padding: 14,
@@ -564,12 +588,13 @@ const modalS = StyleSheet.create({
     color: C.teal,
     marginTop: 4,
   },
+  // Extra fact text — regular
   extraText: {
+    fontFamily: FONTS.regular,
     flex: 1,
     fontSize: 14,
     color: C.textSec,
     lineHeight: 20,
-    fontWeight: "500",
   },
   badgeRow: {
     flexDirection: "row",
@@ -590,9 +615,10 @@ const modalS = StyleSheet.create({
     backgroundColor: C.tealDim,
     borderColor: C.tealBorder,
   },
+  // Grammar / category badge text — bold
   badgeText: {
+    fontFamily: FONTS.bold,
     fontSize: 12,
-    fontWeight: "800",
     letterSpacing: 0.3,
   },
 });
@@ -605,8 +631,16 @@ function EmptyState() {
   useEffect(() => {
     Animated.loop(
       Animated.sequence([
-        Animated.timing(pulse, { toValue: 1.08, duration: 1000, useNativeDriver: true }),
-        Animated.timing(pulse, { toValue: 1, duration: 1000, useNativeDriver: true }),
+        Animated.timing(pulse, {
+          toValue: 1.08,
+          duration: 1000,
+          useNativeDriver: true,
+        }),
+        Animated.timing(pulse, {
+          toValue: 1,
+          duration: 1000,
+          useNativeDriver: true,
+        }),
       ]),
     ).start();
   }, []);
@@ -623,21 +657,28 @@ function EmptyState() {
   );
 }
 const emptyS = StyleSheet.create({
-  container: { flex: 1, alignItems: "center", justifyContent: "center", padding: 40 },
+  container: {
+    flex: 1,
+    alignItems: "center",
+    justifyContent: "center",
+    padding: 40,
+  },
   icon: { fontSize: 72, marginBottom: 20 },
+  // Empty state heading — bold
   title: {
+    fontFamily: FONTS.bold,
     fontSize: 22,
-    fontWeight: "900",
     color: C.textPri,
     textAlign: "center",
     marginBottom: 10,
   },
+  // Empty state body — light, muted
   sub: {
+    fontFamily: FONTS.light,
     fontSize: 14,
     color: C.textMuted,
     textAlign: "center",
     lineHeight: 21,
-    fontWeight: "500",
   },
 });
 
@@ -659,11 +700,14 @@ const WordBagScreen = () => {
     (w, i, arr) => arr.findIndex((x) => x.name === w.name) === i,
   );
 
-  const handleDescribe = useCallback((word) => {
-    stop();
-    setSelectedWord(word);
-    setModalVisible(true);
-  }, [stop]);
+  const handleDescribe = useCallback(
+    (word) => {
+      stop();
+      setSelectedWord(word);
+      setModalVisible(true);
+    },
+    [stop],
+  );
 
   const handleCloseModal = useCallback(() => {
     stop();
@@ -681,7 +725,10 @@ const WordBagScreen = () => {
       <View style={screenS.header}>
         <TouchableOpacity
           style={screenS.backBtn}
-          onPress={() => { stop(); router.back(); }}
+          onPress={() => {
+            stop();
+            router.back();
+          }}
           activeOpacity={0.75}
         >
           <Text style={screenS.backIcon}>←</Text>
@@ -774,18 +821,20 @@ const screenS = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
   },
+  // Back arrow — bold, teal
   backIcon: {
+    fontFamily: FONTS.bold,
     fontSize: 20,
     color: C.teal,
-    fontWeight: "700",
   },
   headerCenter: {
     alignItems: "center",
     gap: 6,
   },
+  // Screen title — bold, glowing
   headerTitle: {
+    fontFamily: FONTS.bold,
     fontSize: 22,
-    fontWeight: "900",
     color: C.textPri,
     letterSpacing: 0.4,
     textShadowColor: "rgba(0,188,212,0.5)",
@@ -800,9 +849,10 @@ const screenS = StyleSheet.create({
     paddingHorizontal: 10,
     paddingVertical: 3,
   },
+  // Word count inside pill — bold, teal
   countText: {
+    fontFamily: FONTS.bold,
     fontSize: 11,
-    fontWeight: "800",
     color: C.teal,
     letterSpacing: 0.5,
   },

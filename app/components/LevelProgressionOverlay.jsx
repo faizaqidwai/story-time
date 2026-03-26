@@ -3,13 +3,6 @@
 // Shown after StoryFinishOverlay when the user has completed ALL stories
 // in their current playLevel. Celebrates the level completion, calls the
 // backend to progress the profile, then transitions to the new level's stories.
-//
-// Props:
-//   visible          — boolean
-//   completedLevel   — number (the level just finished)
-//   onProgressComplete(result) — called when backend progression is done.
-//                     result = { newLevel, stories } | { noNextLevel: true }
-//   onDismiss        — called if user taps dismiss on the "final level" screen
 
 import React, { useRef, useEffect, useState } from "react";
 import {
@@ -25,6 +18,7 @@ import {
 } from "react-native";
 import { Audio } from "expo-av";
 import { progressLevel } from "../services/levelProgressionService";
+import { FONTS } from "../theme";
 
 const { width: SW, height: SH } = Dimensions.get("window");
 
@@ -131,7 +125,7 @@ export default function LevelProgressionOverlay({
   onProgressComplete,
   onDismiss,
 }) {
-  const [phase, setPhase] = useState("hidden"); // hidden | celebrating | loading | final_level
+  const [phase, setPhase] = useState("hidden");
   const [error, setError] = useState(null);
 
   const sheetY = useRef(new Animated.Value(SH)).current;
@@ -183,7 +177,6 @@ export default function LevelProgressionOverlay({
     setPhase("celebrating");
     setError(null);
 
-    // Slide in
     sheetY.setValue(SH);
     scrOp.setValue(0);
     badgeSc.setValue(0);
@@ -203,14 +196,12 @@ export default function LevelProgressionOverlay({
         useNativeDriver: true,
       }),
     ]).start(() => {
-      // Play sound
       try {
         sndFanfare.current
           ?.setPositionAsync(0)
           .then(() => sndFanfare.current?.playAsync());
       } catch (_) {}
 
-      // Animate badge
       Animated.sequence([
         Animated.delay(300),
         Animated.parallel([
@@ -233,7 +224,6 @@ export default function LevelProgressionOverlay({
           useNativeDriver: true,
         }),
       ]).start(() => {
-        // Start pulsing badge
         Animated.loop(
           Animated.sequence([
             Animated.timing(pulseAnim, {
@@ -251,7 +241,6 @@ export default function LevelProgressionOverlay({
           ]),
         ).start();
 
-        // Auto-call progression after a moment of celebration
         setTimeout(() => callProgression(), 2000);
       });
     });
@@ -265,17 +254,15 @@ export default function LevelProgressionOverlay({
         completedLevel,
         lastActivity,
       );
-
       if (result.noNextLevel) {
         setPhase("final_level");
       } else {
-        // Success — hand back to home
         onProgressComplete?.(result);
       }
     } catch (err) {
       console.log("[LEVEL PROGRESSION ERR]" + JSON.stringify(err));
       setError("Could not advance level. Please try again.");
-      setPhase("celebrating"); // let user retry
+      setPhase("celebrating");
     }
   };
 
@@ -294,7 +281,6 @@ export default function LevelProgressionOverlay({
           pointerEvents="none"
         />
 
-        {/* Tappable area above the sheet — dismisses the overlay */}
         <TouchableOpacity
           style={s.scrimTap}
           activeOpacity={1}
@@ -319,7 +305,6 @@ export default function LevelProgressionOverlay({
             <View style={s.content}>
               <StarBurst count={20} />
 
-              {/* Level badge */}
               <Animated.View
                 style={[
                   s.levelBadge,
@@ -459,33 +444,44 @@ const s = StyleSheet.create({
     marginBottom: 8,
   },
   levelBadgeEmoji: { fontSize: 32, marginBottom: -4 },
+  // Level number — bold, large, yellow
   levelBadgeNum: {
+    fontFamily: FONTS.bold,
     fontSize: 38,
-    fontWeight: "900",
     color: C.yellow,
     lineHeight: 42,
   },
+  // "COMPLETE" label — bold, small caps, yellow
   levelBadgeLabel: {
+    fontFamily: FONTS.bold,
     fontSize: 10,
-    fontWeight: "900",
     color: C.yellow,
     letterSpacing: 2,
   },
 
+  // Congratulations headline — bold, large
   congrats: {
+    fontFamily: FONTS.bold,
     fontSize: 28,
-    fontWeight: "900",
     color: C.textPri,
     textAlign: "center",
   },
+  // "You completed…" body — light, muted
   subText: {
+    fontFamily: FONTS.light,
     fontSize: 16,
     color: C.textMuted,
     textAlign: "center",
     lineHeight: 24,
   },
-  subTextBold: { color: C.teal, fontWeight: "900" },
+  // Level number inline — bold, teal
+  subTextBold: {
+    fontFamily: FONTS.bold,
+    color: C.teal,
+  },
+  // Hint italic — light
   hint: {
+    fontFamily: FONTS.light,
     fontSize: 12,
     color: C.textMuted,
     textAlign: "center",
@@ -493,12 +489,15 @@ const s = StyleSheet.create({
     marginTop: 4,
   },
 
-  // Final level
   finalEmoji: { fontSize: 72, marginBottom: 8 },
 
-  // Error
   errorBox: { alignItems: "center", gap: 10, marginTop: 8 },
-  errorText: { fontSize: 13, color: "#EF5350", textAlign: "center" },
+  errorText: {
+    fontFamily: FONTS.regular,
+    fontSize: 13,
+    color: "#EF5350",
+    textAlign: "center",
+  },
   retryBtn: {
     backgroundColor: "rgba(0,188,212,0.15)",
     borderRadius: 12,
@@ -507,9 +506,13 @@ const s = StyleSheet.create({
     paddingHorizontal: 24,
     paddingVertical: 10,
   },
-  retryBtnText: { fontSize: 13, fontWeight: "700", color: C.teal },
+  // "Try Again" — bold, teal
+  retryBtnText: {
+    fontFamily: FONTS.bold,
+    fontSize: 13,
+    color: C.teal,
+  },
 
-  // Done button
   doneBtn: {
     backgroundColor: C.teal,
     borderRadius: 24,
@@ -522,8 +525,13 @@ const s = StyleSheet.create({
     shadowRadius: 12,
     elevation: 10,
   },
-  doneBtnText: { fontSize: 16, fontWeight: "900", color: "#08081a" },
-  // Invisible full-screen tap area above the sheet for dismiss
+  // "Back to Home" — bold, dark
+  doneBtnText: {
+    fontFamily: FONTS.bold,
+    fontSize: 16,
+    color: "#08081a",
+  },
+
   scrimTap: {
     position: "absolute",
     top: 0,
@@ -532,7 +540,6 @@ const s = StyleSheet.create({
     bottom: SH * 0.75,
   },
 
-  // Close button — top-right corner of the sheet
   closeBtn: {
     position: "absolute",
     top: 14,
@@ -547,10 +554,11 @@ const s = StyleSheet.create({
     justifyContent: "center",
     zIndex: 10,
   },
+  // Close ✕ — regular, muted
   closeBtnText: {
+    fontFamily: FONTS.regular,
     fontSize: 12,
     color: "rgba(255,255,255,0.6)",
-    fontWeight: "700",
     lineHeight: 14,
   },
 });

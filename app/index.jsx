@@ -246,7 +246,7 @@ const SplashScreen = () => {
     <View style={styles.container}>
       {/* ── Logo / Bird — flies upward on exit ── */}
       <Animated.Image
-        source={require("../assets/img/story-time-logo.png")}
+        source={require("../assets/img/story-time-logo-2.png")}
         style={[
           styles.logo,
           {

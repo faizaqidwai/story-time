@@ -24,6 +24,7 @@ import {
   useWindowDimensions,
 } from "react-native";
 import { Audio } from "expo-av";
+import { FONTS } from "../theme";
 
 const { width: SW, height: SH } = Dimensions.get("window");
 
@@ -551,9 +552,10 @@ const styles = StyleSheet.create({
 
   bigIcon: { fontSize: 72, marginBottom: 12, zIndex: 1 },
 
+  // Win title — bold, yellow, glowing
   winTitle: {
+    fontFamily: FONTS.bold,
     fontSize: 28,
-    fontWeight: "900",
     color: C.yellow,
     letterSpacing: 0.4,
     marginBottom: 6,
@@ -561,10 +563,11 @@ const styles = StyleSheet.create({
     textShadowOffset: { width: 0, height: 0 },
     textShadowRadius: 14,
   },
+  // Win subtitle — light, secondary
   winSubtitle: {
+    fontFamily: FONTS.light,
     fontSize: 14,
     color: C.textSec,
-    fontWeight: "600",
     textAlign: "center",
     marginBottom: 18,
     lineHeight: 20,
@@ -578,9 +581,10 @@ const styles = StyleSheet.create({
   },
   starDeco: {},
 
+  // Lose title — bold, red, glowing
   loseTitle: {
+    fontFamily: FONTS.bold,
     fontSize: 28,
-    fontWeight: "900",
     color: C.red,
     letterSpacing: 0.4,
     marginBottom: 6,
@@ -588,10 +592,11 @@ const styles = StyleSheet.create({
     textShadowOffset: { width: 0, height: 0 },
     textShadowRadius: 14,
   },
+  // Lose subtitle — light, secondary
   loseSubtitle: {
+    fontFamily: FONTS.light,
     fontSize: 14,
     color: C.textSec,
-    fontWeight: "600",
     textAlign: "center",
     marginBottom: 18,
     lineHeight: 20,
@@ -609,12 +614,13 @@ const styles = StyleSheet.create({
     width: "100%",
   },
   tipIcon: { fontSize: 16 },
+  // Tip body — regular
   tipText: {
+    fontFamily: FONTS.regular,
     flex: 1,
     fontSize: 13,
     color: C.textSec,
     lineHeight: 19,
-    fontWeight: "500",
   },
 
   wordRevealWin: {
@@ -639,17 +645,19 @@ const styles = StyleSheet.create({
     marginBottom: 16,
     width: "100%",
   },
+  // "THE WORD WAS" label — bold, spaced caps
   wordRevealLabel: {
+    fontFamily: FONTS.bold,
     fontSize: 11,
-    fontWeight: "700",
     color: C.textMuted,
     letterSpacing: 0.8,
     textTransform: "uppercase",
     marginBottom: 4,
   },
+  // Revealed word on win — bold, yellow, glowing
   wordRevealValueWin: {
+    fontFamily: FONTS.bold,
     fontSize: 26,
-    fontWeight: "900",
     color: C.yellow,
     letterSpacing: 1.5,
     textTransform: "uppercase",
@@ -657,9 +665,10 @@ const styles = StyleSheet.create({
     textShadowOffset: { width: 0, height: 0 },
     textShadowRadius: 10,
   },
+  // Revealed word on lose — bold, red, glowing
   wordRevealValueLose: {
+    fontFamily: FONTS.bold,
     fontSize: 26,
-    fontWeight: "900",
     color: C.red,
     letterSpacing: 1.5,
     textTransform: "uppercase",
@@ -683,9 +692,10 @@ const styles = StyleSheet.create({
     shadowRadius: 14,
     elevation: 8,
   },
+  // Primary CTA — bold, dark
   btnPrimaryText: {
+    fontFamily: FONTS.bold,
     fontSize: 16,
-    fontWeight: "900",
     color: C.bg,
     letterSpacing: 0.4,
   },
@@ -695,14 +705,20 @@ const styles = StyleSheet.create({
     borderColor: C.redBorder,
     width: "100%",
   },
+  // "↺ Try Again" — bold, red
   btnRetryText: {
+    fontFamily: FONTS.bold,
     fontSize: 16,
-    fontWeight: "800",
     color: C.red,
     letterSpacing: 0.3,
   },
   skipBtn: { marginTop: 10, paddingVertical: 6, paddingHorizontal: 14 },
-  skipText: { fontSize: 13, color: C.textMuted, fontWeight: "600" },
+  // Skip / Play Again → link — light, muted
+  skipText: {
+    fontFamily: FONTS.light,
+    fontSize: 13,
+    color: C.textMuted,
+  },
 
   bird: { position: "absolute", bottom: 40, alignSelf: "center" },
 });

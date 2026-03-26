@@ -9,9 +9,9 @@ import {
   Animated,
   Easing,
   Dimensions,
-  Platform,
 } from "react-native";
 import { Image as ExpoImage } from "expo-image";
+import { FONTS } from "../../app/theme";
 
 const { width: SW } = Dimensions.get("window");
 const T = {
@@ -33,7 +33,7 @@ const STEPS = [
 ];
 
 // ─────────────────────────────────────────────────────────────
-// Play button  (unchanged)
+// Play button
 // ─────────────────────────────────────────────────────────────
 function PlayButton({ onPress }) {
   const pulse = useRef(new Animated.Value(1)).current;
@@ -160,10 +160,6 @@ export default function MainStoryCard({
           {STEPS.map((step, i) => (
             <View
               key={i}
-              // ── TUTORIAL FIX: attach the ref so measureInWindow works ──
-              // stepRefs[i] is the corresponding ref passed from home.jsx.
-              // collapsable={false} is required on Android for measureInWindow.
-              // If ref is null/undefined (no tutorial active) this is a no-op.
               ref={stepRefs[i] ?? null}
               collapsable={false}
               style={s.stepCard}
@@ -188,7 +184,7 @@ export default function MainStoryCard({
 }
 
 // ─────────────────────────────────────────────────────────────
-// STYLES  (unchanged)
+// STYLES
 // ─────────────────────────────────────────────────────────────
 const s = StyleSheet.create({
   wrapper: {
@@ -237,11 +233,10 @@ const s = StyleSheet.create({
     backgroundColor: "rgba(10,12,30,0.72)",
     justifyContent: "flex-end",
   },
+  // Story title overlay — bold, CoText replaces Noteworthy
   title: {
-    fontFamily:
-      Platform.OS === "ios" ? "Noteworthy-Bold" : "sans-serif-condensed",
+    fontFamily: FONTS.bold,
     fontSize: 20,
-    fontWeight: "900",
     color: T.textPrimary,
     lineHeight: 26,
     textShadowColor: "rgba(0,0,0,0.6)",
@@ -293,14 +288,17 @@ const s = StyleSheet.create({
     paddingVertical: 3,
     zIndex: 4,
   },
+  // "NEW" badge label — bold, very small
   newBadgeTxt: {
+    fontFamily: FONTS.bold,
     fontSize: 9,
-    fontWeight: "900",
     color: "#0d0d1a",
     letterSpacing: 1.5,
   },
   body: { paddingHorizontal: 20, paddingTop: 12, paddingBottom: 10 },
+  // Story description — light italic
   desc: {
+    fontFamily: FONTS.light,
     fontSize: 12,
     color: T.textMuted,
     lineHeight: 18,
@@ -329,9 +327,10 @@ const s = StyleSheet.create({
     gap: 6,
   },
   stepImage: { width: 52, height: 52 },
+  // Activity step label — bold, small caps feel
   stepLabel: {
+    fontFamily: FONTS.bold,
     fontSize: 11,
-    fontWeight: "800",
     color: T.textPrimary,
     letterSpacing: 0.2,
     textAlign: "center",
@@ -350,9 +349,10 @@ const s = StyleSheet.create({
     shadowRadius: 12,
     elevation: 12,
   },
+  // START button text — bold, dark background CTA
   tapHintText: {
+    fontFamily: FONTS.bold,
     fontSize: 18,
-    fontWeight: "900",
     color: "#08081a",
     letterSpacing: 1,
   },

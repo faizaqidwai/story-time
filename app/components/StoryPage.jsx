@@ -1,5 +1,6 @@
-import React from 'react';
-import { View, Text, Image, StyleSheet } from 'react-native';
+import React from "react";
+import { View, Text, Image, StyleSheet } from "react-native";
+import { FONTS } from "../theme";
 
 const StoryPage = ({ text, imageUrl }) => {
   return (
@@ -15,19 +16,22 @@ export default StoryPage;
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
+    justifyContent: "center",
+    alignItems: "center",
     padding: 16,
-    backgroundColor: '#fff'
+    backgroundColor: "#fff",
   },
   image: {
     width: 300,
     height: 300,
-    resizeMode: 'contain',
+    resizeMode: "contain",
     marginBottom: 20,
   },
+
+  // CoText-Regular — story body text, clean and easy to read for children
   text: {
+    fontFamily: FONTS.regular,
     fontSize: 18,
-    textAlign: 'center',
+    textAlign: "center",
   },
 });

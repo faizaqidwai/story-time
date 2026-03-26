@@ -24,6 +24,7 @@ import {
 } from "react-native";
 import { useRouter } from "expo-router";
 import { LinearGradient } from "expo-linear-gradient";
+import { FONTS } from "./theme";
 
 const { width: SW, height: SH } = Dimensions.get("window");
 
@@ -40,7 +41,7 @@ const C = {
 const SLIDES = [
   {
     id: "1",
-    image: require("../assets/img/c1.jpg"),
+    image: require("../assets/img/c1-2.jpg"),
     accentColor: C.teal,
     tagline: "Welcome to Story Time",
     title: "Where every story\nplants the seed of a\npowerful vocabulary",
@@ -163,12 +164,16 @@ function SlideItem({ slide, index, scrollX }) {
             },
           ]}
         >
+          {/* tagline — Bold, small caps feel */}
           <Text style={[sS.tagline, { color: slide.accentColor }]}>
             {slide.tagline}
           </Text>
         </View>
 
+        {/* title — Bold for maximum impact */}
         <Text style={sS.title}>{slide.title}</Text>
+
+        {/* body — Light for readable contrast against bold title */}
         <Text style={sS.body}>{slide.body}</Text>
       </Animated.View>
     </View>
@@ -184,12 +189,7 @@ const sS = StyleSheet.create({
     right: 0,
     height: "65%",
   },
-  textWrap: {
-    flex: 1,
-    paddingHorizontal: 26,
-    paddingTop: 6,
-    gap: 10,
-  },
+  textWrap: { flex: 1, paddingHorizontal: 26, paddingTop: 6, gap: 10 },
   pill: {
     alignSelf: "flex-start",
     borderRadius: 24,
@@ -198,25 +198,30 @@ const sS = StyleSheet.create({
     paddingVertical: 8,
     marginBottom: 4,
   },
+
+  // tagline — CoText-Bold gives it authority without feeling heavy
   tagline: {
+    fontFamily: FONTS.bold,
     fontSize: 13,
-    fontWeight: "900",
     letterSpacing: 0.6,
   },
+
+  // title — CoText-Bold, large, the hero text of each slide
+
   title: {
-    fontFamily:
-      Platform.OS === "ios" ? "Noteworthy-Bold" : "sans-serif-condensed",
+    fontFamily: FONTS.bold,
     fontSize: 26,
-    fontWeight: "900",
     color: "#E0F7FA",
     lineHeight: 34,
     letterSpacing: 0.2,
   },
+
+  // body — CoText-Light so it reads softly against the bold title
   body: {
+    fontFamily: FONTS.light,
     fontSize: 13,
     color: "#7a9aaa",
     lineHeight: 21,
-    fontWeight: "500",
   },
 });
 
@@ -276,6 +281,7 @@ export default function IntroCarousel() {
           activeOpacity={0.7}
           hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
         >
+          {/* CoText-Regular — understated, doesn't compete with slide content */}
           <Text style={styles.skipText}>Skip</Text>
         </TouchableOpacity>
       )}
@@ -325,6 +331,7 @@ export default function IntroCarousel() {
             onPress={goNext}
             activeOpacity={0.85}
           >
+            {/* CoText-Bold — CTA needs maximum weight */}
             <Text style={styles.getStartedText}>Get Started ✦</Text>
           </TouchableOpacity>
         ) : (
@@ -333,6 +340,7 @@ export default function IntroCarousel() {
             onPress={handleNext}
             activeOpacity={0.8}
           >
+            {/* CoText-Bold — navigation action */}
             <Text style={[styles.nextText, { color: accent }]}>Next →</Text>
           </TouchableOpacity>
         )}
@@ -357,8 +365,8 @@ const styles = StyleSheet.create({
     borderColor: "rgba(255,255,255,0.12)",
   },
   skipText: {
+    fontFamily: FONTS.regular, // regular — subtle, not competing
     fontSize: 13,
-    fontWeight: "700",
     color: "#7a9aaa",
     letterSpacing: 0.3,
   },
@@ -380,7 +388,11 @@ const styles = StyleSheet.create({
     borderWidth: 1.5,
     backgroundColor: "rgba(255,255,255,0.04)",
   },
-  nextText: { fontSize: 15, fontWeight: "800", letterSpacing: 0.3 },
+  nextText: {
+    fontFamily: FONTS.bold, // bold — navigation action
+    fontSize: 15,
+    letterSpacing: 0.3,
+  },
 
   getStartedBtn: {
     paddingHorizontal: 32,
@@ -392,8 +404,8 @@ const styles = StyleSheet.create({
     elevation: 8,
   },
   getStartedText: {
+    fontFamily: FONTS.bold, // bold — primary CTA
     fontSize: 16,
-    fontWeight: "900",
     color: "#08081a",
     letterSpacing: 0.5,
   },

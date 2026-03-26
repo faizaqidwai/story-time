@@ -49,6 +49,7 @@ import {
 } from "./services/levelProgressionService";
 
 import { SafeAreaView } from "react-native-safe-area-context";
+import { FONTS } from "./theme";
 
 const { width, height } = Dimensions.get("window");
 
@@ -476,23 +477,23 @@ const tutS = StyleSheet.create({
     elevation: 20,
     zIndex: 100,
   },
+  // Tooltip title — bold, teal, prominent
   tooltipTitle: {
+    fontFamily: FONTS.bold,
     fontSize: 16,
-    fontWeight: "900",
     color: TEAL,
     marginBottom: 6,
     letterSpacing: 0.3,
   },
+  // Tooltip body — light weight for readability
   tooltipDesc: {
+    fontFamily: FONTS.light,
     fontSize: 13,
     color: "#B2EBF2",
     lineHeight: 20,
-    fontWeight: "500",
   },
 
   // ── Top bar — Skip on RIGHT, dots centered, nothing on left ────
-  // Skip is intentionally top-right so it never overlaps step 1
-  // (account icon / profile icon is top-LEFT of the home screen).
   topBar: {
     position: "absolute",
     top: Platform.OS === "ios" ? 56 : 32,
@@ -511,9 +512,10 @@ const tutS = StyleSheet.create({
     borderColor: "rgba(255,255,255,0.25)",
     backgroundColor: "rgba(0,0,0,0.45)",
   },
+  // Skip button text — bold enough to be tappable, not too heavy
   skipText: {
+    fontFamily: FONTS.bold,
     fontSize: 13,
-    fontWeight: "700",
     color: "rgba(255,255,255,0.8)",
   },
   dotsRow: {
@@ -579,9 +581,10 @@ const tutS = StyleSheet.create({
     borderColor: "rgba(255,255,255,0.08)",
     backgroundColor: "rgba(255,255,255,0.02)",
   },
+  // Nav button text — bold, primary teal colour
   navBtnText: {
+    fontFamily: FONTS.bold,
     fontSize: 14,
-    fontWeight: "800",
     color: TEAL,
     letterSpacing: 0.3,
   },
@@ -594,9 +597,10 @@ const tutS = StyleSheet.create({
   navBtnTextDisabled: {
     color: "rgba(255,255,255,0.2)",
   },
+  // Step counter — light, muted
   stepCounter: {
+    fontFamily: FONTS.regular,
     fontSize: 13,
-    fontWeight: "700",
     color: "rgba(255,255,255,0.45)",
     letterSpacing: 0.5,
   },
@@ -1068,9 +1072,10 @@ const piS = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
   },
+  // Profile initial inside the avatar badge — bold, yellow glow
   letterText: {
+    fontFamily: FONTS.bold,
     fontSize: 10,
-    fontWeight: "900",
     color: YELLOW,
     textShadowColor: "rgba(255,213,79,0.7)",
     textShadowOffset: { width: 0, height: 0 },
@@ -1230,17 +1235,19 @@ const lb = StyleSheet.create({
     borderRadius: 4,
     opacity: 0.9,
   },
+  // "LEVEL" label — bold, small caps feel, teal
   label: {
+    fontFamily: FONTS.bold,
     fontSize: 8,
-    fontWeight: "900",
     color: TEAL,
     letterSpacing: 2,
     marginBottom: 1,
     opacity: 0.9,
   },
+  // Level number — bold, large, glowing
   number: {
+    fontFamily: FONTS.bold,
     fontSize: 26,
-    fontWeight: "900",
     color: "#E0F7FA",
     lineHeight: 28,
     textShadowColor: TEAL,
@@ -1362,20 +1369,18 @@ const Home = () => {
   const bagIconRef = useRef(null);
 
   // ── NEW tutorial refs ─────────────────────────────────────────────────────
-  // These are attached to wrappers around the elements we want to highlight.
-  // Names match TUTORIAL_STEPS[n].key
   const tutorialRefs = {
-    account: useRef(null), // profile icon (top-left)
-    levelBadge: useRef(null), // level badge (center-top)
-    wordbag: useRef(null), // word bag icon
-    diamond: useRef(null), // diamond icon
-    coins: useRef(null), // coins icon
-    storyImage: useRef(null), // MainStoryCard wrapper
-    readIcon: useRef(null), // Read activity icon inside MainStoryCard
-    guessIcon: useRef(null), // Guess activity icon
-    listenIcon: useRef(null), // Listen activity icon
-    describeIcon: useRef(null), // Describe activity icon
-    storyCard: useRef(null), // first StoryCard in Stories section
+    account: useRef(null),
+    levelBadge: useRef(null),
+    wordbag: useRef(null),
+    diamond: useRef(null),
+    coins: useRef(null),
+    storyImage: useRef(null),
+    readIcon: useRef(null),
+    guessIcon: useRef(null),
+    listenIcon: useRef(null),
+    describeIcon: useRef(null),
+    storyCard: useRef(null),
   };
 
   // ── Tutorial state — true always for now ─────────────────────────────────
@@ -1383,8 +1388,6 @@ const Home = () => {
 
   const handleTutorialDone = useCallback(() => {
     setShowTutorial(false);
-    // TODO: persist first-launch flag to AsyncStorage to disable after first real view
-    // await AsyncStorage.setItem("@tutorial_seen", "true");
   }, []);
 
   // ── Background pulse animations ───────────────────────────────────────────
@@ -1478,7 +1481,6 @@ const Home = () => {
       load();
       loadAllStoryProgress(currentProfile.id);
       getPendingProgression(currentProfile.id).then(setPendingProgression);
-      // Show tutorial every time for now
       setShowTutorial(true);
     }
   }, [currentProfile]);
@@ -1546,7 +1548,7 @@ const Home = () => {
     }
     if (currentProfile) {
       const session = pendingSessionRef.current;
-      if (session) return; // already cleared above
+      if (session) return;
 
       const updatedCompletedIds = new Set([
         ...(currentProfile?.readingHistory?.map(String) ?? []),
@@ -1642,7 +1644,6 @@ const Home = () => {
                   {pendingProgression && (
                     <NewLevelBanner onPress={handleRetryLevelProgression} />
                   )}
-                  {/* Tutorial step 2 — Level Badge */}
                   <View ref={tutorialRefs.levelBadge} collapsable={false}>
                     <LevelBadge
                       level={currentProfile.playLevel}
@@ -1653,11 +1654,6 @@ const Home = () => {
                 </View>
 
                 <View style={styles.sideRow}>
-                  {/*
-                    Tutorial step 1 — Account icon
-                    Wrap the existing profileWrapper TouchableOpacity with the tutorial ref.
-                    collapsable={false} is required for measureInWindow to work on Android.
-                  */}
                   <View ref={tutorialRefs.account} collapsable={false}>
                     <TouchableOpacity
                       style={styles.profileWrapper}
@@ -1668,10 +1664,6 @@ const Home = () => {
                     </TouchableOpacity>
                   </View>
 
-                  {/*
-                    Tutorial step 3 — Diamond icon
-                    Wrap the existing diamondIconRef View with the tutorial ref.
-                  */}
                   <View ref={tutorialRefs.diamond} collapsable={false}>
                     <View
                       ref={diamondIconRef}
@@ -1692,10 +1684,6 @@ const Home = () => {
                 </View>
 
                 <View style={styles.sideRow}>
-                  {/*
-                    Tutorial step 2 — Word Bag icon
-                    Wrap the existing bagIconRef TouchableOpacity with the tutorial ref.
-                  */}
                   <View ref={tutorialRefs.wordbag} collapsable={false}>
                     <TouchableOpacity
                       ref={bagIconRef}
@@ -1718,10 +1706,6 @@ const Home = () => {
                     </TouchableOpacity>
                   </View>
 
-                  {/*
-                    Tutorial step 4 — Coins icon
-                    Wrap the existing coinIconRef View with the tutorial ref.
-                  */}
                   <View ref={tutorialRefs.coins} collapsable={false}>
                     <View
                       ref={coinIconRef}
@@ -1744,29 +1728,12 @@ const Home = () => {
 
               {/* ── MAIN CONTENT ── */}
               <View style={{ marginTop: HEADER_HEIGHT }}>
-                {/*
-                  Tutorial step 5 — Main story card (the whole card).
-                  Steps 6-9 (Read/Guess/Listen/Describe icons) are measured from
-                  sub-refs passed into the MainStoryCard area wrapper below.
-                  Since we cannot modify MainStoryCard internals, we pass the refs
-                  as a prop called tutorialIconRefs and forward them if MainStoryCard
-                  supports it, OR we fall back to wrapping each icon in a View ref
-                  via a custom wrapper around MainStoryCard.
-                  
-                  For now: we wrap the entire MainStoryCard in tutorialRefs.storyImage.
-                  For steps 6-9, we place invisible measurement anchors in a row
-                  below the card that mirror the icon positions, so tutorial can
-                  highlight the correct area on screen.
-                  These anchors are positioned to match the 4 activity icons in
-                  MainStoryCard (Read/Guess/Listen/Describe).
-                */}
                 <View ref={tutorialRefs.storyImage} collapsable={false}>
                   <MainStoryCard
                     title={books[0].title}
                     description={books[0].introduction}
                     image={{ uri: books[0].cover }}
                     onPress={() => handleStoryPress(books[0])}
-                    // Pass refs for activity icons if MainStoryCard accepts them
                     readIconRef={tutorialRefs.readIcon}
                     guessIconRef={tutorialRefs.guessIcon}
                     listenIconRef={tutorialRefs.listenIcon}
@@ -1802,7 +1769,6 @@ const Home = () => {
                         const showTopLeft = !isCompleted && !resuming;
 
                         return (
-                          // Tutorial step 10 — wrap the FIRST story card only
                           <View
                             key={item.id}
                             ref={index === 0 ? tutorialRefs.storyCard : null}
@@ -1858,7 +1824,6 @@ const Home = () => {
         </View>
       </ScreenWrapper>
 
-      {/* Story-finish overlay — unchanged */}
       <StoryFinishOverlay
         visible={showFinish}
         wordsCollected={finishData.words}
@@ -1880,7 +1845,6 @@ const Home = () => {
         onDismiss={() => setShowLevelProgression(false)}
       />
 
-      {/* ── HOME TUTORIAL OVERLAY ── */}
       <HomeTutorial
         visible={showTutorial}
         refs={tutorialRefs}
@@ -1893,7 +1857,7 @@ const Home = () => {
 export default Home;
 
 // ─────────────────────────────────────────────────────────────────────────────
-// STYLES  (unchanged from original)
+// STYLES
 // ─────────────────────────────────────────────────────────────────────────────
 const styles = StyleSheet.create({
   background: { flex: 1, backgroundColor: DARK_BG },
@@ -1980,15 +1944,23 @@ const styles = StyleSheet.create({
     borderColor: "#fff",
     elevation: 8,
   },
-  badgeText: { color: "#fff", fontSize: 11, fontWeight: "bold" },
+  // Currency badge number — bold, small, white
+  badgeText: {
+    fontFamily: FONTS.bold,
+    color: "#fff",
+    fontSize: 11,
+  },
   sectionHeader: { paddingHorizontal: 15, marginTop: 8, marginBottom: 2 },
+  // Section heading — bold, white
   sectionTitle: {
+    fontFamily: FONTS.bold,
     fontSize: 20,
-    fontWeight: "800",
     color: "#fff",
     marginBottom: 4,
   },
+  // Section tagline — light, muted
   sectionTagline: {
+    fontFamily: FONTS.light,
     fontSize: 12,
     color: "rgba(255,255,255,0.45)",
     marginBottom: 10,
@@ -2042,10 +2014,11 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     elevation: 4,
   },
+  // Play ▶ glyph — bold, dark background
   gamePlayTxt: {
+    fontFamily: FONTS.bold,
     fontSize: 11,
     color: "#08081a",
-    fontWeight: "900",
     marginLeft: 2,
   },
   gameCardTextWrap: {
@@ -2053,20 +2026,22 @@ const styles = StyleSheet.create({
     paddingBottom: 14,
     marginTop: "auto",
   },
+  // Game card title — bold, white
   gameCardTitle: {
+    fontFamily: FONTS.bold,
     fontSize: 15,
-    fontWeight: "900",
     color: "#fff",
     letterSpacing: 0.2,
     textShadowColor: "rgba(0,0,0,0.4)",
     textShadowOffset: { width: 0, height: 1 },
     textShadowRadius: 4,
   },
+  // Game card subtitle — light, semi-transparent
   gameCardSub: {
+    fontFamily: FONTS.light,
     fontSize: 11,
     color: "rgba(255,255,255,0.7)",
     marginTop: 2,
-    fontWeight: "600",
   },
   gameCardStrip: {
     position: "absolute",

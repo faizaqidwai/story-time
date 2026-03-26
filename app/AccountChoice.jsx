@@ -21,6 +21,7 @@ import {
 } from "react-native";
 import { useRouter } from "expo-router";
 import { LinearGradient } from "expo-linear-gradient";
+import { FONTS } from "./theme";
 
 const { width: SW, height: SH } = Dimensions.get("window");
 
@@ -59,24 +60,51 @@ export default function AccountChoice() {
 
   useEffect(() => {
     Animated.sequence([
-      // Logo fades in
       Animated.parallel([
-        Animated.timing(logoOp, { toValue: 1, duration: 500, useNativeDriver: true }),
-        Animated.spring(logoY, { toValue: 0, friction: 7, tension: 55, useNativeDriver: true }),
+        Animated.timing(logoOp, {
+          toValue: 1,
+          duration: 500,
+          useNativeDriver: true,
+        }),
+        Animated.spring(logoY, {
+          toValue: 0,
+          friction: 7,
+          tension: 55,
+          useNativeDriver: true,
+        }),
       ]),
       Animated.delay(150),
-      // First card
       Animated.parallel([
-        Animated.timing(card1Op, { toValue: 1, duration: 380, useNativeDriver: true }),
-        Animated.spring(card1Y, { toValue: 0, friction: 7, tension: 60, useNativeDriver: true }),
+        Animated.timing(card1Op, {
+          toValue: 1,
+          duration: 380,
+          useNativeDriver: true,
+        }),
+        Animated.spring(card1Y, {
+          toValue: 0,
+          friction: 7,
+          tension: 60,
+          useNativeDriver: true,
+        }),
       ]),
       Animated.delay(80),
-      // Divider
-      Animated.timing(dividerOp, { toValue: 1, duration: 300, useNativeDriver: true }),
-      // Second card
+      Animated.timing(dividerOp, {
+        toValue: 1,
+        duration: 300,
+        useNativeDriver: true,
+      }),
       Animated.parallel([
-        Animated.timing(card2Op, { toValue: 1, duration: 380, useNativeDriver: true }),
-        Animated.spring(card2Y, { toValue: 0, friction: 7, tension: 60, useNativeDriver: true }),
+        Animated.timing(card2Op, {
+          toValue: 1,
+          duration: 380,
+          useNativeDriver: true,
+        }),
+        Animated.spring(card2Y, {
+          toValue: 0,
+          friction: 7,
+          tension: 60,
+          useNativeDriver: true,
+        }),
       ]),
     ]).start();
   }, []);
@@ -118,9 +146,15 @@ export default function AccountChoice() {
       <View style={styles.inner}>
         {/* Logo / branding */}
         <Animated.View
-          style={[styles.logoWrap, { opacity: logoOp, transform: [{ translateY: logoY }] }]}
+          style={[
+            styles.logoWrap,
+            { opacity: logoOp, transform: [{ translateY: logoY }] },
+          ]}
         >
+          {/* "Story Time" — brand wordmark intentionally kept as original font */}
           <Text style={styles.appName}>Story Time</Text>
+
+          {/* Tagline — CoText-Light, sits softly under the bold wordmark */}
           <Text style={styles.appTagline}>
             Your child's vocabulary adventure begins here
           </Text>
@@ -129,7 +163,9 @@ export default function AccountChoice() {
         {/* Cards */}
         <View style={styles.cardsWrap}>
           {/* Create Account */}
-          <Animated.View style={{ opacity: card1Op, transform: [{ translateY: card1Y }] }}>
+          <Animated.View
+            style={{ opacity: card1Op, transform: [{ translateY: card1Y }] }}
+          >
             <TouchableOpacity
               style={styles.primaryCard}
               onPress={() => router.push("/OnboardingScreen")}
@@ -162,7 +198,9 @@ export default function AccountChoice() {
           </Animated.View>
 
           {/* Login */}
-          <Animated.View style={{ opacity: card2Op, transform: [{ translateY: card2Y }] }}>
+          <Animated.View
+            style={{ opacity: card2Op, transform: [{ translateY: card2Y }] }}
+          >
             <TouchableOpacity
               style={styles.secondaryCard}
               onPress={() => router.push("/login")}
@@ -175,7 +213,9 @@ export default function AccountChoice() {
                 <Text style={[styles.cardTitle, { color: C.textSec }]}>
                   I Already Have an Account
                 </Text>
-                <Text style={styles.cardSub}>Sign in with your email address</Text>
+                <Text style={styles.cardSub}>
+                  Sign in with your email address
+                </Text>
               </View>
               <Text style={[styles.cardArrow, { color: C.textMuted }]}>›</Text>
             </TouchableOpacity>
@@ -194,7 +234,6 @@ export default function AccountChoice() {
 const styles = StyleSheet.create({
   root: { flex: 1, backgroundColor: C.bg },
 
-  // Glow blobs
   glowTL: {
     position: "absolute",
     top: -60,
@@ -214,7 +253,6 @@ const styles = StyleSheet.create({
     backgroundColor: "rgba(150,82,217,0.07)",
   },
 
-  // Back
   backBtn: {
     position: "absolute",
     top: Platform.OS === "ios" ? 54 : 20,
@@ -229,14 +267,9 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
   },
-  backIcon: {
-    fontSize: 28,
-    color: "#E0F7FA",
-    fontWeight: "300",
-    marginTop: -2,
-  },
+  // Decorative glyph — no fontFamily override needed
+  backIcon: { fontSize: 28, color: "#E0F7FA", marginTop: -2 },
 
-  // Inner layout
   inner: {
     flex: 1,
     paddingHorizontal: 24,
@@ -245,13 +278,12 @@ const styles = StyleSheet.create({
     justifyContent: "center",
   },
 
-  // Logo section
-  logoWrap: {
-    alignItems: "center",
-    marginBottom: 44,
-  },
+  logoWrap: { alignItems: "center", marginBottom: 44 },
+
+  // Brand wordmark — kept as original (Noteworthy / sans-serif-condensed)
   appName: {
-    fontFamily: Platform.OS === "ios" ? "Noteworthy-Bold" : "sans-serif-condensed",
+    fontFamily:
+      Platform.OS === "ios" ? "Noteworthy-Bold" : "sans-serif-condensed",
     fontSize: 38,
     fontWeight: "900",
     color: C.teal,
@@ -261,19 +293,19 @@ const styles = StyleSheet.create({
     textShadowRadius: 16,
     marginBottom: 8,
   },
+
+  // Tagline — CoText-Light, soft under the wordmark
   appTagline: {
-    fontSize: 14,
+    fontFamily: FONTS.light,
+    fontSize: 18,
     color: C.textMuted,
-    fontWeight: "500",
     textAlign: "center",
     lineHeight: 20,
     paddingHorizontal: 20,
   },
 
-  // Cards wrapper
   cardsWrap: { gap: 0 },
 
-  // Primary card (Create Account)
   primaryCard: {
     flexDirection: "row",
     alignItems: "center",
@@ -285,8 +317,6 @@ const styles = StyleSheet.create({
     overflow: "hidden",
     marginBottom: 0,
   },
-
-  // Secondary card (Login)
   secondaryCard: {
     flexDirection: "row",
     alignItems: "center",
@@ -298,10 +328,9 @@ const styles = StyleSheet.create({
     padding: 18,
   },
 
-  // Shared card parts
   cardIconWrap: {
-    width: 48,
-    height: 48,
+    width: 54,
+    height: 54,
     borderRadius: 14,
     backgroundColor: "rgba(255,255,255,0.07)",
     alignItems: "center",
@@ -310,21 +339,26 @@ const styles = StyleSheet.create({
   },
   cardIcon: { fontSize: 24 },
   cardText: { flex: 1, gap: 3 },
+
+  // Card title — CoText-Bold, strong hierarchy inside the card
   cardTitle: {
-    fontSize: 15,
-    fontWeight: "800",
+    fontFamily: FONTS.bold,
+    fontSize: 16,
     color: C.teal,
     letterSpacing: 0.2,
   },
+
+  // Card subtitle — CoText-Light, soft secondary info
   cardSub: {
-    fontSize: 12,
+    fontFamily: FONTS.light,
+    fontSize: 14,
     color: C.textMuted,
-    fontWeight: "500",
     lineHeight: 17,
   },
-  cardArrow: { fontSize: 26, fontWeight: "300", flexShrink: 0 },
 
-  // Divider
+  // Decorative arrow glyph — no fontFamily override needed
+  cardArrow: { fontSize: 26, flexShrink: 0 },
+
   divider: {
     flexDirection: "row",
     alignItems: "center",
@@ -336,16 +370,19 @@ const styles = StyleSheet.create({
     height: 1,
     backgroundColor: "rgba(255,255,255,0.08)",
   },
+
+  // "or" — CoText-Regular, neutral separator word
   dividerText: {
-    fontSize: 13,
+    fontFamily: FONTS.regular,
+    fontSize: 16,
     color: C.textMuted,
-    fontWeight: "600",
     letterSpacing: 0.5,
   },
 
-  // Footer
+  // Footer — CoText-Light, least prominent text on screen
   footerNote: {
-    fontSize: 11,
+    fontFamily: FONTS.light,
+    fontSize: 14,
     color: "rgba(255,255,255,0.2)",
     textAlign: "center",
     marginTop: 36,

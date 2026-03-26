@@ -31,6 +31,7 @@ import {
   ACTIVITY_ROUTES,
 } from "../_contexts/StoryActivityContext";
 import AppBackground from "../components/AppBackground";
+import { FONTS } from "../theme";
 
 const { height: SH } = Dimensions.get("window");
 
@@ -137,7 +138,6 @@ function ActivityCard({ activity, status, isEnabled, onPress, delay }) {
   const isCurrent = status === "current";
   const isLocked = status === "locked";
 
-  // All cards share the same teal theme; locked/done are just dimmed versions
   const isInactive = isDone || isLocked;
   const cardBg = isInactive ? C.lockedBg : C.tealDim;
   const cardBorder = isInactive ? C.lockedBorder : C.tealBorder;
@@ -410,7 +410,12 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     paddingVertical: 10,
   },
-  fallbackBtnText: { fontSize: 14, fontWeight: "700", color: C.teal },
+  // "← Back to Home" fallback button text — bold, teal
+  fallbackBtnText: {
+    fontFamily: FONTS.bold,
+    fontSize: 14,
+    color: C.teal,
+  },
 
   // Back button
   backBtn: {
@@ -428,9 +433,9 @@ const styles = StyleSheet.create({
     justifyContent: "center",
   },
   backBtnText: {
+    fontFamily: FONTS.light,
     fontSize: 28,
     color: C.textPri,
-    fontWeight: "300",
     marginTop: -2,
   },
 
@@ -442,8 +447,6 @@ const styles = StyleSheet.create({
   },
   coverImage: { width: "100%", height: "100%" },
 
-  // Gradient covers only the bottom portion where title + intro sit
-  // Height is intentionally small — just enough so text is readable
   imageGradient: {
     position: "absolute",
     bottom: 0,
@@ -461,11 +464,10 @@ const styles = StyleSheet.create({
     paddingBottom: 14,
     paddingTop: 8,
   },
+  // Story title on cover — CoText-Bold replaces Noteworthy
   storyTitle: {
-    fontFamily:
-      Platform.OS === "ios" ? "Noteworthy-Bold" : "sans-serif-condensed",
+    fontFamily: FONTS.bold,
     fontSize: 22,
-    fontWeight: "900",
     color: "#E0F7FA",
     lineHeight: 26,
     textShadowColor: "rgba(0,0,0,0.7)",
@@ -473,9 +475,9 @@ const styles = StyleSheet.create({
     textShadowRadius: 5,
     marginBottom: 3,
   },
+  // Story intro on cover — light italic
   storyIntro: {
-    fontFamily:
-      Platform.OS === "ios" ? "Noteworthy-Bold" : "sans-serif-condensed",
+    fontFamily: FONTS.light,
     fontSize: 13,
     color: "rgba(224,247,250,0.7)",
     lineHeight: 16,
@@ -487,9 +489,10 @@ const styles = StyleSheet.create({
 
   // Activities section
   section: { paddingHorizontal: 16, paddingTop: 22 },
+  // "ACTIVITIES" section heading — bold, spaced caps
   sectionHeading: {
+    fontFamily: FONTS.bold,
     fontSize: 11,
-    fontWeight: "900",
     color: C.textMuted,
     letterSpacing: 2.5,
     textTransform: "uppercase",
@@ -506,11 +509,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 13,
     marginBottom: 11,
     gap: 13,
-    //shadowOffset: { width: 0, height: 2 },
-    //shadowOpacity: 0.08,
-    //shadowRadius: 6,
     elevation: 2,
-
     shadowColor: "#00BCD4",
     shadowOffset: { width: 0, height: 0 },
     shadowOpacity: 0.7,
@@ -531,15 +530,21 @@ const styles = StyleSheet.create({
 
   // Text
   textCol: { flex: 1, gap: 3 },
+  // Activity title — bold, primary colour when active
   activityTitle: {
+    fontFamily: FONTS.bold,
     fontSize: 16,
-    fontWeight: "800",
     letterSpacing: 0.15,
     lineHeight: 18,
   },
-  activitySubtitle: { fontSize: 13, fontWeight: "500", lineHeight: 15 },
+  // Activity subtitle — light, muted when active
+  activitySubtitle: {
+    fontFamily: FONTS.light,
+    fontSize: 13,
+    lineHeight: 15,
+  },
 
-  // Right column — fixed width ensures perfect alignment across all rows
+  // Right column
   rightCol: {
     width: 70,
     alignItems: "flex-end",
@@ -547,7 +552,7 @@ const styles = StyleSheet.create({
     flexShrink: 0,
   },
 
-  // Label badge — solid filled
+  // Label badge
   labelBadge: {
     borderRadius: 20,
     borderWidth: 1,
@@ -556,9 +561,10 @@ const styles = StyleSheet.create({
     alignItems: "center",
     minWidth: 52,
   },
+  // Label text — bold, small caps
   labelText: {
+    fontFamily: FONTS.bold,
     fontSize: 12,
-    fontWeight: "900",
     letterSpacing: 0.8,
     textTransform: "uppercase",
   },
@@ -572,9 +578,10 @@ const styles = StyleSheet.create({
     alignItems: "center",
     minWidth: 80,
   },
+  // Status text — bold ("▶ Start", "✓ Done", "Locked")
   statusText: {
+    fontFamily: FONTS.bold,
     fontSize: 14,
-    fontWeight: "800",
     letterSpacing: 0.2,
   },
 });

@@ -15,6 +15,7 @@ import { Audio } from "expo-av";
 import { useRouter } from "expo-router";
 import { useUser } from "./_contexts/UserContext";
 import { registerUser } from "./services/authService";
+import { FONTS } from "./theme";
 
 const { width, height } = Dimensions.get("window");
 
@@ -48,7 +49,6 @@ export default function OnboardingScreen() {
   const [transitioning, setTransitioning] = useState(false);
 
   const audioRef = useRef(null);
-
   const cardSlide = useRef(new Animated.Value(0)).current;
   const birdBounce = useRef(new Animated.Value(0)).current;
   const bgPulse = useRef(new Animated.Value(1)).current;
@@ -122,7 +122,6 @@ export default function OnboardingScreen() {
       1300,
     );
 
-    // Play intro audio for name step
     playAudio(require("../assets/audio/audio7.mp3"));
   }, []);
 
@@ -244,7 +243,7 @@ export default function OnboardingScreen() {
             ]}
           >
             <Image
-              source={require("../assets/img/story-time-logo.png")}
+              source={require("../assets/img/story-time-logo-2.png")}
               style={styles.birdVideo}
               resizeMode="contain"
             />
@@ -284,6 +283,7 @@ export default function OnboardingScreen() {
                   </TouchableOpacity>
                 </View>
               )}
+
               {step === STEP.AGE && (
                 <View style={styles.ageSection}>
                   {AGE_OPTIONS.map((opt) => (
@@ -301,6 +301,7 @@ export default function OnboardingScreen() {
                   ))}
                 </View>
               )}
+
               {step === STEP.GENDER && (
                 <View style={styles.genderSection}>
                   <TouchableOpacity
@@ -424,14 +425,14 @@ const styles = StyleSheet.create({
     alignSelf: "center",
     marginBottom: 8,
   },
+
+  // Dialogue — CoText-Bold, character voice, bigger than original (was 17)
   dialogueText: {
-    fontSize: 17,
+    fontFamily: FONTS.bold,
+    fontSize: 21,
     color: "#E0F7FA",
     textAlign: "center",
-    lineHeight: 26,
-    fontFamily:
-      Platform.OS === "ios" ? "Noteworthy-Bold" : "sans-serif-condensed-medium",
-    fontWeight: Platform.OS === "android" ? "700" : undefined,
+    lineHeight: 30,
     letterSpacing: 0.3,
     paddingHorizontal: 4,
   },
@@ -445,24 +446,26 @@ const styles = StyleSheet.create({
   },
   inputSection: { width: "100%", alignItems: "center", gap: 14 },
 
+  // Name input — CoText-Regular, clean and inviting
   nameInput: {
     width: "100%",
     backgroundColor: "#0d1b2e",
     borderRadius: 18,
     paddingHorizontal: 22,
-    paddingVertical: 14,
-    fontSize: 18,
+    paddingVertical: 16,
+    fontSize: 20,
     color: "#E0F7FA",
     borderWidth: 2,
     borderColor: "rgba(0,188,212,0.5)",
     elevation: 3,
-    fontFamily: Platform.OS === "ios" ? "Avenir" : "sans-serif",
+    fontFamily: FONTS.regular,
   },
+
   continueBtn: {
     backgroundColor: TEAL,
     borderRadius: 50,
     paddingHorizontal: 40,
-    paddingVertical: 14,
+    paddingVertical: 16,
     elevation: 6,
     shadowColor: TEAL,
     shadowOffset: { width: 0, height: 0 },
@@ -474,12 +477,13 @@ const styles = StyleSheet.create({
     elevation: 0,
     shadowOpacity: 0,
   },
+
+  // Continue button — CoText-Bold, primary CTA
   continueBtnText: {
-    fontSize: 17,
+    fontFamily: FONTS.bold,
+    fontSize: 19,
     color: "#08081a",
     letterSpacing: 0.5,
-    fontWeight: "800",
-    fontFamily: Platform.OS === "ios" ? "Avenir-Heavy" : "sans-serif-bold",
   },
 
   ageSection: {
@@ -490,8 +494,8 @@ const styles = StyleSheet.create({
     marginTop: 10,
   },
   ageBtn: {
-    width: 80,
-    height: 88,
+    width: 82,
+    height: 92,
     alignItems: "center",
     justifyContent: "center",
     borderRadius: 22,
@@ -506,11 +510,12 @@ const styles = StyleSheet.create({
     gap: 4,
   },
   ageEmoji: { fontSize: 28 },
+
+  // Age number — CoText-Bold, bigger tap target
   ageBtnText: {
-    fontSize: 22,
+    fontFamily: FONTS.bold,
+    fontSize: 26,
     color: "#E0F7FA",
-    fontWeight: "800",
-    fontFamily: Platform.OS === "ios" ? "Avenir-Heavy" : "sans-serif-bold",
   },
 
   genderSection: { flexDirection: "row", gap: 20, marginTop: 10 },
@@ -540,11 +545,12 @@ const styles = StyleSheet.create({
     shadowRadius: 10,
   },
   genderEmoji: { fontSize: 52, marginBottom: 10 },
+
+  // Gender label — CoText-Bold, big and friendly
   genderLabel: {
-    fontSize: 20,
+    fontFamily: FONTS.bold,
+    fontSize: 24,
     color: "#E0F7FA",
     letterSpacing: 1,
-    fontWeight: "800",
-    fontFamily: Platform.OS === "ios" ? "Avenir-Heavy" : "sans-serif-bold",
   },
 });

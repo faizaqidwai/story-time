@@ -17,7 +17,7 @@ import { useRouter } from "expo-router";
 import { useUser } from "./_contexts/UserContext";
 import { useApiCall } from "./_hooks/useApiCall";
 import AppBackground from "./components/AppBackground";
-import { COLORS, SHADOWS } from "./theme";
+import { COLORS, SHADOWS, FONTS } from "./theme";
 import {
   loginWithPrimaryAccount,
   loginWithEmail,
@@ -94,7 +94,7 @@ const Login = () => {
           >
             {/* ── Bird ── */}
             <Image
-              source={require("../assets/img/bird_wave.gif")}
+              source={require("../assets/img/story-time-logo-2.png")}
               style={styles.bird}
               resizeMode="contain"
             />
@@ -183,9 +183,7 @@ export default Login;
 
 // ── Styles ────────────────────────────────────────────────────
 const styles = StyleSheet.create({
-  safeArea: {
-    flex: 1,
-  },
+  safeArea: { flex: 1 },
   scrollContent: {
     flexGrow: 1,
     alignItems: "center",
@@ -195,16 +193,12 @@ const styles = StyleSheet.create({
   },
 
   // ── Bird ─────────────────────────────────────────────────
-  bird: {
-    width: 220,
-    height: 220,
-    marginBottom: -28,
-  },
+  bird: { width: 180, height: 180, marginBottom: 0 },
 
-  // ── Title ────────────────────────────────────────────────
+  // ── Title — CoText-Bold, was: fontSize 34 fontWeight "bold"
   title: {
-    fontSize: 34,
-    fontWeight: "bold",
+    fontFamily: FONTS.bold,
+    fontSize: 38,
     color: COLORS.textPrimary,
     textAlign: "center",
     marginBottom: 4,
@@ -212,8 +206,11 @@ const styles = StyleSheet.create({
     textShadowOffset: { width: 0, height: 2 },
     textShadowRadius: 10,
   },
+
+  // ── Subtitle — CoText-Light, was: fontSize 14
   subtitle: {
-    fontSize: 14,
+    fontFamily: FONTS.light,
+    fontSize: 16,
     color: COLORS.textMuted,
     textAlign: "center",
     marginBottom: 20,
@@ -235,13 +232,13 @@ const styles = StyleSheet.create({
     borderColor: "rgba(150,82,217,0.6)",
     ...SHADOWS.card,
   },
-  primaryButtonIcon: {
-    fontSize: 18,
-  },
+  primaryButtonIcon: { fontSize: 18 },
+
+  // CoText-Bold, was: fontSize 16 fontWeight "700"
   primaryButtonText: {
+    fontFamily: FONTS.bold,
+    fontSize: 18,
     color: "#fff",
-    fontSize: 16,
-    fontWeight: "700",
     letterSpacing: 0.3,
   },
 
@@ -253,15 +250,13 @@ const styles = StyleSheet.create({
     gap: 12,
     marginBottom: 24,
   },
-  dividerLine: {
-    flex: 1,
-    height: 1,
-    backgroundColor: COLORS.borderTeal,
-  },
+  dividerLine: { flex: 1, height: 1, backgroundColor: COLORS.borderTeal },
+
+  // CoText-Regular, was: fontSize 13 fontWeight "600"
   dividerText: {
+    fontFamily: FONTS.regular,
+    fontSize: 14,
     color: COLORS.textMuted,
-    fontSize: 13,
-    fontWeight: "600",
     letterSpacing: 1,
   },
 
@@ -276,26 +271,29 @@ const styles = StyleSheet.create({
     gap: 4,
     ...SHADOWS.tealGlow,
   },
-  inputGroup: {
-    marginBottom: 16,
-  },
+  inputGroup: { marginBottom: 16 },
+
+  // Field label — CoText-Bold, was: fontSize 14 fontWeight "600"
   label: {
-    fontSize: 14,
-    fontWeight: "600",
+    fontFamily: FONTS.bold,
+    fontSize: 15,
     color: COLORS.textSecondary,
     marginBottom: 8,
   },
+
+  // Input field — CoText-Regular, was: fontSize 15
   input: {
+    fontFamily: FONTS.regular,
+    fontSize: 17,
     backgroundColor: COLORS.surfaceDim,
     borderRadius: 12,
     padding: 14,
-    fontSize: 15,
     color: COLORS.textPrimary,
     borderWidth: 1.5,
     borderColor: COLORS.borderTeal,
   },
 
-  // ── Login button ──────────────────────────────────────────
+  // ── Login button — CoText-Bold, was: fontSize 16 fontWeight "700"
   loginButton: {
     backgroundColor: COLORS.teal,
     paddingVertical: 15,
@@ -305,13 +303,11 @@ const styles = StyleSheet.create({
     ...SHADOWS.tealGlow,
   },
   loginButtonText: {
+    fontFamily: FONTS.bold,
+    fontSize: 18,
     color: "#fff",
-    fontSize: 16,
-    fontWeight: "700",
     letterSpacing: 0.4,
   },
 
-  buttonDisabled: {
-    opacity: 0.6,
-  },
+  buttonDisabled: { opacity: 0.6 },
 });

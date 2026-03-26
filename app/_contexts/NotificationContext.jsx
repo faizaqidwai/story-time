@@ -21,6 +21,7 @@ import {
   ActivityIndicator,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { FONTS } from "../theme";
 
 const { height: SH } = Dimensions.get("window");
 const NotificationContext = createContext(null);
@@ -197,7 +198,7 @@ const ts = StyleSheet.create({
     shadowRadius: 10,
     elevation: 14,
   },
-  // Success badge — circular tick, same as emailLinkedBadge in account.jsx
+  // Success/error badge — circular tick or cross
   successBadge: {
     width: 30,
     height: 30,
@@ -207,13 +208,24 @@ const ts = StyleSheet.create({
     justifyContent: "center",
     flexShrink: 0,
   },
-  successTick: { fontSize: 14, fontWeight: "900" },
-  icon: { fontSize: 14, color: "#fff", fontWeight: "900", flexShrink: 0 },
+  // ✓ / ✕ glyph inside badge — bold
+  successTick: {
+    fontFamily: FONTS.bold,
+    fontSize: 14,
+  },
+  // Info/warning icon glyph — bold
+  icon: {
+    fontFamily: FONTS.bold,
+    fontSize: 14,
+    color: "#fff",
+    flexShrink: 0,
+  },
+  // Toast message text — regular weight, readable
   text: {
+    fontFamily: FONTS.regular,
     flex: 1,
     color: "#fff",
     fontSize: 14,
-    fontWeight: "600",
     lineHeight: 20,
   },
 });
@@ -467,9 +479,10 @@ function AnimatedTick({ trigger }) {
   return (
     <Animated.Text
       style={{
+        // Large ✓ glyph — bold, green
+        fontFamily: FONTS.bold,
         fontSize: 44,
         color: "#66BB6A",
-        fontWeight: "900",
         opacity: op,
         textShadowColor: "rgba(76,175,80,0.35)",
         textShadowOffset: { width: 0, height: 0 },
@@ -654,9 +667,10 @@ function AnimatedCross({ trigger }) {
   return (
     <Animated.Text
       style={{
+        // Large ✕ glyph — bold, red
+        fontFamily: FONTS.bold,
         fontSize: 44,
         color: "#EF9A9A",
-        fontWeight: "900",
         opacity: op,
         textShadowColor: "rgba(239,83,80,0.35)",
         textShadowOffset: { width: 0, height: 0 },
@@ -888,7 +902,8 @@ function Sheet({ visible, type, config, onDismiss }) {
                 <Text
                   style={[
                     ss.dismissText,
-                    isSuccess && { color: "#A5D6A7", fontWeight: "800" },
+                    // Override colour for success "Continue" button
+                    isSuccess && { color: "#A5D6A7" },
                   ]}
                 >
                   {isSuccess ? "Continue" : "Dismiss"}
@@ -983,26 +998,27 @@ const ss = StyleSheet.create({
   },
   errorIcon: { fontSize: 34 },
 
-  // Title — bold, prominent for both success and error
+  // Sheet title — bold, prominent for both success and error
   titleSuccess: {
+    fontFamily: FONTS.bold,
     fontSize: 20,
-    fontWeight: "900",
     color: C.textPri,
     textAlign: "center",
     letterSpacing: 0.3,
     lineHeight: 27,
   },
   titleError: {
+    fontFamily: FONTS.bold,
     fontSize: 18,
-    fontWeight: "900",
     color: C.textPri,
     textAlign: "center",
     letterSpacing: 0.2,
     lineHeight: 25,
   },
 
-  // Sub message — smaller grey body text
+  // Sub message — light, muted body text below the title
   subMessage: {
+    fontFamily: FONTS.light,
     fontSize: 13,
     color: C.textMuted,
     textAlign: "center",
@@ -1021,7 +1037,12 @@ const ss = StyleSheet.create({
     alignItems: "center",
     backgroundColor: "rgba(0,188,212,0.08)",
   },
-  retryText: { fontSize: 15, fontWeight: "800", color: "#00BCD4" },
+  // "Try Again" — bold, teal
+  retryText: {
+    fontFamily: FONTS.bold,
+    fontSize: 15,
+    color: "#00BCD4",
+  },
   dismissBtn: {
     borderRadius: 14,
     borderWidth: 1,
@@ -1030,7 +1051,12 @@ const ss = StyleSheet.create({
     paddingVertical: 14,
     alignItems: "center",
   },
-  dismissText: { fontSize: 15, fontWeight: "700", color: C.textMuted },
+  // "Continue" / "Dismiss" — bold, muted (colour overridden inline for success)
+  dismissText: {
+    fontFamily: FONTS.bold,
+    fontSize: 15,
+    color: C.textMuted,
+  },
 });
 
 // ─────────────────────────────────────────────────────────────────────────────

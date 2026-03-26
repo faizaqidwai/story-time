@@ -1,6 +1,6 @@
 import { StyleSheet, Text, View, Image, TouchableOpacity } from "react-native";
 import React from "react";
-import { COLORS, SHADOWS } from "../theme";
+import { COLORS, SHADOWS, FONTS } from "../theme";
 
 const ProfileCard = ({
   name,
@@ -141,13 +141,16 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: "center",
   },
+  // Profile name — bold, primary
   name: {
+    fontFamily: FONTS.bold,
     fontSize: 20,
-    fontWeight: "bold",
     color: COLORS.textPrimary,
     marginBottom: 3,
   },
+  // Age — light, muted
   age: {
+    fontFamily: FONTS.light,
     fontSize: 14,
     color: COLORS.textMuted,
     marginBottom: 8,
@@ -159,9 +162,10 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     borderWidth: 1,
   },
+  // Reading level badge text — bold, accent coloured
   levelText: {
+    fontFamily: FONTS.bold,
     fontSize: 13,
-    fontWeight: "600",
     textTransform: "capitalize",
   },
   actionsContainer: {

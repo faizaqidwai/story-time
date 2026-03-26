@@ -34,6 +34,7 @@ import {
   ACTIVITY,
   ACTIVITY_ROUTES,
 } from "../_contexts/StoryActivityContext";
+import { FONTS } from "../theme";
 
 const { width: SW, height: SH } = Dimensions.get("window");
 const STATUS_BAR_HEIGHT =
@@ -288,29 +289,14 @@ const WordGuessGame = ({ onExit }) => {
   const { width } = useWindowDimensions();
   const isTablet = width >= 768;
 
-  // ── Activity context ─────────────────────────────────────────────────────
   const { storySession, completeActivity } = useStoryActivity();
 
-  // ── Pick word source: story-specific or global fallback ──────────────────
-  // storySession.storyId matches what was set when user tapped the story card
-  const storyWordPool = storySession?.activities
-    ? null // will read from activityData below
-    : null;
-
-  // The story object is not passed directly to this screen, but storySession
-  // holds the storyId. The activityData was attached to the story in home.jsx
-  // and is available via the storySession's embedded reference.
-  // Since we can't pass the full story object through router params, we
-  // receive the word list via storySession.activityDataSnapshot (set below).
-  //
-  // For simplicity: home.jsx sets storySession via startStorySession(story, …)
-  // We snapshot activityData into the session object so it travels with it.
-  // See StoryActivityContext — startStorySession now accepts optional activityData.
+  const storyWordPool = storySession?.activities ? null : null;
 
   const wordPool = (() => {
     const snap = storySession?.activityDataSnapshot?.wordGuess;
     if (snap && snap.length > 0) return snap;
-    return WORDS; // standalone fallback
+    return WORDS;
   })();
 
   const getNewWord = () =>
@@ -361,7 +347,6 @@ const WordGuessGame = ({ onExit }) => {
     );
   };
 
-  // ── Win / lose ─────────────────────────────────────────────────────────
   useEffect(() => {
     if (gameStatus !== "playing") return;
     const allGuessed = word
@@ -380,7 +365,6 @@ const WordGuessGame = ({ onExit }) => {
     }
   }, [guessedLetters, remainingChances]);
 
-  // ── Letter press ───────────────────────────────────────────────────────
   const handleLetterPress = (letter) => {
     if (gameStatus !== "playing") return;
     if (guessedLetters.includes(letter) || wrongLetters.includes(letter))
@@ -506,14 +490,11 @@ const WordGuessGame = ({ onExit }) => {
       );
     });
 
-  // ── Proceed to next activity (Article / ListeningChallenge) ─────────────
   const proceedToNextActivity = async () => {
     if (!storySession) {
-      // Standalone mode — just replay
       resetGame();
       return;
     }
-
     await completeActivity(
       ACTIVITY.WORD_STORY_CHALLENGE,
       {
@@ -525,14 +506,10 @@ const WordGuessGame = ({ onExit }) => {
       },
       { coins: coinCount },
     );
-
     const nextRoute = ACTIVITY_ROUTES[ACTIVITY.WORD_LISTENING_CHALLENGE];
     router.replace({
       pathname: `/components/${nextRoute}`,
-      params: {
-        storyId: storySession.storyId,
-        title: storySession.storyTitle,
-      },
+      params: { storyId: storySession.storyId, title: storySession.storyTitle },
     });
   };
 
@@ -734,7 +711,6 @@ const WordGuessGame = ({ onExit }) => {
               }
             : undefined
         }
-        // Custom subtitles when in story mode
         winSubtitle={
           storySession ? "Word cracked! Next: Listening Challenge →" : undefined
         }
@@ -748,12 +724,8 @@ const WordGuessGame = ({ onExit }) => {
         badge="word_guess_won"
         onClose={() => {
           setShowBadgePopup(false);
-          // In story mode: advance; in standalone: replay
-          if (storySession) {
-            proceedToNextActivity();
-          } else {
-            resetGame();
-          }
+          if (storySession) proceedToNextActivity();
+          else resetGame();
         }}
         onPlay={() => {
           setShowBadgePopup(false);
@@ -789,10 +761,16 @@ const styles = StyleSheet.create({
     paddingHorizontal: 14,
     paddingVertical: 8,
   },
-  exitIcon: { fontSize: 12, color: COLORS.textMuted, fontWeight: "700" },
+  // Exit ✕ icon — bold, muted
+  exitIcon: {
+    fontFamily: FONTS.bold,
+    fontSize: 12,
+    color: COLORS.textMuted,
+  },
+  // Exit label — bold, secondary
   exitText: {
+    fontFamily: FONTS.bold,
     fontSize: 13,
-    fontWeight: "700",
     color: COLORS.textSecondary,
     letterSpacing: 0.3,
   },
@@ -813,11 +791,17 @@ const styles = StyleSheet.create({
     elevation: 5,
   },
   coinIcon: { width: 24, height: 24 },
-  coinCount: { fontSize: 15, fontWeight: "900", color: COLORS.yellow },
+  // Coin count — bold, yellow
+  coinCount: {
+    fontFamily: FONTS.bold,
+    fontSize: 15,
+    color: COLORS.yellow,
+  },
   titleSection: { marginTop: 4, marginBottom: 4, alignItems: "center" },
+  // Pulsing game title — bold, teal
   challengeTitle: {
+    fontFamily: FONTS.bold,
     fontSize: 24,
-    fontWeight: "900",
     color: COLORS.teal,
     letterSpacing: 0.4,
     textShadowColor: "rgba(0,188,212,0.75)",
@@ -862,9 +846,10 @@ const styles = StyleSheet.create({
     shadowRadius: 9,
     elevation: 7,
   },
+  // Cloud hint text — bold, dark (on white background)
   cloudText: {
+    fontFamily: FONTS.bold,
     fontSize: 13,
-    fontWeight: "700",
     color: "#1a1a2e",
     textAlign: "center",
     lineHeight: 19,
@@ -899,14 +884,17 @@ const styles = StyleSheet.create({
     marginBottom: 7,
   },
   hintsBulb: { fontSize: 15 },
+  // "HINTS" label — bold, spaced caps, teal
   hintsLabel: {
+    fontFamily: FONTS.bold,
     fontSize: 12,
-    fontWeight: "800",
     color: COLORS.teal,
     letterSpacing: 1,
     textTransform: "uppercase",
   },
+  // Empty hints placeholder — light, italic
   hintsEmpty: {
+    fontFamily: FONTS.light,
     fontSize: 12,
     color: COLORS.textMuted,
     fontStyle: "italic",
@@ -930,12 +918,18 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     marginTop: 1,
   },
-  hintNum: { fontSize: 10, fontWeight: "900", color: COLORS.teal },
+  // Hint number — bold, teal
+  hintNum: {
+    fontFamily: FONTS.bold,
+    fontSize: 10,
+    color: COLORS.teal,
+  },
+  // Hint text body — regular
   hintText: {
+    fontFamily: FONTS.regular,
     flex: 1,
     color: COLORS.textSecondary,
     lineHeight: 20,
-    fontWeight: "500",
   },
   flowerCard: {
     padding: 12,
@@ -957,9 +951,10 @@ const styles = StyleSheet.create({
     textShadowRadius: 6,
   },
   heartOff: { color: "rgba(255,255,255,0.15)" },
+  // "N chances remaining" — bold, muted
   chancesText: {
+    fontFamily: FONTS.bold,
     fontSize: 11,
-    fontWeight: "700",
     color: COLORS.textMuted,
     letterSpacing: 0.4,
   },
@@ -973,8 +968,9 @@ const styles = StyleSheet.create({
     marginBottom: 9,
   },
   letterBox: { alignItems: "center", marginVertical: 3, minWidth: 24 },
+  // Revealed letter — bold, teal
   letterText: {
-    fontWeight: "800",
+    fontFamily: FONTS.bold,
     color: COLORS.teal,
     minHeight: 30,
     textShadowColor: "rgba(0,188,212,0.5)",
@@ -1011,7 +1007,11 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: "rgba(255,255,255,0.07)",
   },
-  keyText: { color: COLORS.textPrimary, fontWeight: "700" },
+  // Keyboard letter — bold
+  keyText: {
+    fontFamily: FONTS.bold,
+    color: COLORS.textPrimary,
+  },
   keyCorrect: {
     backgroundColor: "rgba(76,175,80,0.2)",
     borderColor: COLORS.correct,
@@ -1034,9 +1034,10 @@ const styles = StyleSheet.create({
     shadowRadius: 14,
     elevation: 8,
   },
+  // "▶ Play Again" — bold, dark
   playAgainText: {
+    fontFamily: FONTS.bold,
     fontSize: 16,
-    fontWeight: "900",
     color: COLORS.darkBg,
     letterSpacing: 0.4,
   },

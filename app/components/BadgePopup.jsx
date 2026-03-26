@@ -24,7 +24,7 @@ import {
   Image,
 } from "react-native";
 import { Audio } from "expo-av";
-import { COLORS } from "../theme";
+import { COLORS, FONTS } from "../theme";
 
 const { width: SW, height: SH } = Dimensions.get("window");
 
@@ -110,7 +110,7 @@ const BADGE_CONFIGS = {
     rewardLabel: "Stars",
     rewardAmount: 250,
     nextLabel: "Spot the Truth",
-    nextSub: "Choose what’s true.",
+    nextSub: "Choose what's true.",
     nextImage: require("../../assets/img/describe_icon.png"),
     nextEmoji: null,
   },
@@ -296,7 +296,6 @@ const BadgePopup = ({
 }) => {
   const cfg = BADGE_CONFIGS[badge];
 
-  // ── Animation refs ────────────────────────────────────────────────────────
   const slideAnim = useRef(new Animated.Value(400)).current;
   const birdBounce = useRef(new Animated.Value(1)).current;
   const cardOpacity = useRef(new Animated.Value(0)).current;
@@ -306,10 +305,7 @@ const BadgePopup = ({
   const sourcePulse = useRef(new Animated.Value(1)).current;
   const walletShake = useRef(new Animated.Value(0)).current;
   const accentPulse = useRef(new Animated.Value(0.6)).current;
-
-  // Reward row fade-out
   const rewardRowOp = useRef(new Animated.Value(1)).current;
-  // Challenge panel animations
   const challengeOp = useRef(new Animated.Value(0)).current;
   const challengeSlide = useRef(new Animated.Value(30)).current;
   const playPulse = useRef(new Animated.Value(1)).current;
@@ -326,14 +322,11 @@ const BadgePopup = ({
   const [particleKey, setParticleKey] = useState(0);
   const [coins, setCoins] = useState([]);
   const [rewardCount, setRewardCount] = useState(0);
-  // "reward" = showing stars anim, "challenge" = showing next panel
   const [panel, setPanel] = useState("reward");
 
-  // ── Trigger on open ───────────────────────────────────────────────────────
   useEffect(() => {
     if (!visible || !cfg) return;
 
-    // Reset
     slideAnim.setValue(400);
     birdBounce.setValue(1);
     cardOpacity.setValue(0);
@@ -354,7 +347,6 @@ const BadgePopup = ({
     coinLanded.current = 0;
     cardLayoutY.current = null;
 
-    // Confetti burst
     setParticles(
       Array.from({ length: PART_CNT }, (_, i) => ({
         id: i,
@@ -367,7 +359,6 @@ const BadgePopup = ({
     );
     setParticleKey((k) => k + 1);
 
-    // Accent border glow loop
     Animated.loop(
       Animated.sequence([
         Animated.timing(accentPulse, {
@@ -387,7 +378,6 @@ const BadgePopup = ({
 
     playSound();
 
-    // Bird slides up
     Animated.spring(slideAnim, {
       toValue: 0,
       useNativeDriver: true,
@@ -413,7 +403,6 @@ const BadgePopup = ({
       bounceLoop.current.start();
     });
 
-    // Card fades in
     Animated.sequence([
       Animated.delay(300),
       Animated.parallel([
@@ -431,7 +420,6 @@ const BadgePopup = ({
       ]),
     ]).start();
 
-    // Icons pop in → AUTO-start coins after short pause (no button needed)
     Animated.sequence([
       Animated.delay(650),
       Animated.parallel([
@@ -466,13 +454,10 @@ const BadgePopup = ({
         ]),
       );
       sourcePulseLoop.current.start();
-
-      // ── AUTO-TRIGGER coins after 800 ms (no button) ───────────────────────
       setTimeout(spawnCoins, 800);
     });
   }, [visible]);
 
-  // ── Spawn coins ───────────────────────────────────────────────────────────
   const spawnCoins = () => {
     const cardTop = cardLayoutY.current ?? SH / 2 - 260;
     const coinY = cardTop + CARD_PADDING + 70 + 29 + 4 + ICON_BOX / 2;
@@ -496,10 +481,8 @@ const BadgePopup = ({
     }, 130);
   };
 
-  // ── Coin land handler ─────────────────────────────────────────────────────
   const handleCoinLand = () => {
     coinLanded.current += 1;
-
     Animated.sequence([
       Animated.timing(walletShake, {
         toValue: 8,
@@ -517,27 +500,20 @@ const BadgePopup = ({
         useNativeDriver: true,
       }),
     ]).start();
-
     if (coinLanded.current === COIN_COUNT) {
       sourcePulseLoop.current?.stop();
-      // Wait a beat, then transition
       setTimeout(transitionToChallenge, 700);
     }
   };
 
-  // ── Transition: fade out reward row → show challenge panel ───────────────
   const transitionToChallenge = () => {
-    // Fade OUT the entire reward row (icons + counter)
     Animated.timing(rewardRowOp, {
       toValue: 0,
       duration: 350,
       easing: Easing.out(Easing.quad),
       useNativeDriver: true,
     }).start(() => {
-      // Switch panel state — this unmounts the reward content, mounts challenge
       setPanel("challenge");
-
-      // Fade IN challenge panel
       Animated.parallel([
         Animated.timing(challengeOp, {
           toValue: 1,
@@ -551,7 +527,6 @@ const BadgePopup = ({
           useNativeDriver: true,
         }),
       ]).start(() => {
-        // Play button pulse loop
         playLoop.current = Animated.loop(
           Animated.sequence([
             Animated.timing(playPulse, {
@@ -587,7 +562,6 @@ const BadgePopup = ({
     });
   };
 
-  // ── Cleanup ───────────────────────────────────────────────────────────────
   useEffect(() => {
     if (!visible) {
       bounceLoop.current?.stop();
@@ -653,7 +627,7 @@ const BadgePopup = ({
             cardLayoutY.current = e.nativeEvent.layout.y;
           }}
         >
-          {/* Header — always visible */}
+          {/* Header */}
           <View style={styles.header}>
             <View
               style={[
@@ -671,7 +645,7 @@ const BadgePopup = ({
 
           <View style={styles.divider} />
 
-          {/* ── PANEL: REWARD — icons + coin animation ─────────────────────── */}
+          {/* ── PANEL: REWARD ─────────────────────────────────────────────── */}
           {panel === "reward" && (
             <Animated.View style={{ opacity: rewardRowOp }}>
               <View style={styles.rewardRow}>
@@ -718,7 +692,7 @@ const BadgePopup = ({
                   ))}
                 </View>
 
-                {/* Wallet / reward (right) */}
+                {/* Wallet (right) */}
                 <View style={styles.iconCol}>
                   <View>
                     <Animated.View
@@ -750,14 +724,14 @@ const BadgePopup = ({
                 </View>
               </View>
 
-              {/* Skip — only shown while collecting stars */}
+              {/* Skip */}
               <Pressable onPress={onClose} style={styles.skipBtn}>
                 <Text style={styles.skipText}>Skip →</Text>
               </Pressable>
             </Animated.View>
           )}
 
-          {/* ── PANEL: CHALLENGE — completely replaces reward panel ─────────── */}
+          {/* ── PANEL: CHALLENGE ──────────────────────────────────────────── */}
           {panel === "challenge" && (
             <Animated.View
               style={[
@@ -769,10 +743,9 @@ const BadgePopup = ({
               ]}
             >
               {finishMode ? (
-                // ── FINISH MODE: single "Finish" button, no next challenge ──
                 <>
                   <Text style={styles.challengeHeadline}>🎉 All Done!</Text>
-                  <Text style={[styles.finishSubtitle]}>
+                  <Text style={styles.finishSubtitle}>
                     Amazing work — you've completed everything!
                   </Text>
                   <View
@@ -809,7 +782,6 @@ const BadgePopup = ({
                   </View>
                 </>
               ) : (
-                // ── NORMAL MODE: next challenge ──────────────────────────────
                 <>
                   <Text style={styles.challengeHeadline}>
                     🔥 Next Challenge
@@ -918,8 +890,19 @@ const styles = StyleSheet.create({
     justifyContent: "center",
   },
   headerIcon: { fontSize: 34 },
-  title: { fontSize: 20, fontWeight: "800", letterSpacing: 0.2 },
-  description: { fontSize: 13, color: COLORS.textMuted, marginTop: 3 },
+  // Badge title — bold, accent coloured
+  title: {
+    fontFamily: FONTS.bold,
+    fontSize: 20,
+    letterSpacing: 0.2,
+  },
+  // Badge description — light, muted
+  description: {
+    fontFamily: FONTS.light,
+    fontSize: 13,
+    color: COLORS.textMuted,
+    marginTop: 3,
+  },
 
   divider: {
     height: 1,
@@ -927,7 +910,7 @@ const styles = StyleSheet.create({
     marginVertical: 14,
   },
 
-  // ── Reward row (panel 1) ────────────────────────────────────────────────
+  // ── Reward row ────────────────────────────────────────────────────────────
   rewardRow: {
     flexDirection: "row",
     alignItems: "center",
@@ -955,10 +938,11 @@ const styles = StyleSheet.create({
   },
   bigIcon: { fontSize: 58 },
   bigIconImg: { width: 62, height: 62 },
+  // Icon label — bold, spaced caps
   iconLabel: {
+    fontFamily: FONTS.bold,
     fontSize: 11,
     color: COLORS.textSecondary,
-    fontWeight: "700",
     letterSpacing: 1.2,
     textTransform: "uppercase",
   },
@@ -968,7 +952,11 @@ const styles = StyleSheet.create({
     marginBottom: 18,
     gap: -2,
   },
-  arrowChar: { fontSize: 30, fontWeight: "900" },
+  // Arrow › — bold
+  arrowChar: {
+    fontFamily: FONTS.bold,
+    fontSize: 30,
+  },
 
   counterBadge: {
     position: "absolute",
@@ -985,14 +973,20 @@ const styles = StyleSheet.create({
     gap: 3,
     zIndex: 10,
   },
-  counterText: { fontSize: 19, fontWeight: "900", color: COLORS.yellow },
+  // Counter "+N" — bold, yellow
+  counterText: {
+    fontFamily: FONTS.bold,
+    fontSize: 19,
+    color: COLORS.yellow,
+  },
   counterStar: { fontSize: 14 },
 
-  // ── Challenge panel (panel 2) ──────────────────────────────────────────
+  // ── Challenge panel ───────────────────────────────────────────────────────
   challengeSection: { alignItems: "center" },
+  // "🔥 Next Challenge" / "🎉 All Done!" — bold
   challengeHeadline: {
+    fontFamily: FONTS.bold,
     fontSize: 22,
-    fontWeight: "900",
     color: COLORS.textPrimary,
     textAlign: "center",
     letterSpacing: 0.3,
@@ -1018,8 +1012,19 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
   },
-  gameThumbTitle: { fontSize: 17, fontWeight: "800", letterSpacing: 0.3 },
-  gameThumbSub: { fontSize: 12, color: COLORS.textMuted, marginTop: 3 },
+  // Next challenge title — bold, accent coloured
+  gameThumbTitle: {
+    fontFamily: FONTS.bold,
+    fontSize: 17,
+    letterSpacing: 0.3,
+  },
+  // Next challenge subtitle — light, muted
+  gameThumbSub: {
+    fontFamily: FONTS.light,
+    fontSize: 12,
+    color: COLORS.textMuted,
+    marginTop: 3,
+  },
 
   playGlowRing: {
     position: "absolute",
@@ -1042,10 +1047,16 @@ const styles = StyleSheet.create({
     shadowRadius: 14,
     elevation: 10,
   },
-  playBtnIcon: { fontSize: 20, color: COLORS.darkBg, fontWeight: "900" },
+  // Play button ▶ / 🏁 icon glyph — bold, dark
+  playBtnIcon: {
+    fontFamily: FONTS.bold,
+    fontSize: 20,
+    color: COLORS.darkBg,
+  },
+  // Play / Finish button label — bold, dark
   playBtnText: {
+    fontFamily: FONTS.bold,
     fontSize: 18,
-    fontWeight: "900",
     color: COLORS.darkBg,
     letterSpacing: 0.4,
   },
@@ -1056,14 +1067,19 @@ const styles = StyleSheet.create({
     paddingVertical: 6,
     paddingHorizontal: 14,
   },
-  skipText: { fontSize: 13, color: COLORS.textMuted, fontWeight: "600" },
+  // Skip / Maybe later — light, muted
+  skipText: {
+    fontFamily: FONTS.light,
+    fontSize: 13,
+    color: COLORS.textMuted,
+  },
 
-  // Finish mode styles (used when finishMode=true)
   finishBtn: { width: "100%", justifyContent: "center" },
+  // Finish mode subtitle — light, secondary
   finishSubtitle: {
+    fontFamily: FONTS.light,
     fontSize: 14,
     color: COLORS.textSecondary,
-    fontWeight: "600",
     textAlign: "center",
     lineHeight: 20,
     marginBottom: 22,

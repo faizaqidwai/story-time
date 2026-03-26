@@ -18,6 +18,7 @@ import { useRouter } from "expo-router";
 import { useStoryActivity, ACTIVITY } from "../_contexts/StoryActivityContext";
 import OBJECTS from "../data/describeObjects.json";
 import BadgePopup from "./BadgePopup";
+import { FONTS } from "../theme";
 
 const { width: SW, height: SH } = Dimensions.get("window");
 const STATUS_BAR_HEIGHT =
@@ -365,7 +366,6 @@ const DescribeObjectGame = ({ onExit }) => {
   const router = useRouter();
   const { storySession, completeActivity } = useStoryActivity();
 
-  // Pick object pool: story-specific snapshot or global fallback
   const objectPool = (() => {
     const snap = storySession?.activityDataSnapshot?.understanding;
     if (snap && snap.length > 0) return snap;
@@ -383,14 +383,10 @@ const DescribeObjectGame = ({ onExit }) => {
   const [score, setScore] = useState(0);
   const [showResult, setShowResult] = useState(false);
   const [badgeVisible, setBadgeVisible] = useState(false);
-  const totalCoinsRef = useRef(0); // accumulates coins earned across rounds
+  const totalCoinsRef = useRef(0);
 
-  // ── Capture final score outside setState updater to avoid calling
-  //    completeActivity (which calls setStorySession) inside setScore's updater.
-  //    Calling setState inside another setState's functional updater is illegal
-  //    in React and causes unpredictable session resets.
   const finalScoreRef = useRef(0);
-  const pendingCompleteRef = useRef(false); // signals useEffect to fire completeActivity
+  const pendingCompleteRef = useRef(false);
 
   const [options, setOptions] = useState([]);
   const [optionStates, setOptionStates] = useState({});
@@ -413,7 +409,7 @@ const DescribeObjectGame = ({ onExit }) => {
   const titleOp = useRef(new Animated.Value(0)).current;
 
   const soundRef = useRef(null);
-  const sndButton = useRef(null); // button.mp3 — every button press
+  const sndButton = useRef(null);
   const pulseLoop = useRef(null);
 
   useEffect(() => {
@@ -442,16 +438,12 @@ const DescribeObjectGame = ({ onExit }) => {
         .then(() => sndButton.current?.playAsync());
     } catch (_) {}
   };
-  // ── Ref to hold the auto-advance timer so we can cancel on unmount ──
-  const autoAdvanceTimer = useRef(null);
 
-  // ── Page slide animation ───────────────────────────────────────────────────
+  const autoAdvanceTimer = useRef(null);
   const pageSlide = useRef(new Animated.Value(0)).current;
   const pageOp = useRef(new Animated.Value(1)).current;
-
   const current = queue[qIndex];
 
-  // ── Load question ──────────────────────────────────────────────────────────
   useEffect(() => {
     if (!current) return;
     Speech.stop();
@@ -522,15 +514,11 @@ const DescribeObjectGame = ({ onExit }) => {
       pulseLoop.current?.stop();
       soundRef.current?.unloadAsync();
       Speech.stop();
-      // Clear any pending auto-advance on unmount
       if (autoAdvanceTimer.current) clearTimeout(autoAdvanceTimer.current);
     },
     [],
   );
 
-  // ── Fire completeActivity OUTSIDE any setState updater ───────────────────
-  // badgeVisible=true is set right after finalScoreRef and pendingCompleteRef
-  // are written, so this effect always sees the correct captured values.
   useEffect(() => {
     if (!badgeVisible || !pendingCompleteRef.current) return;
     pendingCompleteRef.current = false;
@@ -541,7 +529,6 @@ const DescribeObjectGame = ({ onExit }) => {
     );
   }, [badgeVisible]);
 
-  // ── Text-to-Speech ─────────────────────────────────────────────────────────
   const handleSpeak = (text, optionId) => {
     if (speakingId === optionId) {
       Speech.stop();
@@ -560,7 +547,6 @@ const DescribeObjectGame = ({ onExit }) => {
     });
   };
 
-  // ── Spawn coins ────────────────────────────────────────────────────────────
   const spawnCoins = (optionId) => {
     const cardRef = optionRefs.current[optionId];
     if (!cardRef?.current) return;
@@ -615,34 +601,28 @@ const DescribeObjectGame = ({ onExit }) => {
     ]).start();
   };
 
-  // ── Tap an option ──────────────────────────────────────────────────────────
   const handleOptionPress = (option) => {
     if (revealed) return;
     const isCorrect = option.correct;
-
     setOptionStates((prev) => ({
       ...prev,
       [option.id]: isCorrect ? "correct" : "wrong",
     }));
-
     if (isCorrect) {
       playSound("correct");
       spawnCoins(option.id);
-      totalCoinsRef.current += COINS_PER_CORRECT; // track cumulative coins
+      totalCoinsRef.current += COINS_PER_CORRECT;
       setCorrectFound((prev) => {
         const next = prev + 1;
         if (next === CORRECT_NEEDED) {
           setScore((s) => s + 1);
-          // Reveal answers immediately so the green ticks are visible…
           setTimeout(() => revealAll(), 300);
-          // …then auto-advance after a short celebration pause (1.4 s total)
           autoAdvanceTimer.current = setTimeout(() => handleNext(), 1400);
         }
         return next;
       });
     } else {
       playSound("wrong");
-      // Wrong answer: reveal then auto-advance after a brief pause
       setTimeout(() => revealAll(), 400);
       autoAdvanceTimer.current = setTimeout(() => slideToNext(), 1800);
     }
@@ -662,13 +642,11 @@ const DescribeObjectGame = ({ onExit }) => {
     });
   };
 
-  // ── Slide page out → swap question → slide in ─────────────────────────────
   const slideToNext = () => {
     if (autoAdvanceTimer.current) {
       clearTimeout(autoAdvanceTimer.current);
       autoAdvanceTimer.current = null;
     }
-    // Slide out to the left + fade
     Animated.parallel([
       Animated.timing(pageSlide, {
         toValue: -SW,
@@ -685,20 +663,15 @@ const DescribeObjectGame = ({ onExit }) => {
       pageSlide.setValue(SW);
       pageOp.setValue(1);
       if (qIndex + 1 >= queue.length) {
-        // Check score AFTER the final question's setScore has fired.
-        // We use a small timeout so state has settled.
         setTimeout(() => {
           setScore((finalScore) => {
             const isWin = finalScore === queue.length;
             if (isWin) {
-              // Write to refs FIRST — the useEffect watching badgeVisible
-              // will read these and call completeActivity safely outside
-              // any setState updater (calling setState inside setState is illegal).
               finalScoreRef.current = finalScore;
               pendingCompleteRef.current = true;
-              setBadgeVisible(true); // 🏆 perfect game → badge popup
+              setBadgeVisible(true);
             } else {
-              setShowResult(true); // partial score → plain result
+              setShowResult(true);
             }
             return finalScore;
           });
@@ -719,7 +692,6 @@ const DescribeObjectGame = ({ onExit }) => {
 
   const handleReplay = () => {
     totalCoinsRef.current = 0;
-    // Reset page slide/opacity so the new queue renders on-screen (not off-screen at -SW)
     pageSlide.setValue(0);
     pageOp.setValue(1);
     setQueue(shuffle(objectPool).slice(0, 3));
@@ -745,8 +717,6 @@ const DescribeObjectGame = ({ onExit }) => {
     } catch (_) {}
   };
 
-  // ── Result screen ──────────────────────────────────────────────────────────
-  // ── Badge popup (perfect win) ──────────────────────────────────────────────
   if (badgeVisible) {
     return (
       <View style={styles.root}>
@@ -756,13 +726,9 @@ const DescribeObjectGame = ({ onExit }) => {
           finishMode={true}
           onClose={() => {
             setBadgeVisible(false);
-            // completeActivity already called in the badgeVisible useEffect.
-            // Words are disbursed from story.challengeWords at home screen level
-            // so no params needed — the session-based trigger handles the overlay.
             router.replace("/home");
           }}
           onPlay={() => {
-            // finishMode=true so this is never shown, but keep for safety
             setBadgeVisible(false);
             handleReplay();
           }}
@@ -771,7 +737,6 @@ const DescribeObjectGame = ({ onExit }) => {
     );
   }
 
-  // ── Result screen (partial score) ─────────────────────────────────────────
   if (showResult) {
     return (
       <View style={styles.root}>
@@ -814,7 +779,6 @@ const DescribeObjectGame = ({ onExit }) => {
 
   return (
     <View style={styles.root}>
-      {/* Flying coins overlay */}
       {flyingCoins.map((c) => (
         <FlyingCoin
           key={c.id}
@@ -1019,11 +983,22 @@ const styles = StyleSheet.create({
     paddingVertical: 7,
     width: 70,
   },
-  exitIcon: { fontSize: 11, color: C.textMuted, fontWeight: "700" },
-  exitText: { fontSize: 12, fontWeight: "700", color: C.textSec },
+  // Exit ✕ icon — bold, muted
+  exitIcon: {
+    fontFamily: FONTS.bold,
+    fontSize: 11,
+    color: C.textMuted,
+  },
+  // Exit label — bold, secondary
+  exitText: {
+    fontFamily: FONTS.bold,
+    fontSize: 12,
+    color: C.textSec,
+  },
+  // Screen title — bold, teal
   topTitle: {
+    fontFamily: FONTS.bold,
     fontSize: 18,
-    fontWeight: "900",
     color: C.teal,
     letterSpacing: 0.4,
     textShadowColor: "rgba(0,188,212,0.6)",
@@ -1040,7 +1015,12 @@ const styles = StyleSheet.create({
     width: 70,
     alignItems: "center",
   },
-  scoreText: { fontSize: 14, fontWeight: "900", color: C.yellow },
+  // Score "⭐ N" — bold, yellow
+  scoreText: {
+    fontFamily: FONTS.bold,
+    fontSize: 14,
+    color: C.yellow,
+  },
 
   progressRow: {
     flexDirection: "row",
@@ -1049,9 +1029,10 @@ const styles = StyleSheet.create({
     marginTop: 6,
     marginBottom: 14,
   },
+  // Progress "N / N" — bold, muted
   progressLabel: {
+    fontFamily: FONTS.bold,
     fontSize: 12,
-    fontWeight: "700",
     color: C.textMuted,
     width: 42,
   },
@@ -1106,9 +1087,10 @@ const styles = StyleSheet.create({
     elevation: 5,
   },
   objectEmoji: { fontSize: 62 },
+  // Object name — bold, large, white
   objectName: {
+    fontFamily: FONTS.bold,
     fontSize: 32,
-    fontWeight: "900",
     color: C.white,
     letterSpacing: 0.5,
     textShadowColor: "rgba(0,188,212,0.4)",
@@ -1131,9 +1113,25 @@ const styles = StyleSheet.create({
     paddingHorizontal: 10,
     paddingVertical: 4,
   },
-  instructionBadgeText: { fontSize: 12, fontWeight: "800", color: C.purple },
-  instructionText: { flex: 1, fontSize: 13, color: C.textSec, lineHeight: 19 },
-  instructionHighlight: { fontWeight: "800", color: C.teal },
+  // "Pick 3" badge text — bold, purple
+  instructionBadgeText: {
+    fontFamily: FONTS.bold,
+    fontSize: 12,
+    color: C.purple,
+  },
+  // Instruction body — regular, secondary
+  instructionText: {
+    fontFamily: FONTS.regular,
+    flex: 1,
+    fontSize: 13,
+    color: C.textSec,
+    lineHeight: 19,
+  },
+  // Highlighted words within instruction — bold, teal
+  instructionHighlight: {
+    fontFamily: FONTS.bold,
+    color: C.teal,
+  },
 
   trackerRow: {
     flexDirection: "row",
@@ -1163,10 +1161,16 @@ const styles = StyleSheet.create({
     shadowRadius: 6,
     elevation: 3,
   },
-  trackerCheck: { fontSize: 14, fontWeight: "900", color: C.green },
+  // Tracker ✓ glyph — bold, green
+  trackerCheck: {
+    fontFamily: FONTS.bold,
+    fontSize: 14,
+    color: C.green,
+  },
+  // "N/3 found" label — bold, muted
   trackerLabel: {
+    fontFamily: FONTS.bold,
     fontSize: 12,
-    fontWeight: "700",
     color: C.textMuted,
     marginLeft: 4,
   },
@@ -1192,9 +1196,24 @@ const styles = StyleSheet.create({
     backgroundColor: "rgba(255,255,255,0.04)",
     flexShrink: 0,
   },
-  optionBulletLetter: { fontSize: 13, fontWeight: "800", color: C.textMuted },
-  optionBulletIcon: { fontSize: 14, fontWeight: "900" },
-  optionText: { flex: 1, fontSize: 14, fontWeight: "600", lineHeight: 20 },
+  // Option letter (A/B/C/D) — bold
+  optionBulletLetter: {
+    fontFamily: FONTS.bold,
+    fontSize: 13,
+    color: C.textMuted,
+  },
+  // Option state icon (✓/✗/!) — bold
+  optionBulletIcon: {
+    fontFamily: FONTS.bold,
+    fontSize: 14,
+  },
+  // Option description text — regular
+  optionText: {
+    fontFamily: FONTS.regular,
+    flex: 1,
+    fontSize: 14,
+    lineHeight: 20,
+  },
 
   speakerBtn: {
     width: 34,
@@ -1211,7 +1230,9 @@ const styles = StyleSheet.create({
   speakerIcon: { fontSize: 16 },
 
   ttsHint: { width: "92%", marginBottom: 12, alignItems: "center" },
+  // TTS hint — light, italic, muted
   ttsHintText: {
+    fontFamily: FONTS.light,
     fontSize: 11,
     color: C.textMuted,
     fontStyle: "italic",
@@ -1231,7 +1252,13 @@ const styles = StyleSheet.create({
   feedbackWin: { backgroundColor: C.greenDim, borderColor: C.greenBorder },
   feedbackLose: { backgroundColor: C.redDim, borderColor: C.redBorder },
   feedbackIcon: { fontSize: 22 },
-  feedbackText: { flex: 1, fontSize: 14, fontWeight: "700", lineHeight: 20 },
+  // Feedback message — bold
+  feedbackText: {
+    fontFamily: FONTS.bold,
+    flex: 1,
+    fontSize: 14,
+    lineHeight: 20,
+  },
 
   nextBtn: {
     backgroundColor: C.teal,
@@ -1246,8 +1273,8 @@ const styles = StyleSheet.create({
     elevation: 8,
   },
   nextBtnText: {
+    fontFamily: FONTS.bold,
     fontSize: 16,
-    fontWeight: "900",
     color: C.bg,
     letterSpacing: 0.4,
   },
@@ -1273,9 +1300,10 @@ const styles = StyleSheet.create({
     elevation: 8,
   },
   resultEmoji: { fontSize: 72, marginBottom: 12 },
+  // Result message — bold, white
   resultMsg: {
+    fontFamily: FONTS.bold,
     fontSize: 26,
-    fontWeight: "900",
     color: C.white,
     letterSpacing: 0.3,
     marginBottom: 20,
@@ -1289,12 +1317,23 @@ const styles = StyleSheet.create({
     gap: 4,
     marginBottom: 6,
   },
-  resultScore: { fontSize: 64, fontWeight: "900", color: C.teal },
-  resultScoreOf: { fontSize: 28, fontWeight: "700", color: C.textMuted },
+  // Large score number — bold, teal
+  resultScore: {
+    fontFamily: FONTS.bold,
+    fontSize: 64,
+    color: C.teal,
+  },
+  // "/ N" denominator — bold, muted
+  resultScoreOf: {
+    fontFamily: FONTS.bold,
+    fontSize: 28,
+    color: C.textMuted,
+  },
+  // Percentage label — light, secondary
   resultPct: {
+    fontFamily: FONTS.light,
     fontSize: 16,
     color: C.textSec,
-    fontWeight: "600",
     marginBottom: 32,
   },
   resultBtns: { gap: 12, width: "100%" },
@@ -1309,9 +1348,10 @@ const styles = StyleSheet.create({
     shadowRadius: 14,
     elevation: 8,
   },
+  // "▶ Play Again" — bold, dark
   replayBtnText: {
+    fontFamily: FONTS.bold,
     fontSize: 16,
-    fontWeight: "900",
     color: C.bg,
     letterSpacing: 0.4,
   },
@@ -1323,7 +1363,12 @@ const styles = StyleSheet.create({
     paddingVertical: 13,
     alignItems: "center",
   },
-  exitResultBtnText: { fontSize: 14, fontWeight: "700", color: C.textSec },
+  // "✕ Exit" — bold, secondary
+  exitResultBtnText: {
+    fontFamily: FONTS.bold,
+    fontSize: 14,
+    color: C.textSec,
+  },
 });
 
 export default DescribeObjectGame;

@@ -32,6 +32,7 @@ import {
   ACTIVITY,
   ACTIVITY_ROUTES,
 } from "../_contexts/StoryActivityContext";
+import { FONTS } from "../theme";
 
 const { width: SW } = Dimensions.get("window");
 const STATUS_H =
@@ -244,14 +245,17 @@ function ProgressRing({ progress }) {
           transform: [{ rotate: "-90deg" }],
         }}
       />
-      <Text style={{ fontSize: 10, fontWeight: "900", color: C.textMuted }}>
+      {/* Progress % — bold, muted */}
+      <Text
+        style={{ fontFamily: FONTS.bold, fontSize: 10, color: C.textMuted }}
+      >
         {Math.round(progress * 100)}%
       </Text>
     </View>
   );
 }
 
-// ── Option card (unchanged) ──────────────────────────────────────────────────
+// ── Option card ──────────────────────────────────────────────────────────────
 function OptionCard({ label, text, state, onPress, index, disabled }) {
   const scale = useRef(new Animated.Value(1)).current;
   const slideIn = useRef(new Animated.Value(30)).current;
@@ -345,7 +349,7 @@ function OptionCard({ label, text, state, onPress, index, disabled }) {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// LISTENING CHALLENGE (unchanged internals, accepts article prop)
+// LISTENING CHALLENGE
 // ─────────────────────────────────────────────────────────────────────────────
 function ListeningChallenge({ article, onFinish }) {
   const [audioPhase, setAudioPhase] = useState("idle");
@@ -737,14 +741,11 @@ const Article = () => {
   const { id } = useLocalSearchParams();
   const router = useRouter();
 
-  // ── Activity context ─────────────────────────────────────────────────────
   const { storySession, completeActivity } = useStoryActivity();
 
-  // Pick the article: story-specific or fallback to global articles.json
   const article = (() => {
     const snap = storySession?.activityDataSnapshot?.listening;
     if (snap) return snap;
-    // Standalone: use id param or first article
     return data.articles.find((a) => a.id == id) ?? data.articles[0];
   })();
 
@@ -873,7 +874,6 @@ const Article = () => {
     }
   };
 
-  // ── Advance to next activity (DescribeObjectGame) ─────────────────────
   const proceedToNextActivity = async () => {
     if (!storySession) {
       resetGame();
@@ -1038,11 +1038,12 @@ const styles = StyleSheet.create({
     justifyContent: "center",
   },
   backIcon: { fontSize: 28, color: C.textSec, marginTop: -2 },
+  // Screen title — bold, teal
   topTitle: {
+    fontFamily: FONTS.bold,
     flex: 1,
     textAlign: "center",
     fontSize: 15,
-    fontWeight: "800",
     color: C.teal,
     letterSpacing: 0.3,
     marginHorizontal: 8,
@@ -1067,7 +1068,12 @@ const styles = StyleSheet.create({
     elevation: 5,
   },
   coinIcon: { width: 22, height: 22 },
-  coinCount: { fontSize: 14, fontWeight: "900", color: C.yellow },
+  // Coin count — bold, yellow
+  coinCount: {
+    fontFamily: FONTS.bold,
+    fontSize: 14,
+    color: C.yellow,
+  },
   coverWrap: { width: "100%", height: 190, position: "relative" },
   coverImage: { width: "100%", height: "100%" },
   coverGradient: {
@@ -1089,7 +1095,12 @@ const styles = StyleSheet.create({
     paddingHorizontal: 10,
     paddingVertical: 4,
   },
-  coverTagText: { fontSize: 12, fontWeight: "700", color: C.teal },
+  // Cover tag label — bold, teal
+  coverTagText: {
+    fontFamily: FONTS.bold,
+    fontSize: 12,
+    color: C.teal,
+  },
   challengeWrap: { width: "100%", alignItems: "center", paddingTop: 16 },
   playerCard: {
     width: "92%",
@@ -1128,17 +1139,19 @@ const styles = StyleSheet.create({
     justifyContent: "center",
   },
   headphonesIcon: { fontSize: 22 },
+  // Player card title — bold
   playerTitle: {
+    fontFamily: FONTS.bold,
     fontSize: 15,
-    fontWeight: "900",
     color: C.textPri,
     letterSpacing: 0.3,
   },
+  // Player sub-status — light, muted
   playerSub: {
+    fontFamily: FONTS.light,
     fontSize: 11,
     color: C.textMuted,
     marginTop: 2,
-    fontWeight: "600",
   },
   waveformWrap: {
     backgroundColor: "rgba(0,0,0,0.25)",
@@ -1162,9 +1175,10 @@ const styles = StyleSheet.create({
     shadowRadius: 12,
     elevation: 8,
   },
+  // Play/Resume button text — bold, dark
   playBtnText: {
+    fontFamily: FONTS.bold,
     fontSize: 15,
-    fontWeight: "900",
     color: C.bg,
     letterSpacing: 0.4,
   },
@@ -1177,7 +1191,12 @@ const styles = StyleSheet.create({
     borderWidth: 1.5,
     borderColor: C.yellowBorder,
   },
-  pauseBtnText: { fontSize: 15, fontWeight: "900", color: C.yellow },
+  // Pause button text — bold, yellow
+  pauseBtnText: {
+    fontFamily: FONTS.bold,
+    fontSize: 15,
+    color: C.yellow,
+  },
   stopBtn: {
     width: 46,
     height: 46,
@@ -1198,7 +1217,12 @@ const styles = StyleSheet.create({
     borderWidth: 1.5,
     borderColor: C.greenBorder,
   },
-  doneTxt: { fontSize: 14, fontWeight: "800", color: C.green },
+  // "✅ Listening complete!" — bold, green
+  doneTxt: {
+    fontFamily: FONTS.bold,
+    fontSize: 14,
+    color: C.green,
+  },
   quizSection: { width: "92%", marginBottom: 16 },
   quizHeader: {
     flexDirection: "row",
@@ -1206,7 +1230,12 @@ const styles = StyleSheet.create({
     justifyContent: "space-between",
     marginBottom: 10,
   },
-  quizHeaderTitle: { fontSize: 15, fontWeight: "900", color: C.textPri },
+  // Quiz header — bold
+  quizHeaderTitle: {
+    fontFamily: FONTS.bold,
+    fontSize: 15,
+    color: C.textPri,
+  },
   qProgressDots: { flexDirection: "row", gap: 5 },
   qDot: {
     width: 8,
@@ -1242,13 +1271,16 @@ const styles = StyleSheet.create({
     alignItems: "center",
   },
   lockIcon: { fontSize: 48, marginBottom: 12 },
+  // Lock title — bold
   lockTitle: {
+    fontFamily: FONTS.bold,
     fontSize: 20,
-    fontWeight: "900",
     color: C.textSec,
     marginBottom: 6,
   },
+  // Lock sub — light, muted
   lockSub: {
+    fontFamily: FONTS.light,
     fontSize: 13,
     color: C.textMuted,
     textAlign: "center",
@@ -1263,7 +1295,12 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingVertical: 8,
   },
-  lockHintText: { fontSize: 12, fontWeight: "700", color: C.teal },
+  // Lock hint text — bold, teal
+  lockHintText: {
+    fontFamily: FONTS.bold,
+    fontSize: 12,
+    color: C.teal,
+  },
   questionCard: {
     backgroundColor: C.surface,
     borderRadius: 18,
@@ -1277,9 +1314,10 @@ const styles = StyleSheet.create({
     shadowRadius: 16,
     elevation: 4,
   },
+  // Question text — bold, primary
   questionText: {
+    fontFamily: FONTS.bold,
     fontSize: 17,
-    fontWeight: "800",
     color: C.textPri,
     lineHeight: 26,
     letterSpacing: 0.2,
@@ -1305,7 +1343,22 @@ const styles = StyleSheet.create({
     backgroundColor: "rgba(255,255,255,0.04)",
     flexShrink: 0,
   },
-  optionBulletLetter: { fontSize: 13, fontWeight: "800", color: C.textMuted },
-  optionBulletIcon: { fontSize: 14, fontWeight: "900" },
-  optionText: { flex: 1, fontSize: 14, fontWeight: "600", lineHeight: 21 },
+  // Option bullet letter (A/B/C/D) — bold
+  optionBulletLetter: {
+    fontFamily: FONTS.bold,
+    fontSize: 13,
+    color: C.textMuted,
+  },
+  // Option bullet icon (✓/✗/★) — bold
+  optionBulletIcon: {
+    fontFamily: FONTS.bold,
+    fontSize: 14,
+  },
+  // Option text — regular, readable
+  optionText: {
+    fontFamily: FONTS.regular,
+    flex: 1,
+    fontSize: 14,
+    lineHeight: 21,
+  },
 });

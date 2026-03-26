@@ -4,6 +4,8 @@ import { StoryActivityProvider } from "./_contexts/StoryActivityContext";
 import { NotificationProvider } from "./_contexts/NotificationContext";
 import { COLORS } from "./theme";
 import { View, Text, StyleSheet } from "react-native";
+import { useFonts } from "expo-font";
+import { useEffect } from "react";
 
 // ── FREE tier badge — shown in account screen header right ─────────────────
 function FreeBadge() {
@@ -33,6 +35,14 @@ const badge = StyleSheet.create({
 });
 
 const RootLayout = () => {
+  const [fontsLoaded] = useFonts({
+    CoText: require("../assets/fonts/Co Text.otf"),
+    "CoText-Bold": require("../assets/fonts/Co Text Bold.otf"),
+    "CoText-Light": require("../assets/fonts/Co Text Light.otf"),
+  });
+
+  if (!fontsLoaded) return null;
+
   return (
     <UserProvider>
       <StoryActivityProvider>

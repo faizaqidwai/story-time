@@ -6,11 +6,11 @@ import {
   Image,
   Pressable,
   View,
-  Platform,
   useWindowDimensions,
 } from "react-native";
 import { useUser } from "../_contexts/UserContext";
 import { Image as ExpoImage } from "expo-image";
+import { FONTS } from "../theme";
 
 // ── Activity sequence — PNG icons ─────────────────────────────
 const ACTIVITY_STEPS = [
@@ -175,17 +175,10 @@ function StoryCard({
         </Text>
 
         {/* ── Activity steps ── */}
-        {/* marginTop:"auto" pushes this block to the bottom of the card.    */}
-        {/* The resumeLabel below is ALWAYS rendered (empty string when not  */}
-        {/* resuming) so both cards occupy the same vertical space and the   */}
-        {/* icon bar sits at the same position regardless of resume state.   */}
         <View style={styles.stepsBlock}>
           <View style={styles.stepsRow}>
             {ACTIVITY_STEPS.map((step, i) => {
               const isResumeStep = resuming && i === resumeAtIndex;
-              // Steps before current are "done" visually (shown as-is but
-              // with a green dot). The icon itself is NEVER replaced —
-              // only the current step gets a coloured border highlight.
               const isDone = (resuming && i < resumeAtIndex) || isCompleted;
 
               return (
@@ -206,7 +199,6 @@ function StoryCard({
                       },
                     ]}
                   >
-                    {/* Always show the real PNG icon — never replace with tick */}
                     <Image
                       source={step.image}
                       style={[styles.stepImage, isDone && styles.stepImageDone]}
@@ -226,8 +218,6 @@ function StoryCard({
             })}
           </View>
 
-          {/* Always reserve the same height for the resume label.          */}
-          {/* Invisible when not resuming so both cards align identically.  */}
           <Text
             style={[styles.resumeLabel, !resuming && { color: "transparent" }]}
           >
@@ -283,9 +273,10 @@ const styles = StyleSheet.create({
     shadowRadius: 8,
     elevation: 8,
   },
+  // Green tick — bold
   tickIcon: {
+    fontFamily: FONTS.bold,
     fontSize: 18,
-    fontWeight: "900",
     color: "#4CAF50",
   },
   card: {
@@ -317,11 +308,10 @@ const styles = StyleSheet.create({
     paddingBottom: 8,
     paddingTop: 12,
   },
+  // Story card title — CoText-Bold replaces Noteworthy
   title: {
-    fontFamily:
-      Platform.OS === "ios" ? "Noteworthy-Bold" : "sans-serif-condensed",
+    fontFamily: FONTS.bold,
     fontSize: 14,
-    fontWeight: "900",
     color: "#E0F7FA",
     lineHeight: 18,
     textShadowColor: "rgba(0,0,0,0.7)",
@@ -338,12 +328,15 @@ const styles = StyleSheet.create({
     borderTopLeftRadius: 8,
     borderBottomLeftRadius: 8,
   },
+  // "✓ Completed" ribbon text — bold, white
   completedRibbonText: {
+    fontFamily: FONTS.bold,
     fontSize: 10,
-    fontWeight: "800",
     color: "#fff",
   },
+  // Intro blurb — light italic
   intro: {
+    fontFamily: FONTS.light,
     fontSize: 10,
     color: "#7a9aaa",
     fontStyle: "italic",
@@ -355,7 +348,7 @@ const styles = StyleSheet.create({
     flexShrink: 1,
   },
 
-  // ── Steps block — pushed to card bottom, always same height ──
+  // ── Steps block ──
   stepsBlock: {
     marginTop: "auto",
     alignItems: "center",
@@ -387,12 +380,10 @@ const styles = StyleSheet.create({
     borderRadius: 6,
     padding: 2,
   },
-  // Real PNG icon — never replaced with emoji
   stepImage: {
     width: 20,
     height: 20,
   },
-  // Completed steps shown slightly dimmed so current step stands out
   stepImageDone: {
     opacity: 0.55,
   },
@@ -403,10 +394,10 @@ const styles = StyleSheet.create({
     backgroundColor: "rgba(0,188,212,0.35)",
     marginHorizontal: 3,
   },
-  // Always rendered — transparent when not resuming to hold space
+  // Resume label — bold, yellow, always rendered (transparent when inactive)
   resumeLabel: {
+    fontFamily: FONTS.bold,
     fontSize: 9,
-    fontWeight: "700",
     color: "#FFD54F",
     marginTop: 4,
     marginBottom: 2,

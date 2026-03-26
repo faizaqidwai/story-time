@@ -29,6 +29,7 @@ import { useUser } from "../_contexts/UserContext";
 import { reportService } from "../services/reportService";
 import { useApiCall } from "../_hooks/useApiCall";
 import { useNotify } from "../_contexts/NotificationContext";
+import { FONTS } from "../theme";
 
 const { width: SW } = Dimensions.get("window");
 const STATUS_H = Platform.OS === "android" ? 24 : 50;
@@ -165,14 +166,16 @@ function RingChart({
           gap: 2,
         }}
       >
-        <Text style={{ fontSize: size * 0.22, fontWeight: "900", color }}>
+        {/* Percentage — bold, accent colour */}
+        <Text style={{ fontFamily: FONTS.bold, fontSize: size * 0.22, color }}>
           {Math.round(percent)}%
         </Text>
+        {/* Centre label — bold, muted */}
         <Text
           style={{
+            fontFamily: FONTS.bold,
             fontSize: size * 0.1,
             color: C.textMuted,
-            fontWeight: "700",
             textAlign: "center",
             paddingHorizontal: 8,
           }}
@@ -182,6 +185,7 @@ function RingChart({
         {centerSub ? (
           <Text
             style={{
+              fontFamily: FONTS.light,
               fontSize: size * 0.09,
               color: C.textMuted,
               textAlign: "center",
@@ -249,11 +253,17 @@ const pillS = StyleSheet.create({
     paddingHorizontal: 6,
     gap: 4,
   },
-  value: { fontSize: 19, fontWeight: "900", letterSpacing: 0.3 },
+  // Stat number — bold, accent coloured
+  value: {
+    fontFamily: FONTS.bold,
+    fontSize: 19,
+    letterSpacing: 0.3,
+  },
+  // Stat label — bold, spaced caps
   label: {
+    fontFamily: FONTS.bold,
     fontSize: 9,
     color: C.textMuted,
-    fontWeight: "700",
     textAlign: "center",
     letterSpacing: 0.5,
   },
@@ -329,8 +339,18 @@ const barS = StyleSheet.create({
     overflow: "hidden",
   },
   fill: { width: "100%", borderRadius: 6 },
-  count: { fontSize: 10, fontWeight: "800", color: C.teal },
-  weekLabel: { fontSize: 9, color: C.textMuted, fontWeight: "600" },
+  // Bar count above column — bold, teal
+  count: {
+    fontFamily: FONTS.bold,
+    fontSize: 10,
+    color: C.teal,
+  },
+  // Week label below column — light, muted
+  weekLabel: {
+    fontFamily: FONTS.light,
+    fontSize: 9,
+    color: C.textMuted,
+  },
 });
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -383,8 +403,17 @@ const skillS = StyleSheet.create({
   },
   icon: { width: 26, height: 26, flexShrink: 0 },
   labelRow: { flexDirection: "row", justifyContent: "space-between" },
-  label: { fontSize: 13, fontWeight: "700", color: C.textSec },
-  pct: { fontSize: 13, fontWeight: "900" },
+  // Skill name — bold
+  label: {
+    fontFamily: FONTS.bold,
+    fontSize: 13,
+    color: C.textSec,
+  },
+  // Percentage — bold, accent coloured
+  pct: {
+    fontFamily: FONTS.bold,
+    fontSize: 13,
+  },
   track: {
     height: 8,
     backgroundColor: "rgba(255,255,255,0.08)",
@@ -489,8 +518,19 @@ const storyS = StyleSheet.create({
     borderBottomColor: "rgba(255,255,255,0.05)",
   },
   statusDot: { width: 8, height: 8, borderRadius: 4, flexShrink: 0 },
-  title: { fontSize: 13, fontWeight: "700", color: C.textSec },
-  date: { fontSize: 11, color: C.textMuted, marginTop: 2 },
+  // Story title — bold
+  title: {
+    fontFamily: FONTS.bold,
+    fontSize: 13,
+    color: C.textSec,
+  },
+  // Date/status — light, muted
+  date: {
+    fontFamily: FONTS.light,
+    fontSize: 11,
+    color: C.textMuted,
+    marginTop: 2,
+  },
   dots: { flexDirection: "row", gap: 5, flexShrink: 0 },
   dot: { width: 10, height: 10, borderRadius: 5 },
 });
@@ -554,16 +594,17 @@ const secS = StyleSheet.create({
     marginBottom: 16,
   },
   icon: { fontSize: 18 },
+  // Section title — bold
   title: {
+    fontFamily: FONTS.bold,
     fontSize: 15,
-    fontWeight: "900",
     color: C.textPri,
     letterSpacing: 0.3,
   },
 });
 
 // ─────────────────────────────────────────────────────────────────────────────
-// TOP BAR — shared across loading / error / data states
+// TOP BAR
 // ─────────────────────────────────────────────────────────────────────────────
 function TopBar({ onBack }) {
   return (
@@ -590,7 +631,6 @@ export default function Reports() {
 
   const [report, setReport] = useState(null);
 
-  // useApiCall manages loading + error state automatically
   const { execute, loading, error, clearError } = useApiCall();
   const notify = useNotify();
 
@@ -630,7 +670,7 @@ export default function Reports() {
     );
   }
 
-  // ── Error — inline on screen + retry button ──────────────────────────────
+  // ── Error ────────────────────────────────────────────────────────────────
   if (error) {
     return (
       <View style={styles.root}>
@@ -649,7 +689,6 @@ export default function Reports() {
     );
   }
 
-  // ── No data ──────────────────────────────────────────────────────────────
   const isEmpty = !report || report.overview?.completedAllTime === 0;
 
   return (
@@ -885,11 +924,12 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
   },
+  // "Progress Report" top bar title — bold, teal
   topTitle: {
+    fontFamily: FONTS.bold,
     flex: 1,
     textAlign: "center",
     fontSize: 17,
-    fontWeight: "900",
     color: C.teal,
     letterSpacing: 0.4,
     textShadowColor: "rgba(0,188,212,0.5)",
@@ -906,7 +946,13 @@ const styles = StyleSheet.create({
     padding: 32,
   },
   loadingEmoji: { fontSize: 48 },
-  loadingText: { fontSize: 15, color: C.textMuted, textAlign: "center" },
+  // Loading / error message — light, muted
+  loadingText: {
+    fontFamily: FONTS.light,
+    fontSize: 15,
+    color: C.textMuted,
+    textAlign: "center",
+  },
   retryBtn: {
     marginTop: 8,
     backgroundColor: C.tealDim,
@@ -916,7 +962,12 @@ const styles = StyleSheet.create({
     paddingHorizontal: 24,
     paddingVertical: 10,
   },
-  retryText: { fontSize: 14, fontWeight: "700", color: C.teal },
+  // "Try Again" — bold, teal
+  retryText: {
+    fontFamily: FONTS.bold,
+    fontSize: 14,
+    color: C.teal,
+  },
 
   childHeader: {
     flexDirection: "row",
@@ -935,13 +986,24 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
   },
-  childAvatarText: { fontSize: 22, fontWeight: "900", color: C.teal },
-  childName: { fontSize: 20, fontWeight: "900", color: C.textPri },
+  // Avatar initial — bold, teal
+  childAvatarText: {
+    fontFamily: FONTS.bold,
+    fontSize: 22,
+    color: C.teal,
+  },
+  // Child's name — bold
+  childName: {
+    fontFamily: FONTS.bold,
+    fontSize: 20,
+    color: C.textPri,
+  },
+  // Level subtitle — light, muted
   childLevel: {
+    fontFamily: FONTS.light,
     fontSize: 12,
     color: C.textMuted,
     marginTop: 2,
-    fontWeight: "600",
   },
 
   pillRow: { flexDirection: "row", gap: 8, marginBottom: 14 },
@@ -960,18 +1022,25 @@ const styles = StyleSheet.create({
     marginTop: 3,
     flexShrink: 0,
   },
-  legendLabel: { fontSize: 11, color: C.textMuted, fontWeight: "600" },
+  // Legend key — light, muted
+  legendLabel: {
+    fontFamily: FONTS.light,
+    fontSize: 11,
+    color: C.textMuted,
+  },
+  // Legend value — bold, secondary
   legendValue: {
+    fontFamily: FONTS.bold,
     fontSize: 13,
     color: C.textSec,
-    fontWeight: "800",
     marginTop: 1,
   },
 
+  // Chart sub-heading — light, muted
   chartSub: {
+    fontFamily: FONTS.light,
     fontSize: 11,
     color: C.textMuted,
-    fontWeight: "600",
     marginBottom: 12,
     marginTop: -8,
   },
@@ -981,8 +1050,15 @@ const styles = StyleSheet.create({
 
   emptyWrap: { alignItems: "center", paddingVertical: 60, gap: 12 },
   emptyEmoji: { fontSize: 56 },
-  emptyTitle: { fontSize: 20, fontWeight: "900", color: C.textPri },
+  // Empty state heading — bold
+  emptyTitle: {
+    fontFamily: FONTS.bold,
+    fontSize: 20,
+    color: C.textPri,
+  },
+  // Empty state body — light
   emptyText: {
+    fontFamily: FONTS.light,
     fontSize: 14,
     color: C.textMuted,
     textAlign: "center",

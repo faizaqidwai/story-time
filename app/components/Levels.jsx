@@ -20,6 +20,7 @@ import {
 } from "react-native";
 import { useRouter } from "expo-router";
 import { useUser } from "../_contexts/UserContext";
+import { FONTS } from "../theme";
 
 const { width: SW, height: SH } = Dimensions.get("window");
 const STATUS_BAR_HEIGHT =
@@ -150,16 +151,18 @@ const gridS = StyleSheet.create({
     left: -INNER * 0.75,
     borderBottomRightRadius: INNER * 0.6,
   },
+  // "LEVEL" label — bold, small caps, spaced
   label: {
-    fontSize: 7,
-    fontWeight: "900",
+    fontFamily: FONTS.bold,
+    fontSize: 11,
     letterSpacing: 1.5,
     marginBottom: 1,
     opacity: 0.9,
   },
+  // Level number — bold, large, glowing
   number: {
+    fontFamily: FONTS.bold,
     fontSize: Math.floor(INNER * 0.38),
-    fontWeight: "900",
     lineHeight: Math.floor(INNER * 0.4),
     textShadowColor: TEAL,
     textShadowOffset: { width: 0, height: 0 },
@@ -287,9 +290,10 @@ const screenS = StyleSheet.create({
   },
   headerRight: { width: 40 },
   headerCenter: { alignItems: "center", gap: 5 },
+  // Screen title — bold, glowing
   title: {
+    fontFamily: FONTS.bold,
     fontSize: 22,
-    fontWeight: "900",
     color: "#E0F7FA",
     letterSpacing: 0.4,
     textShadowColor: "rgba(0,188,212,0.5)",
@@ -304,9 +308,10 @@ const screenS = StyleSheet.create({
     paddingHorizontal: 10,
     paddingVertical: 3,
   },
+  // "Current: Level N" pill text — bold, teal
   currentPillText: {
-    fontSize: 11,
-    fontWeight: "800",
+    fontFamily: FONTS.bold,
+    fontSize: 14,
     color: TEAL,
     letterSpacing: 0.5,
   },
@@ -320,10 +325,11 @@ const screenS = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
   },
+  // Close ✕ — regular, muted
   closeIcon: {
+    fontFamily: FONTS.regular,
     fontSize: 14,
     color: "rgba(176,190,197,0.8)",
-    fontWeight: "700",
   },
   handle: {
     width: 36,

@@ -10,23 +10,49 @@
 // ─────────────────────────────────────────────────────────────────────────────
 
 import React, { useRef, useEffect } from "react";
-import { TouchableOpacity, Text, View, StyleSheet, Animated, Easing } from "react-native";
+import {
+  TouchableOpacity,
+  Text,
+  View,
+  StyleSheet,
+  Animated,
+  Easing,
+} from "react-native";
+import { FONTS } from "../theme";
 
 export default function NewLevelBanner({ onPress }) {
   const pulse = useRef(new Animated.Value(1)).current;
-  const glow  = useRef(new Animated.Value(0.5)).current;
+  const glow = useRef(new Animated.Value(0.5)).current;
 
   useEffect(() => {
     Animated.loop(
       Animated.sequence([
-        Animated.timing(pulse, { toValue: 1.06, duration: 600, easing: Easing.inOut(Easing.sin), useNativeDriver: true }),
-        Animated.timing(pulse, { toValue: 1.0,  duration: 600, easing: Easing.inOut(Easing.sin), useNativeDriver: true }),
+        Animated.timing(pulse, {
+          toValue: 1.06,
+          duration: 600,
+          easing: Easing.inOut(Easing.sin),
+          useNativeDriver: true,
+        }),
+        Animated.timing(pulse, {
+          toValue: 1.0,
+          duration: 600,
+          easing: Easing.inOut(Easing.sin),
+          useNativeDriver: true,
+        }),
       ]),
     ).start();
     Animated.loop(
       Animated.sequence([
-        Animated.timing(glow, { toValue: 1,   duration: 700, useNativeDriver: true }),
-        Animated.timing(glow, { toValue: 0.4, duration: 700, useNativeDriver: true }),
+        Animated.timing(glow, {
+          toValue: 1,
+          duration: 700,
+          useNativeDriver: true,
+        }),
+        Animated.timing(glow, {
+          toValue: 0.4,
+          duration: 700,
+          useNativeDriver: true,
+        }),
       ]),
     ).start();
   }, []);
@@ -55,7 +81,10 @@ const s = StyleSheet.create({
   },
   glowRing: {
     position: "absolute",
-    top: -6, left: -12, right: -12, bottom: -6,
+    top: -6,
+    left: -12,
+    right: -12,
+    bottom: -6,
     borderRadius: 24,
     backgroundColor: "rgba(0,188,212,0.18)",
   },
@@ -75,8 +104,24 @@ const s = StyleSheet.create({
     shadowRadius: 10,
     elevation: 10,
   },
-  star:  { fontSize: 20 },
-  title: { fontSize: 13, fontWeight: "900", color: "#E0F7FA", letterSpacing: 0.3 },
-  sub:   { fontSize: 10, color: "#00BCD4",  fontWeight: "700", marginTop: 1 },
-  arrow: { fontSize: 22, color: "#00BCD4",  fontWeight: "900", marginLeft: 4 },
+  star: { fontSize: 20 },
+
+  // CoText-Bold — banner headline, needs urgency and weight
+  title: {
+    fontFamily: FONTS.bold,
+    fontSize: 13,
+    color: "#E0F7FA",
+    letterSpacing: 0.3,
+  },
+
+  // CoText-Bold — short CTA, keep same weight family
+  sub: {
+    fontFamily: FONTS.bold,
+    fontSize: 10,
+    color: "#00BCD4",
+    marginTop: 1,
+  },
+
+  // Decorative glyph — no fontFamily needed
+  arrow: { fontSize: 22, color: "#00BCD4", marginLeft: 4 },
 });

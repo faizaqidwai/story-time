@@ -21,6 +21,7 @@ import {
 import { useRouter } from "expo-router";
 import { useUser } from "../_contexts/UserContext";
 import { CURRICULUM } from "../data/curriculumData";
+import { FONTS } from "../theme";
 
 const { width: SW, height: SH } = Dimensions.get("window");
 const STATUS_BAR_HEIGHT =
@@ -29,65 +30,45 @@ const STATUS_BAR_HEIGHT =
 // ── Layout constants ──────────────────────────────────────────────────────────
 const SCREEN_PAD = 16;
 const CARD_W = Math.floor(SW * 0.42);
-const CARD_H = 148; // fixed card height — connector geometry depends on this
-const CONN_H = 60; // gap between cards (pure space, no overlap)
-const LW = 1.5; // connector line width — matches card border width
-const CR = 16; // corner radius on bends
+// Card height is slightly taller to give "YOU ARE HERE" badge room to breathe
+const CARD_H = 162;
+const CONN_H = 60;
+const LW = 1.5;
+const CR = 16;
 
-// The connector container spans the full content width.
-// Within it (width = SW - 2*SCREEN_PAD):
-//   Left card  right edge = CARD_W
-//   Right card left edge  = (SW - 2*SCREEN_PAD) - CARD_W
-//
-// The line exits from the VERTICAL CENTER of the card side:
-//   → We use marginTop: -CARD_H/2 on the connector so its top aligns
-//     with the card's vertical center.
-// The line enters the TOP CENTER of the next card:
-//   → The connector bottom aligns exactly with card N+1's top (normal flow).
-//   → The bottom arm terminates at the horizontal center of the next card.
-//     Left card  center-x = CARD_W / 2
-//     Right card center-x = (containerW - CARD_W) + CARD_W / 2  = containerW - CARD_W/2
-
-// Colours
+// Colours — single uniform teal theme for all cards
 const C = {
   bg: "#08081a",
   teal: "#00BCD4",
   tealBorder: "rgba(0,188,212,0.3)",
+  tealDim: "rgba(0,188,212,0.12)",
+  tealBorderBold: "rgba(0,188,212,0.5)",
   textPri: "#E0F7FA",
   textSec: "#B0BEC5",
   textMuted: "#546E7A",
 };
 
+// ── Single accent used for every card (current level uses a brighter variant)
+const ACCENT = C.teal;
+const ACCENT_DIM = C.tealDim;
+const ACCENT_BORDER = C.tealBorder;
+
 // ─────────────────────────────────────────────────────────────────────────────
-// ZigZag Connector — L-shape path:
-//   1. Exit from vertical CENTER of card's far edge  (horizontal arm)
-//   2. Travel horizontally to the CENTER-X of the NEXT card (not screen edge)
-//   3. Turn straight DOWN to the TOP-CENTER of the next card
-//
-// fromSide = "left"  → card is LEFT, next card is RIGHT
-//   Horizontal: from left-card right-edge → rightCardCenterX
-//   Vertical:   down from that point to next card top
-//
-// fromSide = "right" → card is RIGHT, next card is LEFT
-//   Horizontal: from right-card left-edge → leftCardCenterX
-//   Vertical:   down from that point to next card top
+// ZigZag Connector
 // ─────────────────────────────────────────────────────────────────────────────
 function Connector({ fromSide, color }) {
   const lc = color ?? C.teal;
   const containerW = SW - SCREEN_PAD * 2;
-  const totalH = CARD_H / 2 + CONN_H; // container starts at card center, ends at next card top
+  const totalH = CARD_H / 2 + CONN_H;
 
-  // Key x positions (relative to containerW)
-  const leftCardRightX = CARD_W; // right edge of left card
-  const rightCardLeftX = containerW - CARD_W; // left edge of right card
-  const leftCardCenterX = CARD_W / 2; // center-x of left card  (entry for fromRight)
-  const rightCardCenterX = containerW - CARD_W / 2; // center-x of right card (entry for fromLeft)
+  const leftCardRightX = CARD_W;
+  const rightCardLeftX = containerW - CARD_W;
+  const leftCardCenterX = CARD_W / 2;
+  const rightCardCenterX = containerW - CARD_W / 2;
 
   const DOT = 5;
 
   if (fromSide === "left") {
-    // Exit: horizontal from left-card right edge → rightCardCenterX
-    // Turn: vertical down from (rightCardCenterX, exitY) → (rightCardCenterX, totalH)
     return (
       <View
         style={{
@@ -97,7 +78,6 @@ function Connector({ fromSide, color }) {
           marginTop: -(CARD_H / 2),
         }}
       >
-        {/* Horizontal arm — right edge of left card → center of right card */}
         <View
           style={{
             position: "absolute",
@@ -108,7 +88,6 @@ function Connector({ fromSide, color }) {
             backgroundColor: lc,
           }}
         />
-        {/* Vertical arm — down from corner to next card top */}
         <View
           style={{
             position: "absolute",
@@ -119,7 +98,6 @@ function Connector({ fromSide, color }) {
             backgroundColor: lc,
           }}
         />
-        {/* Corner bend dot */}
         <View
           style={{
             position: "absolute",
@@ -131,7 +109,6 @@ function Connector({ fromSide, color }) {
             backgroundColor: lc,
           }}
         />
-        {/* Entry dot at next card top-center */}
         <View
           style={{
             position: "absolute",
@@ -146,8 +123,6 @@ function Connector({ fromSide, color }) {
       </View>
     );
   } else {
-    // Exit: horizontal from right-card left edge → leftCardCenterX
-    // Turn: vertical down from (leftCardCenterX, exitY) → (leftCardCenterX, totalH)
     return (
       <View
         style={{
@@ -157,7 +132,6 @@ function Connector({ fromSide, color }) {
           marginTop: -(CARD_H / 2),
         }}
       >
-        {/* Horizontal arm — center of left card → left edge of right card */}
         <View
           style={{
             position: "absolute",
@@ -168,7 +142,6 @@ function Connector({ fromSide, color }) {
             backgroundColor: lc,
           }}
         />
-        {/* Vertical arm — down from corner to next card top */}
         <View
           style={{
             position: "absolute",
@@ -179,7 +152,6 @@ function Connector({ fromSide, color }) {
             backgroundColor: lc,
           }}
         />
-        {/* Corner bend dot */}
         <View
           style={{
             position: "absolute",
@@ -191,7 +163,6 @@ function Connector({ fromSide, color }) {
             backgroundColor: lc,
           }}
         />
-        {/* Entry dot at next card top-center */}
         <View
           style={{
             position: "absolute",
@@ -209,7 +180,7 @@ function Connector({ fromSide, color }) {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Compact Level Card
+// Compact Level Card — uniform teal theme for all levels
 // ─────────────────────────────────────────────────────────────────────────────
 function LevelCard({ item, isCurrent, side, index, cardRef }) {
   const scaleAnim = useRef(new Animated.Value(0.88)).current;
@@ -254,10 +225,6 @@ function LevelCard({ item, isCurrent, side, index, cardRef }) {
     }
   }, [isCurrent]);
 
-  const ac = item.accentColor;
-  const acDim = item.tagColor;
-  const acBorder = item.tagBorder;
-
   const alignStyle =
     side === "left"
       ? { alignSelf: "flex-start", marginLeft: SCREEN_PAD }
@@ -272,10 +239,11 @@ function LevelCard({ item, isCurrent, side, index, cardRef }) {
         {
           opacity: opAnim,
           transform: [{ scale: scaleAnim }, { scale: pulseAnim }],
-          borderColor: isCurrent ? ac : "rgba(255,255,255,0.09)",
+          // Current level gets a brighter teal border; others use a muted teal
+          borderColor: isCurrent ? C.tealBorderBold : C.tealBorder,
           borderWidth: isCurrent ? 2 : 1.5,
-          shadowColor: isCurrent ? ac : "#000",
-          shadowOpacity: isCurrent ? 0.7 : 0.3,
+          shadowColor: isCurrent ? C.teal : "#000",
+          shadowOpacity: isCurrent ? 0.55 : 0.25,
         },
       ]}
     >
@@ -284,10 +252,10 @@ function LevelCard({ item, isCurrent, side, index, cardRef }) {
         <View
           style={[
             cardS.lvlBadge,
-            { backgroundColor: acDim, borderColor: acBorder },
+            { backgroundColor: ACCENT_DIM, borderColor: ACCENT_BORDER },
           ]}
         >
-          <Text style={[cardS.lvlNum, { color: ac }]}>{item.level}</Text>
+          <Text style={[cardS.lvlNum, { color: ACCENT }]}>{item.level}</Text>
         </View>
         <Text style={cardS.emoji}>{item.emoji}</Text>
       </View>
@@ -298,18 +266,18 @@ function LevelCard({ item, isCurrent, side, index, cardRef }) {
       </Text>
 
       {/* Compact stat */}
-      <Text style={[cardS.stat, { color: ac }]} numberOfLines={1}>
+      <Text style={[cardS.stat, { color: ACCENT }]} numberOfLines={1}>
         {item.challengeWords} words · {item.sentenceLength}
       </Text>
 
-      {/* Key skill — first introduce point */}
+      {/* Key skill */}
       <Text style={cardS.skill} numberOfLines={2}>
         {item.introduces[0]}
       </Text>
 
-      {/* YOU ARE HERE */}
+      {/* YOU ARE HERE — has bottom padding so it doesn't touch the card edge */}
       {isCurrent && (
-        <View style={[cardS.youBadge, { backgroundColor: ac }]}>
+        <View style={cardS.youBadge}>
           <Text style={cardS.youTxt}>YOU ARE HERE</Text>
         </View>
       )}
@@ -323,7 +291,10 @@ const cardS = StyleSheet.create({
     height: CARD_H,
     backgroundColor: "rgba(255,255,255,0.05)",
     borderRadius: 18,
-    padding: 12,
+    // paddingBottom is larger so "YOU ARE HERE" badge has breathing room
+    paddingTop: 12,
+    paddingHorizontal: 12,
+    paddingBottom: 10,
     shadowOffset: { width: 0, height: 0 },
     shadowRadius: 12,
     elevation: 6,
@@ -343,36 +314,47 @@ const cardS = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
   },
-  lvlNum: { fontSize: 15, fontWeight: "900" },
+  // Level number inside badge — bold
+  lvlNum: {
+    fontFamily: FONTS.bold,
+    fontSize: 15,
+  },
   emoji: { fontSize: 20 },
+  // Grade name — bold
   grade: {
+    fontFamily: FONTS.bold,
     fontSize: 12,
-    fontWeight: "800",
     color: C.textPri,
     marginBottom: 4,
     lineHeight: 16,
   },
+  // Stats line — bold, teal
   stat: {
+    fontFamily: FONTS.bold,
     fontSize: 10,
-    fontWeight: "700",
     marginBottom: 5,
     letterSpacing: 0.2,
   },
+  // Key skill intro — light, muted
   skill: {
+    fontFamily: FONTS.light,
     fontSize: 10,
     color: C.textMuted,
     lineHeight: 14,
-    fontWeight: "500",
   },
+  // "YOU ARE HERE" badge — pushed to bottom with marginTop:auto + marginBottom
   youBadge: {
-    marginTop: 8,
+    marginTop: "auto",
+    marginBottom: 2, // space between badge bottom and card bottom edge
     borderRadius: 6,
     paddingVertical: 4,
     alignItems: "center",
+    backgroundColor: C.teal,
   },
+  // Badge label — bold, dark
   youTxt: {
+    fontFamily: FONTS.bold,
     fontSize: 8,
-    fontWeight: "900",
     color: "#08081a",
     letterSpacing: 1,
   },
@@ -387,7 +369,6 @@ export default function LearningPathScreen() {
   const currentLevel = currentProfile?.playLevel ?? 1;
 
   const scrollRef = useRef(null);
-  // Ref per card to measure y position after layout
   const cardRefs = useRef(CURRICULUM.map(() => React.createRef()));
   const scrollReady = useRef(false);
 
@@ -400,13 +381,12 @@ export default function LearningPathScreen() {
     }).start();
   }, []);
 
-  // Scroll to current level after layout settles
   const handleScrollViewLayout = () => {
     if (scrollReady.current) return;
     scrollReady.current = true;
 
     const currentIdx = CURRICULUM.findIndex((c) => c.level === currentLevel);
-    if (currentIdx <= 0) return; // already at top
+    if (currentIdx <= 0) return;
 
     setTimeout(() => {
       const cardRef = cardRefs.current[currentIdx];
@@ -418,7 +398,6 @@ export default function LearningPathScreen() {
           scrollRef.current?.scrollTo({ y: scrollTo, animated: true });
         },
         () => {
-          // fallback: estimate
           const estY = currentIdx * (130 + CONN_H);
           scrollRef.current?.scrollTo({
             y: Math.max(0, estY - SH / 2 + 65),
@@ -517,7 +496,6 @@ export default function LearningPathScreen() {
                 cardRef={cardRefs.current[index]}
               />
               {!isLast && (
-                // Same colour and width as the card border — clean, uniform look
                 <Connector fromSide={side} color="rgba(255,255,255,0.09)" />
               )}
             </View>
@@ -555,19 +533,26 @@ const screenS = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
   },
-  backIcon: { fontSize: 18, color: C.teal, fontWeight: "700" },
+  // Back arrow — bold, teal
+  backIcon: {
+    fontFamily: FONTS.bold,
+    fontSize: 18,
+    color: C.teal,
+  },
+  // Screen title — bold
   title: {
+    fontFamily: FONTS.bold,
     fontSize: 19,
-    fontWeight: "900",
     color: C.textPri,
     textShadowColor: "rgba(0,188,212,0.4)",
     textShadowOffset: { width: 0, height: 0 },
     textShadowRadius: 8,
   },
+  // Subtitle — light, muted
   subTitle: {
+    fontFamily: FONTS.light,
     fontSize: 11,
     color: C.textMuted,
-    fontWeight: "500",
     marginTop: 1,
   },
   lvlPill: {
@@ -578,9 +563,10 @@ const screenS = StyleSheet.create({
     paddingHorizontal: 10,
     paddingVertical: 5,
   },
+  // Level pill text — bold, teal
   lvlPillTxt: {
+    fontFamily: FONTS.bold,
     fontSize: 11,
-    fontWeight: "900",
     color: C.teal,
     letterSpacing: 0.3,
   },
@@ -594,11 +580,17 @@ const screenS = StyleSheet.create({
     backgroundColor: "rgba(255,255,255,0.03)",
   },
   stripItem: { flex: 1, alignItems: "center" },
-  stripVal: { fontSize: 15, fontWeight: "900", color: C.teal },
+  // Strip value — bold, teal
+  stripVal: {
+    fontFamily: FONTS.bold,
+    fontSize: 15,
+    color: C.teal,
+  },
+  // Strip label — light, muted
   stripLbl: {
+    fontFamily: FONTS.light,
     fontSize: 9,
     color: C.textMuted,
-    fontWeight: "600",
     letterSpacing: 0.3,
     marginTop: 1,
   },
@@ -607,5 +599,10 @@ const screenS = StyleSheet.create({
   scrollContent: { paddingTop: 20, paddingBottom: 60 },
 
   endCap: { alignItems: "center", paddingVertical: 28 },
-  endCapTxt: { fontSize: 12, color: C.textMuted, fontWeight: "600" },
+  // End cap text — light, muted
+  endCapTxt: {
+    fontFamily: FONTS.light,
+    fontSize: 12,
+    color: C.textMuted,
+  },
 });
