@@ -156,17 +156,26 @@ function StoryCard({
             contentFit="cover"
             cachePolicy="disk"
           />
-          <View style={styles.imageOverlay} />
-          <View style={styles.titleOverlay}>
-            <Text style={styles.title} numberOfLines={2}>
-              {title}
-            </Text>
-          </View>
+
+          {/* "Completed" ribbon — sits above the gradient */}
           {isCompleted && (
             <View style={styles.completedRibbon}>
               <Text style={styles.completedRibbonText}>✓ Completed</Text>
             </View>
           )}
+
+          {/*
+            Title overlay: gradient sits at the bottom of the image,
+            grows upward to fit any title length.
+            Key change: remove fixed height on imageOverlay,
+            use flexDirection column-reverse so gradient hugs the text.
+          */}
+          <View style={styles.titleOverlayContainer}>
+            {/* gradient fade */}
+            <View style={styles.imageOverlay} />
+            {/* title text — no numberOfLines limit */}
+            <Text style={styles.title}>{title}</Text>
+          </View>
         </View>
 
         {/* ── Intro text ── */}
@@ -291,12 +300,26 @@ const styles = StyleSheet.create({
     borderColor: "rgba(0,188,212,0.6)",
     backgroundColor: "#1a2a50",
   },
-  imageOverlay: {
+  titleOverlayContainer: {
     position: "absolute",
     bottom: 0,
     left: 0,
     right: 0,
-    height: "30%",
+    // column-reverse: title renders first (visually bottom),
+    // gradient fills remaining space above it
+    flexDirection: "column",
+    justifyContent: "flex-end",
+  },
+  // Semi-transparent gradient behind the title.
+  // StyleSheet doesn't support real gradients, so we stack two
+  // Views: a fully transparent top edge and an opaque bottom.
+  // Using position absolute here so it stretches to fill the container.
+  imageOverlay: {
+    position: "absolute",
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
     backgroundColor: "rgba(13,13,36,0.78)",
   },
   titleOverlay: {
@@ -311,12 +334,16 @@ const styles = StyleSheet.create({
   // Story card title — CoText-Bold replaces Noteworthy
   title: {
     fontFamily: FONTS.bold,
-    fontSize: 14,
+    fontSize: 13,
     color: "#E0F7FA",
-    lineHeight: 18,
+    lineHeight: 17,
     textShadowColor: "rgba(0,0,0,0.7)",
     textShadowOffset: { width: 0, height: 1 },
     textShadowRadius: 4,
+    paddingHorizontal: 10,
+    paddingBottom: 8,
+    paddingTop: 10,
+    // no numberOfLines — let it wrap freely
   },
   completedRibbon: {
     position: "absolute",
@@ -329,6 +356,17 @@ const styles = StyleSheet.create({
     borderBottomLeftRadius: 8,
   },
   // "✓ Completed" ribbon text — bold, white
+  completedRibbon: {
+    position: "absolute",
+    top: 8,
+    right: 0,
+    backgroundColor: "rgba(76,175,80,0.85)",
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderTopLeftRadius: 8,
+    borderBottomLeftRadius: 8,
+    zIndex: 2,
+  },
   completedRibbonText: {
     fontFamily: FONTS.bold,
     fontSize: 10,

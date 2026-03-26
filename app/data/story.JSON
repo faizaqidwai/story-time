@@ -1,0 +1,217 @@
+{
+  "title": "The Island of Whispering Tides",
+  "category": "Long",
+  "readingLevel": "ADVANCE",
+  "playLevel": 9,
+  "pages": [
+    {
+      "id": "901-1",
+      "text": "The storm came without warning. Dark clouds swallowed the sky, and the proud ship Sea Wanderer groaned under the crashing waves. Lightning split the night as the crew shouted orders, but the sea was stronger. Among the passengers was Ayaan, a quiet but observant boy, traveling with his older sister, Lina. She was brave and sharp-minded, always thinking ahead. When the ship struck hidden rocks, everything changed. \"Hold on!\" Lina cried. The ship shattered.",
+      "image": ""
+	  
+    },
+    {
+      "id": "901-2",
+      "text": "Ayaan woke on a cold shore. The air smelled of salt and wet wood. Pieces of the broken ship lay scattered like lost memories. Lina was beside him, her arm scratched but her eyes steady. \"We survived,\" she said softly. Around them, a few others had also reached the island: Mr. Kareem, a tall man with a deep scar above his eyebrow and a serious expression. Old Mrs. D’Souza, kind but weak. Farid, a cheerful sailor who refused to lose hope. The island was strange. Towering trees twisted toward the sky, their leaves whispering even when there was no wind. The sand shimmered faintly, as if hiding secrets beneath it.",
+      "image": ""
+    },
+    {
+      "id": "901-3",
+      "text": "\"We need water, shelter, and food,\" Lina said firmly. They began exploring. Farid found a narrow stream flowing between smooth black rocks. Ayaan noticed footprints nearby—but they were not theirs. \"Someone else is here,\" he whispered. Mr. Kareem frowned. \"Or something.\"",
+      "image": ""
+    },
+    {
+      "id": "901-4",
+      "text": "As night fell, the island changed. Soft, eerie sounds echoed through the trees. Shadows moved where nothing stood. The group gathered near a small fire, their faces tense. \"Do you hear that?\" Mrs. D’Souza asked, her voice trembling. It sounded like whispers—faint, distant, almost human. Ayaan stared into the darkness, his heart pounding. This island was not empty. And whatever lived there was watching them.",
+      "image": ""
+    },
+    {
+      "id": "901-5",
+      "text": "To be continued…",
+      "image": ""
+    }
+  ],
+  "activityData": {
+    "wordGuess": [
+      {
+        "word": "STORM",
+        "hints": [
+          "It has wind and rain",
+          "It happens in the sky",
+          "It can be loud",
+          "It can break ships",
+          "It is dangerous"
+        ]
+      },
+      {
+        "word": "ISLAND",
+        "hints": [
+          "It is land in water",
+          "You can get stuck there",
+          "It has trees and sand",
+          "It is not a city",
+          "It is surrounded by water"
+        ]
+      },
+      {
+        "word": "WHISPER",
+        "hints": [
+          "It is a soft sound",
+          "It is not loud",
+          "People speak this way quietly",
+          "You hear it at night",
+          "It can feel scary"
+        ]
+      }
+    ],
+    "listening": {
+      "id": "listen_901",
+      "title": "The Island of Whispering Tides",
+      "image_url": "",
+      "audio_narration_script": "A strong storm destroyed a ship. Ayaan and his sister Lina reached a strange island with other survivors. They explored the island and found footprints that were not theirs. At night, they heard whispers and realized they were not alone.",
+      "questions": [
+        {
+          "question": "What destroyed the ship?",
+          "options": [
+            "A storm",
+            "A fire",
+            "A tree",
+            "A bird"
+          ],
+          "correct_answer_index": 0
+        },
+        {
+          "question": "Where did Ayaan wake up?",
+          "options": [
+            "On an island",
+            "In a house",
+            "In a city",
+            "On a road"
+          ],
+          "correct_answer_index": 0
+        },
+        {
+          "question": "What did Ayaan notice?",
+          "options": [
+            "Footprints",
+            "A car",
+            "A building",
+            "A bridge"
+          ],
+          "correct_answer_index": 0
+        }
+      ]
+    },
+    "understanding": [
+      {
+        "id": "storm",
+        "object": "Storm",
+        "emoji": "⛈️",
+        "options": [
+          {
+            "id": "1",
+            "text": "A storm has strong wind and rain",
+            "correct": true
+          },
+          {
+            "id": "2",
+            "text": "A storm can be dangerous",
+            "correct": true
+          },
+          {
+            "id": "3",
+            "text": "A storm happens in the sky",
+            "correct": true
+          },
+          {
+            "id": "4",
+            "text": "A storm is a type of animal",
+            "correct": false
+          },
+          {
+            "id": "5",
+            "text": "A storm is always quiet",
+            "correct": false
+          },
+          {
+            "id": "6",
+            "text": "A storm is made of wood",
+            "correct": false
+          }
+        ]
+      }
+    ]
+  },
+  "challengeWords": [
+    {
+      "name": "storm",
+      "phonics": ["s", "t", "or", "m", "storm"],
+      "image": "⛈️",
+      "imageType": "emoji",
+      "grammarCategory": "noun",
+      "category": "nature",
+      "explanation": "A storm is strong wind and rain.",
+      "extras": [
+        "Storms are loud",
+        "They have wind and rain",
+        "They can be dangerous"
+      ]
+    },
+    {
+      "name": "island",
+      "phonics": ["i", "s", "l", "and", "island"],
+      "image": "🏝️",
+      "imageType": "emoji",
+      "grammarCategory": "noun",
+      "category": "place",
+      "explanation": "An island is land surrounded by water.",
+      "extras": [
+        "It has water around it",
+        "It can have trees",
+        "People can live there"
+      ]
+    },
+    {
+      "name": "whisper",
+      "phonics": ["wh", "i", "sp", "er", "whisper"],
+      "image": "🤫",
+      "imageType": "emoji",
+      "grammarCategory": "verb",
+      "category": "sound",
+      "explanation": "Whisper means to speak very softly.",
+      "extras": [
+        "It is quiet",
+        "It is not loud",
+        "Used at night"
+      ]
+    },
+    {
+      "name": "shadow",
+      "phonics": ["sh", "a", "d", "ow", "shadow"],
+      "image": "🌑",
+      "imageType": "emoji",
+      "grammarCategory": "noun",
+      "category": "nature",
+      "explanation": "A shadow is a dark shape made by light.",
+      "extras": [
+        "It follows you",
+        "It is dark",
+        "You see it in light"
+      ]
+    },
+    {
+      "name": "brave",
+      "phonics": ["b", "r", "a", "ve", "brave"],
+      "image": "🦁",
+      "imageType": "emoji",
+      "grammarCategory": "adjective",
+      "category": "trait",
+      "explanation": "Brave means not afraid.",
+      "extras": [
+        "Heroes are brave",
+        "Not scared",
+        "Strong heart"
+      ]
+    }
+  ]
+}
