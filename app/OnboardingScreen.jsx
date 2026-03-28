@@ -11,6 +11,7 @@ import {
   KeyboardAvoidingView,
   Platform,
 } from "react-native";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 import { Audio } from "expo-av";
 import { useRouter } from "expo-router";
 import { useUser } from "./_contexts/UserContext";
@@ -193,6 +194,12 @@ export default function OnboardingScreen() {
     });
     const userAccount = await setLoginUserAccount(response.userAccount);
     const defaultProfile = userAccount.profiles[0];
+
+    // Key to userAccount.id — this account was just created on this device
+    if (userAccount?.id) {
+      await AsyncStorage.setItem(`@show_tutorial_${userAccount.id}`, "true");
+    }
+
     setTransitioning(true);
     Animated.timing(homeSlide, {
       toValue: 0,

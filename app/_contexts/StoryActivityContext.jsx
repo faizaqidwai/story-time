@@ -2,14 +2,16 @@
 //
 // Manages the sequential activity flow for a single story session.
 //
-// Changes from original:
-//  • Every session write now stamps `lastModifiedAt` — used by SyncEngine
-//    to detect local writes that happen during a sync round-trip.
-//  • SyncEngine is started/stopped here. Token is read directly from
-//    SecureStore using the same key that authService writes on login.
-//    No prop changes needed — _layout.jsx stays exactly as-is.
-//  • `refreshFromStorage` — called by SyncEngine after a sync resolves
-//    to reload the active in-memory session if it changed on another device.
+// Changes from previous version:
+//  • SyncEngine.start() no longer fires an initial 10s sync — login and
+//    home screen handle their own intentional syncs.
+//  • AppState listener removed from SyncEngine (done in SyncEngine.js).
+//  • `syncNow` exposed via context so home.jsx can call it after
+//    activity completion and on first home screen visit.
+//  • `hasInitialSyncedRef` exposed via context so home.jsx can fire a
+//    one-time pull on first visit without re-triggering on re-renders.
+//  • Everything else (session logic, persistSession, completeActivity,
+//    clearStorySession, resetSessionForProfileSwitch) is UNTOUCHED.
 
 import React, {
   createContext,
@@ -18,6 +20,7 @@ import React, {
   useEffect,
   useCallback,
   useRef,
+  useMemo,
 } from "react";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { getAccessToken } from "../services/tokenStorage";
@@ -44,16 +47,17 @@ const STORAGE_KEY_PREFIX = "@story_activity_";
 const StoryActivityContext = createContext(null);
 
 // ─────────────────────────────────────────────────────────────────────────────
-function buildSession(story, profileId) {
+function buildSession(story, profileId, isReadOnly) {
+  console.log("==== buildSession method =====");
+  console.log("==== isReadOnly ==== " + JSON.stringify(story));
   return {
     storyId: story.id,
     storyTitle: story.title,
+    storyCover: story.cover,
     profileId,
     startedAt: new Date().toISOString(),
     lastModifiedAt: new Date().toISOString(),
     nextActivityIndex: 0,
-    // Snapshot challengeWords at session start so they're always available
-    // at completion time without needing to look up the books list again.
     challengeWords: story.challengeWords || [],
     activities: {
       [ACTIVITY.STORY_READING]: null,
@@ -67,12 +71,10 @@ function buildSession(story, profileId) {
       words: [],
     },
     completedAt: null,
+    isReadOnly: isReadOnly,
   };
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
-// No prop changes — _layout.jsx stays exactly as-is:
-//   <StoryActivityProvider>  ← still works, no getAuthToken prop needed
 // ─────────────────────────────────────────────────────────────────────────────
 export const StoryActivityProvider = ({ children }) => {
   const [storySession, setStorySession] = useState(null);
@@ -80,6 +82,10 @@ export const StoryActivityProvider = ({ children }) => {
 
   // Keep a ref to the active session's key so SyncEngine can refresh it
   const activeSessionKeyRef = useRef(null);
+
+  // Tracks whether the first-visit pull has already been fired this session.
+  // home.jsx reads this ref to fire a one-time sync on first home screen visit.
+  const hasInitialSyncedRef = useRef(false);
 
   // ── Persist to AsyncStorage (stamps lastModifiedAt) ─────────────────────
   const persistSession = useCallback(async (session) => {
@@ -115,52 +121,43 @@ export const StoryActivityProvider = ({ children }) => {
     } catch (_) {}
   }, []);
 
+  // ── Auth token getter (reused across sync calls) ─────────────────────────
+  const getAuthToken = useCallback(() => getAccessToken(), []);
+
+  // ── handleSyncComplete — reload active session if SyncEngine updated it ──
+  const handleSyncComplete = useCallback(async (syncResponse) => {
+    if (!activeSessionKeyRef.current) return;
+    try {
+      const raw = await AsyncStorage.getItem(activeSessionKeyRef.current);
+      if (!raw) return;
+      const refreshed = JSON.parse(raw);
+      setStorySession((prev) => {
+        if (!prev) return prev;
+        if (refreshed.nextActivityIndex > prev.nextActivityIndex) {
+          return {
+            ...refreshed,
+            challengeWords:
+              prev.challengeWords || refreshed.challengeWords || [],
+          };
+        }
+        return prev;
+      });
+    } catch (_) {}
+  }, []);
+
   // ── SyncEngine wiring ────────────────────────────────────────────────────
-  // Token is read from SecureStore on each sync cycle — this means the
-  // engine automatically stops syncing after logout (token deleted) and
-  // resumes after login (token written) without any restart needed.
+  // Start the 15-min fallback interval only. No initial sync fired here.
+  // Login pull and first-home-visit pull are handled intentionally elsewhere.
   useEffect(() => {
-    // getAuthToken reads the JWT from SecureStore each time it is called.
-    // Returns null when the user is logged out — SyncEngine skips that cycle.
-    const getAuthToken = () => getAccessToken();
-
-    const handleSyncComplete = async (syncResponse) => {
-      // Reload the active in-memory session if SyncEngine updated it
-      // (e.g. progress arrived from another logged-in device)
-      if (!activeSessionKeyRef.current) return;
-      try {
-        const raw = await AsyncStorage.getItem(activeSessionKeyRef.current);
-        if (!raw) return;
-        const refreshed = JSON.parse(raw);
-        setStorySession((prev) => {
-          if (!prev) return prev;
-          // Only replace in-memory state if storage moved ahead
-          if (refreshed.nextActivityIndex > prev.nextActivityIndex) {
-            // challengeWords is never written by the SyncEngine — always
-            // carry it forward from the current in-memory session so the
-            // finish overlay never sees an empty words array.
-            return {
-              ...refreshed,
-              challengeWords:
-                prev.challengeWords || refreshed.challengeWords || [],
-            };
-          }
-          return prev;
-        });
-      } catch (_) {}
-    };
-
     SyncEngine.start(getAuthToken, handleSyncComplete);
 
-    // ── Pull-on-login ──────────────────────────────────────────────────────
-    // If the user just logged in on a fresh device, local AsyncStorage has no
-    // activity records — the regular sync engine would skip every cycle.
-    // We detect this by checking whether any @story_activity_ keys exist.
-    // If none do but a token exists, we fire a one-time GET pull to restore
-    // all backend activity state before the scheduler's first tick.
+    // ── Pull-on-login (new device detection) ──────────────────────────────
+    // If no local activity records exist but a token does, fire a one-time
+    // GET pull to restore all backend activity state. This covers the case
+    // where the user logs in on a fresh device.
     (async () => {
       const token = await getAccessToken();
-      if (!token) return; // not logged in — nothing to pull
+      if (!token) return;
 
       const allKeys = await AsyncStorage.getAllKeys();
       const hasLocalActivities = allKeys.some((k) =>
@@ -172,24 +169,27 @@ export const StoryActivityProvider = ({ children }) => {
           "[StoryActivityContext] new device detected — pulling activity state",
         );
         await SyncEngine.pullActivities(getAuthToken, handleSyncComplete);
+        // Mark initial sync done so home.jsx doesn't fire a duplicate pull
+        hasInitialSyncedRef.current = true;
       }
     })();
 
     return () => SyncEngine.stop();
-  }, []); // runs once on mount — SyncEngine handles its own scheduling
+  }, []); // runs once on mount
+
+  // ── syncNow — callable from home.jsx for intentional syncs ──────────────
+  const syncNow = useCallback(() => {
+    return SyncEngine.syncNow(getAuthToken, handleSyncComplete);
+  }, [getAuthToken, handleSyncComplete]);
 
   // ── startStorySession ────────────────────────────────────────────────────
   const startStorySession = useCallback(
-    async (story, profileId) => {
+    async (story, profileId, isReadOnly) => {
       let session = await loadSession(story.id, profileId);
 
       if (!session || session.nextActivityIndex >= 4) {
-        session = buildSession(story, profileId);
+        session = buildSession(story, profileId, isReadOnly);
       } else {
-        // Always refresh challengeWords from the live story object.
-        // The stored session may be stale (saved before challengeWords was
-        // added, or saved when the API hadn't returned words yet).
-        // story.challengeWords is always the authoritative source.
         session = {
           ...session,
           challengeWords: story.challengeWords || [],
@@ -202,7 +202,9 @@ export const StoryActivityProvider = ({ children }) => {
 
       setStorySession(session);
       setCurrentStory(story);
-      await persistSession(session);
+      if (!isReadOnly) {
+        await persistSession(session);
+      }
       return session;
     },
     [loadSession, persistSession],
@@ -237,7 +239,7 @@ export const StoryActivityProvider = ({ children }) => {
             activityIndex === ACTIVITY.WORD_UNDERSTANDING_CHALLENGE
               ? new Date().toISOString()
               : null,
-          lastModifiedAt: new Date().toISOString(), // ← stamp every write
+          lastModifiedAt: new Date().toISOString(),
         };
 
         persistSession(next);
@@ -248,10 +250,6 @@ export const StoryActivityProvider = ({ children }) => {
   );
 
   // ── clearStorySession ────────────────────────────────────────────────────
-  // Clears the in-memory session and marks the AsyncStorage record as
-  // "rewards disbursed" so the home screen doesn't re-trigger the overlay,
-  // but does NOT delete it — SyncEngine needs it to remain in AsyncStorage
-  // until the backend confirms receipt, after which SyncEngine deletes it.
   const clearStorySession = useCallback(async () => {
     if (!storySession) return;
     try {
@@ -259,8 +257,6 @@ export const StoryActivityProvider = ({ children }) => {
       const raw = await AsyncStorage.getItem(key);
       if (raw) {
         const existing = JSON.parse(raw);
-        // Stamp rewardsDisbursed so home.jsx won't re-show the overlay on
-        // next render, but keep the record alive for SyncEngine to pick up.
         await AsyncStorage.setItem(
           key,
           JSON.stringify({ ...existing, rewardsDisbursed: true }),
@@ -272,24 +268,34 @@ export const StoryActivityProvider = ({ children }) => {
   }, [storySession]);
 
   // ── resetSessionForProfileSwitch ─────────────────────────────────────────
-  // Clears the in-memory session ONLY — does NOT delete from AsyncStorage.
-  // Call this when switching profiles so the previous profile's session
-  // doesn't bleed into the new profile's story cards.
   const resetSessionForProfileSwitch = useCallback(() => {
     activeSessionKeyRef.current = null;
     setStorySession(null);
     setCurrentStory(null);
   }, []);
 
-  const value = {
-    storySession,
-    currentStory,
-    startStorySession,
-    completeActivity,
-    clearStorySession,
-    resetSessionForProfileSwitch,
-    resumeActivityIndex: storySession?.nextActivityIndex ?? 0,
-  };
+  const value = useMemo(
+    () => ({
+      storySession,
+      currentStory,
+      startStorySession,
+      completeActivity,
+      clearStorySession,
+      resetSessionForProfileSwitch,
+      resumeActivityIndex: storySession?.nextActivityIndex ?? 0,
+      syncNow,
+      hasInitialSyncedRef,
+    }),
+    [
+      storySession,
+      currentStory,
+      startStorySession,
+      completeActivity,
+      clearStorySession,
+      resetSessionForProfileSwitch,
+      syncNow,
+    ],
+  );
 
   return (
     <StoryActivityContext.Provider value={value}>

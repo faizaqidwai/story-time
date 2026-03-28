@@ -519,16 +519,6 @@ const DescribeObjectGame = ({ onExit }) => {
     [],
   );
 
-  useEffect(() => {
-    if (!badgeVisible || !pendingCompleteRef.current) return;
-    pendingCompleteRef.current = false;
-    completeActivity(
-      ACTIVITY.WORD_UNDERSTANDING_CHALLENGE,
-      { score: finalScoreRef.current },
-      { coins: totalCoinsRef.current, diamonds: 3 },
-    );
-  }, [badgeVisible]);
-
   const handleSpeak = (text, optionId) => {
     if (speakingId === optionId) {
       Speech.stop();
@@ -663,18 +653,24 @@ const DescribeObjectGame = ({ onExit }) => {
       pageSlide.setValue(SW);
       pageOp.setValue(1);
       if (qIndex + 1 >= queue.length) {
-        setTimeout(() => {
+        setTimeout(async () => {
           setScore((finalScore) => {
-            const isWin = finalScore === queue.length;
-            if (isWin) {
-              finalScoreRef.current = finalScore;
-              pendingCompleteRef.current = true;
-              setBadgeVisible(true);
-            } else {
-              setShowResult(true);
-            }
+            finalScoreRef.current = finalScore;
             return finalScore;
           });
+
+          const isWin = finalScoreRef.current === queue.length;
+          if (isWin) {
+            // Complete activity FIRST before showing badge or navigating
+            await completeActivity(
+              ACTIVITY.WORD_UNDERSTANDING_CHALLENGE,
+              { score: finalScoreRef.current },
+              { coins: totalCoinsRef.current, diamonds: 3 },
+            );
+            setBadgeVisible(true);
+          } else {
+            setShowResult(true);
+          }
         }, 0);
       } else {
         setQIndex((i) => i + 1);

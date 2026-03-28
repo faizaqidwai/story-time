@@ -1,4 +1,10 @@
-import React, { createContext, useState, useContext, useEffect } from "react";
+import React, {
+  createContext,
+  useState,
+  useContext,
+  useEffect,
+  useMemo,
+} from "react";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { deleteProfileApi } from "../services/profileService";
 import { getPrimaryUserAccountId } from "../services/identityStorage";
@@ -138,27 +144,30 @@ export const UserProvider = ({ children }) => {
 
   const setLoginUserAccount = async (userAccount) => {
     try {
-      // Set Login User Account in Context
-      setUserAccount(userAccount);
-      await AsyncStorage.setItem(
-        STORAGE_KEYS.USER_ACCOUNT,
-        JSON.stringify(userAccount),
-      );
-
-      // Set Login User Account Profiles in Context
-      setProfiles(userAccount.profiles);
-      await AsyncStorage.setItem(
-        STORAGE_KEYS.PROFILES,
-        JSON.stringify(userAccount.profiles),
-      );
       const loginProfile = userAccount.profiles[0];
-      //const loginProfile = await addProfile(userAccount.profiles[0]);
-      // set login profile in selected profile
-      await selectProfile(loginProfile);
 
-      // Mark as not first time anymore
-      await AsyncStorage.setItem(STORAGE_KEYS.FIRST_TIME, "false");
-      setIsFirstTime(false);
+      // Write ALL storage in one batch first
+      await AsyncStorage.multiSet([
+        [STORAGE_KEYS.USER_ACCOUNT, JSON.stringify(userAccount)],
+        [STORAGE_KEYS.PROFILES, JSON.stringify(userAccount.profiles)],
+        [STORAGE_KEYS.CURRENT_PROFILE, JSON.stringify(loginProfile)],
+        [STORAGE_KEYS.FIRST_TIME, "false"],
+      ]);
+
+      // Check and clear stale pending (was inside selectProfile)
+      await checkAndClearStalePending(
+        loginProfile.id,
+        loginProfile.playLevel ?? 1,
+      );
+
+      // Batch ALL state updates in one render cycle — prevents multiple remounts
+      const { unstable_batchedUpdates } = require("react-native");
+      unstable_batchedUpdates(() => {
+        setUserAccount(userAccount);
+        setProfiles(userAccount.profiles);
+        setCurrentProfile(loginProfile);
+        setIsFirstTime(false);
+      });
 
       return userAccount;
     } catch (error) {
@@ -187,19 +196,28 @@ export const UserProvider = ({ children }) => {
       const updatedProfiles = profiles.map((p) =>
         p.id === updatedProfile.id ? updatedProfile : p,
       );
-      setProfiles(updatedProfiles);
-      await AsyncStorage.setItem(
-        STORAGE_KEYS.PROFILES,
-        JSON.stringify(updatedProfiles),
-      );
 
+      // Batch both writes to AsyncStorage first
+      const storageWrites = [
+        [STORAGE_KEYS.PROFILES, JSON.stringify(updatedProfiles)],
+      ];
       if (currentProfile?.id === updatedProfile.id) {
-        setCurrentProfile(updatedProfile);
-        await AsyncStorage.setItem(
+        storageWrites.push([
           STORAGE_KEYS.CURRENT_PROFILE,
           JSON.stringify(updatedProfile),
-        );
+        ]);
       }
+      await AsyncStorage.multiSet(storageWrites);
+
+      // Then batch both state updates together using unstable_batchedUpdates
+      // so React processes them in ONE render cycle instead of two
+      const { unstable_batchedUpdates } = require("react-native");
+      unstable_batchedUpdates(() => {
+        setProfiles(updatedProfiles);
+        if (currentProfile?.id === updatedProfile.id) {
+          setCurrentProfile(updatedProfile);
+        }
+      });
     } catch (error) {
       console.error("Error updating profile:", error);
     }
@@ -328,29 +346,30 @@ export const UserProvider = ({ children }) => {
     }
   };
 
+  const contextValue = useMemo(
+    () => ({
+      currentProfile,
+      profiles,
+      isLoading,
+      isFirstTime,
+      isLogout,
+      selectProfile,
+      setLoginUserAccount,
+      addProfile,
+      updateProfile,
+      deleteProfile,
+      toggleFavorite,
+      addToReadingHistory,
+      clearAllData,
+      addCompletedStory,
+      userAccount,
+      setUserAccount,
+    }),
+    [currentProfile, profiles, isLoading, isFirstTime, isLogout, userAccount],
+  );
+
   return (
-    <UserContext.Provider
-      value={{
-        currentProfile,
-        profiles,
-        isLoading,
-        isFirstTime,
-        isLogout,
-        selectProfile,
-        setLoginUserAccount,
-        addProfile,
-        updateProfile,
-        deleteProfile,
-        toggleFavorite,
-        addToReadingHistory,
-        clearAllData,
-        addCompletedStory,
-        userAccount,
-        setUserAccount,
-      }}
-    >
-      {children}
-    </UserContext.Provider>
+    <UserContext.Provider value={contextValue}>{children}</UserContext.Provider>
   );
 };
 

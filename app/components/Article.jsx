@@ -749,6 +749,7 @@ const Article = () => {
     return data.articles.find((a) => a.id == id) ?? data.articles[0];
   })();
 
+  const cover = storySession.storyCover;
   const [coinCount, setCoinCount] = useState(0);
   const [flyingCoins, setFlyingCoins] = useState([]);
   const coinIdRef = useRef(0);
@@ -946,9 +947,8 @@ const Article = () => {
       <View style={styles.coverWrap}>
         <Image
           source={
-            typeof article.image_url === "string" &&
-            article.image_url.startsWith("http")
-              ? { uri: article.image_url }
+            typeof cover === "string" && cover.startsWith("http")
+              ? { uri: cover }
               : require("../../assets/img/article/1.jpg")
           }
           style={styles.coverImage}

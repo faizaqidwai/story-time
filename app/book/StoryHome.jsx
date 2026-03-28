@@ -281,10 +281,12 @@ export default function StoryHome() {
   }
 
   const nextActivityIndex = storySession?.nextActivityIndex ?? 0;
+  const isReadOnly = storySession?.isReadOnly;
 
   const isActivityEnabled = (idx) => {
     if (idx === 0) return true;
     if (nextActivityIndex >= 4) return false;
+    if (isReadOnly) return false;
     return idx === nextActivityIndex;
   };
 

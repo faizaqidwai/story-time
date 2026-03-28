@@ -1,15 +1,25 @@
-// app/home.jsx  (updated)
+// app/home.jsx  (updated for Level Access Layer)
 //
 // Changes from original:
-//  1. Stories for the current playLevel are cached in AsyncStorage and served
-//     from cache on subsequent opens (refreshed in background).
-//  2. When the user taps a story, startStorySession() is called to initialise
-//     (or restore) the StoryActivityContext session, then the user is routed to
-//     the correct starting point (BookReader or a mid-sequence activity).
-//  3. StoryFinishOverlay now receives the real accumulated rewards from the
-//     completed session and calls clearStorySession + disbursement on done.
-//  4. HomeTutorial overlay — highlights each main UI element with a tooltip.
-//     Currently always shown (will be gated by first-launch flag later).
+//   1. Imports useLevelAccess — calls initForProfile() when currentProfile changes.
+//   2. loadedLevel drives what stories are shown (not always profile.playLevel).
+//   3. Story loading uses getBooksByLevel(loadedLevel) when loadedLevel ≠ playLevel,
+//      otherwise falls back to the existing getBooks(profileId) path (no change to sync).
+//   4. Access guards (canPlay, canRead, isStoryAccessible) control what the user can do.
+//   5. LevelBadge shows loadedLevel and opens the upgraded Levels screen (selector).
+//   6. AccessModeBanner shown when viewing a non-current or restricted level.
+//   7. VIEW_ONLY levels show a locked placeholder instead of story cards.
+//   8. PARTIAL scope: only the first story card is interactive.
+//
+// Sync strategy changes:
+//   • On first home screen visit → fire a pull sync (once per session, guarded by hasInitialSyncedRef)
+//   • After activity completion (handleFinishDone) → fire a push sync
+//   • 15-min fallback interval runs in SyncEngine (no AppState trigger)
+//
+// Freeze fix:
+//   • _finishHandled — module-level guard prevents handleFinishDone running twice across remounts
+//   • _overlayShownForStoryId — module-level guard prevents finish overlay showing twice
+//     for the same story across remounts (root cause: router.replace + iOS Modal remounts Home)
 
 import {
   StyleSheet,
@@ -34,6 +44,7 @@ import StoryCard from "./components/StoryCard";
 import { bookService } from "./services/bookService";
 import ScreenWrapper from "./components/ScreenWrapper";
 import { useUser } from "./_contexts/UserContext";
+import { useLevelAccess } from "./_contexts/LevelAccessContext";
 import {
   useStoryActivity,
   ACTIVITY_ROUTES,
@@ -43,6 +54,7 @@ import StoryFinishOverlay from "./components/StoryFinishOverlay";
 import { attachActivityDataToStories } from "./data/storyActivityData";
 import LevelProgressionOverlay from "./components/LevelProgressionOverlay";
 import NewLevelBanner from "./components/NewLevelBanner";
+import PremiumUpgradeModal from "./components/PremiumUpgradeModal";
 import {
   getPendingProgression,
   clearPendingProgression,
@@ -50,6 +62,13 @@ import {
 
 import { SafeAreaView } from "react-native-safe-area-context";
 import { FONTS } from "./theme";
+
+// ── Module-level guards — outside component so they survive remounts ──────────
+// Root cause: router.replace("/home") + iOS Modal causes Home to fully unmount
+// and remount multiple times. These module-level variables persist across remounts
+// unlike useRef which resets on each mount.
+let _finishHandled = false;
+let _overlayShownForStoryId = null;
 
 const { width, height } = Dimensions.get("window");
 
@@ -59,10 +78,13 @@ const TEAL = "#00BCD4";
 const YELLOW = "#FFD54F";
 const CORAL = "#FF7043";
 
-// ── AsyncStorage key for story cache ─────────────────────────────────────────
-const storyCacheKey = (playLevel) => `@stories_cache_v2_level_${playLevel}`;
+// user accounts already seen Tutorial
+const _tutorialCheckedAccounts = new Set();
 
-// ── Game card data ─────────────────────────────────────────────────────────
+// ── AsyncStorage key (per level number) ──────────────────────────────────────
+const storyCacheKey = (levelNumber) => `@stories_cache_v2_level_${levelNumber}`;
+
+// ── Game card data ────────────────────────────────────────────────────────────
 const GAMES = [
   {
     id: "flappy",
@@ -82,9 +104,7 @@ const GAMES = [
   },
 ];
 
-// ─────────────────────────────────────────────────────────────────────────────
-// TUTORIAL STEPS — title + description for each highlighted element
-// ─────────────────────────────────────────────────────────────────────────────
+// ── Tutorial steps ────────────────────────────────────────────────────────────
 const TUTORIAL_STEPS = [
   {
     key: "account",
@@ -96,7 +116,7 @@ const TUTORIAL_STEPS = [
     key: "levelBadge",
     title: "Level Badge",
     description:
-      "This shows your current level. Tap it to view and change your level.",
+      "This shows your current level. Tap it to switch between levels.",
   },
   {
     key: "wordbag",
@@ -123,26 +143,22 @@ const TUTORIAL_STEPS = [
   {
     key: "readIcon",
     title: "Read Activity",
-    description:
-      "This indicates the Read activity for this story. Read the story and learn new words.",
+    description: "This indicates the Read activity for this story.",
   },
   {
     key: "guessIcon",
     title: "Guess the Word",
-    description:
-      "This indicates the 'Guess the Word' activity — test your memory of the words you read.",
+    description: "This indicates the 'Guess the Word' activity.",
   },
   {
     key: "listenIcon",
     title: "Listening Activity",
-    description:
-      "This indicates the 'Listening' activity — sharpen your ear for the new words.",
+    description: "This indicates the 'Listening' activity.",
   },
   {
     key: "describeIcon",
     title: "Describe the Word",
-    description:
-      "This indicates the 'Describe the Word' activity — express what you've learned.",
+    description: "This indicates the 'Describe the Word' activity.",
   },
   {
     key: "storyCard",
@@ -152,12 +168,106 @@ const TUTORIAL_STEPS = [
 ];
 
 // ─────────────────────────────────────────────────────────────────────────────
-// HOME TUTORIAL OVERLAY
-// Highlights each UI element one at a time using a 4-panel cutout over a
-// dark scrim. Tooltip appears above or below the highlighted element.
-// All layout coordinates come from measureInWindow() on the target refs.
+// ACCESS MODE BANNER
 // ─────────────────────────────────────────────────────────────────────────────
-const PADDING = 10; // extra padding around highlighted element
+function AccessModeBanner({
+  levelContext,
+  currentPlayLevel,
+  onSwitchToCurrent,
+}) {
+  const { mode, levelNumber, accessScope } = levelContext;
+
+  if (
+    mode === "PLAY" &&
+    levelNumber === currentPlayLevel &&
+    accessScope !== "PARTIAL"
+  ) {
+    return null;
+  }
+
+  let bgColor, borderColor, emoji, messageText;
+
+  if (mode === "VIEW_ONLY") {
+    bgColor = "rgba(239,83,80,0.10)";
+    borderColor = "rgba(239,83,80,0.35)";
+    emoji = "🔒";
+    messageText = `Level ${levelNumber} is locked. Complete earlier levels to unlock.`;
+  } else if (mode === "READ_ONLY") {
+    bgColor = "rgba(0,188,212,0.08)";
+    borderColor = "rgba(0,188,212,0.3)";
+    emoji = "📖";
+    messageText = `Level ${levelNumber} — Read Only. Return to Level ${currentPlayLevel} to do activities.`;
+  } else if (mode === "PLAY" && accessScope === "PARTIAL") {
+    bgColor = "rgba(255,213,79,0.08)";
+    borderColor = "rgba(255,213,79,0.35)";
+    emoji = "✨";
+    messageText = `Level ${levelNumber} Preview — 1 story available. Upgrade to unlock all.`;
+  } else if (levelNumber !== currentPlayLevel) {
+    bgColor = "rgba(0,188,212,0.08)";
+    borderColor = "rgba(0,188,212,0.3)";
+    emoji = "👁";
+    messageText = `Viewing Level ${levelNumber}. Your active level is ${currentPlayLevel}.`;
+  } else {
+    return null;
+  }
+
+  return (
+    <View
+      style={[bannerS.container, { backgroundColor: bgColor, borderColor }]}
+    >
+      <Text style={bannerS.emoji}>{emoji}</Text>
+      <Text style={bannerS.text} numberOfLines={2}>
+        {messageText}
+      </Text>
+      {levelNumber !== currentPlayLevel && (
+        <TouchableOpacity
+          style={bannerS.btn}
+          onPress={onSwitchToCurrent}
+          activeOpacity={0.8}
+        >
+          <Text style={bannerS.btnText}>Level {currentPlayLevel} ↩</Text>
+        </TouchableOpacity>
+      )}
+    </View>
+  );
+}
+
+const bannerS = StyleSheet.create({
+  container: {
+    marginHorizontal: 15,
+    marginBottom: 8,
+    borderRadius: 14,
+    borderWidth: 1.5,
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+  },
+  emoji: { fontSize: 16 },
+  text: {
+    fontFamily: FONTS.light,
+    flex: 1,
+    fontSize: 12,
+    color: "#B2EBF2",
+    lineHeight: 17,
+  },
+  btn: {
+    backgroundColor: "rgba(0,188,212,0.18)",
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: "rgba(0,188,212,0.4)",
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    flexShrink: 0,
+  },
+  btnText: { fontFamily: FONTS.bold, fontSize: 11, color: TEAL },
+});
+
+// ─────────────────────────────────────────────────────────────────────────────
+// HOME TUTORIAL OVERLAY
+// ─────────────────────────────────────────────────────────────────────────────
+const PADDING = 10;
 
 function HomeTutorial({ visible, refs, onDone }) {
   const [step, setStep] = useState(0);
@@ -170,15 +280,12 @@ function HomeTutorial({ visible, refs, onDone }) {
   const isLast = step === TUTORIAL_STEPS.length - 1;
   const isFirst = step === 0;
 
-  // ── measure the target ref and update rect ──────────────────────────────
   const measureStep = useCallback(
     (stepIndex) => {
       const key = TUTORIAL_STEPS[stepIndex].key;
       const ref = refs[key];
       if (!ref?.current) return;
-
       ref.current.measureInWindow((x, y, w, h) => {
-        // guard against invalid measurements
         if (w === 0 && h === 0) return;
         const newRect = {
           x: x - PADDING,
@@ -187,16 +294,12 @@ function HomeTutorial({ visible, refs, onDone }) {
           height: h + PADDING * 2,
         };
         setRect(newRect);
-
-        // reset and start tooltip fade-in
         tooltipAnim.setValue(0);
         Animated.timing(tooltipAnim, {
           toValue: 1,
           duration: 300,
           useNativeDriver: true,
         }).start();
-
-        // restart pulse
         if (pulseLoop.current) pulseLoop.current.stop();
         pulseAnim.setValue(1);
         pulseLoop.current = Animated.loop(
@@ -219,15 +322,12 @@ function HomeTutorial({ visible, refs, onDone }) {
     [refs, tooltipAnim, pulseAnim],
   );
 
-  // ── measure whenever visible or step changes ────────────────────────────
   useEffect(() => {
     if (!visible) return;
-    // small delay so the layout has settled before we measure
     const t = setTimeout(() => measureStep(step), 120);
     return () => clearTimeout(t);
   }, [visible, step, measureStep]);
 
-  // ── cleanup on hide ──────────────────────────────────────────────────────
   useEffect(() => {
     if (!visible) {
       if (pulseLoop.current) pulseLoop.current.stop();
@@ -244,34 +344,24 @@ function HomeTutorial({ visible, refs, onDone }) {
     setRect(null);
     setStep((s) => s + 1);
   };
-
   const handlePrev = () => {
     if (isFirst) return;
     setRect(null);
     setStep((s) => s - 1);
   };
-
-  const handleSkip = () => {
-    onDone();
-  };
+  const handleSkip = () => onDone();
 
   if (!visible) return null;
 
-  // ── derive tooltip position ─────────────────────────────────────────────
-  // If the rect is in the upper half of the screen → tooltip below, else above
   const showTooltipBelow = rect
     ? rect.y + rect.height / 2 < height * 0.55
     : true;
-
   const TOOLTIP_MARGIN = 14;
-
   const tooltipTop = rect
     ? showTooltipBelow
       ? rect.y + rect.height + TOOLTIP_MARGIN
-      : rect.y - TOOLTIP_MARGIN - 130 // rough height of tooltip card
+      : rect.y - TOOLTIP_MARGIN - 130
     : height * 0.5;
-
-  // clamp so tooltip never goes off-screen
   const clampedTooltipTop = Math.max(60, Math.min(tooltipTop, height - 200));
 
   return (
@@ -283,34 +373,20 @@ function HomeTutorial({ visible, refs, onDone }) {
       onRequestClose={handleSkip}
     >
       <View style={tutS.container} pointerEvents="box-none">
-        {/* ── SCRIM — 4 panels creating the cutout hole ── */}
         {rect ? (
           <>
-            {/* Top panel */}
             <View
               style={[
                 tutS.scrimPanel,
-                {
-                  top: 0,
-                  left: 0,
-                  right: 0,
-                  height: Math.max(0, rect.y),
-                },
+                { top: 0, left: 0, right: 0, height: Math.max(0, rect.y) },
               ]}
             />
-            {/* Bottom panel */}
             <View
               style={[
                 tutS.scrimPanel,
-                {
-                  top: rect.y + rect.height,
-                  left: 0,
-                  right: 0,
-                  bottom: 0,
-                },
+                { top: rect.y + rect.height, left: 0, right: 0, bottom: 0 },
               ]}
             />
-            {/* Left panel */}
             <View
               style={[
                 tutS.scrimPanel,
@@ -322,7 +398,6 @@ function HomeTutorial({ visible, refs, onDone }) {
                 },
               ]}
             />
-            {/* Right panel */}
             <View
               style={[
                 tutS.scrimPanel,
@@ -334,8 +409,6 @@ function HomeTutorial({ visible, refs, onDone }) {
                 },
               ]}
             />
-
-            {/* Animated highlight border around the cutout */}
             <Animated.View
               pointerEvents="none"
               style={[
@@ -351,11 +424,8 @@ function HomeTutorial({ visible, refs, onDone }) {
             />
           </>
         ) : (
-          // full scrim while measuring
           <View style={[tutS.scrimPanel, StyleSheet.absoluteFillObject]} />
         )}
-
-        {/* ── TOOLTIP CARD ── */}
         {rect && (
           <Animated.View
             pointerEvents="none"
@@ -379,8 +449,6 @@ function HomeTutorial({ visible, refs, onDone }) {
             <Text style={tutS.tooltipDesc}>{stepData.description}</Text>
           </Animated.View>
         )}
-
-        {/* ── STEP COUNTER + SKIP ── */}
         <View style={tutS.topBar} pointerEvents="box-none">
           <TouchableOpacity
             onPress={handleSkip}
@@ -395,8 +463,6 @@ function HomeTutorial({ visible, refs, onDone }) {
             ))}
           </View>
         </View>
-
-        {/* ── PREV / NEXT NAV ── */}
         <View style={tutS.navBar} pointerEvents="box-none">
           <TouchableOpacity
             style={[
@@ -418,11 +484,9 @@ function HomeTutorial({ visible, refs, onDone }) {
               ← Prev
             </Text>
           </TouchableOpacity>
-
           <Text style={tutS.stepCounter}>
             {step + 1} / {TUTORIAL_STEPS.length}
           </Text>
-
           <TouchableOpacity
             style={[tutS.navBtn, isLast && tutS.navBtnPrimary]}
             onPress={handleNext}
@@ -439,14 +503,8 @@ function HomeTutorial({ visible, refs, onDone }) {
 }
 
 const tutS = StyleSheet.create({
-  container: {
-    flex: 1,
-    position: "relative",
-  },
-  scrimPanel: {
-    position: "absolute",
-    backgroundColor: "rgba(0,0,0,0.78)",
-  },
+  container: { flex: 1, position: "relative" },
+  scrimPanel: { position: "absolute", backgroundColor: "rgba(0,0,0,0.78)" },
   highlightBorder: {
     position: "absolute",
     borderRadius: 14,
@@ -458,8 +516,6 @@ const tutS = StyleSheet.create({
     shadowRadius: 10,
     elevation: 10,
   },
-
-  // ── Tooltip ──────────────────────────────────────────────
   tooltip: {
     position: "absolute",
     left: 20,
@@ -477,7 +533,6 @@ const tutS = StyleSheet.create({
     elevation: 20,
     zIndex: 100,
   },
-  // Tooltip title — bold, teal, prominent
   tooltipTitle: {
     fontFamily: FONTS.bold,
     fontSize: 16,
@@ -485,15 +540,12 @@ const tutS = StyleSheet.create({
     marginBottom: 6,
     letterSpacing: 0.3,
   },
-  // Tooltip body — light weight for readability
   tooltipDesc: {
     fontFamily: FONTS.light,
     fontSize: 13,
     color: "#B2EBF2",
     lineHeight: 20,
   },
-
-  // ── Top bar — Skip on RIGHT, dots centered, nothing on left ────
   topBar: {
     position: "absolute",
     top: Platform.OS === "ios" ? 56 : 32,
@@ -512,7 +564,6 @@ const tutS = StyleSheet.create({
     borderColor: "rgba(255,255,255,0.25)",
     backgroundColor: "rgba(0,0,0,0.45)",
   },
-  // Skip button text — bold enough to be tappable, not too heavy
   skipText: {
     fontFamily: FONTS.bold,
     fontSize: 13,
@@ -534,16 +585,7 @@ const tutS = StyleSheet.create({
     borderRadius: 3,
     backgroundColor: "rgba(255,255,255,0.25)",
   },
-  dotActive: {
-    width: 18,
-    backgroundColor: TEAL,
-    shadowColor: TEAL,
-    shadowOffset: { width: 0, height: 0 },
-    shadowOpacity: 0.8,
-    shadowRadius: 4,
-  },
-
-  // ── Bottom nav bar ────────────────────────────────────────
+  dotActive: { width: 18, backgroundColor: TEAL },
   navBar: {
     position: "absolute",
     bottom: Platform.OS === "ios" ? 44 : 24,
@@ -568,36 +610,20 @@ const tutS = StyleSheet.create({
     borderColor: "rgba(255,255,255,0.2)",
     backgroundColor: "rgba(255,255,255,0.06)",
   },
-  navBtnPrimary: {
-    borderColor: TEAL,
-    backgroundColor: "rgba(0,188,212,0.25)",
-    shadowColor: TEAL,
-    shadowOffset: { width: 0, height: 0 },
-    shadowOpacity: 0.5,
-    shadowRadius: 8,
-    elevation: 6,
-  },
+  navBtnPrimary: { borderColor: TEAL, backgroundColor: "rgba(0,188,212,0.25)" },
   navBtnDisabled: {
     borderColor: "rgba(255,255,255,0.08)",
     backgroundColor: "rgba(255,255,255,0.02)",
   },
-  // Nav button text — bold, primary teal colour
   navBtnText: {
     fontFamily: FONTS.bold,
     fontSize: 14,
     color: TEAL,
     letterSpacing: 0.3,
   },
-  navBtnTextSecondary: {
-    color: "rgba(255,255,255,0.65)",
-  },
-  navBtnTextPrimary: {
-    color: "#E0F7FA",
-  },
-  navBtnTextDisabled: {
-    color: "rgba(255,255,255,0.2)",
-  },
-  // Step counter — light, muted
+  navBtnTextSecondary: { color: "rgba(255,255,255,0.65)" },
+  navBtnTextPrimary: { color: "#E0F7FA" },
+  navBtnTextDisabled: { color: "rgba(255,255,255,0.2)" },
   stepCounter: {
     fontFamily: FONTS.regular,
     fontSize: 13,
@@ -607,7 +633,7 @@ const tutS = StyleSheet.create({
 });
 
 // ─────────────────────────────────────────────────────────────────────────────
-// MINI BIRD  (unchanged)
+// MINI BIRD
 // ─────────────────────────────────────────────────────────────────────────────
 function MiniBird() {
   const wingAnim = useRef(new Animated.Value(0)).current;
@@ -645,7 +671,6 @@ function MiniBird() {
     </View>
   );
 }
-
 const mbS = StyleSheet.create({
   container: {
     alignItems: "center",
@@ -710,7 +735,7 @@ const mbS = StyleSheet.create({
 });
 
 // ─────────────────────────────────────────────────────────────────────────────
-// MINI CAT  (unchanged)
+// MINI CAT
 // ─────────────────────────────────────────────────────────────────────────────
 function MiniCat() {
   const tailAnim = useRef(new Animated.Value(0)).current;
@@ -788,7 +813,6 @@ function MiniCat() {
     </View>
   );
 }
-
 const mcS = StyleSheet.create({
   container: {
     alignItems: "center",
@@ -981,7 +1005,7 @@ const mcS = StyleSheet.create({
 });
 
 // ─────────────────────────────────────────────────────────────────────────────
-// PROFILE ICON  (unchanged)
+// PROFILE ICON
 // ─────────────────────────────────────────────────────────────────────────────
 function ProfileIcon({ name }) {
   const initial = name ? name.charAt(0).toUpperCase() : "?";
@@ -1001,7 +1025,6 @@ function ProfileIcon({ name }) {
     </View>
   );
 }
-
 const piS = StyleSheet.create({
   outer: {
     width: 60,
@@ -1072,7 +1095,6 @@ const piS = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
   },
-  // Profile initial inside the avatar badge — bold, yellow glow
   letterText: {
     fontFamily: FONTS.bold,
     fontSize: 10,
@@ -1093,7 +1115,7 @@ const piS = StyleSheet.create({
 });
 
 // ─────────────────────────────────────────────────────────────────────────────
-// GAME CARD  (unchanged)
+// GAME CARD
 // ─────────────────────────────────────────────────────────────────────────────
 function GameCard({ game, onPress }) {
   const scale = useRef(new Animated.Value(1)).current;
@@ -1158,9 +1180,14 @@ function GameCard({ game, onPress }) {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// LEVEL BADGE  (unchanged)
+// LEVEL BADGE
 // ─────────────────────────────────────────────────────────────────────────────
-function LevelBadge({ level = 1, progress = 0.62, onPress }) {
+function LevelBadge({
+  displayLevel = 1,
+  currentLevel = 1,
+  progress = 0.62,
+  onPress,
+}) {
   const fillAnim = useRef(new Animated.Value(0)).current;
   useEffect(() => {
     Animated.timing(fillAnim, {
@@ -1175,17 +1202,19 @@ function LevelBadge({ level = 1, progress = 0.62, onPress }) {
     inputRange: [0, 1],
     outputRange: ["0%", "100%"],
   });
+  const isViewingOther = displayLevel !== currentLevel;
   return (
     <TouchableOpacity
       style={lb.outer}
       onPress={onPress}
       activeOpacity={onPress ? 0.8 : 1}
     >
-      <View style={lb.pitRing}>
+      <View style={[lb.pitRing, isViewingOther && lb.pitRingAlt]}>
         <View style={lb.pitInner}>
           <View style={lb.diagonalTop} />
           <Text style={lb.label}>LEVEL</Text>
-          <Text style={lb.number}>{level}</Text>
+          <Text style={lb.number}>{displayLevel}</Text>
+          {isViewingOther && <Text style={lb.viewingDot}>●</Text>}
         </View>
       </View>
       <View style={lb.barTrack}>
@@ -1195,7 +1224,6 @@ function LevelBadge({ level = 1, progress = 0.62, onPress }) {
     </TouchableOpacity>
   );
 }
-
 const lb = StyleSheet.create({
   outer: { alignItems: "center" },
   pitRing: {
@@ -1213,6 +1241,7 @@ const lb = StyleSheet.create({
     borderWidth: 2,
     borderColor: "rgba(255,255,255,0.06)",
   },
+  pitRingAlt: { borderColor: "rgba(255,213,79,0.5)" },
   pitInner: {
     width: 68,
     height: 68,
@@ -1235,7 +1264,6 @@ const lb = StyleSheet.create({
     borderRadius: 4,
     opacity: 0.9,
   },
-  // "LEVEL" label — bold, small caps feel, teal
   label: {
     fontFamily: FONTS.bold,
     fontSize: 8,
@@ -1244,7 +1272,6 @@ const lb = StyleSheet.create({
     marginBottom: 1,
     opacity: 0.9,
   },
-  // Level number — bold, large, glowing
   number: {
     fontFamily: FONTS.bold,
     fontSize: 26,
@@ -1254,6 +1281,7 @@ const lb = StyleSheet.create({
     textShadowOffset: { width: 0, height: 0 },
     textShadowRadius: 8,
   },
+  viewingDot: { fontSize: 6, color: YELLOW, marginTop: 1 },
   barTrack: {
     width: 76,
     height: 6,
@@ -1301,21 +1329,34 @@ const Home = () => {
     currentProfile,
     isLoading: profileLoading,
     updateProfile,
+    userAccount,
   } = useUser();
   const {
     storySession,
     startStorySession,
     clearStorySession,
     resetSessionForProfileSwitch,
+    syncNow,
+    hasInitialSyncedRef,
   } = useStoryActivity();
+
+  const {
+    loadedLevel,
+    loadedLevelContext,
+    initForProfile,
+    switchLevel,
+    refreshAfterProgression,
+    canPlay,
+    canRead,
+    canView,
+    isStoryAccessible,
+  } = useLevelAccess();
 
   const pendingSessionRef = useRef(null);
   const [localCompletedIds, setLocalCompletedIds] = useState(new Set());
-
   const [sound, setSound] = useState(null);
   const [books, setBooks] = useState([]);
   const [loading, setLoading] = useState(true);
-
   const [storyProgressMap, setStoryProgressMap] = useState({});
 
   const loadAllStoryProgress = async (profileId) => {
@@ -1361,14 +1402,13 @@ const Home = () => {
   const [showLevelProgression, setShowLevelProgression] = useState(false);
   const [completedLevelRef, setCompletedLevelRef] = useState(null);
   const [pendingProgression, setPendingProgression] = useState(null);
+  const [showPremiumModal, setShowPremiumModal] = useState(false); // ← NEW
   const DIAMONDS_PER_FINISH = 3;
 
-  // ── existing currency / bag refs ──────────────────────────────────────────
   const coinIconRef = useRef(null);
   const diamondIconRef = useRef(null);
   const bagIconRef = useRef(null);
 
-  // ── NEW tutorial refs ─────────────────────────────────────────────────────
   const tutorialRefs = {
     account: useRef(null),
     levelBadge: useRef(null),
@@ -1383,14 +1423,9 @@ const Home = () => {
     storyCard: useRef(null),
   };
 
-  // ── Tutorial state — true always for now ─────────────────────────────────
   const [showTutorial, setShowTutorial] = useState(false);
+  const handleTutorialDone = useCallback(() => setShowTutorial(false), []);
 
-  const handleTutorialDone = useCallback(() => {
-    setShowTutorial(false);
-  }, []);
-
-  // ── Background pulse animations ───────────────────────────────────────────
   const bgPulse = useRef(new Animated.Value(1)).current;
   const bgPulse2 = useRef(new Animated.Value(1)).current;
   const bgPulse3 = useRef(new Animated.Value(1)).current;
@@ -1427,10 +1462,9 @@ const Home = () => {
     };
   }, []);
 
-  // ── Story cache helpers ───────────────────────────────────────────────────
-  const loadStoriesFromCache = async (playLevel) => {
+  const loadStoriesFromCache = async (levelNumber) => {
     try {
-      const raw = await AsyncStorage.getItem(storyCacheKey(playLevel));
+      const raw = await AsyncStorage.getItem(storyCacheKey(levelNumber));
       if (!raw) return null;
       const { stories } = JSON.parse(raw);
       return stories;
@@ -1439,56 +1473,108 @@ const Home = () => {
     }
   };
 
-  const saveStoriesToCache = async (stories, playLevel) => {
+  const saveStoriesToCache = async (stories, levelNumber) => {
     try {
       await AsyncStorage.setItem(
-        storyCacheKey(playLevel),
+        storyCacheKey(levelNumber),
         JSON.stringify({ stories }),
       );
     } catch (_) {}
   };
 
-  // ── Load books ────────────────────────────────────────────────────────────
-  useEffect(() => {
-    const load = async () => {
-      const playLevel = currentProfile?.playLevel ?? 1;
-      const cached = await loadStoriesFromCache(playLevel);
+  const loadBooksForLevel = useCallback(
+    async (levelNumber, profileId, playLevel) => {
+      setLoading(true);
+      const cached = await loadStoriesFromCache(levelNumber);
       if (cached) {
         setBooks(cached);
         setLoading(false);
-        refreshBooksFromApi();
+        _fetchBooksFromApi(levelNumber, profileId, playLevel).catch(() => {});
         return;
       }
-      await refreshBooksFromApi();
-    };
+      await _fetchBooksFromApi(levelNumber, profileId, playLevel);
+    },
+    [],
+  );
 
-    const refreshBooksFromApi = async () => {
-      try {
-        const data = await bookService.getBooks(currentProfile?.id);
-        setBooks(data);
-        await saveStoriesToCache(data, currentProfile?.playLevel ?? 1);
-      } catch (e) {
-        console.warn("Home: failed to fetch books from API", e);
-      } finally {
-        setLoading(false);
+  const _fetchBooksFromApi = async (levelNumber, profileId, playLevel) => {
+    try {
+      let data;
+      if (levelNumber === playLevel) {
+        data = await bookService.getBooks(profileId);
+      } else {
+        data = await bookService.getBooksByLevel(levelNumber);
       }
-    };
-
-    if (currentProfile) {
-      resetSessionForProfileSwitch();
-      setStoryProgressMap({});
-      setLocalCompletedIds(new Set());
-      load();
-      loadAllStoryProgress(currentProfile.id);
-      getPendingProgression(currentProfile.id).then(setPendingProgression);
-      setShowTutorial(true);
+      setBooks(data);
+      await saveStoriesToCache(data, levelNumber);
+    } catch (e) {
+      console.warn("Home: failed to fetch books", e);
+    } finally {
+      setLoading(false);
     }
-  }, [currentProfile]);
+  };
 
+  // ── Profile change → reinitialise everything ──────────────────────────────
+  useEffect(() => {
+    if (!currentProfile) return;
+    resetSessionForProfileSwitch();
+    setStoryProgressMap({});
+    setLocalCompletedIds(new Set());
+    setBooks([]);
+    initForProfile(currentProfile).then(() => {
+      loadBooksForLevel(
+        currentProfile.playLevel ?? 1,
+        currentProfile.id,
+        currentProfile.playLevel ?? 1,
+      );
+    });
+    loadAllStoryProgress(currentProfile.id);
+    getPendingProgression(currentProfile.id).then(setPendingProgression);
+
+    // In profile useEffect — use userAccount.id not currentProfile.id
+    if (!userAccount?.id || _tutorialCheckedAccounts.has(userAccount.id)) {
+      setShowTutorial(false);
+    } else {
+      AsyncStorage.getItem(`@show_tutorial_${userAccount.id}`).then((flag) => {
+        _tutorialCheckedAccounts.add(userAccount.id);
+        if (flag === "true") {
+          AsyncStorage.removeItem(`@show_tutorial_${userAccount.id}`);
+          setShowTutorial(true);
+        } else {
+          setShowTutorial(false);
+        }
+      });
+    }
+
+    if (!hasInitialSyncedRef.current) {
+      hasInitialSyncedRef.current = true;
+      syncNow().catch(() => {});
+    }
+  }, [currentProfile?.id]);
+
+  // ── Level switch ──────────────────────────────────────────────────────────
+  const prevLoadedLevelRef = useRef(null);
+  useEffect(() => {
+    if (!currentProfile) return;
+    if (prevLoadedLevelRef.current === null) {
+      prevLoadedLevelRef.current = loadedLevel;
+      return;
+    }
+    if (prevLoadedLevelRef.current === loadedLevel) return;
+    prevLoadedLevelRef.current = loadedLevel;
+    loadBooksForLevel(
+      loadedLevel,
+      currentProfile.id,
+      currentProfile.playLevel ?? 1,
+    );
+  }, [loadedLevel, currentProfile?.id]);
+
+  // ── Activity progress updates ─────────────────────────────────────────────
   useEffect(() => {
     if (currentProfile) loadAllStoryProgress(currentProfile.id);
   }, [storySession?.nextActivityIndex, storySession?.storyId]);
 
+  // ── Finish overlay trigger ────────────────────────────────────────────────
   useEffect(() => {
     if (!storySession) return;
     if (storySession.nextActivityIndex < 4) return;
@@ -1503,84 +1589,104 @@ const Home = () => {
       words: challengeWords.length,
       sampleWords: challengeWords.slice(0, 8).map((w) => w.name || w),
     });
-    setTimeout(() => setShowFinish(true), 400);
-  }, [storySession?.nextActivityIndex]);
+    setShowFinish(true);
+  }, [storySession?.nextActivityIndex, storySession?.storyId]);
 
-  const handleStoryPress = async (story) => {
+  // ── Story press ───────────────────────────────────────────────────────────
+  const handleStoryPress = async (story, storyIndex) => {
+    _finishHandled = false;
+    _overlayShownForStoryId = null;
+
     if (!currentProfile) return;
-    await startStorySession(story, currentProfile.id);
+    const ctx = loadedLevelContext;
+    if (!canView(ctx)) return;
+
+    // Show premium modal instead of alert
+    if (!isStoryAccessible(storyIndex, ctx)) {
+      setShowPremiumModal(true);
+      return;
+    }
+
+    await startStorySession(story, currentProfile.id, !canPlay(ctx));
     router.push({
       pathname: `/book/${story.id}`,
       params: { title: story.title },
     });
   };
 
+  // ── Finish done ───────────────────────────────────────────────────────────
   const handleFinishDone = async () => {
+    if (_finishHandled) return;
+    _finishHandled = true;
     setShowFinish(false);
-    const session = pendingSessionRef.current;
-    if (currentProfile && session) {
-      const rewards = session.totalRewards;
-      const coinsToAdd = rewards.coins || 0;
-      const diamondsToAdd = DIAMONDS_PER_FINISH;
-      const storyId = String(session.storyId);
-      const wordsToAdd = session.challengeWords || [];
-      const updatedProfile = {
-        ...currentProfile,
-        coins: (currentProfile.coins || 0) + coinsToAdd,
-        diamonds: (currentProfile.diamonds || 0) + diamondsToAdd,
-        wordBag: {
-          ...currentProfile.wordBag,
-          words: [...(currentProfile.wordBag?.words || []), ...wordsToAdd],
-        },
-        readingHistory: currentProfile.readingHistory?.includes(storyId)
-          ? currentProfile.readingHistory
-          : [...(currentProfile.readingHistory || []), storyId],
-      };
-      setLocalCompletedIds((prev) => new Set([...prev, storyId]));
-      await updateProfile(updatedProfile);
-      pendingSessionRef.current = null;
-    }
-    await clearStorySession();
-    if (currentProfile) loadAllStoryProgress(currentProfile.id);
 
-    if (currentProfile && pendingSessionRef.current === null) {
-      const session2 = pendingSessionRef.current;
-    }
-    if (currentProfile) {
+    setTimeout(async () => {
       const session = pendingSessionRef.current;
-      if (session) return;
-
-      const updatedCompletedIds = new Set([
-        ...(currentProfile?.readingHistory?.map(String) ?? []),
-        ...localCompletedIds,
-      ]);
-      const allDone = books.every((b) => updatedCompletedIds.has(String(b.id)));
-      if (allDone) {
-        const level = currentProfile.playLevel ?? 1;
-        setCompletedLevelRef(level);
-        const pendingBody = {
-          profileId: currentProfile.id,
-          completedLevel: level,
+      if (currentProfile && session) {
+        const rewards = session.totalRewards;
+        const coinsToAdd = rewards.coins || 0;
+        const diamondsToAdd = DIAMONDS_PER_FINISH;
+        const storyId = String(session.storyId);
+        const wordsToAdd = session.challengeWords || [];
+        const updatedProfile = {
+          ...currentProfile,
+          coins: (currentProfile.coins || 0) + coinsToAdd,
+          diamonds: (currentProfile.diamonds || 0) + diamondsToAdd,
+          wordBag: {
+            ...currentProfile.wordBag,
+            words: [...(currentProfile.wordBag?.words || []), ...wordsToAdd],
+          },
+          readingHistory: currentProfile.readingHistory?.includes(storyId)
+            ? currentProfile.readingHistory
+            : [...(currentProfile.readingHistory || []), storyId],
         };
-        await AsyncStorage.setItem(
-          `@level_progress_pending_${currentProfile.id}`,
-          JSON.stringify(pendingBody),
-        );
-        setPendingProgression(pendingBody);
-        setTimeout(() => setShowLevelProgression(true), 600);
+        setLocalCompletedIds((prev) => new Set([...prev, storyId]));
+        await updateProfile(updatedProfile);
+        pendingSessionRef.current = null;
       }
-    }
+
+      await clearStorySession();
+      if (currentProfile) loadAllStoryProgress(currentProfile.id);
+      syncNow().catch(() => {});
+
+      if (currentProfile) {
+        const session = pendingSessionRef.current;
+        if (session) return;
+        const updatedCompletedIds = new Set([
+          ...(currentProfile?.readingHistory?.map(String) ?? []),
+          ...localCompletedIds,
+        ]);
+        const allDone = books.every((b) =>
+          updatedCompletedIds.has(String(b.id)),
+        );
+        if (allDone) {
+          const level = currentProfile.playLevel ?? 1;
+          setCompletedLevelRef(level);
+          const pendingBody = {
+            profileId: currentProfile.id,
+            completedLevel: level,
+          };
+          await AsyncStorage.setItem(
+            `@level_progress_pending_${currentProfile.id}`,
+            JSON.stringify(pendingBody),
+          );
+          setPendingProgression(pendingBody);
+          setTimeout(() => setShowLevelProgression(true), 600);
+        }
+      }
+
+      _overlayShownForStoryId = null;
+    }, 300);
   };
 
+  // ── Level progression complete ────────────────────────────────────────────
   const handleLevelProgressComplete = async (result) => {
     setShowLevelProgression(false);
     setPendingProgression(null);
     await clearPendingProgression(currentProfile.id);
+    await refreshAfterProgression(currentProfile.id, result.newLevel);
     setBooks(result.stories);
-    await AsyncStorage.setItem(
-      storyCacheKey(result.newLevel),
-      JSON.stringify({ stories: result.stories }),
-    );
+    await saveStoriesToCache(result.stories, result.newLevel);
     setStoryProgressMap({});
     setLocalCompletedIds(new Set());
     await updateProfile({ ...currentProfile, playLevel: result.newLevel });
@@ -1592,6 +1698,10 @@ const Home = () => {
     setShowLevelProgression(true);
   };
 
+  const handleSwitchToCurrent = () =>
+    switchLevel(currentProfile?.playLevel ?? 1);
+
+  // ── Render ────────────────────────────────────────────────────────────────
   if (profileLoading || loading) {
     return (
       <View style={styles.center}>
@@ -1607,9 +1717,40 @@ const Home = () => {
     );
   }
 
-  const getTopLeftType = (i) => undefined;
   const formatNumber = (n) => (!n ? 0 : n > 999 ? "999+" : n);
+  const isViewOnly = loadedLevelContext.mode === "VIEW_ONLY";
+  const isPlayMode = canPlay(loadedLevelContext);
+  // ── Find the recommended story to show on MainStoryCard ──────────────────
+  // Priority: first in-progress story → first not-yet-started story → first story
+  const getRecommendedStory = () => {
+    if (!books.length) return null;
 
+    const completedIds = new Set([
+      ...(currentProfile?.readingHistory?.map(String) ?? []),
+      ...localCompletedIds,
+    ]);
+
+    // First pass: find the first in-progress story (started but not finished)
+    for (const book of books) {
+      const sid = String(book.id);
+      if (completedIds.has(sid)) continue; // skip completed
+      const progressIdx = storyProgressMap[sid] ?? 0;
+      if (progressIdx > 0 && progressIdx < 4) return book; // in progress
+    }
+
+    // Second pass: find the first not-yet-started story
+    for (const book of books) {
+      const sid = String(book.id);
+      if (completedIds.has(sid)) continue; // skip completed
+      const progressIdx = storyProgressMap[sid] ?? 0;
+      if (progressIdx === 0) return book; // not started
+    }
+
+    // All stories completed — show the first one
+    return books[0];
+  };
+
+  const recommendedStory = isPlayMode ? getRecommendedStory() : books[0];
   return (
     <>
       <ScreenWrapper>
@@ -1646,7 +1787,8 @@ const Home = () => {
                   )}
                   <View ref={tutorialRefs.levelBadge} collapsable={false}>
                     <LevelBadge
-                      level={currentProfile.playLevel}
+                      displayLevel={loadedLevel}
+                      currentLevel={currentProfile.playLevel ?? 1}
                       progress={0.62}
                       onPress={() => router.push("/components/Levels")}
                     />
@@ -1663,7 +1805,6 @@ const Home = () => {
                       <ProfileIcon name={currentProfile?.name} />
                     </TouchableOpacity>
                   </View>
-
                   <View ref={tutorialRefs.diamond} collapsable={false}>
                     <View
                       ref={diamondIconRef}
@@ -1705,7 +1846,6 @@ const Home = () => {
                       </View>
                     </TouchableOpacity>
                   </View>
-
                   <View ref={tutorialRefs.coins} collapsable={false}>
                     <View
                       ref={coinIconRef}
@@ -1728,72 +1868,123 @@ const Home = () => {
 
               {/* ── MAIN CONTENT ── */}
               <View style={{ marginTop: HEADER_HEIGHT }}>
-                <View ref={tutorialRefs.storyImage} collapsable={false}>
-                  <MainStoryCard
-                    title={books[0].title}
-                    description={books[0].introduction}
-                    image={{ uri: books[0].cover }}
-                    onPress={() => handleStoryPress(books[0])}
-                    readIconRef={tutorialRefs.readIcon}
-                    guessIconRef={tutorialRefs.guessIcon}
-                    listenIconRef={tutorialRefs.listenIcon}
-                    describeIconRef={tutorialRefs.describeIcon}
-                  />
-                </View>
+                <AccessModeBanner
+                  levelContext={loadedLevelContext}
+                  currentPlayLevel={currentProfile.playLevel ?? 1}
+                  onSwitchToCurrent={handleSwitchToCurrent}
+                />
 
-                <View style={{ paddingHorizontal: 15 }}>
-                  <Text style={styles.sectionTitle}>Stories</Text>
-                </View>
-
-                <ScrollView horizontal showsHorizontalScrollIndicator={false}>
-                  <View style={{ flexDirection: "row", paddingLeft: 15 }}>
-                    {(() => {
-                      const completedIds = new Set([
-                        ...(currentProfile?.readingHistory?.map(String) ?? []),
-                        ...localCompletedIds,
-                      ]);
-                      const getProgressIdx = (item) => {
-                        const sid = String(item.id);
-                        if (storySession?.storyId === sid)
-                          return storySession.nextActivityIndex;
-                        return storyProgressMap[sid] ?? 0;
-                      };
-
-                      return books.map((item, index) => {
-                        const sid = String(item.id);
-                        const isCompleted = completedIds.has(sid);
-                        const progressIdx = getProgressIdx(item);
-                        const resuming =
-                          !isCompleted && progressIdx > 0 && progressIdx < 4;
-                        const resumeAtIndex = resuming ? progressIdx : 0;
-                        const showTopLeft = !isCompleted && !resuming;
-
-                        return (
-                          <View
-                            key={item.id}
-                            ref={index === 0 ? tutorialRefs.storyCard : null}
-                            collapsable={false}
-                          >
-                            <StoryCard
-                              title={item.title}
-                              image={{ uri: item.cover }}
-                              intro={item.introduction}
-                              bookId={item.id}
-                              index={index}
-                              topLeftType={
-                                showTopLeft ? getTopLeftType(index) : undefined
-                              }
-                              isCompleted={isCompleted}
-                              resuming={resuming}
-                              resumeAtIndex={resumeAtIndex}
-                              onPress={() => handleStoryPress(item)}
-                            />
-                          </View>
-                        );
-                      });
-                    })()}
+                {isViewOnly ? (
+                  <View style={styles.viewOnlyContainer}>
+                    <Text style={styles.viewOnlyEmoji}>🔒</Text>
+                    <Text style={styles.viewOnlyTitle}>
+                      Level {loadedLevel} is Locked
+                    </Text>
+                    <Text style={styles.viewOnlyText}>
+                      Complete all stories in Level{" "}
+                      {currentProfile.playLevel ?? 1} to unlock this level.
+                    </Text>
+                    <TouchableOpacity
+                      style={styles.goCurrentBtn}
+                      onPress={handleSwitchToCurrent}
+                      activeOpacity={0.85}
+                    >
+                      <Text style={styles.goCurrentBtnText}>
+                        Go to Level {currentProfile.playLevel ?? 1}
+                      </Text>
+                    </TouchableOpacity>
                   </View>
-                </ScrollView>
+                ) : (
+                  <>
+                    {recommendedStory && (
+                      <View ref={tutorialRefs.storyImage} collapsable={false}>
+                        <MainStoryCard
+                          title={recommendedStory.title}
+                          description={recommendedStory.introduction}
+                          image={{ uri: recommendedStory.cover }}
+                          onPress={() =>
+                            handleStoryPress(
+                              recommendedStory,
+                              books.indexOf(recommendedStory),
+                            )
+                          }
+                          readIconRef={tutorialRefs.readIcon}
+                          guessIconRef={tutorialRefs.guessIcon}
+                          listenIconRef={tutorialRefs.listenIcon}
+                          describeIconRef={tutorialRefs.describeIcon}
+                          accessMode={loadedLevelContext.mode}
+                        />
+                      </View>
+                    )}
+
+                    <View style={{ paddingHorizontal: 15 }}>
+                      <Text style={styles.sectionTitle}>Stories</Text>
+                    </View>
+
+                    <ScrollView
+                      horizontal
+                      showsHorizontalScrollIndicator={false}
+                    >
+                      <View style={{ flexDirection: "row", paddingLeft: 15 }}>
+                        {(() => {
+                          const completedIds = new Set([
+                            ...(currentProfile?.readingHistory?.map(String) ??
+                              []),
+                            ...localCompletedIds,
+                          ]);
+                          const getProgressIdx = (item) => {
+                            const sid = String(item.id);
+                            if (storySession?.storyId === sid)
+                              return storySession.nextActivityIndex;
+                            return storyProgressMap[sid] ?? 0;
+                          };
+
+                          return books.map((item, index) => {
+                            const sid = String(item.id);
+                            const isCompleted =
+                              isPlayMode && completedIds.has(sid);
+                            const progressIdx = getProgressIdx(item);
+                            const resuming =
+                              isPlayMode &&
+                              !isCompleted &&
+                              progressIdx > 0 &&
+                              progressIdx < 4;
+                            const resumeAtIndex = resuming ? progressIdx : 0;
+                            const storyAccessible = isStoryAccessible(
+                              index,
+                              loadedLevelContext,
+                            );
+
+                            return (
+                              <View
+                                key={item.id}
+                                ref={
+                                  index === 0 ? tutorialRefs.storyCard : null
+                                }
+                                collapsable={false}
+                              >
+                                <StoryCard
+                                  title={item.title}
+                                  image={{ uri: item.cover }}
+                                  intro={item.introduction}
+                                  bookId={item.id}
+                                  index={index}
+                                  topLeftType={undefined}
+                                  isCompleted={isCompleted}
+                                  resuming={resuming}
+                                  resumeAtIndex={resumeAtIndex}
+                                  isLocked={!storyAccessible}
+                                  accessMode={loadedLevelContext.mode}
+                                  onPress={() => handleStoryPress(item, index)}
+                                />
+                              </View>
+                            );
+                          });
+                        })()}
+                      </View>
+                    </ScrollView>
+                  </>
+                )}
 
                 <View style={styles.sectionHeader}>
                   <Text style={styles.sectionTitle}>Games</Text>
@@ -1849,6 +2040,16 @@ const Home = () => {
         visible={showTutorial}
         refs={tutorialRefs}
         onDone={handleTutorialDone}
+      />
+
+      {/* ── Premium Upgrade Modal ── */}
+      <PremiumUpgradeModal
+        visible={showPremiumModal}
+        onClose={() => setShowPremiumModal(false)}
+        onUpgrade={() => {
+          setShowPremiumModal(false);
+          router.push("/subscription");
+        }}
       />
     </>
   );
@@ -1944,21 +2145,14 @@ const styles = StyleSheet.create({
     borderColor: "#fff",
     elevation: 8,
   },
-  // Currency badge number — bold, small, white
-  badgeText: {
-    fontFamily: FONTS.bold,
-    color: "#fff",
-    fontSize: 11,
-  },
+  badgeText: { fontFamily: FONTS.bold, color: "#fff", fontSize: 11 },
   sectionHeader: { paddingHorizontal: 15, marginTop: 8, marginBottom: 2 },
-  // Section heading — bold, white
   sectionTitle: {
     fontFamily: FONTS.bold,
     fontSize: 20,
     color: "#fff",
     marginBottom: 4,
   },
-  // Section tagline — light, muted
   sectionTagline: {
     fontFamily: FONTS.light,
     fontSize: 12,
@@ -2014,7 +2208,6 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     elevation: 4,
   },
-  // Play ▶ glyph — bold, dark background
   gamePlayTxt: {
     fontFamily: FONTS.bold,
     fontSize: 11,
@@ -2026,7 +2219,6 @@ const styles = StyleSheet.create({
     paddingBottom: 14,
     marginTop: "auto",
   },
-  // Game card title — bold, white
   gameCardTitle: {
     fontFamily: FONTS.bold,
     fontSize: 15,
@@ -2036,7 +2228,6 @@ const styles = StyleSheet.create({
     textShadowOffset: { width: 0, height: 1 },
     textShadowRadius: 4,
   },
-  // Game card subtitle — light, semi-transparent
   gameCardSub: {
     fontFamily: FONTS.light,
     fontSize: 11,
@@ -2051,4 +2242,37 @@ const styles = StyleSheet.create({
     height: 3,
     opacity: 0.8,
   },
+  viewOnlyContainer: {
+    alignItems: "center",
+    paddingVertical: 60,
+    paddingHorizontal: 32,
+    gap: 14,
+  },
+  viewOnlyEmoji: { fontSize: 64 },
+  viewOnlyTitle: {
+    fontFamily: FONTS.bold,
+    fontSize: 22,
+    color: "#E0F7FA",
+    textAlign: "center",
+  },
+  viewOnlyText: {
+    fontFamily: FONTS.light,
+    fontSize: 14,
+    color: "#7a9aaa",
+    textAlign: "center",
+    lineHeight: 22,
+  },
+  goCurrentBtn: {
+    backgroundColor: TEAL,
+    borderRadius: 24,
+    paddingHorizontal: 28,
+    paddingVertical: 13,
+    marginTop: 4,
+    shadowColor: TEAL,
+    shadowOffset: { width: 0, height: 0 },
+    shadowOpacity: 0.55,
+    shadowRadius: 12,
+    elevation: 8,
+  },
+  goCurrentBtnText: { fontFamily: FONTS.bold, fontSize: 14, color: "#08081a" },
 });

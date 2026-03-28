@@ -98,7 +98,7 @@ function StarBurst({ count = 18 }) {
             style={{
               position: "absolute",
               fontSize: 18 + Math.random() * 10,
-              top: SH * 0.38,
+              top: SH * 0.1,
               left: SW / 2 - 10,
               opacity: a.op,
               transform: [
@@ -320,7 +320,7 @@ export default function LevelProgressionOverlay({
               </Animated.View>
 
               <Animated.View style={{ opacity: textOp, alignItems: "center" }}>
-                <Text style={s.congrats}>🎉 Congratulations!</Text>
+                <Text style={s.congrats}>Congratulations!</Text>
                 <Text style={s.subText}>
                   You completed{"\n"}
                   <Text style={s.subTextBold}>Level {completedLevel}</Text>
@@ -421,7 +421,8 @@ const s = StyleSheet.create({
   content: {
     flex: 1,
     alignItems: "center",
-    justifyContent: "center",
+    marginTop: 100,
+    //justifyContent: "center",
     paddingHorizontal: 32,
     gap: 12,
   },
@@ -462,27 +463,30 @@ const s = StyleSheet.create({
   // Congratulations headline — bold, large
   congrats: {
     fontFamily: FONTS.bold,
-    fontSize: 28,
+    fontSize: 32,
     color: C.textPri,
     textAlign: "center",
+    marginBottom: 10,
   },
   // "You completed…" body — light, muted
   subText: {
     fontFamily: FONTS.light,
-    fontSize: 16,
+    fontSize: 22,
     color: C.textMuted,
     textAlign: "center",
     lineHeight: 24,
+    marginBottom: 10,
   },
   // Level number inline — bold, teal
   subTextBold: {
     fontFamily: FONTS.bold,
     color: C.teal,
+    marginBottom: 10,
   },
   // Hint italic — light
   hint: {
     fontFamily: FONTS.light,
-    fontSize: 12,
+    fontSize: 16,
     color: C.textMuted,
     textAlign: "center",
     fontStyle: "italic",

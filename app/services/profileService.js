@@ -4,10 +4,11 @@ import { apiClient } from "./apiClient";
 
 export async function saveProfile(profile) {
   const payload = {
-    id:    profile.id || undefined,
-    name:  profile.name.trim(),
-    age:   parseInt(profile.age),
-    level: profile.readingLevel.toUpperCase(),
+    id: profile.id || undefined,
+    name: profile.name.trim(),
+    age: parseInt(profile.age),
+    gender: profile.gender,
+    playLevel: parseInt(profile.playLevel),
   };
   return apiClient.post("/profile", payload);
 }

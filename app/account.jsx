@@ -29,6 +29,26 @@ import { logoutUser } from "./services/authService";
 import { clearAuthTokens } from "./services/tokenStorage";
 import { useApiCall } from "./_hooks/useApiCall";
 
+const AGE_OPTIONS = [
+  { label: "3", value: 3 },
+  { label: "4", value: 4 },
+  { label: "5", value: 5 },
+  { label: "6", value: 6 },
+  { label: "7", value: 7 },
+  { label: "8+", value: 8 },
+];
+
+const START_LEVEL = [
+  { label: "1", value: 1 },
+  { label: "2", value: 2 },
+  { label: "3", value: 3 },
+  { label: "4", value: 4 },
+  { label: "5", value: 5 },
+  { label: "6", value: 6 },
+  { label: "7", value: 7 },
+  { label: "8", value: 8 },
+  { label: "9", value: 9 },
+];
 // ─────────────────────────────────────────────────────────────────────────────
 // Account Option Card
 // ─────────────────────────────────────────────────────────────────────────────
@@ -125,7 +145,7 @@ const Account = () => {
     id: "",
     name: "",
     age: "",
-    readingLevel: "Early",
+    gender: "",
   });
   const [isSaving, setIsSaving] = useState(false);
   const readingLevels = ["Early", "Middle", "Advance"];
@@ -180,17 +200,18 @@ const Account = () => {
   };
   const handleAddNew = () => {
     setEditingProfile(null);
-    setFormData({ id: "", name: "", age: "", readingLevel: "Early" });
+    setFormData({ id: "", name: "", age: "", gender: "" });
     setModalVisible(true);
   };
   const handleEdit = (profile) => {
+    console.log(JSON.stringify(profile));
     setEditingProfile(profile);
     setFormData({
       id: profile.id,
       name: profile.name,
       age: profile.age.toString(),
-      readingLevel:
-        profile.level.charAt(0) + profile.level.slice(1).toLowerCase(),
+      gender: profile.gender || "",
+      playLevel: profile.playLevel.toString(),
     });
     setModalVisible(true);
   };
@@ -234,6 +255,10 @@ const Account = () => {
       Alert.alert("Error", "Please enter a valid age");
       return;
     }
+    if (!formData.playLevel || parseInt(formData.playLevel) < 1) {
+      Alert.alert("Error", "Please enter a valid level");
+      return;
+    }
 
     setIsSaving(true);
     await execute(() => saveProfile(formData), {
@@ -254,18 +279,17 @@ const Account = () => {
           dob: savedProfile.dob || null,
           level: savedProfile.level,
           playLevel: savedProfile.playLevel,
+          gender: savedProfile.gender,
           coins: savedProfile.coins,
           diamonds: savedProfile.diamonds,
-          wordBag: { words: savedProfile?.words },
-          achievements: savedProfile.achievements || [],
-          favoriteBookIds: savedProfile.favoriteBookIds || [],
+          wordBag: savedProfile.wordBag,
           createdAt: savedProfile.createdAt || null,
           updatedAt: savedProfile.updatedAt || null,
         };
         if (editingProfile) await updateProfile(profileForContext);
         else await addProfile(profileForContext);
         setModalVisible(false);
-        setFormData({ id: "", name: "", age: "", readingLevel: "Early" });
+        setFormData({ id: "", name: "", age: "", gender: "", level: "" });
         setEditingProfile(null);
       },
       onError: () => {
@@ -278,7 +302,7 @@ const Account = () => {
 
   const handleCancel = () => {
     setModalVisible(false);
-    setFormData({ id: "", name: "", age: "", readingLevel: "Early" });
+    setFormData({ id: "", name: "", age: "", gender: "" });
     setEditingProfile(null);
   };
 
@@ -515,46 +539,96 @@ const Account = () => {
                       }
                     />
                   </View>
-                  <View style={styles.inputGroup}>
-                    <Text style={styles.label}>Age</Text>
-                    <TextInput
-                      style={styles.input}
-                      placeholder="Enter age"
-                      placeholderTextColor={COLORS.textMuted}
-                      keyboardType="numeric"
-                      value={formData.age}
-                      onChangeText={(text) =>
-                        setFormData({ ...formData, age: text })
-                      }
-                    />
-                  </View>
-                  <View style={styles.inputGroup}>
-                    <Text style={styles.label}>Reading Level</Text>
-                    <View style={styles.levelButtons}>
-                      {readingLevels.map((level) => (
-                        <TouchableOpacity
-                          key={level}
-                          style={[
-                            styles.levelButton,
-                            formData.readingLevel === level &&
-                              styles.levelButtonActive,
-                          ]}
-                          onPress={() =>
-                            setFormData({ ...formData, readingLevel: level })
-                          }
-                        >
-                          <Text
-                            style={[
-                              styles.levelButtonText,
-                              formData.readingLevel === level &&
-                                styles.levelButtonTextActive,
-                            ]}
-                          >
-                            {level}
-                          </Text>
-                        </TouchableOpacity>
-                      ))}
+                  {!editingProfile && (
+                    <View>
+                      <View style={styles.inputGroup}>
+                        <Text style={styles.label}>Age</Text>
+                        <View style={styles.ageSection}>
+                          {AGE_OPTIONS.map((opt) => {
+                            const isSelected =
+                              parseInt(formData.age) === opt.value;
+                            return (
+                              <TouchableOpacity
+                                key={opt.value}
+                                style={[
+                                  styles.ageBtn,
+                                  isSelected && styles.ageBtnActive,
+                                ]}
+                                onPress={() =>
+                                  setFormData({
+                                    ...formData,
+                                    age: opt.value.toString(),
+                                  })
+                                }
+                              >
+                                <Text style={styles.ageBtnText}>
+                                  {opt.label}
+                                </Text>
+                              </TouchableOpacity>
+                            );
+                          })}
+                        </View>
+                      </View>
+                      <View style={styles.inputGroup}>
+                        <Text style={styles.label}>Level</Text>
+                        <View style={styles.ageSection}>
+                          {START_LEVEL.map((opt) => {
+                            const isSelected =
+                              parseInt(formData.playLevel) === opt.value;
+                            return (
+                              <TouchableOpacity
+                                key={opt.value}
+                                style={[
+                                  styles.ageBtn,
+                                  isSelected && styles.ageBtnActive,
+                                ]}
+                                onPress={() =>
+                                  setFormData({
+                                    ...formData,
+                                    playLevel: opt.value.toString(),
+                                  })
+                                }
+                              >
+                                <Text style={styles.ageBtnText}>
+                                  {opt.label}
+                                </Text>
+                              </TouchableOpacity>
+                            );
+                          })}
+                        </View>
+                      </View>
                     </View>
+                  )}
+                  <Text style={styles.label}>Gender</Text>
+                  <View style={styles.genderSection}>
+                    <TouchableOpacity
+                      style={[
+                        styles.genderBtn,
+                        styles.genderBtnBoy,
+                        formData.gender === "MALE" && styles.genderBtnActive,
+                      ]}
+                      onPress={() =>
+                        setFormData({ ...formData, gender: "MALE" })
+                      }
+                      activeOpacity={0.85}
+                    >
+                      <Text style={styles.genderEmoji}>🧒</Text>
+                      <Text style={styles.genderLabel}>Boy</Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity
+                      style={[
+                        styles.genderBtn,
+                        styles.genderBtnGirl,
+                        formData.gender === "FEMALE" && styles.genderBtnActive,
+                      ]}
+                      onPress={() =>
+                        setFormData({ ...formData, gender: "FEMALE" })
+                      }
+                      activeOpacity={0.85}
+                    >
+                      <Text style={styles.genderEmoji}>👧</Text>
+                      <Text style={styles.genderLabel}>Girl</Text>
+                    </TouchableOpacity>
                   </View>
                 </ScrollView>
 
@@ -594,6 +668,12 @@ export default Account;
 // ─────────────────────────────────────────────────────────────────────────────
 // STYLES
 // ─────────────────────────────────────────────────────────────────────────────
+
+// ── Dark theme ────────────────────────────────────────────────
+const TEAL = "#00BCD4";
+const CORAL = "#FF7043";
+const YELLOW = "#FFD54F";
+const PINK = "#EC407A";
 const styles = StyleSheet.create({
   safeArea: { flex: 1, paddingTop: 0 },
 
@@ -842,6 +922,81 @@ const styles = StyleSheet.create({
     borderWidth: 1.5,
     borderColor: COLORS.borderTeal,
   },
+
+  ageSection: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    justifyContent: "center",
+    gap: 12,
+    marginTop: 10,
+  },
+  ageBtn: {
+    width: 42,
+    height: 42,
+    alignItems: "center",
+    justifyContent: "center",
+    borderRadius: 22,
+    backgroundColor: "rgba(0,188,212,0.1)",
+    borderWidth: 2,
+    borderColor: "rgba(0,188,212,0.45)",
+    shadowColor: TEAL,
+    shadowOffset: { width: 0, height: 0 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 4,
+    gap: 4,
+  },
+  ageBtnActive: {
+    backgroundColor: COLORS.teal,
+    borderColor: COLORS.teal,
+  },
+  ageEmoji: { fontSize: 28 },
+
+  // Age number — CoText-Bold, bigger tap target
+  ageBtnText: {
+    fontFamily: FONTS.bold,
+    fontSize: 16,
+    color: "#E0F7FA",
+  },
+  genderSection: { flexDirection: "row", gap: 20, marginTop: 10 },
+  genderBtn: {
+    flex: 1,
+    alignItems: "center",
+    justifyContent: "center",
+    borderRadius: 24,
+    paddingVertical: 26,
+    elevation: 6,
+    borderWidth: 2.5,
+  },
+  genderBtnBoy: {
+    backgroundColor: "rgba(66,165,245,0.15)",
+    borderColor: "#42A5F5",
+    shadowColor: "#42A5F5",
+    shadowOffset: { width: 0, height: 0 },
+    shadowOpacity: 0.45,
+    shadowRadius: 10,
+  },
+  genderBtnGirl: {
+    backgroundColor: "rgba(236,64,122,0.15)",
+    borderColor: PINK,
+    shadowColor: PINK,
+    shadowOffset: { width: 0, height: 0 },
+    shadowOpacity: 0.45,
+    shadowRadius: 10,
+  },
+  genderEmoji: { fontSize: 52, marginBottom: 10 },
+  genderBtnActive: {
+    opacity: 1,
+    borderWidth: 5.5,
+  },
+  // Gender label — CoText-Bold, big and friendly
+  genderLabel: {
+    fontFamily: FONTS.bold,
+    fontSize: 24,
+    color: "#E0F7FA",
+    letterSpacing: 1,
+  },
+
   levelButtons: { flexDirection: "row", gap: 10 },
   levelButton: {
     flex: 1,

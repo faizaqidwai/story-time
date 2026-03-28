@@ -66,6 +66,7 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.15,
     shadowRadius: 8,
     elevation: 5,
+    marginTop: 20,
   },
   paragraph: {
     flexDirection: "row",

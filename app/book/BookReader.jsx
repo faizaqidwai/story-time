@@ -113,6 +113,11 @@ export default function BookReader() {
       return;
     }
 
+    if (storySession?.isReadOnly) {
+      router.back();
+      return;
+    }
+
     // Mark story reading as complete in the session
     await completeActivity(
       ACTIVITY.STORY_READING,

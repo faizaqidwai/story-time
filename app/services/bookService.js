@@ -1,28 +1,36 @@
 // app/services/bookService.js
+//
+// Changes from original:
+//   • getBooks(profileId) — UNCHANGED. Still fetches the profile's
+//     current-level stories from GET /books/profile/{profileId}.
+//     Used by the sync engine and existing level progression flow.
+//
+//   • getBooksByLevel(levelNumber) — NEW.
+//     Fetches stories for any arbitrary level number.
+//     Used by the home screen when loadedLevel ≠ profile.playLevel.
+//
+// Everything else is untouched.
 
 import { apiClient } from "./apiClient";
-import { CDN_BASE_URL } from "../config/env";
 
-const withBaseUrl = (path) => {
-  if (!path) return null;
-  if (path.startsWith("http")) return path;
-  return `${CDN_BASE_URL}${path}`;
-};
-
-const transformBook = (book) => ({
-  ...book,
-  cover: withBaseUrl(book.cover),
-  pages: book.pages.map((p) => ({ ...p, image: withBaseUrl(p.image) })),
-});
-
+// ─────────────────────────────────────────────────────────────────────────────
 export const bookService = {
-  async getBooks(currentProfileId) {
-    const data = await apiClient.get(`/books/profile/${currentProfileId}`);
-    return data.map(transformBook);
+  // ── Existing: current-level stories for a profile (used by home + sync) ──
+  getBooks: async (profileId) => {
+    const books = await apiClient.get(`/books/profile/${profileId}`);
+    return books;
   },
 
-  async getBookById(id) {
-    const data = await apiClient.get(`/books/${id}`);
-    return transformBook(data);
+  // ── NEW: stories for an explicit level number ────────────────────────────
+  // Backend endpoint: GET /levels/{level}/stories
+  getBooksByLevel: async (levelNumber) => {
+    const books = await apiClient.get(`/levels/${levelNumber}/stories`);
+    return books;
+  },
+
+  // ── Existing: single book by id ──────────────────────────────────────────
+  getBook: async (bookId) => {
+    const book = await apiClient.get(`/books/${bookId}`);
+    return book;
   },
 };

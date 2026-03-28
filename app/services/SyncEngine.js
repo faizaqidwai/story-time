@@ -1,35 +1,41 @@
 // app/services/SyncEngine.js
 //
-// Background sync engine. Logic unchanged from original.
+// Background sync engine.
 // Updated to use apiClient instead of raw fetch.
+//
+// Changes from previous version:
+//  • SYNC_INTERVAL_MS increased from 5 mins to 15 mins (fallback only)
+//  • AppState listener REMOVED — sync no longer fires on every app resume
+//  • _resolveAndPersist now batches AsyncStorage reads instead of looping individually
+//  • getAllKeys() called once per sync cycle and shared across _buildSyncRequest
+//    and _captureLocalSnapshot to avoid redundant expensive calls
 
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import { AppState } from "react-native";
 import { apiClient } from "./apiClient";
 
-const SYNC_INTERVAL_MS     = 5 * 60 * 1000;
-const LAST_SYNC_KEY        = "@last_sync_time";
+const SYNC_INTERVAL_MS = 15 * 60 * 1000; // 15 mins — fallback only
+const LAST_SYNC_KEY = "@last_sync_time";
 const PROFILES_STORAGE_KEY = "@app_profiles";
-const STORY_PREFIX         = "@story_activity_";
+const STORY_PREFIX = "@story_activity_";
 
-let _intervalId           = null;
-let _initialDelayId       = null;
-let _appStateSubscription = null;
-let _isSyncing            = false;
+let _intervalId = null;
+let _isSyncing = false;
 
 function start(getAuthToken, onSyncComplete) {
   stop();
-  _initialDelayId = setTimeout(() => _runSync(getAuthToken, onSyncComplete), 10000);
-  _intervalId = setInterval(() => _runSync(getAuthToken, onSyncComplete), SYNC_INTERVAL_MS);
-  _appStateSubscription = AppState.addEventListener("change", (state) => {
-    if (state === "active") _runSync(getAuthToken, onSyncComplete);
-  });
+  // No initial delay sync — login and home screen handle their own pulls.
+  // This interval is a pure fallback safety net.
+  _intervalId = setInterval(
+    () => _runSync(getAuthToken, onSyncComplete),
+    SYNC_INTERVAL_MS,
+  );
 }
 
 function stop() {
-  if (_initialDelayId)       { clearTimeout(_initialDelayId);  _initialDelayId = null; }
-  if (_intervalId)           { clearInterval(_intervalId);     _intervalId = null; }
-  if (_appStateSubscription) { _appStateSubscription.remove(); _appStateSubscription = null; }
+  if (_intervalId) {
+    clearInterval(_intervalId);
+    _intervalId = null;
+  }
 }
 
 async function syncNow(getAuthToken, onSyncComplete) {
@@ -43,11 +49,14 @@ async function _runSync(getAuthToken, onSyncComplete) {
     const token = await getAuthToken?.();
     if (!token) return null;
 
-    const { request } = await _buildSyncRequest();
+    // Get all keys ONCE and share between _buildSyncRequest and _captureLocalSnapshot
+    const allKeys = await AsyncStorage.getAllKeys();
+
+    const { request } = await _buildSyncRequest(allKeys);
     if (!request.profiles?.length) return null;
 
-    const localSnap  = await _captureLocalSnapshot();
-    const response   = await apiClient.post("/sync/activities", request);
+    const localSnap = await _captureLocalSnapshot(allKeys);
+    const response = await apiClient.post("/sync/activities", request);
     if (!response) return null;
 
     await _resolveAndPersist(response, localSnap);
@@ -63,14 +72,14 @@ async function _runSync(getAuthToken, onSyncComplete) {
   }
 }
 
-async function _buildSyncRequest() {
+async function _buildSyncRequest(allKeys) {
   const snapshotTime = new Date().toISOString();
   const raw = await AsyncStorage.getItem(PROFILES_STORAGE_KEY);
   const profiles = raw ? JSON.parse(raw) : [];
   const profileSyncData = await Promise.all(
     profiles.map(async (p) => ({
       profileId: p.id,
-      storyActivities: await _loadProfileStoryActivities(p.id),
+      storyActivities: await _loadProfileStoryActivities(p.id, allKeys),
     })),
   );
   return {
@@ -81,53 +90,92 @@ async function _buildSyncRequest() {
   };
 }
 
-async function _loadProfileStoryActivities(profileId) {
+async function _loadProfileStoryActivities(profileId, allKeys) {
   try {
-    const allKeys = await AsyncStorage.getAllKeys();
-    const keys = allKeys.filter((k) => k.startsWith(`${STORY_PREFIX}${profileId}_`));
+    const keys = allKeys.filter((k) =>
+      k.startsWith(`${STORY_PREFIX}${profileId}_`),
+    );
+    if (!keys.length) return [];
     const pairs = await AsyncStorage.multiGet(keys);
     return pairs
-      .map(([, raw]) => { try { return _toSyncData(JSON.parse(raw)); } catch (_) { return null; } })
+      .map(([, raw]) => {
+        try {
+          return _toSyncData(JSON.parse(raw));
+        } catch (_) {
+          return null;
+        }
+      })
       .filter(Boolean);
-  } catch { return []; }
+  } catch {
+    return [];
+  }
 }
 
 function _toSyncData(s) {
   return {
-    storyId:           s.storyId,
-    storyTitle:        s.storyTitle,
+    storyId: s.storyId,
+    storyTitle: s.storyTitle,
     nextActivityIndex: s.nextActivityIndex,
-    activities:        s.activities ?? {},
-    totalRewards:      s.totalRewards ?? { coins: 0, diamonds: 0, words: [] },
-    challengeWords:    s.challengeWords ?? [],
-    startedAt:         s.startedAt,
-    completedAt:       s.completedAt,
-    lastModifiedAt:    s.lastModifiedAt ?? s.startedAt,
+    activities: s.activities ?? {},
+    totalRewards: s.totalRewards ?? { coins: 0, diamonds: 0, words: [] },
+    challengeWords: s.challengeWords ?? [],
+    startedAt: s.startedAt,
+    completedAt: s.completedAt,
+    lastModifiedAt: s.lastModifiedAt ?? s.startedAt,
   };
 }
 
-async function _captureLocalSnapshot() {
+async function _captureLocalSnapshot(allKeys) {
   try {
-    const allKeys = await AsyncStorage.getAllKeys();
     const keys = allKeys.filter((k) => k.startsWith(STORY_PREFIX));
+    if (!keys.length) return {};
     const pairs = await AsyncStorage.multiGet(keys);
     const snap = {};
     for (const [key, raw] of pairs) {
       if (!raw) continue;
       try {
         const s = JSON.parse(raw);
-        snap[key] = { nextActivityIndex: s.nextActivityIndex, lastModifiedAt: s.lastModifiedAt ?? s.startedAt };
+        snap[key] = {
+          nextActivityIndex: s.nextActivityIndex,
+          lastModifiedAt: s.lastModifiedAt ?? s.startedAt,
+        };
       } catch (_) {}
     }
     return snap;
-  } catch { return {}; }
+  } catch {
+    return {};
+  }
 }
 
 async function _resolveAndPersist(syncResponse, localSnap) {
   if (!syncResponse?.resolvedActivities) return;
   const writes = [];
 
-  for (const { profileId, storyActivities } of syncResponse.resolvedActivities) {
+  // Collect all keys that need individual reads (localAhead cases only)
+  const keysToFetch = [];
+  for (const {
+    profileId,
+    storyActivities,
+  } of syncResponse.resolvedActivities) {
+    if (!storyActivities) continue;
+    for (const ba of storyActivities) {
+      const key = `${STORY_PREFIX}${profileId}_${ba.storyId}`;
+      const snap = localSnap[key];
+      const localAhead = snap && snap.nextActivityIndex > ba.nextActivityIndex;
+      const needsRewardCheck = !localAhead && ba.nextActivityIndex >= 4;
+      if (localAhead || needsRewardCheck) keysToFetch.push(key);
+    }
+  }
+
+  // Batch fetch all needed keys in one call instead of looping individually
+  const fetched = keysToFetch.length
+    ? Object.fromEntries(await AsyncStorage.multiGet(keysToFetch))
+    : {};
+
+  for (const {
+    profileId,
+    storyActivities,
+  } of syncResponse.resolvedActivities) {
     if (!storyActivities) continue;
     for (const ba of storyActivities) {
       const key = `${STORY_PREFIX}${profileId}_${ba.storyId}`;
@@ -135,16 +183,27 @@ async function _resolveAndPersist(syncResponse, localSnap) {
       const localAhead = snap && snap.nextActivityIndex > ba.nextActivityIndex;
 
       if (localAhead) {
-        const cur = await AsyncStorage.getItem(key);
+        const cur = fetched[key];
         if (cur) {
-          try { writes.push([key, JSON.stringify(_mergeLocalAhead(JSON.parse(cur), ba))]); }
-          catch { writes.push([key, JSON.stringify(_toSession(profileId, ba))]); }
+          try {
+            writes.push([
+              key,
+              JSON.stringify(_mergeLocalAhead(JSON.parse(cur), ba)),
+            ]);
+          } catch {
+            writes.push([key, JSON.stringify(_toSession(profileId, ba))]);
+          }
         }
       } else {
         const sess = _toSession(profileId, ba);
         if (ba.nextActivityIndex >= 4) {
-          const cur = await AsyncStorage.getItem(key);
-          if (cur) { try { if (JSON.parse(cur).rewardsDisbursed) sess.rewardsDisbursed = true; } catch {} }
+          const cur = fetched[key];
+          if (cur) {
+            try {
+              if (JSON.parse(cur).rewardsDisbursed)
+                sess.rewardsDisbursed = true;
+            } catch {}
+          }
         }
         writes.push([key, JSON.stringify(sess)]);
       }
@@ -162,35 +221,42 @@ function _mergeLocalAhead(local, ba) {
   return {
     ...local,
     totalRewards: {
-      coins:    Math.max(lr.coins ?? 0,    br.coins ?? 0),
+      coins: Math.max(lr.coins ?? 0, br.coins ?? 0),
       diamonds: Math.max(lr.diamonds ?? 0, br.diamonds ?? 0),
-      words:    [...words],
+      words: [...words],
     },
-    challengeWords: local.challengeWords?.length > 0 ? local.challengeWords : (ba.challengeWords ?? []),
-    activities:     _mergeActMaps(local.activities, ba.activities),
-    lastSyncedAt:   ba.lastSyncedAt,
+    challengeWords:
+      local.challengeWords?.length > 0
+        ? local.challengeWords
+        : (ba.challengeWords ?? []),
+    activities: _mergeActMaps(local.activities, ba.activities),
+    lastSyncedAt: ba.lastSyncedAt,
   };
 }
 
 function _mergeActMaps(local, backend) {
   const r = { ...(local ?? {}) };
-  if (backend) { for (const [k, v] of Object.entries(backend)) { if (!r[k] && v) r[k] = v; } }
+  if (backend) {
+    for (const [k, v] of Object.entries(backend)) {
+      if (!r[k] && v) r[k] = v;
+    }
+  }
   return r;
 }
 
 function _toSession(profileId, ba) {
   return {
     profileId,
-    storyId:           ba.storyId,
-    storyTitle:        ba.storyTitle,
+    storyId: ba.storyId,
+    storyTitle: ba.storyTitle,
     nextActivityIndex: ba.nextActivityIndex,
-    activities:        ba.activities ?? {},
-    totalRewards:      ba.totalRewards ?? { coins: 0, diamonds: 0, words: [] },
-    challengeWords:    ba.challengeWords ?? [],
-    startedAt:         ba.startedAt,
-    completedAt:       ba.completedAt,
-    lastSyncedAt:      ba.lastSyncedAt,
-    lastModifiedAt:    ba.lastSyncedAt,
+    activities: ba.activities ?? {},
+    totalRewards: ba.totalRewards ?? { coins: 0, diamonds: 0, words: [] },
+    challengeWords: ba.challengeWords ?? [],
+    startedAt: ba.startedAt,
+    completedAt: ba.completedAt,
+    lastSyncedAt: ba.lastSyncedAt,
+    lastModifiedAt: ba.lastSyncedAt,
   };
 }
 
@@ -206,19 +272,34 @@ async function _applyProfileSummaries(summaries) {
       const s = map[p.id];
       if (!s) return p;
       const u = { ...p };
-      if (s.playLevel > (p.playLevel ?? 1)) { u.playLevel = s.playLevel; changed = true; }
-      if (s.coins    > (p.coins ?? 0))      { u.coins     = s.coins;     changed = true; }
-      if (s.diamonds > (p.diamonds ?? 0))   { u.diamonds  = s.diamonds;  changed = true; }
+      if (s.playLevel > (p.playLevel ?? 1)) {
+        u.playLevel = s.playLevel;
+        changed = true;
+      }
+      if (s.coins > (p.coins ?? 0)) {
+        u.coins = s.coins;
+        changed = true;
+      }
+      if (s.diamonds > (p.diamonds ?? 0)) {
+        u.diamonds = s.diamonds;
+        changed = true;
+      }
       return u;
     });
-    if (changed) await AsyncStorage.setItem(PROFILES_STORAGE_KEY, JSON.stringify(updated));
-  } catch (err) { console.warn("[SyncEngine] applyProfileSummaries failed:", err); }
+    if (changed)
+      await AsyncStorage.setItem(PROFILES_STORAGE_KEY, JSON.stringify(updated));
+  } catch (err) {
+    console.warn("[SyncEngine] applyProfileSummaries failed:", err);
+  }
 }
 
 async function _purgeConfirmedCompletedSessions(syncResponse, localSnap) {
   if (!syncResponse?.resolvedActivities) return;
   const toDelete = [];
-  for (const { profileId, storyActivities } of syncResponse.resolvedActivities) {
+  for (const {
+    profileId,
+    storyActivities,
+  } of syncResponse.resolvedActivities) {
     if (!storyActivities) continue;
     for (const ba of storyActivities) {
       if (ba.nextActivityIndex < 4) continue;
@@ -241,8 +322,9 @@ async function _pullActivities(getAuthToken, onSyncComplete) {
   try {
     const token = await getAuthToken?.();
     if (!token) return null;
-    const localSnap  = await _captureLocalSnapshot();
-    const response   = await apiClient.get("/sync/activities");
+    const allKeys = await AsyncStorage.getAllKeys();
+    const localSnap = await _captureLocalSnapshot(allKeys);
+    const response = await apiClient.get("/sync/activities");
     await _resolveAndPersist(response, localSnap);
     await _applyProfileSummaries(response.profileSummaries);
     await AsyncStorage.setItem(LAST_SYNC_KEY, new Date().toISOString());
@@ -254,4 +336,9 @@ async function _pullActivities(getAuthToken, onSyncComplete) {
   }
 }
 
-export const SyncEngine = { start, stop, syncNow, pullActivities: _pullActivities };
+export const SyncEngine = {
+  start,
+  stop,
+  syncNow,
+  pullActivities: _pullActivities,
+};

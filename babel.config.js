@@ -1,5 +1,9 @@
 module.exports = function (api) {
   api.cache(true);
+
+  const envFile = process.env.APP_ENV ? `.env.${process.env.APP_ENV}` : ".env";
+  console.log(`Loading env file: ${envFile}`);
+
   return {
     presets: ["babel-preset-expo"],
     plugins: [
@@ -7,7 +11,7 @@ module.exports = function (api) {
         "module:react-native-dotenv",
         {
           moduleName: "@env",
-          path: ".env",
+          path: envFile,
           safe: false,
           allowUndefined: false,
         },
