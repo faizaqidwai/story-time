@@ -1735,7 +1735,7 @@ const Home = () => {
       const sid = String(book.id);
       if (completedIds.has(sid)) continue; // skip completed
       const progressIdx = storyProgressMap[sid] ?? 0;
-      if (progressIdx > 0 && progressIdx < 4) return book; // in progress
+      if ([progressIdx > 0 && progressIdx < 4]) return book; // in progress
     }
 
     // Second pass: find the first not-yet-started story
@@ -1751,6 +1751,16 @@ const Home = () => {
   };
 
   const recommendedStory = isPlayMode ? getRecommendedStory() : books[0];
+  // ── Level progress for badge bar ─────────────────────────────
+  const completedIdsForProgress = new Set([
+    ...(currentProfile?.readingHistory?.map(String) ?? []),
+    ...localCompletedIds,
+  ]);
+  const levelProgress =
+    books.length > 0
+      ? books.filter((b) => completedIdsForProgress.has(String(b.id))).length /
+        books.length
+      : 0;
   return (
     <>
       <ScreenWrapper>
@@ -1789,7 +1799,7 @@ const Home = () => {
                     <LevelBadge
                       displayLevel={loadedLevel}
                       currentLevel={currentProfile.playLevel ?? 1}
-                      progress={0.62}
+                      progress={levelProgress}
                       onPress={() => router.push("/components/Levels")}
                     />
                   </View>
@@ -1907,6 +1917,10 @@ const Home = () => {
                               recommendedStory,
                               books.indexOf(recommendedStory),
                             )
+                          }
+                          progressIndex={
+                            // ← ADD these 3 lines
+                            storyProgressMap[String(recommendedStory.id)] ?? 0
                           }
                           readIconRef={tutorialRefs.readIcon}
                           guessIconRef={tutorialRefs.guessIcon}

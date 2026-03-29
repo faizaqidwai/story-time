@@ -111,14 +111,16 @@ export default function MainStoryCard({
   onPress,
   // Tutorial refs — wired from home.jsx so HomeTutorial can
   // measureInWindow() each activity icon card for spotlight highlighting.
+  progressIndex = 0,
   readIconRef,
   guessIconRef,
   listenIconRef,
   describeIconRef,
 }) {
   const cardW = Math.min(SW - 45, 420);
+  const pulseAnims = useRef(STEPS.map(() => new Animated.Value(1))).current; // ← ADD
+  const activeIdx = progressIndex < 4 ? progressIndex : -1;
 
-  // Keep refs in order matching STEPS so we can attach them in the map.
   const stepRefs = [readIconRef, guessIconRef, listenIconRef, describeIconRef];
 
   return (
@@ -157,21 +159,39 @@ export default function MainStoryCard({
 
         {/* ACTIVITY STEPS — 4 icon cards */}
         <View style={s.stepsRow}>
-          {STEPS.map((step, i) => (
-            <View
-              key={i}
-              ref={stepRefs[i] ?? null}
-              collapsable={false}
-              style={s.stepCard}
-            >
-              <Image
-                source={step.image}
-                style={s.stepImage}
-                resizeMode="contain"
-              />
-              <Text style={s.stepLabel}>{step.label}</Text>
-            </View>
-          ))}
+          {STEPS.map((step, i) => {
+            const isCompleted = i < progressIndex;
+            const isActive = i === progressIndex && progressIndex < 4;
+
+            return (
+              <Animated.View
+                key={i}
+                ref={stepRefs[i] ?? null}
+                collapsable={false}
+                style={[
+                  s.stepCard,
+                  isActive && s.stepCardActive,
+                  isCompleted && s.stepCardDone,
+                  { transform: [{ scale: pulseAnims[i] }] },
+                ]}
+              >
+                <Image
+                  source={step.image}
+                  style={[s.stepImage, isCompleted && s.stepImageDone]}
+                  resizeMode="contain"
+                />
+                <Text style={[s.stepLabel, isActive && s.stepLabelActive]}>
+                  {step.label}
+                </Text>
+                {isCompleted && (
+                  <View style={s.checkBadge}>
+                    <Text style={s.checkText}>✓</Text>
+                  </View>
+                )}
+                {isActive && <View style={s.activeDot} />}
+              </Animated.View>
+            );
+          })}
         </View>
 
         {/* PLAY BUTTON */}
@@ -304,6 +324,57 @@ const s = StyleSheet.create({
     lineHeight: 18,
     fontStyle: "italic",
   },
+
+  stepCardActive: {
+    borderColor: "rgba(0,188,212,0.75)",
+    backgroundColor: "rgba(0,188,212,0.13)",
+    // shadowColor: T.teal,
+    borderWidth: 2,
+    shadowOffset: { width: 0, height: 0 },
+    shadowOpacity: 0.7,
+    shadowRadius: 8,
+    elevation: 8,
+  },
+  stepCardDone: {
+    borderColor: "rgba(255,255,255,0.05)",
+    backgroundColor: "rgba(0,0,0,0.18)",
+    opacity: 0.55,
+  },
+  stepImageDone: {
+    opacity: 0.45,
+  },
+  stepLabelActive: {
+    color: T.teal,
+  },
+  checkBadge: {
+    position: "absolute",
+    top: 6,
+    right: 6,
+    width: 18,
+    height: 18,
+    borderRadius: 9,
+    backgroundColor: T.teal,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  checkText: {
+    fontFamily: FONTS.bold,
+    fontSize: 10,
+    color: "#08081a",
+  },
+  activeDot: {
+    position: "absolute",
+    bottom: 6,
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+    backgroundColor: T.teal,
+    shadowColor: T.teal,
+    shadowOffset: { width: 0, height: 0 },
+    shadowOpacity: 1,
+    shadowRadius: 4,
+  },
+
   stepsRow: {
     flexDirection: "row",
     alignItems: "stretch",
