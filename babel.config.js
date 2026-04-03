@@ -11,7 +11,7 @@ module.exports = function (api) {
         "module:react-native-dotenv",
         {
           moduleName: "@env",
-          path: envFile,
+          path: ".env", // ← always load .env, no dynamic switching
           safe: false,
           allowUndefined: false,
         },

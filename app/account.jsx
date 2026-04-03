@@ -28,6 +28,8 @@ import { COLORS, SHADOWS, FONTS } from "./theme";
 import { logoutUser } from "./services/authService";
 import { clearAuthTokens } from "./services/tokenStorage";
 import { useApiCall } from "./_hooks/useApiCall";
+import { useSubscription } from "./_contexts/SubscriptionContext";
+import PlanBadge from "./components/PlanBadge";
 
 const AGE_OPTIONS = [
   { label: "-5", value: 5 },
@@ -133,6 +135,7 @@ const Account = () => {
   const [emailInput, setEmailInput] = useState("");
   const [passwordInput, setPasswordInput] = useState("");
   const [isSavingEmail, setIsSavingEmail] = useState(false);
+  const { planName, isFree } = useSubscription();
 
   const hasEmail = userAccount?.email && userAccount.email.trim().length > 0;
 
@@ -1041,5 +1044,10 @@ const styles = StyleSheet.create({
     fontFamily: FONTS.bold,
     fontSize: 16,
     color: "#fff",
+  },
+  planBadgeRow: {
+    flexDirection: "row",
+    justifyContent: "flex-end",
+    marginBottom: 10,
   },
 });

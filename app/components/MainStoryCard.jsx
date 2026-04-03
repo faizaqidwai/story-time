@@ -338,7 +338,7 @@ const s = StyleSheet.create({
   stepCardDone: {
     borderColor: "rgba(255,255,255,0.05)",
     backgroundColor: "rgba(0,0,0,0.18)",
-    opacity: 0.55,
+    //  opacity: 0.55,
   },
   stepImageDone: {
     opacity: 0.45,
