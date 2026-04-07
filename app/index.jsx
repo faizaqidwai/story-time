@@ -17,6 +17,7 @@ import { Audio } from "expo-av";
 import { useUser } from "./_contexts/UserContext";
 import { fetchRegisterToken, registerUser } from "./services/authService";
 import { clearPrimaryUser } from "./services/identityStorage";
+import { FONTS } from "./theme";
 
 const { width, height } = Dimensions.get("window");
 
@@ -32,24 +33,27 @@ const SplashScreen = () => {
     clearAllData,
   } = useUser();
 
-  // ── Existing logic animations (untouched) ─────────────────
+  // ── Logo animations ───────────────────────────────────────
+  const logoOp = useRef(new Animated.Value(0)).current;
+  const logoScale = useRef(new Animated.Value(0.82)).current;
+
+  // ── Text stagger animations ───────────────────────────────
+  const titleOp = useRef(new Animated.Value(0)).current;
+  const titleY = useRef(new Animated.Value(12)).current;
+  const sub1Op = useRef(new Animated.Value(0)).current;
+  const sub1Y = useRef(new Animated.Value(10)).current;
+  const sub2Op = useRef(new Animated.Value(0)).current;
+  const sub2Y = useRef(new Animated.Value(10)).current;
+
+  // ── Kept for existing logic compatibility ─────────────────
   const fade = useRef(new Animated.Value(0)).current;
   const scale = useRef(new Animated.Value(0.5)).current;
   const sparkleOpacity = useRef(new Animated.Value(0)).current;
-
-  // ── Title word animations ─────────────────────────────────
-  const wingX = useRef(new Animated.Value(-width)).current; // slides in from left
-  const wordX = useRef(new Animated.Value(width)).current; // slides in from right
+  const wingX = useRef(new Animated.Value(0)).current;
+  const wordX = useRef(new Animated.Value(0)).current;
   const wingOp = useRef(new Animated.Value(0)).current;
   const wordOp = useRef(new Animated.Value(0)).current;
-
-  // ── Logo ──────────────────────────────────────────────────
-  const logoOp = useRef(new Animated.Value(0)).current;
-  const logoScale = useRef(new Animated.Value(0.7)).current;
-
-  // ── Exit animations ───────────────────────────────────────
-  const logoY = useRef(new Animated.Value(0)).current; // bird flies up
-  const [exiting, setExiting] = useState(false);
+  const logoY = useRef(new Animated.Value(0)).current;
 
   const [showModal, setShowModal] = useState(false);
   const [formData, setFormData] = useState({
@@ -57,15 +61,14 @@ const SplashScreen = () => {
     age: "",
     readingLevel: "EARLY",
   });
-
   const readingLevels = ["EARLY", "MIDDLE", "ADVANCED"];
 
   useEffect(() => {
     // Todo remove this line later
-    //clearAllData();
-    //clearPrimaryUser();
+    clearAllData();
+    clearPrimaryUser();
 
-    // ── Logo fades + scales in ────────────────────────────
+    // ── 1. Logo fades + scales in ────────────────────────────
     Animated.parallel([
       Animated.timing(logoOp, {
         toValue: 1,
@@ -74,51 +77,60 @@ const SplashScreen = () => {
       }),
       Animated.spring(logoScale, {
         toValue: 1,
-        friction: 5,
-        tension: 60,
+        friction: 6,
+        tension: 55,
         useNativeDriver: true,
       }),
-    ]).start();
-
-    // ── "Wing" slides in from left (slow, floaty) ───────────
-    setTimeout(() => {
+    ]).start(() => {
+      // ── 2. Title fades up after logo settles ─────────────
       Animated.parallel([
-        Animated.spring(wingX, {
-          toValue: 0,
-          friction: 14,
-          tension: 22,
+        Animated.timing(titleOp, {
+          toValue: 1,
+          duration: 450,
           useNativeDriver: true,
         }),
-        Animated.timing(wingOp, {
-          toValue: 1,
-          duration: 700,
+        Animated.timing(titleY, {
+          toValue: 0,
+          duration: 450,
           useNativeDriver: true,
         }),
       ]).start(() => {
-        // ── After "Wing" settles, "Word" drifts in from right
-        setTimeout(() => {
+        // ── 3. Sub-text 1 ────────────────────────────────
+        Animated.parallel([
+          Animated.timing(sub1Op, {
+            toValue: 1,
+            duration: 350,
+            useNativeDriver: true,
+          }),
+          Animated.timing(sub1Y, {
+            toValue: 0,
+            duration: 350,
+            useNativeDriver: true,
+          }),
+        ]).start(() => {
+          // ── 4. Sub-text 2 ──────────────────────────────
           Animated.parallel([
-            Animated.spring(wordX, {
-              toValue: 0,
-              friction: 14,
-              tension: 22,
+            Animated.timing(sub2Op, {
+              toValue: 1,
+              duration: 350,
               useNativeDriver: true,
             }),
-            Animated.timing(wordOp, {
-              toValue: 1,
-              duration: 700,
+            Animated.timing(sub2Y, {
+              toValue: 0,
+              duration: 350,
               useNativeDriver: true,
             }),
           ]).start();
-        }, 250);
+        });
       });
-    }, 900); // logo settles first
+    });
 
-    // ── Existing logic (untouched) ────────────────────────
+    // ── Existing logic untouched ──────────────────────────────
     const playSound = async () => {
       try {
         const { sound } = await Audio.Sound.createAsync(
-          require("../assets/sounds/title/fairy-glitter.wav"),
+          require("../assets/sounds/splashScreen/fairy-glitter.wav"),
+          { volume: 0.4 },
         );
         await sound.playAsync();
       } catch (error) {
@@ -147,49 +159,6 @@ const SplashScreen = () => {
       useNativeDriver: true,
     }).start();
 
-    // ── Exit sequence fires 1.5s before navigation ───────────
-    const exitTimer = setTimeout(() => {
-      setExiting(true);
-      Animated.parallel([
-        // Bird logo flies up off screen
-        Animated.timing(logoY, {
-          toValue: -height,
-          duration: 900,
-          useNativeDriver: true,
-        }),
-        // Logo fades out
-        Animated.timing(logoOp, {
-          toValue: 0,
-          duration: 700,
-          useNativeDriver: true,
-        }),
-        // "Wing" slides back to the left
-        Animated.spring(wingX, {
-          toValue: -width,
-          friction: 10,
-          tension: 40,
-          useNativeDriver: true,
-        }),
-        Animated.timing(wingOp, {
-          toValue: 0,
-          duration: 500,
-          useNativeDriver: true,
-        }),
-        // "Word" slides back to the right
-        Animated.spring(wordX, {
-          toValue: width,
-          friction: 10,
-          tension: 40,
-          useNativeDriver: true,
-        }),
-        Animated.timing(wordOp, {
-          toValue: 0,
-          duration: 500,
-          useNativeDriver: true,
-        }),
-      ]).start();
-    }, 3500);
-
     const timer = setTimeout(async () => {
       if (!isLoading) {
         if (isFirstTime) {
@@ -209,12 +178,11 @@ const SplashScreen = () => {
     }, 5000);
 
     return () => {
-      clearTimeout(exitTimer);
       clearTimeout(timer);
     };
   }, [isLoading, isFirstTime]);
 
-  // ── Existing logic (untouched) ────────────────────────────
+  // ── Existing logic untouched ──────────────────────────────
   const handleRegisterUser = async () => {
     if (!formData.name.trim()) {
       alert("Please enter a name");
@@ -244,48 +212,52 @@ const SplashScreen = () => {
 
   return (
     <View style={styles.container}>
-      {/* ── Logo / Bird — flies upward on exit ── */}
+      {/* ── Background glow circles — same as IntroCarousel ── */}
+      <View style={styles.glowTL} pointerEvents="none" />
+      <View style={styles.glowBR} pointerEvents="none" />
+
+      {/* ── Logo ── */}
       <Animated.Image
-        source={require("../assets/img/story-time-logo-2.png")}
+        source={require("../assets/img/story-time-logo-4.png")}
         style={[
           styles.logo,
           {
             opacity: logoOp,
-            transform: [{ scale: logoScale }, { translateY: logoY }],
+            transform: [{ scale: logoScale }],
           },
         ]}
         resizeMode="contain"
       />
 
-      {/* ── Animated title ── */}
-      <View style={styles.titleRow}>
-        {/* "Wing" — each letter different color, slides in from left */}
-        <Animated.View
-          style={[
-            styles.wordGroup,
-            { opacity: wingOp, transform: [{ translateX: wingX }] },
-          ]}
-        >
-          <Text style={[styles.letter, { color: "#FF7043" }]}>S</Text>
-          <Text style={[styles.letter, { color: "#FFD54F" }]}>t</Text>
-          <Text style={[styles.letter, { color: "#29B6F6" }]}>o</Text>
-          <Text style={[styles.letter, { color: "#66BB6A" }]}>r</Text>
-          <Text style={[styles.letter, { color: "#FF7043" }]}>y</Text>
-        </Animated.View>
+      {/* ── Main title ── */}
+      <Animated.Text
+        style={[
+          styles.title,
+          { opacity: titleOp, transform: [{ translateY: titleY }] },
+        ]}
+      >
+        Story Time
+      </Animated.Text>
 
-        {/* "Word" — each letter different color, slides in from right */}
-        <Animated.View
-          style={[
-            styles.wordGroup,
-            { opacity: wordOp, transform: [{ translateX: wordX }] },
-          ]}
-        >
-          <Text style={[styles.letter, { color: "#AB47BC" }]}>T</Text>
-          <Text style={[styles.letter, { color: "#FF7043" }]}>i</Text>
-          <Text style={[styles.letter, { color: "#29B6F6" }]}>m</Text>
-          <Text style={[styles.letter, { color: "#FFD54F" }]}>e</Text>
-        </Animated.View>
-      </View>
+      {/* ── Sub-text 1 ── */}
+      <Animated.Text
+        style={[
+          styles.sub1,
+          { opacity: sub1Op, transform: [{ translateY: sub1Y }] },
+        ]}
+      >
+        A kids learning App
+      </Animated.Text>
+
+      {/* ── Sub-text 2 ── */}
+      <Animated.Text
+        style={[
+          styles.sub2,
+          { opacity: sub2Op, transform: [{ translateY: sub2Y }] },
+        ]}
+      >
+        From Codklusters Education
+      </Animated.Text>
 
       {/* ── First Time User Modal (untouched) ── */}
       <Modal
@@ -378,45 +350,69 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: "center",
     alignItems: "center",
+    backgroundColor: "#08081a",
     overflow: "hidden",
-    backgroundColor: "#1a1a2e",
+  },
+
+  // ── Background glow circles — same as IntroCarousel / AccountChoice ──
+  glowTL: {
+    position: "absolute",
+    top: -80,
+    left: -80,
+    width: 320,
+    height: 320,
+    borderRadius: 160,
+    backgroundColor: "rgba(0,188,212,0.07)",
+  },
+  glowBR: {
+    position: "absolute",
+    bottom: -60,
+    right: -60,
+    width: 280,
+    height: 280,
+    borderRadius: 140,
+    backgroundColor: "rgba(150,82,217,0.07)",
   },
 
   // ── Logo ────────────────────────────────────────────────────
   logo: {
-    width: width * 0.55,
-    height: width * 0.55,
-    marginBottom: 4,
+    width: width * 0.52,
+    height: width * 0.52,
+    border: 1,
+    borderRadius: 3,
+    // marginBottom: 28,
   },
 
-  // ── Animated title ──────────────────────────────────────────
-  titleRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 14,
-    marginTop: 0,
-  },
-  wordGroup: {
-    flexDirection: "row",
-    alignItems: "flex-end",
-  },
-  letter: {
-    fontSize: 52,
-    fontWeight: "900",
+  // ── Main title ──────────────────────────────────────────────
+  title: {
     fontFamily:
       Platform.OS === "ios" ? "Noteworthy-Bold" : "sans-serif-condensed",
-    // Thick white outline effect via layered shadow
-    //  textShadowColor: "rgba(255,255,255,0.95)",
-    // textShadowOffset: { width: 0, height: 0 },
-    // textShadowRadius: 6,
-    // Slight drop shadow for depth
-    shadowColor: "#000",
-    shadowOffset: { width: 1, height: 2 },
-    shadowOpacity: 0.18,
-    shadowRadius: 3,
-    elevation: 4,
-    letterSpacing: 1,
-    includeFontPadding: false,
+    fontSize: 42,
+    fontWeight: "900",
+    color: "#00BCD4",
+    letterSpacing: 1.5,
+    textShadowColor: "rgba(0,188,212,0.45)",
+    textShadowOffset: { width: 0, height: 0 },
+    textShadowRadius: 18,
+    marginBottom: 10,
+    // marginTop: -40,
+  },
+
+  // ── Sub-text 1 ───────────────────────────────────────────────
+  sub1: {
+    fontFamily: FONTS.light,
+    fontSize: 17,
+    color: "#B2EBF2",
+    letterSpacing: 0.4,
+    marginBottom: 6,
+  },
+
+  // ── Sub-text 2 ───────────────────────────────────────────────
+  sub2: {
+    fontFamily: FONTS.light,
+    fontSize: 13,
+    color: "rgba(255,255,255,0.28)",
+    letterSpacing: 0.8,
   },
 
   // ── Modal (untouched styles) ────────────────────────────────

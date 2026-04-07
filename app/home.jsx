@@ -373,6 +373,22 @@ function HomeTutorial({ visible, refs, onDone }) {
       onRequestClose={handleSkip}
     >
       <View style={tutS.container} pointerEvents="box-none">
+        {/* Left/Right tap zones for prev/next navigation */}
+
+        <View style={tutS.tapZones} pointerEvents="box-none">
+          <TouchableOpacity
+            style={tutS.tapLeft}
+            onPress={handlePrev}
+            disabled={isFirst}
+            activeOpacity={0}
+          />
+          <TouchableOpacity
+            style={tutS.tapRight}
+            onPress={handleNext}
+            activeOpacity={0}
+          />
+        </View>
+
         {rect ? (
           <>
             <View
@@ -597,8 +613,8 @@ const tutS = StyleSheet.create({
     zIndex: 200,
   },
   navBtn: {
-    paddingHorizontal: 20,
-    paddingVertical: 12,
+    paddingHorizontal: 25,
+    paddingVertical: 15,
     borderRadius: 14,
     borderWidth: 1.5,
     borderColor: "rgba(0,188,212,0.35)",
@@ -617,7 +633,7 @@ const tutS = StyleSheet.create({
   },
   navBtnText: {
     fontFamily: FONTS.bold,
-    fontSize: 14,
+    fontSize: 18,
     color: TEAL,
     letterSpacing: 0.3,
   },
@@ -629,6 +645,23 @@ const tutS = StyleSheet.create({
     fontSize: 13,
     color: "rgba(255,255,255,0.45)",
     letterSpacing: 0.5,
+  },
+  tapZones: {
+    position: "absolute",
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    flexDirection: "row",
+    zIndex: 50, // above scrims, below tooltip and nav bar
+  },
+  tapLeft: {
+    flex: 1,
+    height: "100%",
+  },
+  tapRight: {
+    flex: 1,
+    height: "100%",
   },
 });
 

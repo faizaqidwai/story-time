@@ -16,7 +16,6 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { useRouter } from "expo-router";
 import { useUser } from "./_contexts/UserContext";
 import { useApiCall } from "./_hooks/useApiCall";
-import AppBackground from "./components/AppBackground";
 import { COLORS, SHADOWS, FONTS } from "./theme";
 import {
   loginWithPrimaryAccount,
@@ -80,7 +79,21 @@ const Login = () => {
   };
 
   return (
-    <AppBackground>
+    <View style={styles.root}>
+      {/* Same background as IntroCarousel / AccountChoice — no dots */}
+      <View style={styles.glowTL} pointerEvents="none" />
+      <View style={styles.glowBR} pointerEvents="none" />
+
+      {/* Back button — same style as AccountChoice */}
+      <TouchableOpacity
+        style={styles.backBtn}
+        onPress={() => router.replace("/AccountChoice")}
+        activeOpacity={0.8}
+        hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+      >
+        <Text style={styles.backIcon}>‹</Text>
+      </TouchableOpacity>
+
       <SafeAreaView style={styles.safeArea} edges={["top", "bottom"]}>
         <KeyboardAvoidingView
           style={{ flex: 1 }}
@@ -94,7 +107,7 @@ const Login = () => {
           >
             {/* ── Bird ── */}
             <Image
-              source={require("../assets/img/story-time-logo-2.png")}
+              source={require("../assets/img/story-time-logo-4.png")}
               style={styles.bird}
               resizeMode="contain"
             />
@@ -113,7 +126,7 @@ const Login = () => {
               activeOpacity={0.85}
             >
               {isLoading ? (
-                <ActivityIndicator color="#fff" />
+                <ActivityIndicator color="#08081a" />
               ) : (
                 <>
                   <Text style={styles.primaryButtonIcon}>🔑</Text>
@@ -166,7 +179,7 @@ const Login = () => {
                 activeOpacity={0.85}
               >
                 {isLoading ? (
-                  <ActivityIndicator color="#fff" />
+                  <ActivityIndicator color="#08081a" />
                 ) : (
                   <Text style={styles.loginButtonText}>Login ➜</Text>
                 )}
@@ -175,7 +188,7 @@ const Login = () => {
           </ScrollView>
         </KeyboardAvoidingView>
       </SafeAreaView>
-    </AppBackground>
+    </View>
   );
 };
 
@@ -183,6 +196,44 @@ export default Login;
 
 // ── Styles ────────────────────────────────────────────────────
 const styles = StyleSheet.create({
+  // ── Background — same as IntroCarousel / AccountChoice ───
+  root: { flex: 1, backgroundColor: "#08081a" },
+  glowTL: {
+    position: "absolute",
+    top: -60,
+    left: -60,
+    width: 280,
+    height: 280,
+    borderRadius: 140,
+    backgroundColor: "rgba(0,188,212,0.07)",
+  },
+  glowBR: {
+    position: "absolute",
+    bottom: -40,
+    right: -40,
+    width: 240,
+    height: 240,
+    borderRadius: 120,
+    backgroundColor: "rgba(150,82,217,0.07)",
+  },
+
+  // ── Back button — same as AccountChoice ──────────────────
+  backBtn: {
+    position: "absolute",
+    top: Platform.OS === "ios" ? 54 : 20,
+    left: 20,
+    zIndex: 20,
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: "rgba(255,255,255,0.06)",
+    borderWidth: 1,
+    borderColor: "rgba(255,255,255,0.12)",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  backIcon: { fontSize: 28, color: "#E0F7FA", marginTop: -2 },
+
   safeArea: { flex: 1 },
   scrollContent: {
     flexGrow: 1,
@@ -193,9 +244,9 @@ const styles = StyleSheet.create({
   },
 
   // ── Bird ─────────────────────────────────────────────────
-  bird: { width: 180, height: 180, marginBottom: 0 },
+  bird: { width: 150, height: 150, marginBottom: 15 },
 
-  // ── Title — CoText-Bold, was: fontSize 34 fontWeight "bold"
+  // ── Title ────────────────────────────────────────────────
   title: {
     fontFamily: FONTS.bold,
     fontSize: 38,
@@ -206,8 +257,6 @@ const styles = StyleSheet.create({
     textShadowOffset: { width: 0, height: 2 },
     textShadowRadius: 10,
   },
-
-  // ── Subtitle — CoText-Light, was: fontSize 14
   subtitle: {
     fontFamily: FONTS.light,
     fontSize: 16,
@@ -217,28 +266,26 @@ const styles = StyleSheet.create({
     letterSpacing: 0.3,
   },
 
-  // ── Primary button ────────────────────────────────────────
+  // ── Primary button — teal (was purple) ───────────────────
   primaryButton: {
     width: "100%",
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
     gap: 10,
-    backgroundColor: COLORS.purple,
+    backgroundColor: COLORS.teal,
     paddingVertical: 16,
     borderRadius: 16,
     marginBottom: 24,
     borderWidth: 1.5,
-    borderColor: "rgba(150,82,217,0.6)",
-    ...SHADOWS.card,
+    borderColor: "rgba(0,188,212,0.6)",
+    ...SHADOWS.tealGlow,
   },
   primaryButtonIcon: { fontSize: 18 },
-
-  // CoText-Bold, was: fontSize 16 fontWeight "700"
   primaryButtonText: {
     fontFamily: FONTS.bold,
     fontSize: 18,
-    color: "#fff",
+    color: "#08081a",
     letterSpacing: 0.3,
   },
 
@@ -251,8 +298,6 @@ const styles = StyleSheet.create({
     marginBottom: 24,
   },
   dividerLine: { flex: 1, height: 1, backgroundColor: COLORS.borderTeal },
-
-  // CoText-Regular, was: fontSize 13 fontWeight "600"
   dividerText: {
     fontFamily: FONTS.regular,
     fontSize: 14,
@@ -272,16 +317,12 @@ const styles = StyleSheet.create({
     ...SHADOWS.tealGlow,
   },
   inputGroup: { marginBottom: 16 },
-
-  // Field label — CoText-Bold, was: fontSize 14 fontWeight "600"
   label: {
     fontFamily: FONTS.bold,
     fontSize: 15,
     color: COLORS.textSecondary,
     marginBottom: 8,
   },
-
-  // Input field — CoText-Regular, was: fontSize 15
   input: {
     fontFamily: FONTS.regular,
     fontSize: 17,
@@ -293,7 +334,7 @@ const styles = StyleSheet.create({
     borderColor: COLORS.borderTeal,
   },
 
-  // ── Login button — CoText-Bold, was: fontSize 16 fontWeight "700"
+  // ── Login button — teal ───────────────────────────────────
   loginButton: {
     backgroundColor: COLORS.teal,
     paddingVertical: 15,
@@ -305,7 +346,7 @@ const styles = StyleSheet.create({
   loginButtonText: {
     fontFamily: FONTS.bold,
     fontSize: 18,
-    color: "#fff",
+    color: "#08081a",
     letterSpacing: 0.4,
   },
 

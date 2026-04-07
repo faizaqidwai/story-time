@@ -14,14 +14,13 @@ import {
   StyleSheet,
   TouchableOpacity,
   Animated,
-  Easing,
   Dimensions,
   Platform,
-  Image,
 } from "react-native";
 import { useRouter } from "expo-router";
 import { LinearGradient } from "expo-linear-gradient";
 import { FONTS } from "./theme";
+import { Audio } from "expo-av";
 
 const { width: SW, height: SH } = Dimensions.get("window");
 
@@ -36,15 +35,16 @@ const C = {
   textSec: "#B2EBF2",
   textMuted: "#7a9aaa",
 };
-
-// Static starfield
-const STARS = Array.from({ length: 36 }, (_, i) => ({
-  id: i,
-  x: (i * 113.5) % SW,
-  y: (i * 79.3) % SH,
-  size: 1.5 + (i % 3),
-  opacity: 0.08 + (i % 5) * 0.06,
-}));
+async function playSound(file) {
+  try {
+    await Audio.setAudioModeAsync({ playsInSilentModeIOS: true });
+    const { sound } = await Audio.Sound.createAsync(file);
+    sound.setOnPlaybackStatusUpdate((status) => {
+      if (status.didJustFinish) sound.unloadAsync();
+    });
+    await sound.playAsync();
+  } catch (_) {}
+}
 
 export default function AccountChoice() {
   const router = useRouter();
@@ -86,6 +86,12 @@ export default function AccountChoice() {
           tension: 60,
           useNativeDriver: true,
         }),
+        {
+          start: (cb) => {
+            playSound(require("../assets/sounds/swish.mp3"));
+            cb({ finished: true });
+          },
+        },
       ]),
       Animated.delay(80),
       Animated.timing(dividerOp, {
@@ -105,31 +111,32 @@ export default function AccountChoice() {
           tension: 60,
           useNativeDriver: true,
         }),
+        {
+          start: (cb) => {
+            playSound(require("../assets/sounds/swish.mp3"));
+            cb({ finished: true });
+          },
+        },
+      ]),
+      Animated.parallel([
+        Animated.timing(card1Op, {
+          toValue: 1,
+          duration: 380,
+          useNativeDriver: true,
+        }),
+        Animated.spring(card1Y, {
+          toValue: 0,
+          friction: 7,
+          tension: 60,
+          useNativeDriver: true,
+        }),
       ]),
     ]).start();
   }, []);
 
   return (
     <View style={styles.root}>
-      {/* Starfield */}
-      {STARS.map((s) => (
-        <View
-          key={s.id}
-          pointerEvents="none"
-          style={{
-            position: "absolute",
-            left: s.x,
-            top: s.y,
-            width: s.size,
-            height: s.size,
-            borderRadius: s.size / 2,
-            backgroundColor: "#fff",
-            opacity: s.opacity,
-          }}
-        />
-      ))}
-
-      {/* Soft glow circles */}
+      {/* Static glow circles — clean background, no dots */}
       <View style={styles.glowTL} pointerEvents="none" />
       <View style={styles.glowBR} pointerEvents="none" />
 
@@ -151,10 +158,7 @@ export default function AccountChoice() {
             { opacity: logoOp, transform: [{ translateY: logoY }] },
           ]}
         >
-          {/* "Story Time" — brand wordmark intentionally kept as original font */}
           <Text style={styles.appName}>Story Time</Text>
-
-          {/* Tagline — CoText-Light, sits softly under the bold wordmark */}
           <Text style={styles.appTagline}>
             Your child's vocabulary adventure begins here
           </Text>
@@ -168,7 +172,10 @@ export default function AccountChoice() {
           >
             <TouchableOpacity
               style={styles.primaryCard}
-              onPress={() => router.push("/OnboardingScreen")}
+              onPress={() => {
+                playSound(require("../assets/sounds/sparkle.mp3"));
+                setTimeout(() => router.push("/OnboardingScreen"), 1000);
+              }}
               activeOpacity={0.88}
             >
               <LinearGradient
@@ -203,7 +210,10 @@ export default function AccountChoice() {
           >
             <TouchableOpacity
               style={styles.secondaryCard}
-              onPress={() => router.push("/login")}
+              onPress={() => {
+                playSound(require("../assets/sounds/sparkle.mp3"));
+                setTimeout(() => router.push("/login"), 1000);
+              }}
               activeOpacity={0.88}
             >
               <View style={styles.cardIconWrap}>
@@ -234,6 +244,7 @@ export default function AccountChoice() {
 const styles = StyleSheet.create({
   root: { flex: 1, backgroundColor: C.bg },
 
+  // Two static soft glow circles — identical on both intro screens
   glowTL: {
     position: "absolute",
     top: -60,
@@ -267,7 +278,6 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
   },
-  // Decorative glyph — no fontFamily override needed
   backIcon: { fontSize: 28, color: "#E0F7FA", marginTop: -2 },
 
   inner: {
@@ -280,7 +290,6 @@ const styles = StyleSheet.create({
 
   logoWrap: { alignItems: "center", marginBottom: 44 },
 
-  // Brand wordmark — kept as original (Noteworthy / sans-serif-condensed)
   appName: {
     fontFamily:
       Platform.OS === "ios" ? "Noteworthy-Bold" : "sans-serif-condensed",
@@ -294,7 +303,6 @@ const styles = StyleSheet.create({
     marginBottom: 8,
   },
 
-  // Tagline — CoText-Light, soft under the wordmark
   appTagline: {
     fontFamily: FONTS.light,
     fontSize: 18,
@@ -340,15 +348,12 @@ const styles = StyleSheet.create({
   cardIcon: { fontSize: 24 },
   cardText: { flex: 1, gap: 3 },
 
-  // Card title — CoText-Bold, strong hierarchy inside the card
   cardTitle: {
     fontFamily: FONTS.bold,
     fontSize: 16,
     color: C.teal,
     letterSpacing: 0.2,
   },
-
-  // Card subtitle — CoText-Light, soft secondary info
   cardSub: {
     fontFamily: FONTS.light,
     fontSize: 14,
@@ -356,7 +361,6 @@ const styles = StyleSheet.create({
     lineHeight: 17,
   },
 
-  // Decorative arrow glyph — no fontFamily override needed
   cardArrow: { fontSize: 26, flexShrink: 0 },
 
   divider: {
@@ -370,8 +374,6 @@ const styles = StyleSheet.create({
     height: 1,
     backgroundColor: "rgba(255,255,255,0.08)",
   },
-
-  // "or" — CoText-Regular, neutral separator word
   dividerText: {
     fontFamily: FONTS.regular,
     fontSize: 16,
@@ -379,7 +381,6 @@ const styles = StyleSheet.create({
     letterSpacing: 0.5,
   },
 
-  // Footer — CoText-Light, least prominent text on screen
   footerNote: {
     fontFamily: FONTS.light,
     fontSize: 14,

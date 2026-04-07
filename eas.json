@@ -16,6 +16,12 @@
     }
   },
   "submit": {
-    "production": {}
+    "production": {
+      "ios": {
+        "appleId": "usman.irfan93@gmail.com",
+        "ascAppId": "6761649325",
+        "appleTeamId": "8K787G8349"
+      }
+    }
   }
 }
