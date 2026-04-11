@@ -26,6 +26,7 @@ import { useRouter } from "expo-router";
 import { useUser } from "../_contexts/UserContext";
 import { useLevelAccess } from "../_contexts/LevelAccessContext";
 import { FONTS } from "../theme";
+import { font, pad, radius, size } from "../theme/tokens";
 
 const { width: SW, height: SH } = Dimensions.get("window");
 const STATUS_BAR_HEIGHT =
@@ -172,8 +173,8 @@ const gridS = StyleSheet.create({
   currentOutline: {
     position: "absolute",
     width: RING + 22,
-    height: RING + 28,
-    borderRadius: 14,
+    height: RING + pad.xxl,
+    borderRadius: radius.md, // 14 → radius.md (14/19)
     borderWidth: 2,
     borderColor: TEAL,
     shadowColor: TEAL,
@@ -186,7 +187,7 @@ const gridS = StyleSheet.create({
     position: "absolute",
     width: RING + 22,
     height: RING + 28,
-    borderRadius: 14,
+    borderRadius: radius.md, // 14 → radius.md (14/19)
     borderWidth: 2,
     borderColor: YELLOW,
     shadowColor: YELLOW,
@@ -208,7 +209,7 @@ const gridS = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
     borderWidth: 2,
-    marginTop: 8,
+    marginTop: pad.s, // 8 → pad.s (8/11)
   },
   inner: {
     width: INNER,
@@ -230,7 +231,7 @@ const gridS = StyleSheet.create({
   },
   label: {
     fontFamily: FONTS.bold,
-    fontSize: 7,
+    fontSize: font.xs, // 7 → font.xs (9/12) — closest small token
     letterSpacing: 1.5,
     marginBottom: 1,
     opacity: 0.9,
@@ -245,9 +246,9 @@ const gridS = StyleSheet.create({
   },
   lockIcon: {
     position: "absolute",
-    fontSize: 15,
-    bottom: 5,
-    right: 5,
+    fontSize: font.md, // 15 → font.md (15/19)
+    bottom: pad.xs, // 5 → pad.xs (4/6)
+    right: pad.xs, // 5 → pad.xs
     zIndex: 2,
   },
   lockedOverlay: {
@@ -260,14 +261,19 @@ const gridS = StyleSheet.create({
     zIndex: 1,
   },
   modePill: {
-    marginTop: "86%",
-    borderRadius: 6,
+    marginTop: RING + pad.sm,
+
+    borderRadius: radius.xs, // 6 → radius.xs (6/8)
     borderWidth: 1,
-    paddingHorizontal: 6,
+    paddingHorizontal: pad.xs, // 6 → pad.xs (4/6)
     paddingVertical: 2,
     position: "absolute",
   },
-  modePillText: { fontFamily: FONTS.bold, fontSize: 8, letterSpacing: 0.5 },
+  modePillText: {
+    fontFamily: FONTS.bold,
+    fontSize: font.xs,
+    letterSpacing: 0.5,
+  }, // 8 → font.xs (9/12)
 });
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -295,15 +301,15 @@ const legS = StyleSheet.create({
     flexDirection: "row",
     flexWrap: "wrap",
     justifyContent: "center",
-    gap: 12,
-    paddingHorizontal: 16,
-    paddingVertical: 8,
+    gap: pad.sm, // 12 → pad.sm (12/16)
+    paddingHorizontal: pad.md, // 16 → pad.md (16/22)
+    paddingVertical: pad.s, // 8 → pad.s (8/11)
   },
-  item: { flexDirection: "row", alignItems: "center", gap: 5 },
-  dot: { width: 8, height: 8, borderRadius: 4 },
+  item: { flexDirection: "row", alignItems: "center", gap: pad.xs }, // gap 5 → pad.xs (4/6)
+  dot: { width: pad.s, height: pad.s, borderRadius: pad.xs }, // 8/8/4 → pad.s/pad.s/pad.xs
   text: {
     fontFamily: FONTS.light,
-    fontSize: 10,
+    fontSize: font.xs, // 10 → font.xs (9/12)
     color: "rgba(255,255,255,0.5)",
   },
 });
@@ -338,8 +344,8 @@ const LevelsScreen = () => {
   };
 
   const handleLevelPress = (lvl) => {
-    switchLevel(lvl); // update LevelAccessContext
-    handleClose(); // slide back, home screen reacts via context
+    switchLevel(lvl);
+    handleClose();
   };
 
   return (
@@ -396,7 +402,7 @@ const LevelsScreen = () => {
 
 const screenS = StyleSheet.create({
   root: { flex: 1, backgroundColor: DARK_BG },
-  glow: { position: "absolute", borderRadius: 999, opacity: 0.1 },
+  glow: { position: "absolute", borderRadius: radius.pill, opacity: 0.1 },
   glow1: { width: 300, height: 300, backgroundColor: TEAL, top: 0, right: -60 },
   glow2: {
     width: 200,
@@ -409,17 +415,17 @@ const screenS = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
-    paddingTop: STATUS_BAR_HEIGHT + 6,
-    paddingHorizontal: 20,
-    paddingBottom: 12,
+    paddingTop: STATUS_BAR_HEIGHT + pad.xs, // +6 → +pad.xs (4/6)
+    paddingHorizontal: pad.lg, // 20 → pad.lg (20/28)
+    paddingBottom: pad.sm, // 12 → pad.sm (12/16)
     borderBottomWidth: 1,
     borderBottomColor: "rgba(0,188,212,0.12)",
   },
-  headerRight: { width: 40 },
-  headerCenter: { alignItems: "center", gap: 5 },
+  headerRight: { width: size.hitMd }, // 40 → size.hitMd (40/52)
+  headerCenter: { alignItems: "center", gap: pad.xs }, // gap 5 → pad.xs (4/6)
   title: {
     fontFamily: FONTS.bold,
-    fontSize: 22,
+    fontSize: font.xxl, // 22 → font.xxl (24/32)
     color: "#E0F7FA",
     letterSpacing: 0.4,
     textShadowColor: "rgba(0,188,212,0.5)",
@@ -428,22 +434,22 @@ const screenS = StyleSheet.create({
   },
   currentPill: {
     backgroundColor: "rgba(0,188,212,0.12)",
-    borderRadius: 10,
+    borderRadius: radius.sm, // 10 → radius.sm (10/14)
     borderWidth: 1,
     borderColor: "rgba(0,188,212,0.35)",
-    paddingHorizontal: 10,
-    paddingVertical: 3,
+    paddingHorizontal: pad.s, // 10 → pad.s (8/11)
+    paddingVertical: pad.xs, // 3 → pad.xs (4/6)
   },
   currentPillText: {
     fontFamily: FONTS.bold,
-    fontSize: 11,
+    fontSize: font.s, // 11 → font.s (12/14)
     color: TEAL,
     letterSpacing: 0.5,
   },
   closeBtn: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
+    width: size.hitMd, // 40 → size.hitMd (40/52)
+    height: size.hitMd,
+    borderRadius: size.hitMd / 2,
     backgroundColor: "rgba(255,255,255,0.06)",
     borderWidth: 1,
     borderColor: "rgba(255,255,255,0.1)",
@@ -452,25 +458,25 @@ const screenS = StyleSheet.create({
   },
   closeIcon: {
     fontFamily: FONTS.regular,
-    fontSize: 14,
+    fontSize: font.md, // 14 → font.md (15/19)
     color: "rgba(176,190,197,0.8)",
   },
   handle: {
     width: 36,
     height: 4,
-    borderRadius: 2,
+    borderRadius: radius.xs, // 2 → radius.xs (6/8)
     backgroundColor: "rgba(255,255,255,0.15)",
     alignSelf: "center",
-    marginTop: 10,
-    marginBottom: 4,
+    marginTop: pad.s, // 10 → pad.s (8/11)
+    marginBottom: pad.xs, // 4 → pad.xs (4/6)
   },
   grid: {
     flexDirection: "row",
     flexWrap: "wrap",
     justifyContent: "center",
-    paddingHorizontal: 12,
-    paddingTop: 10,
-    paddingBottom: 40,
+    paddingHorizontal: pad.sm, // 12 → pad.sm (12/16)
+    paddingTop: pad.s, // 10 → pad.s (8/11)
+    paddingBottom: pad.xxxl, // 40 → pad.xxxl (48/66)
   },
 });
 

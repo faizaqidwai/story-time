@@ -11,6 +11,8 @@ import { getPrimaryUserAccountId } from "../services/identityStorage";
 import { APP_CONFIG } from "../config/appConfig";
 import mockProfile from "../data/mock-profile.json";
 import { checkAndClearStalePending } from "../services/levelProgressionService";
+import { setClearUserData, setClearIdentityRef } from "../services/apiClient";
+import { clearPrimaryUser as clearPrimaryUserAccountId } from "../services/identityStorage";
 
 const UserContext = createContext();
 
@@ -47,11 +49,6 @@ export const UserProvider = ({ children }) => {
       const storedProfiles = await AsyncStorage.getItem(STORAGE_KEYS.PROFILES);
       const primaryUserAccountId = await getPrimaryUserAccountId();
       console.log(JSON.stringify(primaryUserAccountId));
-
-      // console.log(
-      //   "UserContext loadData | storedProfiles = " +
-      //     JSON.stringify(storedProfiles),
-      // );
 
       if (!storedProfiles || storedProfiles === "[]") {
         // Logout scenario - No profile exist but there is a primary user account id
@@ -321,6 +318,14 @@ export const UserProvider = ({ children }) => {
       console.error("Error clearing data:", error);
     }
   };
+
+  // Wire logoutLocally() in apiClient to this context's clearAllData,
+  // and wire logoutAndClearIdentity() to clearPrimaryUserAccountId.
+  // Placed AFTER clearAllData is defined so the references are valid.
+  useEffect(() => {
+    setClearUserData(clearAllData);
+    setClearIdentityRef(clearPrimaryUserAccountId);
+  }, []);
 
   const setMockCurrentProfile = async () => {
     let storedCurrentProfile = await AsyncStorage.getItem(

@@ -22,6 +22,7 @@ import * as Speech from "expo-speech";
 import { useRouter } from "expo-router";
 import { useUser } from "../_contexts/UserContext";
 import { FONTS } from "../theme";
+import { font, pad, radius, size } from "../theme/tokens";
 
 const { width: SW, height: SH } = Dimensions.get("window");
 const STATUS_BAR_HEIGHT =
@@ -196,13 +197,13 @@ const cardS = StyleSheet.create({
   wrapper: {
     width: CARD_SIZE,
     backgroundColor: C.surface,
-    borderRadius: 20,
+    borderRadius: radius.xl, // 20 → radius.xl (24/32)
     borderWidth: 1.5,
     borderColor: C.tealBorder,
     alignItems: "center",
-    paddingVertical: 18,
-    paddingHorizontal: 10,
-    margin: 6,
+    paddingVertical: pad.lg, // 18 → pad.lg (20/28)
+    paddingHorizontal: pad.s, // 10 → pad.s (8/11)
+    margin: pad.xs, // 6 → pad.xs (4/6)
     shadowColor: C.teal,
     shadowOffset: { width: 0, height: 0 },
     shadowOpacity: 0.12,
@@ -210,57 +211,55 @@ const cardS = StyleSheet.create({
     elevation: 4,
   },
   emojiRing: {
-    width: 80,
-    height: 80,
-    borderRadius: 40,
+    width: size.avatarLg + 20, // 80 → avatarLg(60/80)+20 = 80/100
+    height: size.avatarLg + 20,
+    borderRadius: (size.avatarLg + 20) / 2,
     backgroundColor: "rgba(0,188,212,0.08)",
     borderWidth: 2,
     borderColor: C.tealBorder,
     alignItems: "center",
     justifyContent: "center",
-    marginBottom: 10,
+    marginBottom: pad.s, // 10 → pad.s (8/11)
     shadowColor: C.teal,
     shadowOffset: { width: 0, height: 0 },
     shadowOpacity: 0.3,
     shadowRadius: 12,
     elevation: 3,
   },
-  emoji: { fontSize: 38 },
-  // Word name — bold, prominent, glowing
+  emoji: { fontSize: font.h2 - 4 }, // 38 → font.h2(34/46)-4 = 30/42 — keeps proportional
   name: {
     fontFamily: FONTS.bold,
-    fontSize: 18,
+    fontSize: font.lg, // 18 → font.lg (17/22)
     color: C.textPri,
     letterSpacing: 0.5,
-    marginBottom: 14,
+    marginBottom: pad.sm, // 14 → pad.sm (12/16)
     textShadowColor: "rgba(0,188,212,0.4)",
     textShadowOffset: { width: 0, height: 0 },
     textShadowRadius: 8,
   },
   actions: {
     flexDirection: "row",
-    gap: 8,
+    gap: pad.s, // 8 → pad.s (8/11)
   },
   actionBtn: {
     alignItems: "center",
     justifyContent: "center",
     backgroundColor: C.surfaceHigh,
-    borderRadius: 12,
+    borderRadius: radius.sm, // 12 → radius.sm (10/14)
     borderWidth: 1,
     borderColor: "rgba(255,255,255,0.1)",
-    paddingHorizontal: 12,
-    paddingVertical: 7,
-    gap: 3,
+    paddingHorizontal: pad.sm, // 12 → pad.sm (12/16)
+    paddingVertical: pad.xs + 3, // 7 → pad.xs(4/6)+3 = 7/9
+    gap: pad.xs - 1, // 3 → pad.xs(4/6)-1 = 3/5
   },
   actionBtnActive: {
     backgroundColor: C.tealDim,
     borderColor: C.tealBorder,
   },
-  actionIcon: { fontSize: 16 },
-  // Action button label — bold, muted
+  actionIcon: { fontSize: font.lg }, // 16 → font.lg (17/22)
   actionLabel: {
     fontFamily: FONTS.bold,
-    fontSize: 10,
+    fontSize: font.xs, // 10 → font.xs (9/12)
     color: C.textMuted,
     letterSpacing: 0.3,
   },
@@ -430,13 +429,13 @@ const modalS = StyleSheet.create({
     right: 0,
     height: SH * 0.78,
     backgroundColor: "#0d0f1e",
-    borderTopLeftRadius: 28,
-    borderTopRightRadius: 28,
+    borderTopLeftRadius: radius.xxl, // 28 → radius.xxl (32/44)
+    borderTopRightRadius: radius.xxl,
     borderTopWidth: 1.5,
     borderLeftWidth: 1.5,
     borderRightWidth: 1.5,
     borderColor: "rgba(0,188,212,0.3)",
-    paddingTop: 10,
+    paddingTop: pad.s, // 10 → pad.s (8/11)
     shadowColor: "#000",
     shadowOffset: { width: 0, height: -8 },
     shadowOpacity: 0.6,
@@ -446,18 +445,18 @@ const modalS = StyleSheet.create({
   handle: {
     width: 44,
     height: 5,
-    borderRadius: 3,
+    borderRadius: radius.xs, // 3 → radius.xs (6/8)
     backgroundColor: "rgba(255,255,255,0.2)",
     alignSelf: "center",
-    marginBottom: 10,
+    marginBottom: pad.s, // 10 → pad.s (8/11)
   },
   closeBtn: {
     position: "absolute",
-    top: 18,
-    right: 20,
-    width: 34,
-    height: 34,
-    borderRadius: 17,
+    top: pad.lg, // 18 → pad.lg (20/28)
+    right: pad.lg, // 20 → pad.lg (20/28)
+    width: size.hitSm, // 34 → size.hitSm (36/48)
+    height: size.hitSm,
+    borderRadius: size.hitSm / 2,
     backgroundColor: "rgba(255,255,255,0.08)",
     alignItems: "center",
     justifyContent: "center",
@@ -465,17 +464,16 @@ const modalS = StyleSheet.create({
     borderColor: "rgba(255,255,255,0.12)",
     zIndex: 10,
   },
-  // Close ✕ — bold
   closeText: {
     fontFamily: FONTS.bold,
-    fontSize: 13,
+    fontSize: font.sm, // 13 → font.sm (13/17)
     color: C.textMuted,
   },
   content: {
     alignItems: "center",
-    paddingHorizontal: 24,
-    paddingBottom: 40,
-    paddingTop: 10,
+    paddingHorizontal: pad.xl, // 24 → pad.xl (24/33)
+    paddingBottom: pad.xxxl, // 40 → pad.xxxl (48/66)
+    paddingTop: pad.s, // 10 → pad.s (8/11)
   },
   bigEmojiRing: {
     width: 120,
@@ -486,21 +484,20 @@ const modalS = StyleSheet.create({
     borderColor: C.tealBorder,
     alignItems: "center",
     justifyContent: "center",
-    marginBottom: 16,
+    marginBottom: pad.md, // 16 → pad.md (16/22)
     shadowColor: C.teal,
     shadowOffset: { width: 0, height: 0 },
     shadowOpacity: 0.4,
     shadowRadius: 20,
     elevation: 6,
   },
-  bigEmoji: { fontSize: 58 },
-  // Large word name in modal — bold, glowing
+  bigEmoji: { fontSize: font.h1 + 18 }, // 58 → font.h1(40/54)+18 = 58/72
   bigName: {
     fontFamily: FONTS.bold,
-    fontSize: 36,
+    fontSize: font.h2, // 36 → font.h2 (34/46)
     color: C.textPri,
     letterSpacing: 0.5,
-    marginBottom: 14,
+    marginBottom: pad.sm, // 14 → pad.sm (12/16)
     textShadowColor: "rgba(0,188,212,0.5)",
     textShadowOffset: { width: 0, height: 0 },
     textShadowRadius: 12,
@@ -509,103 +506,98 @@ const modalS = StyleSheet.create({
     flexDirection: "row",
     flexWrap: "wrap",
     justifyContent: "center",
-    gap: 6,
-    marginBottom: 16,
+    gap: pad.xs, // 6 → pad.xs (4/6)
+    marginBottom: pad.md, // 16 → pad.md (16/22)
   },
   phonicsChip: {
     backgroundColor: C.tealDim,
-    borderRadius: 10,
+    borderRadius: radius.sm, // 10 → radius.sm (10/14)
     borderWidth: 1,
     borderColor: C.tealBorder,
-    paddingHorizontal: 12,
-    paddingVertical: 5,
+    paddingHorizontal: pad.sm, // 12 → pad.sm (12/16)
+    paddingVertical: pad.xs, // 5 → pad.xs (4/6)
   },
-  // Phonics chip text — bold, teal, spaced
   phonicsText: {
     fontFamily: FONTS.bold,
-    fontSize: 15,
+    fontSize: font.md, // 15 → font.md (15/19)
     color: C.teal,
     letterSpacing: 1,
   },
   audioBtn: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 8,
+    gap: pad.s, // 8 → pad.s (8/11)
     backgroundColor: C.surfaceHigh,
-    borderRadius: 16,
+    borderRadius: radius.lg, // 16 → radius.lg (18/24)
     borderWidth: 1.5,
     borderColor: "rgba(255,255,255,0.12)",
-    paddingHorizontal: 24,
-    paddingVertical: 12,
-    marginBottom: 24,
+    paddingHorizontal: pad.xl, // 24 → pad.xl (24/33)
+    paddingVertical: pad.sm, // 12 → pad.sm (12/16)
+    marginBottom: pad.xl, // 24 → pad.xl (24/33)
   },
   audioBtnActive: {
     backgroundColor: C.tealDim,
     borderColor: C.tealBorder,
   },
-  audioBtnIcon: { fontSize: 20 },
-  // Audio button label — bold
+  audioBtnIcon: { fontSize: font.xl }, // 20 → font.xl (20/26)
   audioBtnText: {
     fontFamily: FONTS.bold,
-    fontSize: 15,
+    fontSize: font.md, // 15 → font.md (15/19)
     color: C.textSec,
     letterSpacing: 0.3,
   },
   section: {
     width: "100%",
-    marginBottom: 20,
+    marginBottom: pad.lg, // 20 → pad.lg (20/28)
   },
-  // Section label — bold, spaced caps, teal
   sectionLabel: {
     fontFamily: FONTS.bold,
-    fontSize: 11,
+    fontSize: font.s, // 11 → font.s (12/14)
     color: C.teal,
     letterSpacing: 2,
     textTransform: "uppercase",
-    marginBottom: 8,
+    marginBottom: pad.s, // 8 → pad.s (8/11)
     opacity: 0.8,
   },
-  // Explanation body — regular, readable
   explanationText: {
     fontFamily: FONTS.regular,
-    fontSize: 15,
+    fontSize: font.md, // 15 → font.md (15/19)
     color: C.textSec,
-    lineHeight: 22,
+    lineHeight: font.md + 7,
     backgroundColor: C.surface,
-    borderRadius: 14,
-    padding: 14,
+    borderRadius: radius.md, // 14 → radius.md (14/19)
+    padding: pad.sm, // 14 → pad.sm (12/16)
     borderWidth: 1,
     borderColor: "rgba(255,255,255,0.07)",
   },
   extraRow: {
     flexDirection: "row",
     alignItems: "flex-start",
-    gap: 10,
-    marginBottom: 8,
+    gap: pad.s, // 10 → pad.s (8/11)
+    marginBottom: pad.s, // 8 → pad.s (8/11)
   },
   extraBullet: {
-    fontSize: 10,
+    fontSize: pad.s, // 10 → pad.s (8/11)
     color: C.teal,
-    marginTop: 4,
+    marginTop: pad.xs, // 4 → pad.xs (4/6)
   },
-  // Extra fact text — regular
   extraText: {
     fontFamily: FONTS.regular,
     flex: 1,
-    fontSize: 14,
+    fontSize: font.md - 1, // 14 → font.md(15/19)-1 = 14/18
     color: C.textSec,
-    lineHeight: 20,
+    lineHeight: font.md + 6,
   },
   badgeRow: {
     flexDirection: "row",
-    gap: 8,
-    marginTop: 4,
+    gap: pad.s, // 8 → pad.s (8/11)
+    marginTop: pad.xs, // 4 → pad.xs (4/6)
   },
   badge: {
-    borderRadius: 10,
+    borderRadius: radius.sm, // 10 → radius.sm (10/14)
     borderWidth: 1,
-    paddingHorizontal: 12,
-    paddingVertical: 5,
+    paddingHorizontal: pad.sm, // 12 → pad.sm (12/16)
+    paddingVertical: pad.xs, // 5 → pad.xs (4/6)
   },
   badgePurple: {
     backgroundColor: C.purpleDim,
@@ -615,10 +607,9 @@ const modalS = StyleSheet.create({
     backgroundColor: C.tealDim,
     borderColor: C.tealBorder,
   },
-  // Grammar / category badge text — bold
   badgeText: {
     fontFamily: FONTS.bold,
-    fontSize: 12,
+    fontSize: font.s, // 12 → font.s (12/14)
     letterSpacing: 0.3,
   },
 });
@@ -661,24 +652,22 @@ const emptyS = StyleSheet.create({
     flex: 1,
     alignItems: "center",
     justifyContent: "center",
-    padding: 40,
+    padding: pad.xxxl, // 40 → pad.xxxl (48/66)
   },
-  icon: { fontSize: 72, marginBottom: 20 },
-  // Empty state heading — bold
+  icon: { fontSize: font.h1 + 32, marginBottom: pad.lg }, // 72 → font.h1(40/54)+32 = 72/86
   title: {
     fontFamily: FONTS.bold,
-    fontSize: 22,
+    fontSize: font.xxl, // 22 → font.xxl (24/32)
     color: C.textPri,
     textAlign: "center",
-    marginBottom: 10,
+    marginBottom: pad.s, // 10 → pad.s (8/11)
   },
-  // Empty state body — light, muted
   sub: {
     fontFamily: FONTS.light,
-    fontSize: 14,
+    fontSize: font.md - 1, // 14 → font.md(15/19)-1 = 14/18
     color: C.textMuted,
     textAlign: "center",
-    lineHeight: 21,
+    lineHeight: font.md + 6,
   },
 });
 
@@ -695,7 +684,6 @@ const WordBagScreen = () => {
 
   const words = currentProfile?.wordBag?.words || [];
 
-  // Deduplicate by name so repeated completions of same story don't show duplicates
   const uniqueWords = words.filter(
     (w, i, arr) => arr.findIndex((x) => x.name === w.name) === i,
   );
@@ -784,7 +772,7 @@ const screenS = StyleSheet.create({
   },
   glow: {
     position: "absolute",
-    borderRadius: 999,
+    borderRadius: radius.pill,
     opacity: 0.12,
   },
   glow1: {
@@ -805,36 +793,34 @@ const screenS = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
-    paddingTop: STATUS_BAR_HEIGHT + 10,
-    paddingBottom: 16,
-    paddingHorizontal: 18,
+    paddingTop: STATUS_BAR_HEIGHT + pad.s, // +10 → +pad.s (8/11)
+    paddingBottom: pad.md, // 16 → pad.md (16/22)
+    paddingHorizontal: pad.lg, // 18 → pad.lg (20/28)
     borderBottomWidth: 1,
     borderBottomColor: "rgba(0,188,212,0.15)",
   },
   backBtn: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
+    width: size.hitMd, // 40 → size.hitMd (40/52)
+    height: size.hitMd,
+    borderRadius: size.hitMd / 2,
     backgroundColor: "rgba(255,255,255,0.06)",
     borderWidth: 1,
     borderColor: "rgba(255,255,255,0.12)",
     alignItems: "center",
     justifyContent: "center",
   },
-  // Back arrow — bold, teal
   backIcon: {
     fontFamily: FONTS.bold,
-    fontSize: 20,
+    fontSize: font.xl, // 20 → font.xl (20/26)
     color: C.teal,
   },
   headerCenter: {
     alignItems: "center",
-    gap: 6,
+    gap: pad.xs, // 6 → pad.xs (4/6)
   },
-  // Screen title — bold, glowing
   headerTitle: {
     fontFamily: FONTS.bold,
-    fontSize: 22,
+    fontSize: font.xxl, // 22 → font.xxl (24/32)
     color: C.textPri,
     letterSpacing: 0.4,
     textShadowColor: "rgba(0,188,212,0.5)",
@@ -843,16 +829,15 @@ const screenS = StyleSheet.create({
   },
   countPill: {
     backgroundColor: C.tealDim,
-    borderRadius: 10,
+    borderRadius: radius.sm, // 10 → radius.sm (10/14)
     borderWidth: 1,
     borderColor: C.tealBorder,
-    paddingHorizontal: 10,
-    paddingVertical: 3,
+    paddingHorizontal: pad.s, // 10 → pad.s (8/11)
+    paddingVertical: pad.xs - 1, // 3 → pad.xs(4/6)-1 = 3/5
   },
-  // Word count inside pill — bold, teal
   countText: {
     fontFamily: FONTS.bold,
-    fontSize: 11,
+    fontSize: font.s, // 11 → font.s (12/14)
     color: C.teal,
     letterSpacing: 0.5,
   },
@@ -860,9 +845,9 @@ const screenS = StyleSheet.create({
     flexDirection: "row",
     flexWrap: "wrap",
     justifyContent: "center",
-    paddingHorizontal: 12,
-    paddingTop: 16,
-    paddingBottom: 40,
+    paddingHorizontal: pad.sm, // 12 → pad.sm (12/16)
+    paddingTop: pad.md, // 16 → pad.md (16/22)
+    paddingBottom: pad.xxxl, // 40 → pad.xxxl (48/66)
   },
 });
 

@@ -30,6 +30,8 @@ import { clearAuthTokens } from "./services/tokenStorage";
 import { useApiCall } from "./_hooks/useApiCall";
 import { useSubscription } from "./_contexts/SubscriptionContext";
 import PlanBadge from "./components/PlanBadge";
+import { useTheme } from "./_contexts/ThemeContext";
+import { logoutLocally } from "./services/apiClient";
 
 const AGE_OPTIONS = [
   { label: "-5", value: 5 },
@@ -52,10 +54,16 @@ const START_LEVEL = [
   { label: "8", value: 8 },
   { label: "9", value: 9 },
 ];
+
+const TEAL = "#00BCD4";
+const CORAL = "#FF7043";
+const YELLOW = "#FFD54F";
+const PINK = "#EC407A";
+
 // ─────────────────────────────────────────────────────────────────────────────
 // Account Option Card
 // ─────────────────────────────────────────────────────────────────────────────
-function AccountOptionCard({ image, label, onPress }) {
+function AccountOptionCard({ image, label, onPress, sz }) {
   const scale = useRef(new Animated.Value(1)).current;
 
   const pressIn = () =>
@@ -65,7 +73,6 @@ function AccountOptionCard({ image, label, onPress }) {
       tension: 200,
       useNativeDriver: true,
     }).start();
-
   const pressOut = () =>
     Animated.spring(scale, {
       toValue: 1,
@@ -75,44 +82,47 @@ function AccountOptionCard({ image, label, onPress }) {
     }).start();
 
   return (
-    <Animated.View style={[optCardS.wrapper, { transform: [{ scale }] }]}>
+    <Animated.View style={[{ flex: 1, transform: [{ scale }] }]}>
       <TouchableOpacity
-        style={optCardS.card}
+        style={{
+          backgroundColor: "rgba(255,255,255,0.05)",
+          borderRadius: sz.optionCardBorderRadius,
+          borderWidth: 1.5,
+          borderColor: "rgba(0,188,212,0.44)",
+          alignItems: "center",
+          justifyContent: "center",
+          paddingVertical: sz.optionCardPaddingV,
+          paddingHorizontal: sz.optionCardPaddingH,
+          gap: sz.optionCardGap,
+        }}
         onPress={onPress}
         onPressIn={pressIn}
         onPressOut={pressOut}
         activeOpacity={1}
       >
-        <Image source={image} style={optCardS.iconImage} resizeMode="contain" />
-        <Text style={optCardS.label}>{label}</Text>
+        <Image
+          source={image}
+          style={{
+            width: sz.optionCardIconSize,
+            height: sz.optionCardIconSize,
+          }}
+          resizeMode="contain"
+        />
+        <Text
+          style={{
+            fontFamily: FONTS.bold,
+            fontSize: sz.optionCardLabelFontSize,
+            letterSpacing: 0.2,
+            textAlign: "center",
+            color: COLORS.teal,
+          }}
+        >
+          {label}
+        </Text>
       </TouchableOpacity>
     </Animated.View>
   );
 }
-
-const optCardS = StyleSheet.create({
-  wrapper: { flex: 1 },
-  card: {
-    backgroundColor: "rgba(255,255,255,0.05)",
-    borderRadius: 18,
-    borderWidth: 1.5,
-    borderColor: "rgba(0,188,212,0.44)",
-    alignItems: "center",
-    justifyContent: "center",
-    paddingVertical: 22,
-    paddingHorizontal: 10,
-    gap: 10,
-  },
-  iconImage: { width: 52, height: 52 },
-  // Option card label — bold, teal
-  label: {
-    fontFamily: FONTS.bold,
-    fontSize: 13,
-    letterSpacing: 0.2,
-    textAlign: "center",
-    color: COLORS.teal,
-  },
-});
 
 // ─────────────────────────────────────────────────────────────────────────────
 // MAIN SCREEN
@@ -120,6 +130,9 @@ const optCardS = StyleSheet.create({
 const Account = () => {
   const router = useRouter();
   const { execute } = useApiCall();
+  const { sizes } = useTheme();
+  const sz = sizes.account;
+
   const {
     profiles,
     addProfile,
@@ -131,7 +144,6 @@ const Account = () => {
     setUserAccount,
   } = useUser();
 
-  // ── Credentials form state ────────────────────────────────
   const [emailInput, setEmailInput] = useState("");
   const [passwordInput, setPasswordInput] = useState("");
   const [isSavingEmail, setIsSavingEmail] = useState(false);
@@ -142,7 +154,6 @@ const Account = () => {
   const scrollRef = useRef(null);
   const emailSectionRef = useRef(null);
 
-  // ── Profile modal state ───────────────────────────────────
   const [modalVisible, setModalVisible] = useState(false);
   const [editingProfile, setEditingProfile] = useState(null);
   const [formData, setFormData] = useState({
@@ -154,11 +165,9 @@ const Account = () => {
   const [isSaving, setIsSaving] = useState(false);
   const readingLevels = ["Early", "Middle", "Advance"];
 
-  // ── Credentials handler ───────────────────────────────────
   const handleSaveCredentials = async () => {
     const trimmedEmail = emailInput.trim();
     const trimmedPassword = passwordInput.trim();
-
     if (!trimmedEmail) {
       Alert.alert("Error", "Please enter an email address");
       return;
@@ -197,7 +206,6 @@ const Account = () => {
     setIsSavingEmail(false);
   };
 
-  // ── Profile handlers ──────────────────────────────────────
   const handleProfilePress = (profile) => {
     selectProfile(profile);
     router.push("/home");
@@ -208,7 +216,6 @@ const Account = () => {
     setModalVisible(true);
   };
   const handleEdit = (profile) => {
-    console.log(JSON.stringify(profile));
     setEditingProfile(profile);
     setFormData({
       id: profile.id,
@@ -219,7 +226,6 @@ const Account = () => {
     });
     setModalVisible(true);
   };
-
   const handleDelete = (profile) => {
     if (userAccount?.defaultProfileId === profile.id) {
       Alert.alert(
@@ -263,7 +269,6 @@ const Account = () => {
       Alert.alert("Error", "Please enter a valid level");
       return;
     }
-
     setIsSaving(true);
     await execute(() => saveProfile(formData), {
       successDisplay: "sheet",
@@ -317,20 +322,337 @@ const Account = () => {
         text: "Log Out",
         style: "destructive",
         onPress: async () => {
-          await execute(() => logoutUser(), {
-            successDisplay: "none",
-            errorDisplay: "toast",
-            onSuccess: async () => {
-              await clearAuthTokens();
-              router.replace("../login");
-            },
-          });
+          // Tell the backend to mark the session INACTIVE.
+          // logoutUser() never throws — it swallows network and auth errors,
+          // so the user is never stuck on this screen without internet.
+          await logoutUser();
+
+          // Always clear local state and navigate to login, regardless of
+          // whether the backend call succeeded or failed.
+          // This also handles the offline logout problem: even if the session
+          // wasn't marked INACTIVE on the backend right now, the cron job will
+          // expire it within 5 minutes once its expiryDateTime passes.
+          await logoutLocally();
         },
       },
     ]);
   };
 
-  // ── Render ────────────────────────────────────────────────
+  // Build styles from tokens
+  const styles = StyleSheet.create({
+    safeArea: { flex: 1, paddingTop: 0 },
+    optionCardsSection: {
+      paddingHorizontal: sz.optionSectionPaddingH,
+      paddingTop: sz.optionSectionPaddingTop,
+      paddingBottom: sz.optionSectionPaddingBottom,
+    },
+    optionCardsRow: { flexDirection: "row", gap: sz.optionCardRowGap },
+    divider: {
+      height: 1,
+      marginHorizontal: sz.optionSectionPaddingH,
+      backgroundColor: "rgba(0,188,212,0.2)",
+      marginBottom: 4,
+    },
+    title: {
+      fontFamily: FONTS.bold,
+      fontSize: sz.titleFontSize,
+      color: COLORS.textPrimary,
+      textAlign: "center",
+      marginTop: sz.titleMarginTop,
+      marginBottom: sz.titleMarginBottom,
+      textShadowColor: "rgba(0,188,212,0.4)",
+      textShadowOffset: { width: 0, height: 2 },
+      textShadowRadius: 8,
+    },
+    currentProfileBanner: {
+      backgroundColor: COLORS.surfacePurple,
+      borderWidth: 1.5,
+      borderColor: COLORS.purple,
+      padding: sz.bannerPadding,
+      marginHorizontal: sz.bannerMarginH,
+      marginTop: sz.bannerMarginTop,
+      marginBottom: sz.bannerMarginBottom,
+      borderRadius: sz.bannerBorderRadius,
+    },
+    currentProfileText: {
+      fontFamily: FONTS.regular,
+      color: COLORS.purpleLight,
+      fontSize: sz.bannerTextFontSize,
+      textAlign: "center",
+    },
+    listContent: {
+      paddingHorizontal: sz.listPaddingH,
+      paddingTop: 12,
+      paddingBottom: 20,
+    },
+    addButton: {
+      backgroundColor: "rgba(0,188,212,0.1)",
+      borderRadius: sz.addBtnBorderRadius,
+      padding: sz.addBtnPadding,
+      marginTop: sz.addBtnMarginTop,
+      borderWidth: 2,
+      borderColor: COLORS.teal,
+      borderStyle: "dashed",
+    },
+    addButtonText: {
+      fontFamily: FONTS.bold,
+      fontSize: sz.addBtnFontSize,
+      color: COLORS.teal,
+      textAlign: "center",
+    },
+    accountSection: {
+      marginHorizontal: sz.accountSectionMarginH,
+      marginTop: sz.accountSectionMarginTop,
+      marginBottom: sz.accountSectionMarginBottom,
+      backgroundColor: "rgba(255,255,255,0.05)",
+      borderRadius: sz.accountSectionBorderRadius,
+      borderWidth: 1.5,
+      borderColor: COLORS.borderTeal,
+      padding: sz.accountSectionPadding,
+    },
+    accountSectionHeader: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: sz.accountSectionHeaderGap,
+      marginBottom: sz.accountSectionHeaderMarginBottom,
+    },
+    accountSectionIcon: { fontSize: sz.accountSectionIconFontSize },
+    accountSectionTitle: {
+      fontFamily: FONTS.bold,
+      fontSize: sz.accountSectionTitleFontSize,
+      color: COLORS.textPrimary,
+    },
+    credentialsForm: { gap: 12 },
+    credentialsHint: {
+      fontFamily: FONTS.light,
+      fontSize: sz.credentialsHintFontSize,
+      color: COLORS.textMuted,
+      lineHeight: sz.credentialsHintLineHeight,
+      marginBottom: 4,
+    },
+    credentialsInput: {
+      fontFamily: FONTS.regular,
+      backgroundColor: COLORS.surfaceDim,
+      borderRadius: sz.credentialsInputBorderRadius,
+      padding: sz.credentialsInputPadding,
+      fontSize: sz.credentialsInputFontSize,
+      color: COLORS.textPrimary,
+      borderWidth: 1.5,
+      borderColor: COLORS.borderTeal,
+    },
+    credentialsSaveBtn: {
+      backgroundColor: COLORS.teal,
+      borderRadius: sz.credentialsBtnBorderRadius,
+      paddingVertical: sz.credentialsBtnPaddingV,
+      alignItems: "center",
+      marginTop: 4,
+    },
+    credentialsSaveBtnDisabled: { backgroundColor: "rgba(0,188,212,0.25)" },
+    credentialsSaveBtnText: {
+      fontFamily: FONTS.bold,
+      fontSize: sz.credentialsBtnFontSize,
+      color: "#fff",
+      letterSpacing: 0.3,
+    },
+    emailLinkedRow: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: sz.emailLinkedRowGap,
+      backgroundColor: "rgba(0,188,212,0.07)",
+      borderRadius: sz.emailLinkedRowBorderRadius,
+      padding: sz.emailLinkedRowPadding,
+      borderWidth: 1,
+      borderColor: "rgba(0,188,212,0.25)",
+    },
+    emailLinkedBadge: {
+      width: sz.emailLinkedBadgeSize,
+      height: sz.emailLinkedBadgeSize,
+      borderRadius: sz.emailLinkedBadgeBorderRadius,
+      backgroundColor: "rgba(0,188,212,0.2)",
+      borderWidth: 1.5,
+      borderColor: COLORS.teal,
+      justifyContent: "center",
+      alignItems: "center",
+    },
+    emailLinkedIcon: {
+      fontFamily: FONTS.bold,
+      color: COLORS.teal,
+      fontSize: sz.emailLinkedIconFontSize,
+    },
+    emailLinkedLabel: {
+      fontFamily: FONTS.light,
+      fontSize: sz.emailLinkedLabelFontSize,
+      color: COLORS.textMuted,
+      marginBottom: 2,
+    },
+    emailLinkedValue: {
+      fontFamily: FONTS.regular,
+      fontSize: sz.emailLinkedValueFontSize,
+      color: COLORS.tealLight ?? COLORS.teal,
+    },
+    logoutBtn: {
+      flexDirection: "row",
+      alignItems: "center",
+      justifyContent: "center",
+      gap: sz.logoutGap,
+      marginHorizontal: sz.logoutMarginH,
+      marginTop: sz.logoutMarginTop,
+      paddingVertical: sz.logoutPaddingV,
+      borderRadius: sz.logoutBorderRadius,
+      borderWidth: 1.5,
+      borderColor: "rgba(255,80,80,0.4)",
+      backgroundColor: "rgba(255,80,80,0.08)",
+    },
+    logoutIcon: { fontSize: sz.logoutIconFontSize, color: "#FF6B6B" },
+    logoutText: {
+      fontFamily: FONTS.bold,
+      fontSize: sz.logoutTextFontSize,
+      color: "#FF6B6B",
+      letterSpacing: 0.4,
+    },
+    modalOverlay: {
+      flex: 1,
+      backgroundColor: "rgba(0,0,0,0.75)",
+      justifyContent: "center",
+      alignItems: "center",
+      padding: sz.modalOverlayPadding,
+    },
+    modalContent: {
+      backgroundColor: COLORS.darkBg2,
+      borderRadius: sz.modalBorderRadius,
+      padding: sz.modalPadding,
+      width: "100%",
+      maxWidth: sz.modalMaxWidth,
+      maxHeight: "80%",
+      borderWidth: 1.5,
+      borderColor: COLORS.borderTealBold,
+      ...SHADOWS.tealGlow,
+    },
+    modalTitle: {
+      fontFamily: FONTS.bold,
+      fontSize: sz.modalTitleFontSize,
+      color: COLORS.textPrimary,
+      textAlign: "center",
+      marginBottom: sz.modalTitleMarginBottom,
+    },
+    inputGroup: { marginBottom: sz.modalInputGroupMarginBottom },
+    label: {
+      fontFamily: FONTS.bold,
+      fontSize: sz.modalLabelFontSize,
+      color: COLORS.textSecondary,
+      marginBottom: sz.modalLabelMarginBottom,
+    },
+    input: {
+      fontFamily: FONTS.regular,
+      backgroundColor: COLORS.surfaceDim,
+      borderRadius: sz.modalInputBorderRadius,
+      padding: sz.modalInputPadding,
+      fontSize: sz.modalInputFontSize,
+      color: COLORS.textPrimary,
+      borderWidth: 1.5,
+      borderColor: COLORS.borderTeal,
+    },
+    ageSection: {
+      flexDirection: "row",
+      flexWrap: "wrap",
+      justifyContent: "center",
+      gap: sz.ageSectionGap,
+      marginTop: sz.ageSectionMarginTop,
+    },
+    ageBtn: {
+      width: sz.ageBtnSize,
+      height: sz.ageBtnSize,
+      alignItems: "center",
+      justifyContent: "center",
+      borderRadius: sz.ageBtnBorderRadius,
+      backgroundColor: "rgba(0,188,212,0.1)",
+      borderWidth: 2,
+      borderColor: "rgba(0,188,212,0.45)",
+      shadowColor: TEAL,
+      shadowOffset: { width: 0, height: 0 },
+      shadowOpacity: 0.3,
+      shadowRadius: 8,
+      elevation: 4,
+      gap: 4,
+    },
+    ageBtnActive: { backgroundColor: COLORS.teal, borderColor: COLORS.teal },
+    ageBtnText: {
+      fontFamily: FONTS.bold,
+      fontSize: sz.ageBtnFontSize,
+      color: "#E0F7FA",
+    },
+    genderSection: {
+      flexDirection: "row",
+      gap: sz.genderSectionGap,
+      marginTop: sz.genderSectionMarginTop,
+    },
+    genderBtn: {
+      flex: 1,
+      alignItems: "center",
+      justifyContent: "center",
+      borderRadius: sz.genderBtnBorderRadius,
+      paddingVertical: sz.genderBtnPaddingV,
+      elevation: 6,
+      borderWidth: 2.5,
+    },
+    genderBtnBoy: {
+      backgroundColor: "rgba(66,165,245,0.15)",
+      borderColor: "#42A5F5",
+      shadowColor: "#42A5F5",
+      shadowOffset: { width: 0, height: 0 },
+      shadowOpacity: 0.45,
+      shadowRadius: 10,
+    },
+    genderBtnGirl: {
+      backgroundColor: "rgba(236,64,122,0.15)",
+      borderColor: PINK,
+      shadowColor: PINK,
+      shadowOffset: { width: 0, height: 0 },
+      shadowOpacity: 0.45,
+      shadowRadius: 10,
+    },
+    genderEmoji: { fontSize: sz.genderEmojiFontSize, marginBottom: 10 },
+    genderBtnActive: { opacity: 1, borderWidth: 5.5 },
+    genderLabel: {
+      fontFamily: FONTS.bold,
+      fontSize: sz.genderLabelFontSize,
+      color: "#E0F7FA",
+      letterSpacing: 1,
+    },
+    modalActions: {
+      flexDirection: "row",
+      gap: sz.modalActionGap,
+      marginTop: sz.modalActionMarginTop,
+    },
+    actionButton: {
+      flex: 1,
+      paddingVertical: sz.actionBtnPaddingV,
+      borderRadius: sz.actionBtnBorderRadius,
+      alignItems: "center",
+    },
+    cancelButton: {
+      backgroundColor: COLORS.surfaceDim,
+      borderWidth: 1,
+      borderColor: "rgba(255,255,255,0.2)",
+    },
+    cancelButtonText: {
+      fontFamily: FONTS.regular,
+      fontSize: sz.actionBtnFontSize,
+      color: COLORS.textSecondary,
+    },
+    saveButton: { backgroundColor: COLORS.teal },
+    saveButtonText: {
+      fontFamily: FONTS.bold,
+      fontSize: sz.actionBtnFontSize,
+      color: "#fff",
+    },
+    planBadgeRow: {
+      flexDirection: "row",
+      justifyContent: "flex-end",
+      marginBottom: 10,
+    },
+  });
+
   return (
     <ScreenWrapper>
       <AppBackground>
@@ -345,7 +667,6 @@ const Account = () => {
               showsVerticalScrollIndicator={false}
               keyboardShouldPersistTaps="handled"
             >
-              {/* ── ACCOUNT OPTION CARDS — always visible, top of screen ── */}
               <View style={styles.optionCardsSection}>
                 <View style={styles.optionCardsRow}>
                   <AccountOptionCard
@@ -354,24 +675,25 @@ const Account = () => {
                     onPress={() =>
                       router.push("/components/billing/PlanBillingScreen")
                     }
+                    sz={sz}
                   />
                   <AccountOptionCard
                     image={require("../assets/img/learning-path-icon-3.png")}
                     label="Learning Path Levels"
                     onPress={() => router.push("/components/LearningPath")}
+                    sz={sz}
                   />
                   <AccountOptionCard
                     image={require("../assets/img/progress-report-icon.png")}
                     label="Progress Reports"
                     onPress={() => router.push("/components/Reports")}
+                    sz={sz}
                   />
                 </View>
               </View>
 
-              {/* ── DIVIDER ── */}
               <View style={styles.divider} />
 
-              {/* ── WHO'S READING ── */}
               <Text style={styles.title}>Who's Reading?</Text>
 
               {currentProfile && (
@@ -385,7 +707,6 @@ const Account = () => {
                 </View>
               )}
 
-              {/* ── Profiles ── */}
               <View style={styles.listContent}>
                 {profiles.map((item) => (
                   <ProfileCard
@@ -410,7 +731,6 @@ const Account = () => {
                 </TouchableOpacity>
               </View>
 
-              {/* ── ACCOUNT SECTION — credentials / email linked ── */}
               <View style={styles.accountSection}>
                 <View style={styles.accountSectionHeader}>
                   <Text style={styles.accountSectionIcon}>🔐</Text>
@@ -418,7 +738,6 @@ const Account = () => {
                 </View>
 
                 {!hasEmail ? (
-                  /* Set Credentials Form */
                   <View style={styles.credentialsForm}>
                     <Text style={styles.credentialsHint}>
                       Link an email and password to secure your account and
@@ -486,7 +805,6 @@ const Account = () => {
                     </TouchableOpacity>
                   </View>
                 ) : (
-                  /* Email linked indicator */
                   <View style={styles.emailLinkedRow}>
                     <View style={styles.emailLinkedBadge}>
                       <Text style={styles.emailLinkedIcon}>✓</Text>
@@ -503,7 +821,6 @@ const Account = () => {
                 )}
               </View>
 
-              {/* ── Logout ── */}
               <TouchableOpacity
                 style={styles.logoutBtn}
                 onPress={handleLogout}
@@ -517,7 +834,6 @@ const Account = () => {
             </ScrollView>
           </KeyboardAvoidingView>
 
-          {/* ── Add / Edit Profile Modal ── */}
           <Modal
             animationType="slide"
             transparent={true}
@@ -668,386 +984,3 @@ const Account = () => {
 };
 
 export default Account;
-
-// ─────────────────────────────────────────────────────────────────────────────
-// STYLES
-// ─────────────────────────────────────────────────────────────────────────────
-
-// ── Dark theme ────────────────────────────────────────────────
-const TEAL = "#00BCD4";
-const CORAL = "#FF7043";
-const YELLOW = "#FFD54F";
-const PINK = "#EC407A";
-const styles = StyleSheet.create({
-  safeArea: { flex: 1, paddingTop: 0 },
-
-  // ── Account option cards — top section, no box ───────────
-  optionCardsSection: {
-    paddingHorizontal: 20,
-    paddingTop: 16,
-    paddingBottom: 20,
-  },
-  optionCardsRow: {
-    flexDirection: "row",
-    gap: 10,
-  },
-
-  // ── Divider — same color as profile card borders ─────────
-  divider: {
-    height: 1,
-    marginHorizontal: 20,
-    backgroundColor: "rgba(0,188,212,0.2)",
-    marginBottom: 4,
-  },
-
-  // ── Who's Reading title — bold, large, prominent ─────────
-  title: {
-    fontFamily: FONTS.bold,
-    fontSize: 32,
-    color: COLORS.textPrimary,
-    textAlign: "center",
-    marginTop: 16,
-    marginBottom: 8,
-    textShadowColor: "rgba(0,188,212,0.4)",
-    textShadowOffset: { width: 0, height: 2 },
-    textShadowRadius: 8,
-  },
-
-  currentProfileBanner: {
-    backgroundColor: COLORS.surfacePurple,
-    borderWidth: 1.5,
-    borderColor: COLORS.purple,
-    padding: 12,
-    marginHorizontal: 20,
-    marginTop: 16,
-    marginBottom: 8,
-    borderRadius: 10,
-  },
-  // Current profile indicator text — regular weight
-  currentProfileText: {
-    fontFamily: FONTS.regular,
-    color: COLORS.purpleLight,
-    fontSize: 16,
-    textAlign: "center",
-  },
-
-  listContent: {
-    paddingHorizontal: 20,
-    paddingTop: 12,
-    paddingBottom: 20,
-  },
-
-  addButton: {
-    backgroundColor: "rgba(0,188,212,0.1)",
-    borderRadius: 20,
-    padding: 20,
-    marginTop: 10,
-    borderWidth: 2,
-    borderColor: COLORS.teal,
-    borderStyle: "dashed",
-  },
-  // Add profile CTA — bold, teal
-  addButtonText: {
-    fontFamily: FONTS.bold,
-    fontSize: 18,
-    color: COLORS.teal,
-    textAlign: "center",
-  },
-
-  // ── Account section box ───────────────────────────────────
-  accountSection: {
-    marginHorizontal: 20,
-    marginTop: 8,
-    marginBottom: 24,
-    backgroundColor: "rgba(255,255,255,0.05)",
-    borderRadius: 20,
-    borderWidth: 1.5,
-    borderColor: COLORS.borderTeal,
-    padding: 18,
-  },
-  accountSectionHeader: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 8,
-    marginBottom: 16,
-  },
-  accountSectionIcon: { fontSize: 20 },
-  // Section title — bold
-  accountSectionTitle: {
-    fontFamily: FONTS.bold,
-    fontSize: 18,
-    color: COLORS.textPrimary,
-  },
-
-  // ── Credentials form ──────────────────────────────────────
-  credentialsForm: { gap: 12 },
-  // Helper hint text — light, muted
-  credentialsHint: {
-    fontFamily: FONTS.light,
-    fontSize: 13,
-    color: COLORS.textMuted,
-    lineHeight: 19,
-    marginBottom: 4,
-  },
-  // Input field — regular weight for typed text
-  credentialsInput: {
-    fontFamily: FONTS.regular,
-    backgroundColor: COLORS.surfaceDim,
-    borderRadius: 12,
-    padding: 14,
-    fontSize: 15,
-    color: COLORS.textPrimary,
-    borderWidth: 1.5,
-    borderColor: COLORS.borderTeal,
-  },
-  credentialsSaveBtn: {
-    backgroundColor: COLORS.teal,
-    borderRadius: 12,
-    paddingVertical: 14,
-    alignItems: "center",
-    marginTop: 4,
-  },
-  credentialsSaveBtnDisabled: { backgroundColor: "rgba(0,188,212,0.25)" },
-  // Save button text — bold CTA
-  credentialsSaveBtnText: {
-    fontFamily: FONTS.bold,
-    fontSize: 15,
-    color: "#fff",
-    letterSpacing: 0.3,
-  },
-
-  // ── Email linked indicator ────────────────────────────────
-  emailLinkedRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 12,
-    backgroundColor: "rgba(0,188,212,0.07)",
-    borderRadius: 12,
-    padding: 12,
-    borderWidth: 1,
-    borderColor: "rgba(0,188,212,0.25)",
-  },
-  emailLinkedBadge: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
-    backgroundColor: "rgba(0,188,212,0.2)",
-    borderWidth: 1.5,
-    borderColor: COLORS.teal,
-    justifyContent: "center",
-    alignItems: "center",
-  },
-  // Tick glyph inside badge — bold
-  emailLinkedIcon: {
-    fontFamily: FONTS.bold,
-    color: COLORS.teal,
-    fontSize: 15,
-  },
-  // "Linked account" sublabel — light, muted
-  emailLinkedLabel: {
-    fontFamily: FONTS.light,
-    fontSize: 11,
-    color: COLORS.textMuted,
-    marginBottom: 2,
-  },
-  // Email address value — regular
-  emailLinkedValue: {
-    fontFamily: FONTS.regular,
-    fontSize: 14,
-    color: COLORS.tealLight ?? COLORS.teal,
-  },
-
-  // ── Logout ────────────────────────────────────────────────
-  logoutBtn: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-    gap: 10,
-    marginHorizontal: 20,
-    marginTop: 8,
-    paddingVertical: 16,
-    borderRadius: 16,
-    borderWidth: 1.5,
-    borderColor: "rgba(255,80,80,0.4)",
-    backgroundColor: "rgba(255,80,80,0.08)",
-  },
-  logoutIcon: { fontSize: 18, color: "#FF6B6B" },
-  // Log out label — bold, red
-  logoutText: {
-    fontFamily: FONTS.bold,
-    fontSize: 16,
-    color: "#FF6B6B",
-    letterSpacing: 0.4,
-  },
-
-  // ── Profile modal ─────────────────────────────────────────
-  modalOverlay: {
-    flex: 1,
-    backgroundColor: "rgba(0,0,0,0.75)",
-    justifyContent: "center",
-    alignItems: "center",
-    padding: 20,
-  },
-  modalContent: {
-    backgroundColor: COLORS.darkBg2,
-    borderRadius: 25,
-    padding: 25,
-    width: "100%",
-    maxWidth: 400,
-    maxHeight: "80%",
-    borderWidth: 1.5,
-    borderColor: COLORS.borderTealBold,
-    ...SHADOWS.tealGlow,
-  },
-  // Modal title — bold, large
-  modalTitle: {
-    fontFamily: FONTS.bold,
-    fontSize: 26,
-    color: COLORS.textPrimary,
-    textAlign: "center",
-    marginBottom: 25,
-  },
-  inputGroup: { marginBottom: 20 },
-  // Form field label — bold
-  label: {
-    fontFamily: FONTS.bold,
-    fontSize: 16,
-    color: COLORS.textSecondary,
-    marginBottom: 8,
-  },
-  // Text input — regular weight for user-typed content
-  input: {
-    fontFamily: FONTS.regular,
-    backgroundColor: COLORS.surfaceDim,
-    borderRadius: 12,
-    padding: 15,
-    fontSize: 16,
-    color: COLORS.textPrimary,
-    borderWidth: 1.5,
-    borderColor: COLORS.borderTeal,
-  },
-
-  ageSection: {
-    flexDirection: "row",
-    flexWrap: "wrap",
-    justifyContent: "center",
-    gap: 12,
-    marginTop: 10,
-  },
-  ageBtn: {
-    width: 42,
-    height: 42,
-    alignItems: "center",
-    justifyContent: "center",
-    borderRadius: 22,
-    backgroundColor: "rgba(0,188,212,0.1)",
-    borderWidth: 2,
-    borderColor: "rgba(0,188,212,0.45)",
-    shadowColor: TEAL,
-    shadowOffset: { width: 0, height: 0 },
-    shadowOpacity: 0.3,
-    shadowRadius: 8,
-    elevation: 4,
-    gap: 4,
-  },
-  ageBtnActive: {
-    backgroundColor: COLORS.teal,
-    borderColor: COLORS.teal,
-  },
-  ageEmoji: { fontSize: 28 },
-
-  // Age number — CoText-Bold, bigger tap target
-  ageBtnText: {
-    fontFamily: FONTS.bold,
-    fontSize: 16,
-    color: "#E0F7FA",
-  },
-  genderSection: { flexDirection: "row", gap: 20, marginTop: 10 },
-  genderBtn: {
-    flex: 1,
-    alignItems: "center",
-    justifyContent: "center",
-    borderRadius: 24,
-    paddingVertical: 26,
-    elevation: 6,
-    borderWidth: 2.5,
-  },
-  genderBtnBoy: {
-    backgroundColor: "rgba(66,165,245,0.15)",
-    borderColor: "#42A5F5",
-    shadowColor: "#42A5F5",
-    shadowOffset: { width: 0, height: 0 },
-    shadowOpacity: 0.45,
-    shadowRadius: 10,
-  },
-  genderBtnGirl: {
-    backgroundColor: "rgba(236,64,122,0.15)",
-    borderColor: PINK,
-    shadowColor: PINK,
-    shadowOffset: { width: 0, height: 0 },
-    shadowOpacity: 0.45,
-    shadowRadius: 10,
-  },
-  genderEmoji: { fontSize: 52, marginBottom: 10 },
-  genderBtnActive: {
-    opacity: 1,
-    borderWidth: 5.5,
-  },
-  // Gender label — CoText-Bold, big and friendly
-  genderLabel: {
-    fontFamily: FONTS.bold,
-    fontSize: 24,
-    color: "#E0F7FA",
-    letterSpacing: 1,
-  },
-
-  levelButtons: { flexDirection: "row", gap: 10 },
-  levelButton: {
-    flex: 1,
-    paddingVertical: 12,
-    paddingHorizontal: 10,
-    borderRadius: 12,
-    backgroundColor: COLORS.surfaceDim,
-    borderWidth: 2,
-    borderColor: COLORS.borderTeal,
-    alignItems: "center",
-  },
-  levelButtonActive: { backgroundColor: COLORS.teal, borderColor: COLORS.teal },
-  // Level pill text — regular, muted when inactive
-  levelButtonText: {
-    fontFamily: FONTS.regular,
-    fontSize: 14,
-    color: "#90CAD6",
-  },
-  levelButtonTextActive: { color: "#fff" },
-  modalActions: { flexDirection: "row", gap: 10, marginTop: 20 },
-  actionButton: {
-    flex: 1,
-    paddingVertical: 15,
-    borderRadius: 12,
-    alignItems: "center",
-  },
-  cancelButton: {
-    backgroundColor: COLORS.surfaceDim,
-    borderWidth: 1,
-    borderColor: "rgba(255,255,255,0.2)",
-  },
-  // Cancel button text — regular, secondary colour
-  cancelButtonText: {
-    fontFamily: FONTS.regular,
-    fontSize: 16,
-    color: COLORS.textSecondary,
-  },
-  saveButton: { backgroundColor: COLORS.teal },
-  // Save / Update button text — bold, white CTA
-  saveButtonText: {
-    fontFamily: FONTS.bold,
-    fontSize: 16,
-    color: "#fff",
-  },
-  planBadgeRow: {
-    flexDirection: "row",
-    justifyContent: "flex-end",
-    marginBottom: 10,
-  },
-});

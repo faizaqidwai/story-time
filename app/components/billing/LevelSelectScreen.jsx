@@ -1,8 +1,4 @@
 // app/components/billing/LevelSelectScreen.jsx
-//
-// Shown ONLY on first free → paid subscription upgrade.
-// Asks the user to choose a starting level (1–10) for their default profile.
-// On confirm, PATCHes the profile's playLevel then navigates to PurchaseScreen.
 
 import React, { useState } from "react";
 import {
@@ -11,7 +7,6 @@ import {
   StyleSheet,
   TouchableOpacity,
   ScrollView,
-  Animated,
   Platform,
   StatusBar,
   ActivityIndicator,
@@ -21,6 +16,7 @@ import { FONTS } from "../../theme";
 import { useApiCall } from "../../_hooks/useApiCall";
 import { apiClient } from "../../services/apiClient";
 import { useUser } from "../../_contexts/UserContext";
+import { font, pad, radius, size } from "../../theme/tokens"; // ← REPLACES useTheme
 
 const STATUS_BAR_HEIGHT =
   Platform.OS === "android" ? (StatusBar.currentHeight ?? 24) : 50;
@@ -38,15 +34,15 @@ const C = {
 const LEVELS = Array.from({ length: 10 }, (_, i) => i + 1);
 
 const LEVEL_DESCRIPTIONS = {
-  1:  "Complete beginner — starting fresh",
-  2:  "Recognises some letters and words",
-  3:  "Can read simple sentences",
-  4:  "Reads short stories with help",
-  5:  "Independent early reader",
-  6:  "Reads fluently with good comprehension",
-  7:  "Advanced reader, strong vocabulary",
-  8:  "Near grade-level reading",
-  9:  "Above grade-level reading",
+  1: "Complete beginner — starting fresh",
+  2: "Recognises some letters and words",
+  3: "Can read simple sentences",
+  4: "Reads short stories with help",
+  5: "Independent early reader",
+  6: "Reads fluently with good comprehension",
+  7: "Advanced reader, strong vocabulary",
+  8: "Near grade-level reading",
+  9: "Above grade-level reading",
   10: "Expert reader — complex texts",
 };
 
@@ -57,18 +53,15 @@ export default function LevelSelectScreen() {
   const { currentProfile, updateProfile } = useUser();
 
   const pkg = params.packageJson ? JSON.parse(params.packageJson) : null;
-
   const [selectedLevel, setSelectedLevel] = useState(
     currentProfile?.playLevel ?? 1,
   );
   const [saving, setSaving] = useState(false);
-
   const profileName = currentProfile?.name ?? "your child";
 
   const handleConfirm = async () => {
     if (!currentProfile) return;
     setSaving(true);
-
     await execute(
       () =>
         apiClient.patch(`/profiles/${currentProfile.id}/level`, {
@@ -80,9 +73,7 @@ export default function LevelSelectScreen() {
         errorSubMessage: "Please try again.",
         errorRetry: true,
         onSuccess: async () => {
-          // Update local context so the home screen reflects the change immediately
           await updateProfile({ ...currentProfile, playLevel: selectedLevel });
-          // Proceed to checkout
           router.replace({
             pathname: "/components/billing/PurchaseScreen",
             params: { packageJson: JSON.stringify(pkg) },
@@ -90,17 +81,22 @@ export default function LevelSelectScreen() {
         },
       },
     );
-
     setSaving(false);
   };
 
+  // ── Guard: no package ─────────────────────────────────────
   if (!pkg) {
     return (
-      <View style={s.root}>
-        <View style={s.center}>
-          <Text style={s.errorText}>Missing package data. Please go back.</Text>
-          <TouchableOpacity style={s.backBtn} onPress={() => router.back()}>
-            <Text style={s.backBtnText}>Go Back</Text>
+      <View style={styles.root}>
+        <View style={styles.errorWrap}>
+          <Text style={styles.errorText}>
+            Missing package data. Please go back.
+          </Text>
+          <TouchableOpacity
+            style={styles.errorBtn}
+            onPress={() => router.back()}
+          >
+            <Text style={styles.errorBtnText}>Go Back</Text>
           </TouchableOpacity>
         </View>
       </View>
@@ -108,86 +104,85 @@ export default function LevelSelectScreen() {
   }
 
   return (
-    <View style={s.root}>
+    <View style={styles.root}>
       {/* Header */}
-      <View style={s.header}>
+      <View style={styles.header}>
         <TouchableOpacity
-          style={s.headerBack}
+          style={styles.backBtn}
           onPress={() => router.back()}
           activeOpacity={0.75}
         >
-          <Text style={s.headerBackIcon}>←</Text>
+          <Text style={styles.backIcon}>←</Text>
         </TouchableOpacity>
-        <Text style={s.headerTitle}>Choose Starting Level</Text>
-        <View style={{ width: 40 }} />
+        <Text style={styles.headerTitle}>Choose Starting Level</Text>
+        <View style={{ width: size.hitMd }} />
       </View>
 
       <ScrollView
-        contentContainerStyle={s.scroll}
+        contentContainerStyle={styles.scroll}
         showsVerticalScrollIndicator={false}
       >
-        {/* Intro */}
-        <View style={s.introBox}>
-          <Text style={s.introEmoji}>📚</Text>
-          <Text style={s.introTitle}>
+        {/* Intro box */}
+        <View style={styles.introBox}>
+          <Text style={styles.introEmoji}>📚</Text>
+          <Text style={styles.introTitle}>
             Where is {profileName} in their reading journey?
           </Text>
-          <Text style={s.introSub}>
+          <Text style={styles.introSub}>
             This sets their starting level. You can always change it later from
             the account settings.
           </Text>
         </View>
 
         {/* Level grid */}
-        <View style={s.grid}>
+        <View style={styles.grid}>
           {LEVELS.map((level) => {
             const isSelected = selectedLevel === level;
             return (
               <TouchableOpacity
                 key={level}
-                style={[s.levelCard, isSelected && s.levelCardSelected]}
+                style={[
+                  styles.levelCard,
+                  isSelected && styles.levelCardSelected,
+                ]}
                 onPress={() => setSelectedLevel(level)}
                 activeOpacity={0.8}
               >
-                <Text style={[s.levelNumber, isSelected && s.levelNumberSelected]}>
-                  {level}
-                </Text>
                 <Text
                   style={[
-                    s.levelDesc,
-                    isSelected && s.levelDescSelected,
+                    styles.levelNumber,
+                    isSelected && styles.levelNumberSelected,
                   ]}
-                  numberOfLines={2}
                 >
-                  {LEVEL_DESCRIPTIONS[level]}
+                  {level}
                 </Text>
-                {isSelected && <View style={s.selectedDot} />}
+                {isSelected && <View style={styles.selectedDot} />}
               </TouchableOpacity>
             );
           })}
         </View>
 
-        {/* Selected level callout */}
-        <View style={s.selectedCallout}>
-          <Text style={s.selectedCalloutLabel}>Selected level</Text>
-          <Text style={s.selectedCalloutLevel}>{selectedLevel}</Text>
-          <Text style={s.selectedCalloutDesc}>
+        {/* Selected callout */}
+        <View style={styles.callout}>
+          <Text style={styles.calloutLabel}>Selected level</Text>
+          <Text style={styles.calloutLevel}>{selectedLevel}</Text>
+          <Text style={styles.calloutDesc}>
             {LEVEL_DESCRIPTIONS[selectedLevel]}
           </Text>
         </View>
 
         {/* Confirm button */}
         <TouchableOpacity
-          style={[s.confirmBtn, saving && s.confirmBtnDisabled]}
+          style={[styles.confirmBtn, saving && styles.confirmBtnDisabled]}
           onPress={handleConfirm}
           disabled={saving}
           activeOpacity={0.88}
         >
-          <View style={s.confirmShine} />
+          <View style={styles.confirmShine} />
           {saving ? (
             <ActivityIndicator color="#08081a" size="small" />
           ) : (
-            <Text style={s.confirmText}>Continue to Checkout →</Text>
+            <Text style={styles.confirmText}>Continue to Checkout →</Text>
           )}
         </TouchableOpacity>
 
@@ -197,70 +192,122 @@ export default function LevelSelectScreen() {
   );
 }
 
-const s = StyleSheet.create({
+// ─────────────────────────────────────────────────────────────
+// STYLES
+// ─────────────────────────────────────────────────────────────
+const styles = StyleSheet.create({
   root: { flex: 1, backgroundColor: C.bg },
-  center: { flex: 1, justifyContent: "center", alignItems: "center", gap: 16, padding: 24 },
-  errorText: { fontFamily: FONTS.light, fontSize: 14, color: C.textMuted, textAlign: "center" },
-  backBtn: { backgroundColor: C.teal, borderRadius: 12, paddingHorizontal: 24, paddingVertical: 12 },
-  backBtnText: { fontFamily: FONTS.bold, fontSize: 14, color: "#08081a" },
 
+  // Error state
+  errorWrap: {
+    flex: 1,
+    justifyContent: "center",
+    alignItems: "center",
+    gap: pad.md, // was: 16
+    padding: pad.xl, // was: 24
+  },
+  errorText: {
+    fontFamily: FONTS.light,
+    fontSize: font.md, // was: 14
+    color: C.textMuted,
+    textAlign: "center",
+  },
+  errorBtn: {
+    backgroundColor: C.teal,
+    borderRadius: radius.md, // was: 12
+    paddingHorizontal: pad.xl, // was: 24
+    paddingVertical: pad.sm, // was: 12
+  },
+  errorBtnText: {
+    fontFamily: FONTS.bold,
+    fontSize: font.md, // was: 14
+    color: "#08081a",
+  },
+
+  // Header
   header: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
-    paddingTop: STATUS_BAR_HEIGHT + 10,
-    paddingBottom: 16,
-    paddingHorizontal: 18,
+    paddingTop: STATUS_BAR_HEIGHT + pad.sm, // was: + 10
+    paddingBottom: pad.md, // was: sz.levelHeaderPaddingBottom
+    paddingHorizontal: pad.md, // was: sz.levelHeaderPaddingH
     borderBottomWidth: 1,
     borderBottomColor: "rgba(0,188,212,0.1)",
   },
-  headerBack: {
-    width: 40, height: 40, borderRadius: 20,
+  backBtn: {
+    width: size.hitMd, // was: sz.levelBackBtnSize
+    height: size.hitMd,
+    borderRadius: size.hitMd / 2, // was: sz.levelBackBtnBorderRadius
     backgroundColor: "rgba(255,255,255,0.06)",
-    borderWidth: 1, borderColor: "rgba(255,255,255,0.1)",
-    alignItems: "center", justifyContent: "center",
+    borderWidth: 1,
+    borderColor: "rgba(255,255,255,0.1)",
+    alignItems: "center",
+    justifyContent: "center",
   },
-  headerBackIcon: { fontFamily: FONTS.bold, fontSize: 18, color: C.teal },
-  headerTitle: { fontFamily: FONTS.bold, fontSize: 18, color: C.textPri, letterSpacing: 0.3 },
+  backIcon: {
+    fontFamily: FONTS.bold,
+    fontSize: font.lg, // was: sz.levelBackIconFontSize
+    color: C.teal,
+  },
+  headerTitle: {
+    fontFamily: FONTS.bold,
+    fontSize: font.xl, // was: sz.levelHeaderTitleFontSize
+    color: C.textPri,
+    letterSpacing: 0.3,
+  },
 
-  scroll: { padding: 20 },
+  // Scroll
+  scroll: { padding: pad.lg }, // was: sz.levelScrollPadding
 
+  // Intro box
   introBox: {
     alignItems: "center",
     backgroundColor: "rgba(0,188,212,0.06)",
-    borderRadius: 18,
+    borderRadius: radius.xl, // was: sz.levelIntroBoxBorderRadius
     borderWidth: 1,
     borderColor: "rgba(0,188,212,0.18)",
-    padding: 20,
-    marginBottom: 24,
-    gap: 8,
+    padding: pad.lg, // was: sz.levelIntroBoxPadding
+    marginBottom: pad.xl, // was: sz.levelIntroBoxMarginBottom
+    gap: pad.s, // was: sz.levelIntroBoxGap
   },
-  introEmoji: { fontSize: 40, marginBottom: 4 },
+  introEmoji: {
+    fontSize: size.iconXl, // was: sz.levelIntroEmojiFontSize
+    marginBottom: pad.xs,
+  },
   introTitle: {
-    fontFamily: FONTS.bold, fontSize: 17, color: C.textPri,
-    textAlign: "center", lineHeight: 24,
+    fontFamily: FONTS.bold,
+    fontSize: font.lg, // was: sz.levelIntroTitleFontSize
+    color: C.textPri,
+    textAlign: "center",
+    lineHeight: font.lg * 1.4, // was: sz.levelIntroTitleLineHeight
   },
   introSub: {
-    fontFamily: FONTS.light, fontSize: 12, color: C.textMuted,
-    textAlign: "center", lineHeight: 18,
+    fontFamily: FONTS.light,
+    fontSize: font.sm, // was: sz.levelIntroSubFontSize
+    color: C.textMuted,
+    textAlign: "center",
+    lineHeight: font.sm * 1.5, // was: sz.levelIntroSubLineHeight
   },
 
+  // Level grid
   grid: {
     flexDirection: "row",
     flexWrap: "wrap",
-    gap: 10,
-    marginBottom: 20,
+    gap: pad.sm, // was: sz.levelGridGap
+    marginBottom: pad.lg, // was: sz.levelGridMarginBottom
+    alignItems: "center",
+    justifyContent: "center",
   },
   levelCard: {
     width: "18%",
     aspectRatio: 1,
-    borderRadius: 14,
-    backgroundColor: "rgba(255,255,255,0.05)",
-    borderWidth: 1.5,
-    borderColor: "rgba(255,255,255,0.08)",
+    borderRadius: radius.md, // was: sz.levelCardBorderRadius
     alignItems: "center",
     justifyContent: "center",
-    position: "relative",
+    borderWidth: 1.5,
+    backgroundColor: "rgba(255,255,255,0.05)",
+    borderColor: "rgba(255,255,255,0.08)",
   },
   levelCardSelected: {
     backgroundColor: C.tealDim,
@@ -273,57 +320,82 @@ const s = StyleSheet.create({
   },
   levelNumber: {
     fontFamily: FONTS.bold,
-    fontSize: 22,
+    fontSize: font.xxl, // was: sz.levelCardNumberFontSize
     color: C.textMuted,
   },
   levelNumberSelected: { color: C.teal },
-  levelDesc: {
-    display: "none", // hidden in the grid, shown in callout
-  },
-  levelDescSelected: { display: "none" },
   selectedDot: {
     position: "absolute",
-    top: 4, right: 4,
-    width: 7, height: 7,
-    borderRadius: 3.5,
+    top: pad.xs, // was: 4
+    right: pad.xs, // was: 4
+    width: 8,
+    height: 8,
+    borderRadius: 4,
     backgroundColor: C.teal,
   },
 
-  selectedCallout: {
+  // Callout
+  callout: {
     backgroundColor: "rgba(0,188,212,0.08)",
-    borderRadius: 16,
+    borderRadius: radius.xl, // was: sz.levelCalloutBorderRadius
     borderWidth: 1,
     borderColor: "rgba(0,188,212,0.25)",
-    padding: 16,
+    padding: pad.md, // was: sz.levelCalloutPadding
     alignItems: "center",
-    marginBottom: 24,
-    gap: 4,
+    marginBottom: pad.xl, // was: sz.levelCalloutMarginBottom
+    gap: pad.xs, // was: sz.levelCalloutGap
   },
-  selectedCalloutLabel: {
-    fontFamily: FONTS.bold, fontSize: 10, color: C.textMuted,
-    letterSpacing: 1, textTransform: "uppercase",
+  calloutLabel: {
+    fontFamily: FONTS.bold,
+    fontSize: font.xs, // was: sz.levelCalloutLabelFontSize
+    color: C.textMuted,
+    letterSpacing: 1,
+    textTransform: "uppercase",
   },
-  selectedCalloutLevel: {
-    fontFamily: FONTS.bold, fontSize: 40, color: C.teal, lineHeight: 48,
+  calloutLevel: {
+    fontFamily: FONTS.bold,
+    fontSize: font.h1, // was: sz.levelCalloutLevelFontSize
+    color: C.teal,
+    lineHeight: font.h1 * 1.2, // was: sz.levelCalloutLevelLineHeight
   },
-  selectedCalloutDesc: {
-    fontFamily: FONTS.light, fontSize: 13, color: C.textSec,
+  calloutDesc: {
+    fontFamily: FONTS.light,
+    fontSize: font.md, // was: sz.levelCalloutDescFontSize
+    color: C.textSec,
     textAlign: "center",
   },
 
+  // Confirm button
   confirmBtn: {
-    flexDirection: "row", alignItems: "center", justifyContent: "center",
-    gap: 8, borderRadius: 27, height: 54, backgroundColor: C.teal,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: pad.s,
+    borderRadius: radius.pill, // was: sz.levelConfirmBtnBorderRadius
+    height: size.btnHeightLg, // was: sz.levelConfirmBtnHeight
+    backgroundColor: C.teal,
     overflow: "hidden",
-    shadowColor: C.teal, shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.5, shadowRadius: 12, elevation: 10,
+    shadowColor: C.teal,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.5,
+    shadowRadius: 12,
+    elevation: 10,
   },
   confirmBtnDisabled: { opacity: 0.45 },
   confirmShine: {
-    position: "absolute", top: 0, left: "14%",
-    width: "38%", height: "52%",
+    position: "absolute",
+    top: 0,
+    left: "14%",
+    width: "38%",
+    height: "52%",
     backgroundColor: "rgba(255,255,255,0.20)",
-    borderRadius: 20, transform: [{ rotate: "-15deg" }],
+    borderRadius: 20,
+    transform: [{ rotate: "-15deg" }],
   },
-  confirmText: { fontFamily: FONTS.bold, fontSize: 16, color: "#08081a", letterSpacing: 0.3 },
+  confirmText: {
+    fontFamily: FONTS.bold,
+    fontSize: font.lg, // was: sz.levelConfirmTextFontSize
+    color: "#08081a",
+    letterSpacing: 0.3,
+  },
 });

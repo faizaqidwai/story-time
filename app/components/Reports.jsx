@@ -1,14 +1,4 @@
 // app/components/Reports.jsx
-//
-// Progress Report screen — shown to parents from Account → Progress Reports.
-// All data comes from GET /report/profile/{profileId} (ReportController).
-//
-// Error handling:
-//   - loading state comes from useApiCall (no manual setLoading needed)
-//   - error state comes from useApiCall (no manual setError needed)
-//   - errorDisplay: "none" keeps the error inline on screen (existing UI)
-//   - a red toast also fires alongside the inline error for quick feedback
-//   - retry button re-calls execute which resets loading/error automatically
 
 import React, { useEffect, useRef, useState } from "react";
 import {
@@ -30,11 +20,11 @@ import { reportService } from "../services/reportService";
 import { useApiCall } from "../_hooks/useApiCall";
 import { useNotify } from "../_contexts/NotificationContext";
 import { FONTS } from "../theme";
+import { useTheme } from "../_contexts/ThemeContext";
 
 const { width: SW } = Dimensions.get("window");
 const STATUS_H = Platform.OS === "android" ? 24 : 50;
 
-// ── Palette ────────────────────────────────────────────────────────────────
 const C = {
   bg: "#08081a",
   surface: "#111830",
@@ -93,7 +83,6 @@ function RingChart({
   centerSub,
 }) {
   const anim = useRef(new Animated.Value(0)).current;
-
   useEffect(() => {
     Animated.timing(anim, {
       toValue: percent,
@@ -166,11 +155,9 @@ function RingChart({
           gap: 2,
         }}
       >
-        {/* Percentage — bold, accent colour */}
         <Text style={{ fontFamily: FONTS.bold, fontSize: size * 0.22, color }}>
           {Math.round(percent)}%
         </Text>
-        {/* Centre label — bold, muted */}
         <Text
           style={{
             fontFamily: FONTS.bold,
@@ -202,10 +189,9 @@ function RingChart({
 // ─────────────────────────────────────────────────────────────────────────────
 // STAT PILL
 // ─────────────────────────────────────────────────────────────────────────────
-function StatPill({ icon, value, label, color, delay = 0 }) {
+function StatPill({ icon, value, label, color, delay = 0, sz }) {
   const slideY = useRef(new Animated.Value(20)).current;
   const op = useRef(new Animated.Value(0)).current;
-
   useEffect(() => {
     Animated.parallel([
       Animated.timing(op, {
@@ -227,58 +213,63 @@ function StatPill({ icon, value, label, color, delay = 0 }) {
   return (
     <Animated.View
       style={[
-        pillS.pill,
         {
+          flex: 1,
+          backgroundColor: C.surfaceDim,
+          borderRadius: sz.pillBorderRadius,
+          borderWidth: 1.5,
+          alignItems: "center",
+          paddingVertical: sz.pillPaddingV,
+          paddingHorizontal: sz.pillPaddingH,
+          gap: sz.pillGap,
           borderColor: color + "55",
-          opacity: op,
-          transform: [{ translateY: slideY }],
         },
+        { opacity: op, transform: [{ translateY: slideY }] },
       ]}
     >
-      <Text style={{ fontSize: 20 }}>{icon}</Text>
-      <Text style={[pillS.value, { color }]}>{value}</Text>
-      <Text style={pillS.label}>{label}</Text>
+      <Text style={{ fontSize: sz.pillEmojiFontSize }}>{icon}</Text>
+      <Text
+        style={{
+          fontFamily: FONTS.bold,
+          fontSize: sz.pillValueFontSize,
+          color,
+          letterSpacing: 0.3,
+        }}
+      >
+        {value}
+      </Text>
+      <Text
+        style={{
+          fontFamily: FONTS.bold,
+          fontSize: sz.pillLabelFontSize,
+          color: C.textMuted,
+          textAlign: "center",
+          letterSpacing: 0.5,
+        }}
+      >
+        {label}
+      </Text>
     </Animated.View>
   );
 }
 
-const pillS = StyleSheet.create({
-  pill: {
-    flex: 1,
-    backgroundColor: C.surfaceDim,
-    borderRadius: 16,
-    borderWidth: 1.5,
-    alignItems: "center",
-    paddingVertical: 14,
-    paddingHorizontal: 6,
-    gap: 4,
-  },
-  // Stat number — bold, accent coloured
-  value: {
-    fontFamily: FONTS.bold,
-    fontSize: 19,
-    letterSpacing: 0.3,
-  },
-  // Stat label — bold, spaced caps
-  label: {
-    fontFamily: FONTS.bold,
-    fontSize: 9,
-    color: C.textMuted,
-    textAlign: "center",
-    letterSpacing: 0.5,
-  },
-});
-
 // ─────────────────────────────────────────────────────────────────────────────
 // WEEKLY BAR CHART
 // ─────────────────────────────────────────────────────────────────────────────
-function WeeklyChart({ weeks }) {
+function WeeklyChart({ weeks, sz }) {
   if (!weeks || weeks.length === 0) return null;
   const maxVal = Math.max(...weeks.map((w) => w.count), 1);
-  const BAR_H = 90;
+  const BAR_H = sz.barChartHeight;
 
   return (
-    <View style={barS.wrap}>
+    <View
+      style={{
+        flexDirection: "row",
+        alignItems: "flex-end",
+        justifyContent: "space-between",
+        paddingTop: 8,
+      }}
+    >
       {weeks.map((w, i) => {
         const fillAnim = useRef(new Animated.Value(0)).current;
         useEffect(() => {
@@ -290,32 +281,56 @@ function WeeklyChart({ weeks }) {
             useNativeDriver: false,
           }).start();
         }, [w.count]);
-
         const barH = fillAnim.interpolate({
           inputRange: [0, 1],
           outputRange: [4, BAR_H],
         });
-
         return (
-          <View key={i} style={barS.col}>
-            <View style={[barS.track, { height: BAR_H }]}>
+          <View key={i} style={{ flex: 1, alignItems: "center", gap: 4 }}>
+            <View
+              style={{
+                width: "70%",
+                backgroundColor: "rgba(255,255,255,0.06)",
+                borderRadius: 6,
+                justifyContent: "flex-end",
+                overflow: "hidden",
+                height: BAR_H,
+              }}
+            >
               <Animated.View
-                style={[
-                  barS.fill,
-                  {
-                    height: barH,
-                    backgroundColor: w.currentWeek
-                      ? C.teal
-                      : "rgba(0,188,212,0.4)",
-                    shadowColor: w.currentWeek ? C.teal : "transparent",
-                    shadowOpacity: 0.8,
-                    shadowRadius: 6,
-                  },
-                ]}
+                style={{
+                  width: "100%",
+                  borderRadius: 6,
+                  height: barH,
+                  backgroundColor: w.currentWeek
+                    ? C.teal
+                    : "rgba(0,188,212,0.4)",
+                  shadowColor: w.currentWeek ? C.teal : "transparent",
+                  shadowOpacity: 0.8,
+                  shadowRadius: 6,
+                }}
               />
             </View>
-            {w.count > 0 && <Text style={barS.count}>{w.count}</Text>}
-            <Text style={barS.weekLabel}>{w.label}</Text>
+            {w.count > 0 && (
+              <Text
+                style={{
+                  fontFamily: FONTS.bold,
+                  fontSize: sz.barCountFontSize,
+                  color: C.teal,
+                }}
+              >
+                {w.count}
+              </Text>
+            )}
+            <Text
+              style={{
+                fontFamily: FONTS.light,
+                fontSize: sz.barWeekLabelFontSize,
+                color: C.textMuted,
+              }}
+            >
+              {w.label}
+            </Text>
           </View>
         );
       })}
@@ -323,40 +338,10 @@ function WeeklyChart({ weeks }) {
   );
 }
 
-const barS = StyleSheet.create({
-  wrap: {
-    flexDirection: "row",
-    alignItems: "flex-end",
-    justifyContent: "space-between",
-    paddingTop: 8,
-  },
-  col: { flex: 1, alignItems: "center", gap: 4 },
-  track: {
-    width: "70%",
-    backgroundColor: "rgba(255,255,255,0.06)",
-    borderRadius: 6,
-    justifyContent: "flex-end",
-    overflow: "hidden",
-  },
-  fill: { width: "100%", borderRadius: 6 },
-  // Bar count above column — bold, teal
-  count: {
-    fontFamily: FONTS.bold,
-    fontSize: 10,
-    color: C.teal,
-  },
-  // Week label below column — light, muted
-  weekLabel: {
-    fontFamily: FONTS.light,
-    fontSize: 9,
-    color: C.textMuted,
-  },
-});
-
 // ─────────────────────────────────────────────────────────────────────────────
 // SKILL BAR
 // ─────────────────────────────────────────────────────────────────────────────
-function SkillBar({ label, icon, percent, color, delay = 0 }) {
+function SkillBar({ label, icon, percent, color, delay = 0, sz }) {
   const fillW = useRef(new Animated.Value(0)).current;
   useEffect(() => {
     Animated.timing(fillW, {
@@ -367,26 +352,70 @@ function SkillBar({ label, icon, percent, color, delay = 0 }) {
       useNativeDriver: false,
     }).start();
   }, [percent]);
-
   const width = fillW.interpolate({
     inputRange: [0, 100],
     outputRange: ["0%", "100%"],
   });
 
   return (
-    <View style={skillS.row}>
-      <Image source={icon} style={skillS.icon} resizeMode="contain" />
+    <View
+      style={{
+        flexDirection: "row",
+        alignItems: "center",
+        gap: sz.skillRowGap,
+        marginBottom: sz.skillRowMarginBottom,
+      }}
+    >
+      <Image
+        source={icon}
+        style={{
+          width: sz.skillIconSize,
+          height: sz.skillIconSize,
+          flexShrink: 0,
+        }}
+        resizeMode="contain"
+      />
       <View style={{ flex: 1, gap: 5 }}>
-        <View style={skillS.labelRow}>
-          <Text style={skillS.label}>{label}</Text>
-          <Text style={[skillS.pct, { color }]}>{Math.round(percent)}%</Text>
+        <View style={{ flexDirection: "row", justifyContent: "space-between" }}>
+          <Text
+            style={{
+              fontFamily: FONTS.bold,
+              fontSize: sz.skillLabelFontSize,
+              color: C.textSec,
+            }}
+          >
+            {label}
+          </Text>
+          <Text
+            style={{
+              fontFamily: FONTS.bold,
+              fontSize: sz.skillPctFontSize,
+              color,
+            }}
+          >
+            {Math.round(percent)}%
+          </Text>
         </View>
-        <View style={skillS.track}>
+        <View
+          style={{
+            height: sz.skillTrackHeight,
+            backgroundColor: "rgba(255,255,255,0.08)",
+            borderRadius: sz.skillTrackHeight / 2,
+            overflow: "hidden",
+          }}
+        >
           <Animated.View
-            style={[
-              skillS.fill,
-              { width, backgroundColor: color, shadowColor: color },
-            ]}
+            style={{
+              width,
+              height: "100%",
+              borderRadius: sz.skillTrackHeight / 2,
+              backgroundColor: color,
+              shadowColor: color,
+              shadowOffset: { width: 0, height: 0 },
+              shadowOpacity: 0.7,
+              shadowRadius: 6,
+              elevation: 3,
+            }}
           />
         </View>
       </View>
@@ -394,49 +423,12 @@ function SkillBar({ label, icon, percent, color, delay = 0 }) {
   );
 }
 
-const skillS = StyleSheet.create({
-  row: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 12,
-    marginBottom: 16,
-  },
-  icon: { width: 26, height: 26, flexShrink: 0 },
-  labelRow: { flexDirection: "row", justifyContent: "space-between" },
-  // Skill name — bold
-  label: {
-    fontFamily: FONTS.bold,
-    fontSize: 13,
-    color: C.textSec,
-  },
-  // Percentage — bold, accent coloured
-  pct: {
-    fontFamily: FONTS.bold,
-    fontSize: 13,
-  },
-  track: {
-    height: 8,
-    backgroundColor: "rgba(255,255,255,0.08)",
-    borderRadius: 4,
-    overflow: "hidden",
-  },
-  fill: {
-    height: "100%",
-    borderRadius: 4,
-    shadowOffset: { width: 0, height: 0 },
-    shadowOpacity: 0.7,
-    shadowRadius: 6,
-    elevation: 3,
-  },
-});
-
 // ─────────────────────────────────────────────────────────────────────────────
 // STORY ROW
 // ─────────────────────────────────────────────────────────────────────────────
-function StoryRow({ story, index }) {
+function StoryRow({ story, index, sz }) {
   const slideIn = useRef(new Animated.Value(30)).current;
   const op = useRef(new Animated.Value(0)).current;
-
   useEffect(() => {
     Animated.parallel([
       Animated.timing(op, {
@@ -468,39 +460,65 @@ function StoryRow({ story, index }) {
   return (
     <Animated.View
       style={[
-        storyS.row,
+        {
+          flexDirection: "row",
+          alignItems: "center",
+          gap: sz.storyRowGap,
+          paddingVertical: sz.storyRowPaddingV,
+          borderBottomWidth: 1,
+          borderBottomColor: "rgba(255,255,255,0.05)",
+        },
         { opacity: op, transform: [{ translateX: slideIn }] },
       ]}
     >
       <View
-        style={[
-          storyS.statusDot,
-          {
-            backgroundColor: story.complete
-              ? C.green
-              : story.nextActivityIndex > 0
-                ? C.yellow
-                : "rgba(255,255,255,0.15)",
-          },
-        ]}
+        style={{
+          width: sz.statusDotSize,
+          height: sz.statusDotSize,
+          borderRadius: sz.statusDotSize / 2,
+          flexShrink: 0,
+          backgroundColor: story.complete
+            ? C.green
+            : story.nextActivityIndex > 0
+              ? C.yellow
+              : "rgba(255,255,255,0.15)",
+        }}
       />
       <View style={{ flex: 1 }}>
-        <Text style={storyS.title} numberOfLines={1}>
+        <Text
+          style={{
+            fontFamily: FONTS.bold,
+            fontSize: sz.storyTitleFontSize,
+            color: C.textSec,
+          }}
+          numberOfLines={1}
+        >
           {story.storyTitle}
         </Text>
-        <Text style={storyS.date}>{dateText}</Text>
+        <Text
+          style={{
+            fontFamily: FONTS.light,
+            fontSize: sz.storyDateFontSize,
+            color: C.textMuted,
+            marginTop: 2,
+          }}
+        >
+          {dateText}
+        </Text>
       </View>
-      <View style={storyS.dots}>
+      <View
+        style={{ flexDirection: "row", gap: sz.storyDotGap, flexShrink: 0 }}
+      >
         {ACTIVITY_META.map((a, i) => (
           <View
             key={i}
-            style={[
-              storyS.dot,
-              {
-                backgroundColor:
-                  i < completedCount ? a.color : "rgba(255,255,255,0.1)",
-              },
-            ]}
+            style={{
+              width: sz.storyDotSize,
+              height: sz.storyDotSize,
+              borderRadius: sz.storyDotSize / 2,
+              backgroundColor:
+                i < completedCount ? a.color : "rgba(255,255,255,0.1)",
+            }}
           />
         ))}
       </View>
@@ -508,40 +526,12 @@ function StoryRow({ story, index }) {
   );
 }
 
-const storyS = StyleSheet.create({
-  row: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 12,
-    paddingVertical: 12,
-    borderBottomWidth: 1,
-    borderBottomColor: "rgba(255,255,255,0.05)",
-  },
-  statusDot: { width: 8, height: 8, borderRadius: 4, flexShrink: 0 },
-  // Story title — bold
-  title: {
-    fontFamily: FONTS.bold,
-    fontSize: 13,
-    color: C.textSec,
-  },
-  // Date/status — light, muted
-  date: {
-    fontFamily: FONTS.light,
-    fontSize: 11,
-    color: C.textMuted,
-    marginTop: 2,
-  },
-  dots: { flexDirection: "row", gap: 5, flexShrink: 0 },
-  dot: { width: 10, height: 10, borderRadius: 5 },
-});
-
 // ─────────────────────────────────────────────────────────────────────────────
 // SECTION CARD
 // ─────────────────────────────────────────────────────────────────────────────
-function SectionCard({ title, icon, children, delay = 0 }) {
+function SectionCard({ title, icon, children, delay = 0, sz }) {
   const op = useRef(new Animated.Value(0)).current;
   const slideY = useRef(new Animated.Value(20)).current;
-
   useEffect(() => {
     Animated.parallel([
       Animated.timing(op, {
@@ -562,63 +552,45 @@ function SectionCard({ title, icon, children, delay = 0 }) {
 
   return (
     <Animated.View
-      style={[secS.card, { opacity: op, transform: [{ translateY: slideY }] }]}
+      style={[
+        {
+          backgroundColor: C.surface,
+          borderRadius: sz.sectionCardBorderRadius,
+          borderWidth: 1,
+          borderColor: "rgba(255,255,255,0.07)",
+          padding: sz.sectionCardPadding,
+          marginBottom: sz.sectionCardMarginBottom,
+          shadowColor: "#000",
+          shadowOffset: { width: 0, height: 4 },
+          shadowOpacity: 0.25,
+          shadowRadius: 12,
+          elevation: 5,
+        },
+        { opacity: op, transform: [{ translateY: slideY }] },
+      ]}
     >
-      <View style={secS.header}>
-        <Text style={secS.icon}>{icon}</Text>
-        <Text style={secS.title}>{title}</Text>
+      <View
+        style={{
+          flexDirection: "row",
+          alignItems: "center",
+          gap: sz.sectionHeaderGap,
+          marginBottom: sz.sectionHeaderMarginBottom,
+        }}
+      >
+        <Text style={{ fontSize: sz.sectionIconFontSize }}>{icon}</Text>
+        <Text
+          style={{
+            fontFamily: FONTS.bold,
+            fontSize: sz.sectionTitleFontSize,
+            color: C.textPri,
+            letterSpacing: 0.3,
+          }}
+        >
+          {title}
+        </Text>
       </View>
       {children}
     </Animated.View>
-  );
-}
-
-const secS = StyleSheet.create({
-  card: {
-    backgroundColor: C.surface,
-    borderRadius: 20,
-    borderWidth: 1,
-    borderColor: "rgba(255,255,255,0.07)",
-    padding: 18,
-    marginBottom: 14,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.25,
-    shadowRadius: 12,
-    elevation: 5,
-  },
-  header: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 8,
-    marginBottom: 16,
-  },
-  icon: { fontSize: 18 },
-  // Section title — bold
-  title: {
-    fontFamily: FONTS.bold,
-    fontSize: 15,
-    color: C.textPri,
-    letterSpacing: 0.3,
-  },
-});
-
-// ─────────────────────────────────────────────────────────────────────────────
-// TOP BAR
-// ─────────────────────────────────────────────────────────────────────────────
-function TopBar({ onBack }) {
-  return (
-    <View style={styles.topBar}>
-      <TouchableOpacity
-        style={styles.backBtn}
-        onPress={onBack}
-        activeOpacity={0.8}
-      >
-        <Ionicons name="chevron-back" size={22} color="#E0F7FA" />
-      </TouchableOpacity>
-      <Text style={styles.topTitle}>Progress Report</Text>
-      <View style={styles.topSpacer} />
-    </View>
   );
 }
 
@@ -628,9 +600,10 @@ function TopBar({ onBack }) {
 export default function Reports() {
   const router = useRouter();
   const { currentProfile } = useUser();
+  const { sizes } = useTheme();
+  const sz = sizes.reports;
 
   const [report, setReport] = useState(null);
-
   const { execute, loading, error, clearError } = useApiCall();
   const notify = useNotify();
 
@@ -657,32 +630,131 @@ export default function Reports() {
     return n > 999 ? "999+" : String(n);
   };
 
-  // ── Loading ──────────────────────────────────────────────────────────────
+  const TopBar = () => (
+    <View
+      style={{
+        flexDirection: "row",
+        alignItems: "center",
+        justifyContent: "space-between",
+        paddingHorizontal: sz.topBarPaddingH,
+        paddingTop: STATUS_H + 10,
+        paddingBottom: sz.topBarPaddingBottom,
+      }}
+    >
+      <TouchableOpacity
+        style={{
+          width: sz.backBtnSize,
+          height: sz.backBtnSize,
+          borderRadius: sz.backBtnBorderRadius,
+          backgroundColor: "rgba(255,255,255,0.06)",
+          borderWidth: 1,
+          borderColor: "rgba(255,255,255,0.12)",
+          alignItems: "center",
+          justifyContent: "center",
+        }}
+        onPress={() => router.back()}
+        activeOpacity={0.8}
+      >
+        <Ionicons
+          name="chevron-back"
+          size={sz.backBtnSize * 0.55}
+          color="#E0F7FA"
+        />
+      </TouchableOpacity>
+      <Text
+        style={{
+          fontFamily: FONTS.bold,
+          flex: 1,
+          textAlign: "center",
+          fontSize: sz.topTitleFontSize,
+          color: C.teal,
+          letterSpacing: 0.4,
+          textShadowColor: "rgba(0,188,212,0.5)",
+          textShadowOffset: { width: 0, height: 0 },
+          textShadowRadius: 10,
+        }}
+      >
+        Progress Report
+      </Text>
+      <View style={{ width: sz.backBtnSize }} />
+    </View>
+  );
+
   if (loading) {
     return (
-      <View style={styles.root}>
-        <TopBar onBack={() => router.back()} />
-        <View style={styles.loadingWrap}>
-          <Text style={styles.loadingEmoji}>📊</Text>
-          <Text style={styles.loadingText}>Building report...</Text>
+      <View style={{ flex: 1, backgroundColor: C.bg }}>
+        <TopBar />
+        <View
+          style={{
+            flex: 1,
+            alignItems: "center",
+            justifyContent: "center",
+            gap: 12,
+            padding: 32,
+          }}
+        >
+          <Text style={{ fontSize: sz.loadingEmojiFontSize }}>📊</Text>
+          <Text
+            style={{
+              fontFamily: FONTS.light,
+              fontSize: sz.loadingTextFontSize,
+              color: C.textMuted,
+              textAlign: "center",
+            }}
+          >
+            Building report...
+          </Text>
         </View>
       </View>
     );
   }
 
-  // ── Error ────────────────────────────────────────────────────────────────
   if (error) {
     return (
-      <View style={styles.root}>
-        <TopBar onBack={() => router.back()} />
-        <View style={styles.loadingWrap}>
-          <Text style={styles.loadingEmoji}>⚠️</Text>
-          <Text style={styles.loadingText}>
+      <View style={{ flex: 1, backgroundColor: C.bg }}>
+        <TopBar />
+        <View
+          style={{
+            flex: 1,
+            alignItems: "center",
+            justifyContent: "center",
+            gap: 12,
+            padding: 32,
+          }}
+        >
+          <Text style={{ fontSize: sz.loadingEmojiFontSize }}>⚠️</Text>
+          <Text
+            style={{
+              fontFamily: FONTS.light,
+              fontSize: sz.loadingTextFontSize,
+              color: C.textMuted,
+              textAlign: "center",
+            }}
+          >
             {error.message ??
               "Could not load report. Please check your connection."}
           </Text>
-          <TouchableOpacity style={styles.retryBtn} onPress={loadReport}>
-            <Text style={styles.retryText}>Try Again</Text>
+          <TouchableOpacity
+            style={{
+              marginTop: 8,
+              backgroundColor: C.tealDim,
+              borderRadius: sz.retryBtnBorderRadius,
+              borderWidth: 1,
+              borderColor: C.tealBorder,
+              paddingHorizontal: sz.retryBtnPaddingH,
+              paddingVertical: sz.retryBtnPaddingV,
+            }}
+            onPress={loadReport}
+          >
+            <Text
+              style={{
+                fontFamily: FONTS.bold,
+                fontSize: sz.retryTextFontSize,
+                color: C.teal,
+              }}
+            >
+              Try Again
+            </Text>
           </TouchableOpacity>
         </View>
       </View>
@@ -692,49 +764,119 @@ export default function Reports() {
   const isEmpty = !report || report.overview?.completedAllTime === 0;
 
   return (
-    <View style={styles.root}>
-      <TopBar onBack={() => router.back()} />
-
+    <View style={{ flex: 1, backgroundColor: C.bg }}>
+      <TopBar />
       <ScrollView
-        style={styles.scroll}
-        contentContainerStyle={styles.scrollContent}
+        style={{ flex: 1 }}
+        contentContainerStyle={{
+          paddingHorizontal: sz.scrollPaddingH,
+          paddingBottom: sz.scrollPaddingBottom,
+        }}
         showsVerticalScrollIndicator={false}
       >
-        {/* ── CHILD HEADER ── */}
-        <View style={styles.childHeader}>
-          <View style={styles.childAvatar}>
-            <Text style={styles.childAvatarText}>
+        {/* Child header */}
+        <View
+          style={{
+            flexDirection: "row",
+            alignItems: "center",
+            gap: sz.childHeaderGap,
+            marginBottom: sz.childHeaderMarginBottom,
+            marginTop: 4,
+          }}
+        >
+          <View
+            style={{
+              width: sz.childAvatarSize,
+              height: sz.childAvatarSize,
+              borderRadius: sz.childAvatarBorderRadius,
+              backgroundColor: C.tealDim,
+              borderWidth: 2,
+              borderColor: C.teal,
+              alignItems: "center",
+              justifyContent: "center",
+            }}
+          >
+            <Text
+              style={{
+                fontFamily: FONTS.bold,
+                fontSize: sz.childAvatarFontSize,
+                color: C.teal,
+              }}
+            >
               {currentProfile?.name?.charAt(0)?.toUpperCase() || "?"}
             </Text>
           </View>
           <View>
-            <Text style={styles.childName}>
+            <Text
+              style={{
+                fontFamily: FONTS.bold,
+                fontSize: sz.childNameFontSize,
+                color: C.textPri,
+              }}
+            >
               {currentProfile?.name || "Child"}
             </Text>
-            <Text style={styles.childLevel}>
+            <Text
+              style={{
+                fontFamily: FONTS.light,
+                fontSize: sz.childLevelFontSize,
+                color: C.textMuted,
+                marginTop: 2,
+              }}
+            >
               Level {currentProfile?.playLevel ?? 1} · Story Time
             </Text>
           </View>
         </View>
 
         {isEmpty ? (
-          <View style={styles.emptyWrap}>
-            <Text style={styles.emptyEmoji}>📚</Text>
-            <Text style={styles.emptyTitle}>No activity yet</Text>
-            <Text style={styles.emptyText}>
+          <View
+            style={{
+              alignItems: "center",
+              paddingVertical: sz.emptyWrapPaddingV,
+              gap: sz.emptyWrapGap,
+            }}
+          >
+            <Text style={{ fontSize: sz.emptyEmojiFontSize }}>📚</Text>
+            <Text
+              style={{
+                fontFamily: FONTS.bold,
+                fontSize: sz.emptyTitleFontSize,
+                color: C.textPri,
+              }}
+            >
+              No activity yet
+            </Text>
+            <Text
+              style={{
+                fontFamily: FONTS.light,
+                fontSize: sz.emptyTextFontSize,
+                color: C.textMuted,
+                textAlign: "center",
+                lineHeight: sz.emptyTextLineHeight,
+                paddingHorizontal: 32,
+              }}
+            >
               Start reading stories to see progress reports here.
             </Text>
           </View>
         ) : (
           <>
-            {/* ── OVERVIEW PILLS ── */}
-            <View style={styles.pillRow}>
+            {/* Overview pills */}
+            <View
+              style={{
+                flexDirection: "row",
+                gap: sz.pillRowGap,
+                marginBottom: sz.pillRowMarginBottom,
+              }}
+            >
               <StatPill
                 icon="📖"
                 value={formatNumber(report.overview.completedAllTime)}
                 label="Completed"
                 color={C.green}
                 delay={0}
+                sz={sz}
               />
               <StatPill
                 icon="🔤"
@@ -742,6 +884,7 @@ export default function Reports() {
                 label="Words"
                 color={C.teal}
                 delay={70}
+                sz={sz}
               />
               <StatPill
                 icon="🪙"
@@ -749,6 +892,7 @@ export default function Reports() {
                 label="Coins"
                 color={C.yellow}
                 delay={140}
+                sz={sz}
               />
               <StatPill
                 icon="🔥"
@@ -756,74 +900,132 @@ export default function Reports() {
                 label="Streak"
                 color={C.coral}
                 delay={210}
+                sz={sz}
               />
             </View>
 
-            {/* ── COMPLETION RING ── */}
+            {/* Completion ring */}
             <SectionCard
               title={`Level ${report.levelProgress.playLevel} Progress`}
               icon="🏆"
               delay={100}
+              sz={sz}
             >
-              <View style={styles.ringRow}>
+              <View
+                style={{
+                  flexDirection: "row",
+                  alignItems: "center",
+                  justifyContent: "space-between",
+                }}
+              >
                 <RingChart
                   percent={report.levelProgress.completionPercent}
-                  size={148}
+                  size={sz.ringChartSize}
                   color={C.teal}
                   centerLabel="Complete"
                   centerSub={`${report.levelProgress.completedStories} of ${report.levelProgress.totalStories}`}
                 />
-                <View style={styles.ringLegend}>
-                  <View style={styles.legendItem}>
+                <View
+                  style={{
+                    flex: 1,
+                    paddingLeft: sz.ringLegendPaddingLeft,
+                    gap: sz.ringLegendGap,
+                  }}
+                >
+                  {[
+                    {
+                      color: C.green,
+                      label: "Completed",
+                      value: `${report.levelProgress.completedStories} stories`,
+                    },
+                    {
+                      color: C.yellow,
+                      label: "Remaining",
+                      value: `${report.levelProgress.totalStories - report.levelProgress.completedStories} stories`,
+                    },
+                    {
+                      color: C.purple,
+                      label: "Diamonds",
+                      value: `${report.levelProgress.totalDiamonds} earned`,
+                    },
+                  ].map((item) => (
                     <View
-                      style={[styles.legendDot, { backgroundColor: C.green }]}
-                    />
-                    <View>
-                      <Text style={styles.legendLabel}>Completed</Text>
-                      <Text style={styles.legendValue}>
-                        {report.levelProgress.completedStories} stories
-                      </Text>
+                      key={item.label}
+                      style={{
+                        flexDirection: "row",
+                        alignItems: "flex-start",
+                        gap: 8,
+                      }}
+                    >
+                      <View
+                        style={{
+                          width: sz.legendDotSize,
+                          height: sz.legendDotSize,
+                          borderRadius: sz.legendDotSize / 2,
+                          marginTop: 3,
+                          flexShrink: 0,
+                          backgroundColor: item.color,
+                        }}
+                      />
+                      <View>
+                        <Text
+                          style={{
+                            fontFamily: FONTS.light,
+                            fontSize: sz.legendLabelFontSize,
+                            color: C.textMuted,
+                          }}
+                        >
+                          {item.label}
+                        </Text>
+                        <Text
+                          style={{
+                            fontFamily: FONTS.bold,
+                            fontSize: sz.legendValueFontSize,
+                            color: C.textSec,
+                            marginTop: 1,
+                          }}
+                        >
+                          {item.value}
+                        </Text>
+                      </View>
                     </View>
-                  </View>
-                  <View style={styles.legendItem}>
-                    <View
-                      style={[styles.legendDot, { backgroundColor: C.yellow }]}
-                    />
-                    <View>
-                      <Text style={styles.legendLabel}>Remaining</Text>
-                      <Text style={styles.legendValue}>
-                        {report.levelProgress.totalStories -
-                          report.levelProgress.completedStories}{" "}
-                        stories
-                      </Text>
-                    </View>
-                  </View>
-                  <View style={styles.legendItem}>
-                    <View
-                      style={[styles.legendDot, { backgroundColor: C.purple }]}
-                    />
-                    <View>
-                      <Text style={styles.legendLabel}>Diamonds</Text>
-                      <Text style={styles.legendValue}>
-                        {report.levelProgress.totalDiamonds} earned
-                      </Text>
-                    </View>
-                  </View>
+                  ))}
                 </View>
               </View>
             </SectionCard>
 
-            {/* ── WEEKLY CHART ── */}
-            <SectionCard title="Weekly Activity" icon="📅" delay={200}>
-              <Text style={styles.chartSub}>
+            {/* Weekly chart */}
+            <SectionCard title="Weekly Activity" icon="📅" delay={200} sz={sz}>
+              <Text
+                style={{
+                  fontFamily: FONTS.light,
+                  fontSize: sz.chartSubFontSize,
+                  color: C.textMuted,
+                  marginBottom: sz.chartSubMarginBottom,
+                  marginTop: -8,
+                }}
+              >
                 Stories completed per week · last 6 weeks
               </Text>
-              <WeeklyChart weeks={report.weeklyChart} />
+              <WeeklyChart weeks={report.weeklyChart} sz={sz} />
             </SectionCard>
 
-            {/* ── SKILL PERFORMANCE ── */}
-            <SectionCard title="Skill Performance" icon="⚡" delay={300}>
-              <Text style={styles.chartSub}>
+            {/* Skill performance */}
+            <SectionCard
+              title="Skill Performance"
+              icon="⚡"
+              delay={300}
+              sz={sz}
+            >
+              <Text
+                style={{
+                  fontFamily: FONTS.light,
+                  fontSize: sz.chartSubFontSize,
+                  color: C.textMuted,
+                  marginBottom: sz.chartSubMarginBottom,
+                  marginTop: -8,
+                }}
+              >
                 How each activity type is going
               </Text>
               <View style={{ marginTop: 8 }}>
@@ -833,6 +1035,7 @@ export default function Reports() {
                   percent={report.skills.readEngagement}
                   color={C.teal}
                   delay={0}
+                  sz={sz}
                 />
                 <SkillBar
                   label="Word Guess Win Rate"
@@ -840,6 +1043,7 @@ export default function Reports() {
                   percent={report.skills.guessWinRate}
                   color={C.yellow}
                   delay={100}
+                  sz={sz}
                 />
                 <SkillBar
                   label="Listening Accuracy"
@@ -847,6 +1051,7 @@ export default function Reports() {
                   percent={report.skills.listenAccuracy}
                   color={C.coral}
                   delay={200}
+                  sz={sz}
                 />
                 <SkillBar
                   label="Description Score"
@@ -854,38 +1059,66 @@ export default function Reports() {
                   percent={report.skills.describeScore}
                   color={C.purple}
                   delay={300}
+                  sz={sz}
                 />
               </View>
             </SectionCard>
 
-            {/* ── STORY LIST ── */}
+            {/* Story list */}
             <SectionCard
               title={`Level ${report.levelProgress.playLevel} Stories`}
               icon="📚"
               delay={400}
+              sz={sz}
             >
-              <View style={styles.storyLegendRow}>
+              <View
+                style={{
+                  flexDirection: "row",
+                  gap: sz.storyLegendGap,
+                  marginBottom: 12,
+                }}
+              >
                 {ACTIVITY_META.map((a, i) => (
-                  <View key={i} style={styles.storyLegendItem}>
+                  <View
+                    key={i}
+                    style={{
+                      flexDirection: "row",
+                      alignItems: "center",
+                      gap: sz.storyLegendItemGap,
+                    }}
+                  >
                     <View
-                      style={[
-                        styles.legendDot,
-                        { backgroundColor: a.color, width: 8, height: 8 },
-                      ]}
+                      style={{
+                        width: sz.storyLegendDotSize,
+                        height: sz.storyLegendDotSize,
+                        borderRadius: sz.storyLegendDotSize / 2,
+                        backgroundColor: a.color,
+                      }}
                     />
-                    <Text style={styles.legendLabel}>{a.label}</Text>
+                    <Text
+                      style={{
+                        fontFamily: FONTS.light,
+                        fontSize: sz.legendLabelFontSize,
+                        color: C.textMuted,
+                      }}
+                    >
+                      {a.label}
+                    </Text>
                   </View>
                 ))}
               </View>
               {report.storyList.map((story, i) => (
-                <StoryRow key={story.storyId} story={story} index={i} />
+                <StoryRow key={story.storyId} story={story} index={i} sz={sz} />
               ))}
               {report.storyList.length === 0 && (
                 <Text
-                  style={[
-                    styles.chartSub,
-                    { textAlign: "center", paddingVertical: 12 },
-                  ]}
+                  style={{
+                    fontFamily: FONTS.light,
+                    fontSize: sz.chartSubFontSize,
+                    color: C.textMuted,
+                    textAlign: "center",
+                    paddingVertical: 12,
+                  }}
                 >
                   No stories started yet in this level.
                 </Text>
@@ -893,176 +1126,8 @@ export default function Reports() {
             </SectionCard>
           </>
         )}
-
         <View style={{ height: 32 }} />
       </ScrollView>
     </View>
   );
 }
-
-// ─────────────────────────────────────────────────────────────────────────────
-const styles = StyleSheet.create({
-  root: { flex: 1, backgroundColor: C.bg },
-  scroll: { flex: 1 },
-  scrollContent: { paddingHorizontal: 16, paddingBottom: 24 },
-
-  topBar: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    paddingHorizontal: 14,
-    paddingTop: STATUS_H + 10,
-    paddingBottom: 12,
-  },
-  backBtn: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: "rgba(255,255,255,0.06)",
-    borderWidth: 1,
-    borderColor: "rgba(255,255,255,0.12)",
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  // "Progress Report" top bar title — bold, teal
-  topTitle: {
-    fontFamily: FONTS.bold,
-    flex: 1,
-    textAlign: "center",
-    fontSize: 17,
-    color: C.teal,
-    letterSpacing: 0.4,
-    textShadowColor: "rgba(0,188,212,0.5)",
-    textShadowOffset: { width: 0, height: 0 },
-    textShadowRadius: 10,
-  },
-  topSpacer: { width: 40 },
-
-  loadingWrap: {
-    flex: 1,
-    alignItems: "center",
-    justifyContent: "center",
-    gap: 12,
-    padding: 32,
-  },
-  loadingEmoji: { fontSize: 48 },
-  // Loading / error message — light, muted
-  loadingText: {
-    fontFamily: FONTS.light,
-    fontSize: 15,
-    color: C.textMuted,
-    textAlign: "center",
-  },
-  retryBtn: {
-    marginTop: 8,
-    backgroundColor: C.tealDim,
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: C.tealBorder,
-    paddingHorizontal: 24,
-    paddingVertical: 10,
-  },
-  // "Try Again" — bold, teal
-  retryText: {
-    fontFamily: FONTS.bold,
-    fontSize: 14,
-    color: C.teal,
-  },
-
-  childHeader: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 14,
-    marginBottom: 20,
-    marginTop: 4,
-  },
-  childAvatar: {
-    width: 52,
-    height: 52,
-    borderRadius: 26,
-    backgroundColor: C.tealDim,
-    borderWidth: 2,
-    borderColor: C.teal,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  // Avatar initial — bold, teal
-  childAvatarText: {
-    fontFamily: FONTS.bold,
-    fontSize: 22,
-    color: C.teal,
-  },
-  // Child's name — bold
-  childName: {
-    fontFamily: FONTS.bold,
-    fontSize: 20,
-    color: C.textPri,
-  },
-  // Level subtitle — light, muted
-  childLevel: {
-    fontFamily: FONTS.light,
-    fontSize: 12,
-    color: C.textMuted,
-    marginTop: 2,
-  },
-
-  pillRow: { flexDirection: "row", gap: 8, marginBottom: 14 },
-
-  ringRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-  },
-  ringLegend: { flex: 1, paddingLeft: 18, gap: 14 },
-  legendItem: { flexDirection: "row", alignItems: "flex-start", gap: 8 },
-  legendDot: {
-    width: 10,
-    height: 10,
-    borderRadius: 5,
-    marginTop: 3,
-    flexShrink: 0,
-  },
-  // Legend key — light, muted
-  legendLabel: {
-    fontFamily: FONTS.light,
-    fontSize: 11,
-    color: C.textMuted,
-  },
-  // Legend value — bold, secondary
-  legendValue: {
-    fontFamily: FONTS.bold,
-    fontSize: 13,
-    color: C.textSec,
-    marginTop: 1,
-  },
-
-  // Chart sub-heading — light, muted
-  chartSub: {
-    fontFamily: FONTS.light,
-    fontSize: 11,
-    color: C.textMuted,
-    marginBottom: 12,
-    marginTop: -8,
-  },
-
-  storyLegendRow: { flexDirection: "row", gap: 14, marginBottom: 12 },
-  storyLegendItem: { flexDirection: "row", alignItems: "center", gap: 5 },
-
-  emptyWrap: { alignItems: "center", paddingVertical: 60, gap: 12 },
-  emptyEmoji: { fontSize: 56 },
-  // Empty state heading — bold
-  emptyTitle: {
-    fontFamily: FONTS.bold,
-    fontSize: 20,
-    color: C.textPri,
-  },
-  // Empty state body — light
-  emptyText: {
-    fontFamily: FONTS.light,
-    fontSize: 14,
-    color: C.textMuted,
-    textAlign: "center",
-    lineHeight: 21,
-    paddingHorizontal: 32,
-  },
-});

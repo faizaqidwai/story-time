@@ -1,16 +1,20 @@
 // app/components/billing/PaymentMethodScreen.jsx
-//
-// Manage saved payment methods — fully wired to real backend APIs:
-//   GET    /account/payments/methods
-//   POST   /account/payments/methods
-//   DELETE /account/payments/methods/{id}
-//   PATCH  /account/payments/methods/{id}/default
 
 import React, { useEffect, useState, useRef, useCallback } from "react";
 import {
-  View, Text, StyleSheet, ScrollView, TouchableOpacity,
-  TextInput, Animated, ActivityIndicator, Alert, Modal,
-  KeyboardAvoidingView, Platform, StatusBar,
+  View,
+  Text,
+  StyleSheet,
+  ScrollView,
+  TouchableOpacity,
+  TextInput,
+  Animated,
+  ActivityIndicator,
+  Alert,
+  Modal,
+  KeyboardAvoidingView,
+  Platform,
+  StatusBar,
 } from "react-native";
 import { useRouter } from "expo-router";
 import { FONTS } from "../../theme";
@@ -21,6 +25,7 @@ import {
   deletePaymentMethod,
   setDefaultPaymentMethod,
 } from "../../services/subscriptionService";
+import { font, pad, radius, size } from "../../theme/tokens"; // ← REPLACES useTheme
 
 const STATUS_BAR_HEIGHT =
   Platform.OS === "android" ? (StatusBar.currentHeight ?? 24) : 50;
@@ -39,7 +44,10 @@ const C = {
 };
 
 const BRAND_COLORS = {
-  visa: "#1A1F71", mastercard: "#EB001B", amex: "#007BC1", discover: "#FF6600",
+  visa: "#1A1F71",
+  mastercard: "#EB001B",
+  amex: "#007BC1",
+  discover: "#FF6600",
 };
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -53,13 +61,21 @@ function CardItem({ card, onSetDefault, onDelete }) {
     <View style={[cS.card, card.isDefault && cS.cardDefault]}>
       <View style={cS.cardTop}>
         <View style={[cS.chip, { backgroundColor: chipColor }]}>
-          <Text style={cS.chipText}>{(card.brand ?? "").slice(0, 4).toUpperCase()}</Text>
+          <Text style={cS.chipText}>
+            {(card.brand ?? "").slice(0, 4).toUpperCase()}
+          </Text>
         </View>
-        <View style={{ flex: 1, marginLeft: 12 }}>
+        <View style={{ flex: 1, marginLeft: pad.sm }}>
           <Text style={cS.cardNum}>•••• •••• •••• {card.last4}</Text>
-          <Text style={cS.cardExp}>Expires {card.expMonth}/{card.expYear}</Text>
+          <Text style={cS.cardExp}>
+            Expires {card.expMonth}/{card.expYear}
+          </Text>
         </View>
-        <TouchableOpacity onPress={() => setMenuOpen(!menuOpen)} style={cS.menuBtn} activeOpacity={0.7}>
+        <TouchableOpacity
+          onPress={() => setMenuOpen(!menuOpen)}
+          style={cS.menuBtn}
+          activeOpacity={0.7}
+        >
           <Text style={cS.menuDots}>⋮</Text>
         </TouchableOpacity>
       </View>
@@ -75,7 +91,10 @@ function CardItem({ card, onSetDefault, onDelete }) {
           {!card.isDefault && (
             <TouchableOpacity
               style={cS.actionItem}
-              onPress={() => { setMenuOpen(false); onSetDefault(card.id); }}
+              onPress={() => {
+                setMenuOpen(false);
+                onSetDefault(card.id);
+              }}
               activeOpacity={0.8}
             >
               <Text style={cS.actionItemText}>Set as Default</Text>
@@ -83,10 +102,15 @@ function CardItem({ card, onSetDefault, onDelete }) {
           )}
           <TouchableOpacity
             style={[cS.actionItem, !card.isDefault && cS.actionItemDivider]}
-            onPress={() => { setMenuOpen(false); onDelete(card.id); }}
+            onPress={() => {
+              setMenuOpen(false);
+              onDelete(card.id);
+            }}
             activeOpacity={0.8}
           >
-            <Text style={[cS.actionItemText, { color: C.red }]}>Remove Card</Text>
+            <Text style={[cS.actionItemText, { color: C.red }]}>
+              Remove Card
+            </Text>
           </TouchableOpacity>
         </View>
       )}
@@ -96,45 +120,95 @@ function CardItem({ card, onSetDefault, onDelete }) {
 
 const cS = StyleSheet.create({
   card: {
-    backgroundColor: C.surface, borderRadius: 16,
-    borderWidth: 1.5, borderColor: "rgba(255,255,255,0.08)",
-    padding: 16, marginBottom: 12,
+    backgroundColor: C.surface,
+    borderRadius: radius.lg, // was: sz.paymentCardBorderRadius → 16/22
+    borderWidth: 1.5,
+    borderColor: "rgba(255,255,255,0.08)",
+    padding: pad.md, // was: sz.paymentCardPadding → 16/22
+    marginBottom: pad.sm, // was: sz.paymentCardMarginBottom → 12/16
   },
   cardDefault: { borderColor: C.tealBorder, backgroundColor: C.tealDim },
   cardTop: { flexDirection: "row", alignItems: "center" },
-  chip: { width: 44, height: 30, borderRadius: 6, alignItems: "center", justifyContent: "center" },
-  chipText: { fontFamily: FONTS.bold, fontSize: 8, color: "#fff", letterSpacing: 0.5 },
-  cardNum: { fontFamily: FONTS.bold, fontSize: 14, color: C.textPri, letterSpacing: 1 },
-  cardExp: { fontFamily: FONTS.light, fontSize: 11, color: C.textMuted, marginTop: 2 },
-  menuBtn: { width: 32, height: 32, alignItems: "center", justifyContent: "center" },
-  menuDots: { fontSize: 20, color: C.textMuted },
+  chip: {
+    width: size.chipW, // was: sz.paymentChipWidth → 44/60
+    height: size.chipH, // was: sz.paymentChipHeight → 30/40
+    borderRadius: radius.xs, // was: sz.paymentChipBorderRadius
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  chipText: {
+    fontFamily: FONTS.bold,
+    fontSize: font.xs,
+    color: "#fff",
+    letterSpacing: 0.5,
+  },
+  cardNum: {
+    fontFamily: FONTS.bold,
+    fontSize: font.md,
+    color: C.textPri,
+    letterSpacing: 1,
+  },
+  cardExp: {
+    fontFamily: FONTS.light,
+    fontSize: font.s,
+    color: C.textMuted,
+    marginTop: 2,
+  },
+  menuBtn: {
+    width: size.hitSm,
+    height: size.hitSm,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  menuDots: { fontSize: font.xl, color: C.textMuted },
   defaultBadge: {
-    marginTop: 10, backgroundColor: C.tealDim,
-    borderRadius: 8, borderWidth: 1, borderColor: C.tealBorder,
-    paddingHorizontal: 10, paddingVertical: 3, alignSelf: "flex-start",
+    marginTop: pad.sm,
+    backgroundColor: C.tealDim,
+    borderRadius: radius.xs,
+    borderWidth: 1,
+    borderColor: C.tealBorder,
+    paddingHorizontal: pad.sm,
+    paddingVertical: 3,
+    alignSelf: "flex-start",
   },
-  defaultBadgeText: { fontFamily: FONTS.bold, fontSize: 10, color: C.teal },
+  defaultBadgeText: { fontFamily: FONTS.bold, fontSize: font.s, color: C.teal },
   actionMenu: {
-    marginTop: 10, backgroundColor: C.surfaceHigh,
-    borderRadius: 10, borderWidth: 1, borderColor: "rgba(255,255,255,0.1)", overflow: "hidden",
+    marginTop: pad.sm,
+    backgroundColor: C.surfaceHigh,
+    borderRadius: radius.sm,
+    borderWidth: 1,
+    borderColor: "rgba(255,255,255,0.1)",
+    overflow: "hidden",
   },
-  actionItem: { paddingVertical: 12, paddingHorizontal: 14 },
-  actionItemDivider: { borderTopWidth: 1, borderTopColor: "rgba(255,255,255,0.06)" },
-  actionItemText: { fontFamily: FONTS.bold, fontSize: 13, color: C.textSec },
+  actionItem: { paddingVertical: pad.sm, paddingHorizontal: pad.sm },
+  actionItemDivider: {
+    borderTopWidth: 1,
+    borderTopColor: "rgba(255,255,255,0.06)",
+  },
+  actionItemText: {
+    fontFamily: FONTS.bold,
+    fontSize: font.sm,
+    color: C.textSec,
+  },
 });
 
 // ─────────────────────────────────────────────────────────────────────────────
 // ADD CARD MODAL
 // ─────────────────────────────────────────────────────────────────────────────
 function AddCardModal({ visible, onClose, onAdd }) {
-  const [brand, setBrand]       = useState("visa");
-  const [last4, setLast4]       = useState("");
+  const [brand, setBrand] = useState("visa");
+  const [last4, setLast4] = useState("");
   const [expMonth, setExpMonth] = useState("");
-  const [expYear, setExpYear]   = useState("");
-  const [saving, setSaving]     = useState(false);
+  const [expYear, setExpYear] = useState("");
+  const [saving, setSaving] = useState(false);
   const brands = ["visa", "mastercard", "amex", "discover"];
 
-  const reset = () => { setBrand("visa"); setLast4(""); setExpMonth(""); setExpYear(""); };
+  const reset = () => {
+    setBrand("visa");
+    setLast4("");
+    setExpMonth("");
+    setExpYear("");
+  };
 
   const handleAdd = async () => {
     if (!last4 || last4.length !== 4 || !expMonth || !expYear) {
@@ -143,27 +217,43 @@ function AddCardModal({ visible, onClose, onAdd }) {
     }
     setSaving(true);
     try {
-      await onAdd({ brand, last4, expMonth: parseInt(expMonth), expYear: parseInt(expYear) });
+      await onAdd({
+        brand,
+        last4,
+        expMonth: parseInt(expMonth),
+        expYear: parseInt(expYear),
+      });
       reset();
       onClose();
-    } catch (e) {
-      // Error already shown via execute sheet — just keep modal open
+    } catch (_) {
     } finally {
       setSaving(false);
     }
   };
 
   return (
-    <Modal visible={visible} animationType="slide" transparent onRequestClose={onClose}>
-      <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === "ios" ? "padding" : "height"}>
+    <Modal
+      visible={visible}
+      animationType="slide"
+      transparent
+      onRequestClose={onClose}
+    >
+      <KeyboardAvoidingView
+        style={{ flex: 1 }}
+        behavior={Platform.OS === "ios" ? "padding" : "height"}
+      >
         <View style={mS.overlay}>
           <View style={mS.sheet}>
             <View style={mS.handle} />
             <Text style={mS.title}>Add Card</Text>
-            <Text style={mS.subtitle}>Your card details are saved securely.</Text>
+            <Text style={mS.subtitle}>
+              Your card details are saved securely.
+            </Text>
 
             <Text style={mS.label}>Card Brand</Text>
-            <View style={mS.brandRow}>
+            <View
+              style={{ flexDirection: "row", gap: pad.s, flexWrap: "wrap" }}
+            >
               {brands.map((b) => (
                 <TouchableOpacity
                   key={b}
@@ -171,7 +261,9 @@ function AddCardModal({ visible, onClose, onAdd }) {
                   onPress={() => setBrand(b)}
                   activeOpacity={0.8}
                 >
-                  <Text style={[mS.brandText, brand === b && mS.brandTextActive]}>
+                  <Text
+                    style={[mS.brandText, brand === b && mS.brandTextActive]}
+                  >
                     {b.charAt(0).toUpperCase() + b.slice(1)}
                   </Text>
                 </TouchableOpacity>
@@ -189,42 +281,61 @@ function AddCardModal({ visible, onClose, onAdd }) {
               maxLength={4}
             />
 
-            <View style={{ flexDirection: "row", gap: 12 }}>
-              <View style={{ flex: 1 }}>
-                <Text style={mS.label}>Exp Month</Text>
-                <TextInput
-                  style={mS.input}
-                  placeholder="MM"
-                  placeholderTextColor={C.textMuted}
-                  value={expMonth}
-                  onChangeText={(t) => setExpMonth(t.replace(/\D/g, "").slice(0, 2))}
-                  keyboardType="numeric"
-                  maxLength={2}
-                />
-              </View>
-              <View style={{ flex: 1 }}>
-                <Text style={mS.label}>Exp Year</Text>
-                <TextInput
-                  style={mS.input}
-                  placeholder="YYYY"
-                  placeholderTextColor={C.textMuted}
-                  value={expYear}
-                  onChangeText={(t) => setExpYear(t.replace(/\D/g, "").slice(0, 4))}
-                  keyboardType="numeric"
-                  maxLength={4}
-                />
-              </View>
+            <View style={{ flexDirection: "row", gap: pad.sm }}>
+              {[
+                {
+                  label: "Exp Month",
+                  placeholder: "MM",
+                  value: expMonth,
+                  set: setExpMonth,
+                  max: 2,
+                },
+                {
+                  label: "Exp Year",
+                  placeholder: "YYYY",
+                  value: expYear,
+                  set: setExpYear,
+                  max: 4,
+                },
+              ].map((f) => (
+                <View key={f.label} style={{ flex: 1 }}>
+                  <Text style={mS.label}>{f.label}</Text>
+                  <TextInput
+                    style={mS.input}
+                    placeholder={f.placeholder}
+                    placeholderTextColor={C.textMuted}
+                    value={f.value}
+                    onChangeText={(t) =>
+                      f.set(t.replace(/\D/g, "").slice(0, f.max))
+                    }
+                    keyboardType="numeric"
+                    maxLength={f.max}
+                  />
+                </View>
+              ))}
             </View>
 
-            <View style={{ flexDirection: "row", gap: 12, marginTop: 16 }}>
-              <TouchableOpacity style={mS.cancelBtn} onPress={onClose} activeOpacity={0.8}>
+            <View
+              style={{ flexDirection: "row", gap: pad.sm, marginTop: pad.md }}
+            >
+              <TouchableOpacity
+                style={mS.cancelBtn}
+                onPress={onClose}
+                activeOpacity={0.8}
+              >
                 <Text style={mS.cancelBtnText}>Cancel</Text>
               </TouchableOpacity>
-              <TouchableOpacity style={mS.addBtn} onPress={handleAdd} disabled={saving} activeOpacity={0.85}>
-                {saving
-                  ? <ActivityIndicator color="#08081a" size="small" />
-                  : <Text style={mS.addBtnText}>Add Card</Text>
-                }
+              <TouchableOpacity
+                style={mS.addBtn}
+                onPress={handleAdd}
+                disabled={saving}
+                activeOpacity={0.85}
+              >
+                {saving ? (
+                  <ActivityIndicator color="#08081a" size="small" />
+                ) : (
+                  <Text style={mS.addBtnText}>Add Card</Text>
+                )}
               </TouchableOpacity>
             </View>
           </View>
@@ -235,33 +346,95 @@ function AddCardModal({ visible, onClose, onAdd }) {
 }
 
 const mS = StyleSheet.create({
-  overlay: { flex: 1, justifyContent: "flex-end", backgroundColor: "rgba(0,0,0,0.65)" },
+  overlay: {
+    flex: 1,
+    justifyContent: "flex-end",
+    backgroundColor: "rgba(0,0,0,0.65)",
+  },
   sheet: {
     backgroundColor: "#0d0f1e",
-    borderTopLeftRadius: 24, borderTopRightRadius: 24,
-    borderTopWidth: 1.5, borderLeftWidth: 1, borderRightWidth: 1,
+    borderTopLeftRadius: radius.xl, // was: sz.paymentModalBorderRadius → 24/32
+    borderTopRightRadius: radius.xl,
+    borderTopWidth: 1.5,
+    borderLeftWidth: 1,
+    borderRightWidth: 1,
     borderColor: C.tealBorder,
-    padding: 24, paddingTop: 14,
-    paddingBottom: Platform.OS === "ios" ? 36 : 24,
+    padding: pad.xl, // was: sz.paymentModalPadding → 24/34
+    paddingTop: pad.sm,
+    paddingBottom: Platform.OS === "ios" ? pad.xxl : pad.xl,
   },
-  handle: { width: 40, height: 4, borderRadius: 2, backgroundColor: "rgba(255,255,255,0.2)", alignSelf: "center", marginBottom: 18 },
-  title: { fontFamily: FONTS.bold, fontSize: 18, color: C.textPri, marginBottom: 4 },
-  subtitle: { fontFamily: FONTS.light, fontSize: 12, color: C.textMuted, marginBottom: 20 },
-  label: { fontFamily: FONTS.bold, fontSize: 11, color: C.textMuted, letterSpacing: 0.8, textTransform: "uppercase", marginBottom: 8, marginTop: 14 },
-  brandRow: { flexDirection: "row", gap: 8, flexWrap: "wrap" },
-  brandBtn: { paddingHorizontal: 14, paddingVertical: 8, borderRadius: 10, borderWidth: 1, borderColor: "rgba(255,255,255,0.1)", backgroundColor: C.surface },
+  handle: {
+    width: 40,
+    height: 4,
+    borderRadius: 2,
+    backgroundColor: "rgba(255,255,255,0.2)",
+    alignSelf: "center",
+    marginBottom: pad.lg,
+  },
+  title: {
+    fontFamily: FONTS.bold,
+    fontSize: font.xl,
+    color: C.textPri,
+    marginBottom: pad.xs,
+  },
+  subtitle: {
+    fontFamily: FONTS.light,
+    fontSize: font.sm,
+    color: C.textMuted,
+    marginBottom: pad.lg,
+  },
+  label: {
+    fontFamily: FONTS.bold,
+    fontSize: font.s, // was: sz.paymentModalLabelFontSize → 11/14
+    color: C.textMuted,
+    letterSpacing: 0.8,
+    textTransform: "uppercase",
+    marginBottom: pad.s,
+    marginTop: pad.sm,
+  },
+  brandBtn: {
+    paddingHorizontal: pad.sm,
+    paddingVertical: pad.s,
+    borderRadius: radius.sm,
+    borderWidth: 1,
+    borderColor: "rgba(255,255,255,0.1)",
+    backgroundColor: C.surface,
+  },
   brandBtnActive: { backgroundColor: C.tealDim, borderColor: C.tealBorder },
-  brandText: { fontFamily: FONTS.bold, fontSize: 12, color: C.textMuted },
+  brandText: { fontFamily: FONTS.bold, fontSize: font.sm, color: C.textMuted },
   brandTextActive: { color: C.teal },
   input: {
-    backgroundColor: C.surface, borderRadius: 12, borderWidth: 1.5,
-    borderColor: "rgba(255,255,255,0.1)", padding: 14, fontSize: 15,
-    color: C.textPri, fontFamily: FONTS.regular,
+    backgroundColor: C.surface,
+    borderRadius: radius.md, // was: sz.paymentModalInputBorderRadius → 12/16
+    borderWidth: 1.5,
+    borderColor: "rgba(255,255,255,0.1)",
+    padding: pad.sm, // was: sz.paymentModalInputPadding → 14/20
+    fontSize: font.md, // was: sz.paymentModalInputFontSize → 15/19
+    color: C.textPri,
+    fontFamily: FONTS.regular,
   },
-  cancelBtn: { flex: 1, borderRadius: 12, paddingVertical: 14, borderWidth: 1, borderColor: "rgba(255,255,255,0.12)", backgroundColor: "rgba(255,255,255,0.04)", alignItems: "center" },
-  cancelBtnText: { fontFamily: FONTS.bold, fontSize: 14, color: C.textMuted },
-  addBtn: { flex: 1, borderRadius: 12, paddingVertical: 14, backgroundColor: C.teal, alignItems: "center" },
-  addBtnText: { fontFamily: FONTS.bold, fontSize: 14, color: "#08081a" },
+  cancelBtn: {
+    flex: 1,
+    borderRadius: radius.md,
+    paddingVertical: pad.sm,
+    borderWidth: 1,
+    borderColor: "rgba(255,255,255,0.12)",
+    backgroundColor: "rgba(255,255,255,0.04)",
+    alignItems: "center",
+  },
+  cancelBtnText: {
+    fontFamily: FONTS.bold,
+    fontSize: font.md,
+    color: C.textMuted,
+  },
+  addBtn: {
+    flex: 1,
+    borderRadius: radius.md,
+    paddingVertical: pad.sm,
+    backgroundColor: C.teal,
+    alignItems: "center",
+  },
+  addBtnText: { fontFamily: FONTS.bold, fontSize: font.md, color: "#08081a" },
 });
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -271,8 +444,8 @@ export default function PaymentMethodScreen() {
   const router = useRouter();
   const { execute } = useApiCall();
 
-  const [methods, setMethods]         = useState([]);
-  const [loading, setLoading]         = useState(true);
+  const [methods, setMethods] = useState([]);
+  const [loading, setLoading] = useState(true);
   const [showAddModal, setShowAddModal] = useState(false);
   const fadeAnim = useRef(new Animated.Value(0)).current;
 
@@ -284,50 +457,59 @@ export default function PaymentMethodScreen() {
       errorRetry: true,
       onSuccess: (data) => {
         setMethods(Array.isArray(data) ? data : []);
-        Animated.timing(fadeAnim, { toValue: 1, duration: 350, useNativeDriver: true }).start();
+        Animated.timing(fadeAnim, {
+          toValue: 1,
+          duration: 350,
+          useNativeDriver: true,
+        }).start();
       },
     });
     setLoading(false);
   }, [execute]);
 
-  useEffect(() => { loadMethods(); }, []);
+  useEffect(() => {
+    loadMethods();
+  }, []);
 
-  // ── Set default ───────────────────────────────────────────────────────────
   const handleSetDefault = async (id) => {
     await execute(() => setDefaultPaymentMethod(id), {
       errorDisplay: "toast",
       errorMessage: "Couldn't update default card.",
-      onSuccess: () => {
-        setMethods((prev) => prev.map((m) => ({ ...m, isDefault: m.id === id })));
-      },
+      onSuccess: () =>
+        setMethods((prev) =>
+          prev.map((m) => ({ ...m, isDefault: m.id === id })),
+        ),
     });
   };
 
-  // ── Delete ────────────────────────────────────────────────────────────────
   const handleDelete = (id) => {
     const card = methods.find((m) => m.id === id);
     if (card?.isDefault && methods.length > 1) {
-      Alert.alert("Cannot Remove", "Please set another card as default before removing this one.");
+      Alert.alert(
+        "Cannot Remove",
+        "Please set another card as default before removing this one.",
+      );
       return;
     }
     Alert.alert("Remove Card", `Remove •••• ${card?.last4}?`, [
       { text: "Cancel", style: "cancel" },
       {
-        text: "Remove", style: "destructive",
+        text: "Remove",
+        style: "destructive",
         onPress: async () => {
           await execute(() => deletePaymentMethod(id), {
             errorDisplay: "toast",
             errorMessage: "Couldn't remove card.",
             successDisplay: "toast",
             successMessage: "Card removed.",
-            onSuccess: () => setMethods((prev) => prev.filter((m) => m.id !== id)),
+            onSuccess: () =>
+              setMethods((prev) => prev.filter((m) => m.id !== id)),
           });
         },
       },
     ]);
   };
 
-  // ── Add card ──────────────────────────────────────────────────────────────
   const handleAdd = async (cardData) => {
     await execute(() => addPaymentMethod(cardData), {
       errorDisplay: "sheet",
@@ -345,22 +527,34 @@ export default function PaymentMethodScreen() {
   return (
     <View style={styles.root}>
       <View style={styles.header}>
-        <TouchableOpacity style={styles.backBtn} onPress={() => router.back()} activeOpacity={0.75}>
+        <TouchableOpacity
+          style={styles.backBtn}
+          onPress={() => router.back()}
+          activeOpacity={0.75}
+        >
           <Text style={styles.backIcon}>←</Text>
         </TouchableOpacity>
-        <Text style={styles.title}>Payment Methods</Text>
-        <View style={{ width: 38 }} />
+        <Text style={styles.screenTitle}>Payment Methods</Text>
+        <View style={{ width: size.hitMd }} />
       </View>
 
       {loading ? (
-        <View style={styles.center}><ActivityIndicator color={C.teal} size="large" /></View>
+        <View style={styles.center}>
+          <ActivityIndicator color={C.teal} size="large" />
+        </View>
       ) : (
-        <Animated.ScrollView style={{ opacity: fadeAnim }} contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
+        <Animated.ScrollView
+          style={{ opacity: fadeAnim }}
+          contentContainerStyle={styles.scroll}
+          showsVerticalScrollIndicator={false}
+        >
           {methods.length === 0 && (
             <View style={styles.emptyState}>
               <Text style={styles.emptyIcon}>💳</Text>
               <Text style={styles.emptyTitle}>No payment methods</Text>
-              <Text style={styles.emptySubtitle}>Add a card to enable paid subscriptions</Text>
+              <Text style={styles.emptySubtitle}>
+                Add a card to enable paid subscriptions
+              </Text>
             </View>
           )}
 
@@ -373,7 +567,11 @@ export default function PaymentMethodScreen() {
             />
           ))}
 
-          <TouchableOpacity style={styles.addBtn} onPress={() => setShowAddModal(true)} activeOpacity={0.85}>
+          <TouchableOpacity
+            style={styles.addBtn}
+            onPress={() => setShowAddModal(true)}
+            activeOpacity={0.85}
+          >
             <Text style={styles.addBtnIcon}>+</Text>
             <Text style={styles.addBtnText}>Add New Card</Text>
           </TouchableOpacity>
@@ -395,28 +593,49 @@ const styles = StyleSheet.create({
   root: { flex: 1, backgroundColor: C.bg },
   center: { flex: 1, justifyContent: "center", alignItems: "center" },
   header: {
-    flexDirection: "row", alignItems: "center", justifyContent: "space-between",
-    paddingTop: STATUS_BAR_HEIGHT + 10, paddingBottom: 14, paddingHorizontal: 18,
-    borderBottomWidth: 1, borderBottomColor: "rgba(0,188,212,0.12)",
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    paddingTop: STATUS_BAR_HEIGHT + pad.sm, // was: + 10
+    paddingBottom: pad.sm, // was: 14
+    paddingHorizontal: pad.md, // was: 18
+    borderBottomWidth: 1,
+    borderBottomColor: "rgba(0,188,212,0.12)",
   },
   backBtn: {
-    width: 38, height: 38, borderRadius: 19,
+    width: size.hitMd, // was: 38
+    height: size.hitMd,
+    borderRadius: size.hitMd / 2,
     backgroundColor: "rgba(255,255,255,0.06)",
-    borderWidth: 1, borderColor: "rgba(255,255,255,0.1)",
-    alignItems: "center", justifyContent: "center",
+    borderWidth: 1,
+    borderColor: "rgba(255,255,255,0.1)",
+    alignItems: "center",
+    justifyContent: "center",
   },
-  backIcon: { fontFamily: FONTS.bold, fontSize: 18, color: C.teal },
-  title: { fontFamily: FONTS.bold, fontSize: 18, color: C.textPri },
-  scroll: { padding: 18 },
-  emptyState: { alignItems: "center", paddingVertical: 48, gap: 8 },
-  emptyIcon: { fontSize: 48, marginBottom: 8 },
-  emptyTitle: { fontFamily: FONTS.bold, fontSize: 18, color: C.textPri },
-  emptySubtitle: { fontFamily: FONTS.light, fontSize: 13, color: C.textMuted, textAlign: "center" },
+  backIcon: { fontFamily: FONTS.bold, fontSize: font.lg, color: C.teal },
+  screenTitle: { fontFamily: FONTS.bold, fontSize: font.xl, color: C.textPri },
+  scroll: { padding: pad.md },
+  emptyState: { alignItems: "center", paddingVertical: pad.xxxl, gap: pad.s },
+  emptyIcon: { fontSize: size.iconXl, marginBottom: pad.s },
+  emptyTitle: { fontFamily: FONTS.bold, fontSize: font.xl, color: C.textPri },
+  emptySubtitle: {
+    fontFamily: FONTS.light,
+    fontSize: font.sm,
+    color: C.textMuted,
+    textAlign: "center",
+  },
   addBtn: {
-    flexDirection: "row", alignItems: "center", justifyContent: "center",
-    gap: 8, borderRadius: 14, borderWidth: 1.5, borderColor: C.tealBorder,
-    borderStyle: "dashed", paddingVertical: 16, marginTop: 4,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: pad.s,
+    borderRadius: radius.md, // was: 14
+    borderWidth: 1.5,
+    borderColor: C.tealBorder,
+    borderStyle: "dashed",
+    paddingVertical: pad.md, // was: 16
+    marginTop: pad.xs,
   },
-  addBtnIcon: { fontFamily: FONTS.bold, fontSize: 20, color: C.teal },
-  addBtnText: { fontFamily: FONTS.bold, fontSize: 14, color: C.teal },
+  addBtnIcon: { fontFamily: FONTS.bold, fontSize: font.xxl, color: C.teal },
+  addBtnText: { fontFamily: FONTS.bold, fontSize: font.md, color: C.teal },
 });

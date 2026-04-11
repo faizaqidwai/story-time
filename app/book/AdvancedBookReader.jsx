@@ -1,10 +1,4 @@
 // AdvancedBookReader.jsx
-//
-// For stories with readingLevel: "ADVANCE" or "MID"
-// Layout:
-//   - Has image  → image on top, text on bottom
-//   - No image   → full page text only
-// Navigation: swipe left/right OR tap Back/Next buttons
 
 import React, { useEffect, useState, useRef } from "react";
 import {
@@ -34,9 +28,14 @@ import {
 } from "../_contexts/StoryActivityContext";
 import { attachActivityDataToStories } from "../data/storyActivityData";
 import backgroundImage from "../../assets/img/storyPageBack4.jpg";
+import { FONTS } from "../theme";
+import { font, pad, radius, size } from "../theme/tokens"; // ← ADD
 
 const { width } = Dimensions.get("window");
 const READING_COINS = 50;
+
+// AdvancedBookReader theme — warm parchment palette
+const GOLD = "#C8A96E";
 
 export default function AdvancedBookReader() {
   const { id, replay } = useLocalSearchParams();
@@ -50,7 +49,6 @@ export default function AdvancedBookReader() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [wordTaps, setWordTaps] = useState([]);
-
   const flatListRef = useRef(null);
 
   useEffect(() => {
@@ -70,7 +68,6 @@ export default function AdvancedBookReader() {
     flatListRef.current?.scrollToIndex({ index, animated: true });
     setPageIndex(index);
   };
-
   const handleWordTap = (word) => {
     setWordTaps((prev) => [...prev, word.toLowerCase()]);
   };
@@ -99,18 +96,15 @@ export default function AdvancedBookReader() {
   const handleFinishStory = async () => {
     const report = generateReadingReport();
     const tappedWords = Object.keys(report.wordFrequency);
-
     if (isReplay) {
       router.back();
       return;
     }
-
     await completeActivity(
       ACTIVITY.STORY_READING,
       { report },
       { coins: READING_COINS, words: tappedWords },
     );
-
     const nextRoute = ACTIVITY_ROUTES[ACTIVITY.WORD_STORY_CHALLENGE];
     router.replace({
       pathname: `/components/${nextRoute}`,
@@ -118,16 +112,14 @@ export default function AdvancedBookReader() {
     });
   };
 
-  if (loading) {
+  if (loading)
     return (
       <View style={styles.center}>
-        <ActivityIndicator size="large" color="#C8A96E" />
+        <ActivityIndicator size="large" color={GOLD} />
         <Text style={styles.loadingText}>Opening story…</Text>
       </View>
     );
-  }
-
-  if (error) {
+  if (error)
     return (
       <View style={styles.center}>
         <Text style={styles.errorText}>{error}</Text>
@@ -136,8 +128,6 @@ export default function AdvancedBookReader() {
         </Pressable>
       </View>
     );
-  }
-
   if (!book) return null;
 
   const isLast = pageIndex === book.pages.length - 1;
@@ -148,12 +138,11 @@ export default function AdvancedBookReader() {
       <AppBackground>
         <StatusBar barStyle="light-content" />
 
-        {/* ── HEADER ── */}
+        {/* Header */}
         <View style={styles.header}>
           <Pressable style={styles.backButton} onPress={() => router.back()}>
             <Ionicons name="chevron-back" size={20} color="#F5E6C8" />
           </Pressable>
-
           <View style={styles.headerCenter}>
             <Text style={styles.headerTitle} numberOfLines={1}>
               {book.title}
@@ -167,7 +156,6 @@ export default function AdvancedBookReader() {
               />
             </View>
           </View>
-
           <View style={styles.pageCounter}>
             <Text style={styles.pageCounterText}>
               {pageIndex + 1}
@@ -176,7 +164,6 @@ export default function AdvancedBookReader() {
           </View>
         </View>
 
-        {/* ── SWIPABLE PAGES ── */}
         <FlatList
           ref={flatListRef}
           data={book.pages}
@@ -188,8 +175,6 @@ export default function AdvancedBookReader() {
             const index = Math.round(e.nativeEvent.contentOffset.x / width);
             setPageIndex(index);
           }}
-          // Prevent vertical scroll inside FlatList from conflicting
-          // with the inner ScrollView on each page
           scrollEventThrottle={16}
           renderItem={({ item }) => (
             <AdvancedPage
@@ -200,7 +185,7 @@ export default function AdvancedBookReader() {
           )}
         />
 
-        {/* ── NAVIGATION ── */}
+        {/* Navigation */}
         <View style={styles.navBar}>
           <Pressable
             style={[styles.navBtn, isFirst && styles.navBtnDisabled]}
@@ -219,7 +204,6 @@ export default function AdvancedBookReader() {
             </Text>
           </Pressable>
 
-          {/* Dot indicators */}
           <View style={styles.dotRow}>
             {book.pages.map((_, i) => (
               <View
@@ -249,11 +233,9 @@ export default function AdvancedBookReader() {
   );
 }
 
-/* ──────────────────────────────────────────────
-   PAGE LAYOUT
-   Each page is exactly `width` wide so FlatList
-   paging snaps correctly.
-────────────────────────────────────────────── */
+// ─────────────────────────────────────────────────────────────────────────────
+// PAGE LAYOUTS
+// ─────────────────────────────────────────────────────────────────────────────
 const AdvancedPage = ({ page, hasImage, onWordTap }) => {
   const isContinued =
     page.text.toLowerCase().includes("to be continued") && !hasImage;
@@ -271,7 +253,6 @@ const AdvancedPage = ({ page, hasImage, onWordTap }) => {
     );
   }
 
-  // Image top + text bottom
   if (hasImage) {
     return (
       <View style={[styles.pageRoot, styles.imageTopPage]}>
@@ -287,7 +268,6 @@ const AdvancedPage = ({ page, hasImage, onWordTap }) => {
           style={styles.textSection}
           showsVerticalScrollIndicator={false}
           contentContainerStyle={styles.textSectionContent}
-          // Needed so vertical scroll doesn't fight horizontal swipe
           nestedScrollEnabled
         >
           <InteractiveTextAdvance text={page.text} onWordTap={onWordTap} />
@@ -296,7 +276,6 @@ const AdvancedPage = ({ page, hasImage, onWordTap }) => {
     );
   }
 
-  // Text only
   return (
     <View style={[styles.pageRoot, styles.textOnlyPage]}>
       <ScrollView
@@ -311,9 +290,9 @@ const AdvancedPage = ({ page, hasImage, onWordTap }) => {
   );
 };
 
-/* ──────────────────────────────────────────────
-   STYLES
-────────────────────────────────────────────── */
+// ─────────────────────────────────────────────────────────────────────────────
+// STYLES
+// ─────────────────────────────────────────────────────────────────────────────
 const styles = StyleSheet.create({
   center: {
     flex: 1,
@@ -322,32 +301,32 @@ const styles = StyleSheet.create({
     backgroundColor: "#120d07",
   },
   loadingText: {
-    marginTop: 12,
-    color: "#C8A96E",
-    fontSize: 15,
+    marginTop: pad.sm,
+    color: GOLD,
+    fontSize: font.md,
     fontStyle: "italic",
-  },
+  }, // was: 12, 15
   errorText: {
     color: "#e07070",
-    fontSize: 16,
-    marginBottom: 16,
+    fontSize: font.lg,
+    marginBottom: pad.md,
     textAlign: "center",
-    paddingHorizontal: 24,
+    paddingHorizontal: pad.xl,
   },
 
   // Header
   header: {
     flexDirection: "row",
     alignItems: "center",
-    paddingHorizontal: 14,
+    paddingHorizontal: pad.sm, // was: 14
     paddingTop: Platform.OS === "ios" ? 54 : 20,
-    paddingBottom: 10,
-    gap: 10,
+    paddingBottom: pad.sm, // was: 10
+    gap: pad.sm, // was: 10
   },
   backButton: {
-    width: 38,
-    height: 38,
-    borderRadius: 19,
+    width: size.hitSm, // was: 38
+    height: size.hitSm,
+    borderRadius: size.hitSm / 2, // was: 19
     backgroundColor: "rgba(20,14,8,0.7)",
     borderWidth: 1,
     borderColor: "rgba(200,169,110,0.3)",
@@ -355,175 +334,131 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     flexShrink: 0,
   },
-  headerCenter: {
-    flex: 1,
-    gap: 5,
-  },
+  headerCenter: { flex: 1, gap: pad.xs }, // was: 5
   headerTitle: {
-    fontSize: 13,
-    fontWeight: "700",
-    color: "#C8A96E",
+    fontSize: font.sm,
+    fontFamily: FONTS.bold,
+    color: GOLD,
     letterSpacing: 0.8,
     textTransform: "uppercase",
-  },
+  }, // was: 13
   progressTrack: {
     height: 2,
     backgroundColor: "rgba(200,169,110,0.15)",
     borderRadius: 2,
     overflow: "hidden",
   },
-  progressFill: {
-    height: "100%",
-    backgroundColor: "#C8A96E",
-    borderRadius: 2,
-  },
+  progressFill: { height: "100%", backgroundColor: GOLD, borderRadius: 2 },
   pageCounter: {
     alignItems: "center",
     justifyContent: "center",
     flexShrink: 0,
   },
-  pageCounterText: {
-    fontSize: 16,
-    fontWeight: "800",
-    color: "#C8A96E",
-  },
+  pageCounterText: { fontSize: font.lg, fontFamily: FONTS.bold, color: GOLD }, // was: 16
   pageCounterTotal: {
-    fontSize: 12,
-    fontWeight: "400",
+    fontSize: font.sm,
+    fontFamily: FONTS.light,
     color: "rgba(200,169,110,0.5)",
-  },
+  }, // was: 12
 
-  // Every page must be exactly `width` wide for paging to snap
-  pageRoot: {
-    width,
-    flex: 1,
-  },
-
-  // Image top + text bottom
-  imageTopPage: {
-    // no extra styles needed beyond pageRoot
-  },
-  imageSection: {
-    flex: 0.6,
-    overflow: "hidden",
-  },
-  topImage: {
-    width: "100%",
-    height: "100%",
-  },
-  textSection: {
-    flex: 3.5,
-  },
-  textSectionContent: {
-    paddingBottom: 16,
-  },
-
-  // Text only
-  textOnlyPage: {
-    // no extra styles needed beyond pageRoot
-    backgroundColor: "#dfd3bd",
-  },
-  textOnlyScroll: {
-    flex: 1,
-  },
-  textOnlyContent: {
-    paddingBottom: 20,
-  },
+  // Pages
+  pageRoot: { width, flex: 1 },
+  imageTopPage: {},
+  imageSection: { flex: 0.6, overflow: "hidden" },
+  topImage: { width: "100%", height: "100%" },
+  textSection: { flex: 3.5 },
+  textSectionContent: { paddingBottom: pad.md }, // was: 16
+  textOnlyPage: { backgroundColor: "#dfd3bd" },
+  textOnlyScroll: { flex: 1 },
+  textOnlyContent: { paddingBottom: pad.lg }, // was: 20
 
   // To be continued
   continuedPage: {
     justifyContent: "center",
     alignItems: "center",
-    gap: 16,
-    paddingHorizontal: 40,
-  },
+    gap: pad.md,
+    paddingHorizontal: pad.xxl,
+  }, // was: 16, 40
   continuedDivider: {
     width: 80,
     height: 1,
     backgroundColor: "rgba(200,169,110,0.4)",
   },
   continuedText: {
-    fontSize: 24,
-    fontWeight: "700",
-    color: "#C8A96E",
+    fontSize: font.h3,
+    fontFamily: FONTS.bold,
+    color: GOLD,
     fontStyle: "italic",
     textAlign: "center",
     letterSpacing: 1,
-  },
+  }, // was: 24
   continuedSubtext: {
-    fontSize: 13,
+    fontSize: font.sm,
     color: "rgba(200,169,110,0.5)",
     textAlign: "center",
     letterSpacing: 0.5,
-  },
+  }, // was: 13
 
   // Nav bar
   navBar: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    paddingBottom: Platform.OS === "ios" ? 24 : 14,
+    paddingHorizontal: pad.md, // was: 16
+    paddingVertical: pad.sm, // was: 12
+    paddingBottom: Platform.OS === "ios" ? pad.xl : pad.sm, // was: 24 / 14
   },
   navBtn: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 4,
+    gap: pad.xs, // was: 4
     backgroundColor: "rgba(200,169,110,0.12)",
     borderWidth: 1,
     borderColor: "rgba(200,169,110,0.25)",
-    paddingVertical: 10,
-    paddingHorizontal: 16,
-    borderRadius: 24,
+    paddingVertical: pad.sm, // was: 10
+    paddingHorizontal: pad.md, // was: 16
+    borderRadius: radius.pill, // was: 24
     minWidth: 90,
     justifyContent: "center",
   },
   navBtnDisabled: { opacity: 0.25 },
   navBtnText: {
-    fontSize: 14,
-    fontWeight: "700",
+    fontSize: font.md,
+    fontFamily: FONTS.bold,
     color: "#F5E6C8",
     letterSpacing: 0.4,
-  },
+  }, // was: 14
   navBtnTextDisabled: { color: "#5a4a35" },
   finishBtn: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 6,
-    backgroundColor: "#C8A96E",
-    paddingVertical: 10,
-    paddingHorizontal: 20,
-    borderRadius: 24,
+    gap: pad.s, // was: 6
+    backgroundColor: GOLD,
+    paddingVertical: pad.sm, // was: 10
+    paddingHorizontal: pad.lg, // was: 20
+    borderRadius: radius.pill, // was: 24
     minWidth: 90,
     justifyContent: "center",
     elevation: 4,
-    shadowColor: "#C8A96E",
+    shadowColor: GOLD,
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.4,
     shadowRadius: 8,
   },
   finishBtnText: {
-    fontSize: 14,
-    fontWeight: "800",
+    fontSize: font.md,
+    fontFamily: FONTS.bold,
     color: "#1a1208",
     letterSpacing: 0.4,
-  },
-  dotRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 6,
-  },
+  }, // was: 14
+
+  // Dots
+  dotRow: { flexDirection: "row", alignItems: "center", gap: pad.s }, // was: 6
   dot: {
     width: 5,
     height: 5,
     borderRadius: 3,
     backgroundColor: "rgba(200,169,110,0.2)",
   },
-  dotActive: {
-    width: 18,
-    height: 5,
-    borderRadius: 3,
-    backgroundColor: "#C8A96E",
-  },
+  dotActive: { width: 18, height: 5, borderRadius: 3, backgroundColor: GOLD },
 });

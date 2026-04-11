@@ -1,16 +1,10 @@
 import React, { useRef, useEffect } from "react";
 import { Audio } from "expo-av";
-import {
-  StyleSheet,
-  Text,
-  Image,
-  Pressable,
-  View,
-  useWindowDimensions,
-} from "react-native";
+import { StyleSheet, Text, Image, Pressable, View } from "react-native";
 import { useUser } from "../_contexts/UserContext";
 import { Image as ExpoImage } from "expo-image";
 import { FONTS } from "../theme";
+import { useTheme } from "../_contexts/ThemeContext";
 
 // ── Activity sequence — PNG icons ─────────────────────────────
 const ACTIVITY_STEPS = [
@@ -56,14 +50,11 @@ function StoryCard({
   resumeAtIndex = 0,
   isCompleted = false,
 }) {
-  const { width } = useWindowDimensions();
   const { currentProfile } = useUser();
+  const { sizes } = useTheme();
+  const sz = sizes.storyCard;
 
-  const isTablet = width >= 768;
-  const cardWidth = isTablet ? 250 : 175;
-  const cardHeight = isTablet ? 290 : 252;
-  const imageHeight = isTablet ? 155 : 135;
-  const iconSize = isTablet ? 20 : 16;
+  const { cardWidth, cardHeight, imageHeight } = sz;
 
   const topLeftIcon = isCompleted
     ? null
@@ -103,6 +94,177 @@ function StoryCard({
     onPress?.();
   };
 
+  // Build styles from theme tokens
+  const styles = StyleSheet.create({
+    container: {
+      margin: sz.cardMargin,
+      alignItems: "center",
+    },
+    glowLayer: {
+      position: "absolute",
+      top: 2,
+      backgroundColor: "transparent",
+      zIndex: 0,
+      shadowOffset: { width: 0, height: 4 },
+      shadowOpacity: 0.25,
+      shadowRadius: 14,
+      elevation: 10,
+    },
+    topLeftBadge: {
+      position: "absolute",
+      top: sz.topLeftBadgeOffset,
+      left: sz.topLeftBadgeOffset,
+      zIndex: 5,
+      width: sz.topLeftBadgeSize,
+      height: sz.topLeftBadgeSize,
+      borderRadius: sz.topLeftBadgeBorderRadius,
+      backgroundColor: "#1a1a2e",
+      borderWidth: 2,
+      borderColor: "rgba(0,188,212,0.45)",
+      justifyContent: "center",
+      alignItems: "center",
+      shadowColor: "#000",
+      shadowOffset: { width: 0, height: 2 },
+      shadowOpacity: 0.35,
+      shadowRadius: 4,
+      elevation: 6,
+    },
+    completedBadge: {
+      backgroundColor: "rgba(76,175,80,0.2)",
+      borderColor: "#4CAF50",
+      shadowColor: "#4CAF50",
+      shadowOpacity: 0.5,
+      shadowRadius: 8,
+      elevation: 8,
+    },
+    tickIcon: {
+      fontFamily: FONTS.bold,
+      fontSize: sz.tickFontSize,
+      color: "#4CAF50",
+    },
+    card: {
+      backgroundColor: "#16213e",
+      alignItems: "center",
+      overflow: "hidden",
+      zIndex: 1,
+      borderWidth: 1.5,
+      justifyContent: "flex-start",
+    },
+    cardPressed: {
+      borderColor: "rgba(0,188,212,0.6)",
+      backgroundColor: "#1a2a50",
+    },
+    titleOverlayContainer: {
+      position: "absolute",
+      bottom: 0,
+      left: 0,
+      right: 0,
+      flexDirection: "column",
+      justifyContent: "flex-end",
+    },
+    imageOverlay: {
+      position: "absolute",
+      top: 0,
+      left: 0,
+      right: 0,
+      bottom: 0,
+      backgroundColor: "rgba(13,13,36,0.78)",
+    },
+    title: {
+      fontFamily: FONTS.bold,
+      fontSize: sz.titleFontSize,
+      color: "#E0F7FA",
+      lineHeight: sz.titleLineHeight,
+      textShadowColor: "rgba(0,0,0,0.7)",
+      textShadowOffset: { width: 0, height: 1 },
+      textShadowRadius: 4,
+      paddingHorizontal: sz.titlePaddingH,
+      paddingBottom: sz.titlePaddingBottom,
+      paddingTop: sz.titlePaddingTop,
+    },
+    completedRibbon: {
+      position: "absolute",
+      top: sz.ribbonTop,
+      right: 0,
+      backgroundColor: "rgba(76,175,80,0.85)",
+      paddingHorizontal: sz.ribbonPaddingH,
+      paddingVertical: sz.ribbonPaddingV,
+      borderTopLeftRadius: sz.ribbonBorderRadius,
+      borderBottomLeftRadius: sz.ribbonBorderRadius,
+      zIndex: 2,
+    },
+    completedRibbonText: {
+      fontFamily: FONTS.bold,
+      fontSize: sz.ribbonFontSize,
+      color: "#fff",
+    },
+    intro: {
+      fontFamily: FONTS.light,
+      fontSize: sz.introFontSize,
+      color: "#7a9aaa",
+      fontStyle: "italic",
+      lineHeight: sz.introLineHeight,
+      textAlign: "center",
+      paddingHorizontal: sz.introPaddingH,
+      marginTop: sz.introMarginTop,
+      marginBottom: sz.introMarginBottom,
+      flexShrink: 1,
+    },
+    stepsBlock: {
+      marginTop: "auto",
+      alignItems: "center",
+      width: "100%",
+      paddingBottom: 4,
+    },
+    stepsRow: {
+      flexDirection: "row",
+      alignItems: "center",
+      justifyContent: "center",
+      paddingHorizontal: sz.stepsRowPaddingH,
+      paddingVertical: sz.stepsRowPaddingV,
+      marginHorizontal: sz.stepsRowMarginH,
+      backgroundColor: "rgba(0,0,0,0.35)",
+      borderRadius: sz.stepsRowBorderRadius,
+      borderWidth: 1,
+      borderColor: "rgba(0,188,212,0.2)",
+      width: "88%",
+    },
+    stepItem: {
+      flexDirection: "row",
+      alignItems: "center",
+    },
+    stepIconWrap: {
+      width: sz.stepIconWrapSize,
+      height: sz.stepIconWrapSize,
+      alignItems: "center",
+      justifyContent: "center",
+      borderRadius: sz.stepIconWrapBorderRadius,
+      padding: sz.stepIconWrapPadding,
+    },
+    stepImage: {
+      width: sz.stepImageSize,
+      height: sz.stepImageSize,
+    },
+    stepImageDone: { opacity: 0.55 },
+    stepDot: {
+      width: sz.stepDotSize,
+      height: sz.stepDotSize,
+      borderRadius: sz.stepDotSize / 2,
+      backgroundColor: "rgba(0,188,212,0.35)",
+      marginHorizontal: sz.stepDotMarginH,
+    },
+    resumeLabel: {
+      fontFamily: FONTS.bold,
+      fontSize: sz.resumeLabelFontSize,
+      color: "#FFD54F",
+      marginTop: sz.resumeLabelMarginTop,
+      marginBottom: sz.resumeLabelMarginBottom,
+      opacity: 0.85,
+    },
+  });
+
+  const cardBorderRadius = cardWidth / 8;
+
   return (
     <View style={[styles.container, { width: cardWidth }]}>
       {/* Glow layer */}
@@ -112,7 +274,7 @@ function StoryCard({
           {
             height: cardHeight,
             width: cardWidth,
-            borderRadius: cardWidth / 8,
+            borderRadius: cardBorderRadius,
             shadowColor: isCompleted ? "#4CAF50" : "#00BCD4",
           },
         ]}
@@ -125,7 +287,7 @@ function StoryCard({
         </View>
       ) : topLeftIcon ? (
         <View style={styles.topLeftBadge}>
-          <Text style={{ fontSize: iconSize + 2 }}>{topLeftIcon}</Text>
+          <Text style={{ fontSize: sz.tickFontSize - 4 }}>{topLeftIcon}</Text>
         </View>
       ) : null}
 
@@ -135,7 +297,7 @@ function StoryCard({
           {
             width: cardWidth,
             height: cardHeight,
-            borderRadius: cardWidth / 8,
+            borderRadius: cardBorderRadius,
             borderColor: isCompleted
               ? "rgba(76,175,80,0.45)"
               : resuming
@@ -157,23 +319,15 @@ function StoryCard({
             cachePolicy="disk"
           />
 
-          {/* "Completed" ribbon — sits above the gradient */}
+          {/* "Completed" ribbon */}
           {isCompleted && (
             <View style={styles.completedRibbon}>
               <Text style={styles.completedRibbonText}>✓ Completed</Text>
             </View>
           )}
 
-          {/*
-            Title overlay: gradient sits at the bottom of the image,
-            grows upward to fit any title length.
-            Key change: remove fixed height on imageOverlay,
-            use flexDirection column-reverse so gradient hugs the text.
-          */}
           <View style={styles.titleOverlayContainer}>
-            {/* gradient fade */}
             <View style={styles.imageOverlay} />
-            {/* title text — no numberOfLines limit */}
             <Text style={styles.title}>{title}</Text>
           </View>
         </View>
@@ -198,7 +352,7 @@ function StoryCard({
                       isResumeStep && {
                         borderWidth: 2,
                         borderColor: step.color,
-                        borderRadius: 8,
+                        borderRadius: sz.stepIconWrapBorderRadius,
                         backgroundColor: `${step.color}22`,
                         shadowColor: step.color,
                         shadowOffset: { width: 0, height: 0 },
@@ -239,208 +393,5 @@ function StoryCard({
     </View>
   );
 }
-
-const styles = StyleSheet.create({
-  container: {
-    margin: 10,
-    alignItems: "center",
-  },
-  glowLayer: {
-    position: "absolute",
-    top: 2,
-    backgroundColor: "transparent",
-    zIndex: 0,
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.25,
-    shadowRadius: 14,
-    elevation: 10,
-  },
-  topLeftBadge: {
-    position: "absolute",
-    top: -10,
-    left: -10,
-    zIndex: 5,
-    width: 34,
-    height: 34,
-    borderRadius: 17,
-    backgroundColor: "#1a1a2e",
-    borderWidth: 2,
-    borderColor: "rgba(0,188,212,0.45)",
-    justifyContent: "center",
-    alignItems: "center",
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.35,
-    shadowRadius: 4,
-    elevation: 6,
-  },
-  completedBadge: {
-    backgroundColor: "rgba(76,175,80,0.2)",
-    borderColor: "#4CAF50",
-    shadowColor: "#4CAF50",
-    shadowOpacity: 0.5,
-    shadowRadius: 8,
-    elevation: 8,
-  },
-  // Green tick — bold
-  tickIcon: {
-    fontFamily: FONTS.bold,
-    fontSize: 18,
-    color: "#4CAF50",
-  },
-  card: {
-    backgroundColor: "#16213e",
-    alignItems: "center",
-    overflow: "hidden",
-    zIndex: 1,
-    borderWidth: 1.5,
-    justifyContent: "flex-start",
-  },
-  cardPressed: {
-    borderColor: "rgba(0,188,212,0.6)",
-    backgroundColor: "#1a2a50",
-  },
-  titleOverlayContainer: {
-    position: "absolute",
-    bottom: 0,
-    left: 0,
-    right: 0,
-    // column-reverse: title renders first (visually bottom),
-    // gradient fills remaining space above it
-    flexDirection: "column",
-    justifyContent: "flex-end",
-  },
-  // Semi-transparent gradient behind the title.
-  // StyleSheet doesn't support real gradients, so we stack two
-  // Views: a fully transparent top edge and an opaque bottom.
-  // Using position absolute here so it stretches to fill the container.
-  imageOverlay: {
-    position: "absolute",
-    top: 0,
-    left: 0,
-    right: 0,
-    bottom: 0,
-    backgroundColor: "rgba(13,13,36,0.78)",
-  },
-  titleOverlay: {
-    position: "absolute",
-    bottom: 0,
-    left: 0,
-    right: 0,
-    paddingHorizontal: 10,
-    paddingBottom: 8,
-    paddingTop: 12,
-  },
-  // Story card title — CoText-Bold replaces Noteworthy
-  title: {
-    fontFamily: FONTS.bold,
-    fontSize: 13,
-    color: "#E0F7FA",
-    lineHeight: 17,
-    textShadowColor: "rgba(0,0,0,0.7)",
-    textShadowOffset: { width: 0, height: 1 },
-    textShadowRadius: 4,
-    paddingHorizontal: 10,
-    paddingBottom: 8,
-    paddingTop: 10,
-    // no numberOfLines — let it wrap freely
-  },
-  completedRibbon: {
-    position: "absolute",
-    top: 8,
-    right: 0,
-    backgroundColor: "rgba(76,175,80,0.85)",
-    paddingHorizontal: 8,
-    paddingVertical: 3,
-    borderTopLeftRadius: 8,
-    borderBottomLeftRadius: 8,
-  },
-  // "✓ Completed" ribbon text — bold, white
-  completedRibbon: {
-    position: "absolute",
-    top: 8,
-    right: 0,
-    backgroundColor: "rgba(76,175,80,0.85)",
-    paddingHorizontal: 8,
-    paddingVertical: 3,
-    borderTopLeftRadius: 8,
-    borderBottomLeftRadius: 8,
-    zIndex: 2,
-  },
-  completedRibbonText: {
-    fontFamily: FONTS.bold,
-    fontSize: 10,
-    color: "#fff",
-  },
-  // Intro blurb — light italic
-  intro: {
-    fontFamily: FONTS.light,
-    fontSize: 10,
-    color: "#7a9aaa",
-    fontStyle: "italic",
-    lineHeight: 14,
-    textAlign: "center",
-    paddingHorizontal: 10,
-    marginTop: 8,
-    marginBottom: 2,
-    flexShrink: 1,
-  },
-
-  // ── Steps block ──
-  stepsBlock: {
-    marginTop: "auto",
-    alignItems: "center",
-    width: "100%",
-    paddingBottom: 4,
-  },
-  stepsRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-    paddingHorizontal: 8,
-    paddingVertical: 7,
-    marginHorizontal: 10,
-    backgroundColor: "rgba(0,0,0,0.35)",
-    borderRadius: 20,
-    borderWidth: 1,
-    borderColor: "rgba(0,188,212,0.2)",
-    width: "88%",
-  },
-  stepItem: {
-    flexDirection: "row",
-    alignItems: "center",
-  },
-  stepIconWrap: {
-    width: 28,
-    height: 28,
-    alignItems: "center",
-    justifyContent: "center",
-    borderRadius: 6,
-    padding: 2,
-  },
-  stepImage: {
-    width: 20,
-    height: 20,
-  },
-  stepImageDone: {
-    opacity: 0.55,
-  },
-  stepDot: {
-    width: 4,
-    height: 4,
-    borderRadius: 2,
-    backgroundColor: "rgba(0,188,212,0.35)",
-    marginHorizontal: 3,
-  },
-  // Resume label — bold, yellow, always rendered (transparent when inactive)
-  resumeLabel: {
-    fontFamily: FONTS.bold,
-    fontSize: 9,
-    color: "#FFD54F",
-    marginTop: 4,
-    marginBottom: 2,
-    opacity: 0.85,
-  },
-});
 
 export default StoryCard;

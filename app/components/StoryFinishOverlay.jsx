@@ -1,22 +1,4 @@
 // components/StoryFinishOverlay.jsx
-//
-// Bottom-sheet celebration: slides up from bottom covering ~75% of screen.
-// 3-step sequential flow: Coins → Diamonds → Words.
-// Coins and diamonds auto-advance after 1s each.
-// Words step shows a "Continue" button — user tap triggers onDone.
-// This prevents the JS thread freeze caused by auto-advancing into
-// handleFinishDone while animations are still running.
-//
-// Props:
-//   visible          — boolean
-//   wordsCollected   — number
-//   sampleWords      — string[] (optional)
-//   coinsEarned      — number
-//   diamondsEarned   — number
-//   coinTargetRef    — kept for API compatibility (unused)
-//   diamondTargetRef — kept for API compatibility (unused)
-//   wordTargetRef    — kept for API compatibility (unused)
-//   onDone           — called after user taps Continue on the words step
 
 import React, { useRef, useEffect, useState, useCallback } from "react";
 import { Audio } from "expo-av";
@@ -32,6 +14,7 @@ import {
   Modal,
 } from "react-native";
 import { FONTS } from "../theme";
+import { font, pad, radius, size } from "../theme/tokens"; // ← ADD
 
 const { width: SW, height: SH } = Dimensions.get("window");
 
@@ -64,9 +47,6 @@ const SAMPLE_WORDS = [
   "journey",
 ];
 
-// ─────────────────────────────────────────────────────────────────────────────
-// PileIcon
-// ─────────────────────────────────────────────────────────────────────────────
 const PILE_OFFSETS = [
   { x: 0, y: 0, rot: "0deg", sc: 1.0 },
   { x: -16, y: -9, rot: "-13deg", sc: 0.87 },
@@ -75,12 +55,15 @@ const PILE_OFFSETS = [
   { x: 9, y: -18, rot: "6deg", sc: 0.75 },
 ];
 
-function PileIcon({ source, size = 72, glowColor }) {
+// ─────────────────────────────────────────────────────────────────────────────
+// PILE ICON
+// ─────────────────────────────────────────────────────────────────────────────
+function PileIcon({ source, size: iconSize = 72, glowColor }) {
   return (
     <View
       style={{
-        width: size + 40,
-        height: size + 22,
+        width: iconSize + 40,
+        height: iconSize + 22,
         alignItems: "center",
         justifyContent: "flex-end",
       }}
@@ -91,11 +74,11 @@ function PileIcon({ source, size = 72, glowColor }) {
           source={source}
           style={{
             position: "absolute",
-            width: size * o.sc,
-            height: size * o.sc,
+            width: iconSize * o.sc,
+            height: iconSize * o.sc,
             bottom: 0,
             left: "50%",
-            marginLeft: -(size * o.sc) / 2 + o.x,
+            marginLeft: -(iconSize * o.sc) / 2 + o.x,
             marginBottom: -o.y,
             opacity: 1 - i * 0.07,
             transform: [{ rotate: o.rot }],
@@ -112,7 +95,7 @@ function PileIcon({ source, size = 72, glowColor }) {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// WordChip
+// WORD CHIP
 // ─────────────────────────────────────────────────────────────────────────────
 function WordChip({ word, delay }) {
   const sc = useRef(new Animated.Value(0)).current;
@@ -143,21 +126,22 @@ function WordChip({ word, delay }) {
     </Animated.View>
   );
 }
+
 const wS = StyleSheet.create({
   chip: {
     backgroundColor: "rgba(0,188,212,0.15)",
     borderWidth: 1.5,
     borderColor: C.tealBorder,
-    borderRadius: 20,
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    margin: 4,
+    borderRadius: radius.pill, // was: 20
+    paddingHorizontal: pad.sm, // was: 12
+    paddingVertical: pad.xs, // was: 6
+    margin: pad.xs, // was: 4
   },
-  text: { fontFamily: FONTS.bold, color: C.teal, fontSize: 14 },
+  text: { fontFamily: FONTS.bold, color: C.teal, fontSize: font.md }, // was: 14
 });
 
 // ─────────────────────────────────────────────────────────────────────────────
-// StepCard
+// STEP CARD
 // ─────────────────────────────────────────────────────────────────────────────
 const StepCard = React.forwardRef(function StepCard(
   { config, enterAnim, opAnim, showContinue, onContinue },
@@ -214,44 +198,44 @@ const pS = StyleSheet.create({
   card: {
     width: "100%",
     backgroundColor: "transparent",
-    padding: 24,
+    padding: pad.xl, // was: 24
     alignItems: "center",
   },
   heading: {
     fontFamily: FONTS.bold,
-    fontSize: 22,
+    fontSize: font.xl, // was: 22
     color: C.textPri,
-    marginBottom: 18,
+    marginBottom: pad.lg, // was: 18
     letterSpacing: 0.3,
     textShadowColor: "rgba(0,188,212,0.35)",
     textShadowOffset: { width: 0, height: 0 },
     textShadowRadius: 10,
   },
-  pileWrap: { marginBottom: 14, alignItems: "center" },
-  countText: { fontFamily: FONTS.bold, fontSize: 42, letterSpacing: 0.5 },
+  pileWrap: { marginBottom: pad.sm, alignItems: "center" },
+  countText: { fontFamily: FONTS.bold, fontSize: font.h2, letterSpacing: 0.5 }, // was: 42
   subLabel: {
     fontFamily: FONTS.regular,
-    fontSize: 16,
+    fontSize: font.lg,
     color: C.textMuted,
-    marginTop: 4,
-    marginBottom: 10,
-  },
+    marginTop: pad.xs,
+    marginBottom: pad.sm,
+  }, // was: 16
   wordsWrap: {
     flexDirection: "row",
     flexWrap: "wrap",
     justifyContent: "center",
-    marginVertical: 8,
+    marginVertical: pad.s,
     maxWidth: SW - 60,
   },
   continueBtn: {
-    marginTop: 20,
-    borderRadius: 24,
+    marginTop: pad.lg, // was: 20
+    borderRadius: radius.pill, // was: 24
     borderWidth: 1.5,
-    paddingHorizontal: 40,
-    paddingVertical: 12,
+    paddingHorizontal: pad.xxl, // was: 40
+    paddingVertical: pad.sm, // was: 12
     backgroundColor: "rgba(0,188,212,0.1)",
   },
-  continueBtnText: { fontFamily: FONTS.bold, fontSize: 15 },
+  continueBtnText: { fontFamily: FONTS.bold, fontSize: font.md }, // was: 15
 });
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -271,13 +255,9 @@ const StoryFinishOverlay = ({
   const [step, setStep] = useState(-1);
   const [showContinue, setShowContinue] = useState(false);
   const advancingRef = useRef(false);
-
-  // Prevents hide animation running on fresh mounts where visible was never true.
-  // Without this, fresh Home remounts (router.replace + iOS Modal) trigger the
-  // hide path immediately, interfering with the show sequence.
   const wasVisibleRef = useRef(false);
-
   const cardRef = useRef(null);
+
   const sheetY = useRef(new Animated.Value(SHEET_HEIGHT)).current;
   const scrOp = useRef(new Animated.Value(0)).current;
   const enterAnim = useRef(new Animated.Value(0.85)).current;
@@ -326,7 +306,6 @@ const StoryFinishOverlay = ({
     } catch (_) {}
   };
 
-  // ── Show / hide sheet ─────────────────────────────────────────────────────
   useEffect(() => {
     if (!visible) {
       if (!wasVisibleRef.current) return;
@@ -343,13 +322,11 @@ const StoryFinishOverlay = ({
       });
       return;
     }
-
     wasVisibleRef.current = true;
     advancingRef.current = false;
     setShowContinue(false);
     scrOp.setValue(0);
     sheetY.setValue(SHEET_HEIGHT);
-
     Animated.parallel([
       Animated.timing(scrOp, {
         toValue: 1,
@@ -368,17 +345,14 @@ const StoryFinishOverlay = ({
     });
   }, [visible]);
 
-  // ── Step animation ────────────────────────────────────────────────────────
   useEffect(() => {
     if (step < 0 || step > 2) return;
     advancingRef.current = false;
     setShowContinue(false);
     enterAnim.setValue(0.85);
     opAnim.setValue(0);
-
     const stepSounds = [sndCoins, sndDiamond, sndPop];
     playSound(stepSounds[step]);
-
     Animated.parallel([
       Animated.spring(enterAnim, {
         toValue: 1,
@@ -394,9 +368,7 @@ const StoryFinishOverlay = ({
     ]).start((result) => {
       if (!result.finished || advancingRef.current) return;
       advancingRef.current = true;
-
       if (step < 2) {
-        // Coins and diamonds — auto-advance after 1s
         setTimeout(() => {
           Animated.parallel([
             Animated.timing(opAnim, {
@@ -413,15 +385,11 @@ const StoryFinishOverlay = ({
           ]).start(() => setStep((prev) => prev + 1));
         }, 1000);
       } else {
-        // Words step — show Continue button, wait for user tap
         setShowContinue(true);
       }
     });
   }, [step]);
 
-  // ── Continue button handler ───────────────────────────────────────────────
-  // Called only on the last step. Slides out then fires onDone.
-  // User-initiated so JS thread is free when handleFinishDone runs.
   const handleContinue = useCallback(() => {
     setShowContinue(false);
     Animated.parallel([
@@ -474,7 +442,6 @@ const StoryFinishOverlay = ({
   ];
 
   if (!visible && step === -1) return null;
-
   const cfg = step >= 0 && step <= 2 ? STEPS[step] : null;
 
   return (
@@ -489,7 +456,6 @@ const StoryFinishOverlay = ({
           style={[styles.scrim, { opacity: scrOp }]}
           pointerEvents="none"
         />
-
         <Animated.View
           style={[styles.sheet, { transform: [{ translateY: sheetY }] }]}
         >
@@ -512,7 +478,6 @@ const StoryFinishOverlay = ({
 
 export default StoryFinishOverlay;
 
-// ─────────────────────────────────────────────────────────────
 const styles = StyleSheet.create({
   shell: { flex: 1, backgroundColor: "transparent" },
   scrim: {
@@ -530,14 +495,14 @@ const styles = StyleSheet.create({
     right: 0,
     height: SHEET_HEIGHT,
     backgroundColor: C.bg,
-    borderTopLeftRadius: 28,
-    borderTopRightRadius: 28,
+    borderTopLeftRadius: radius.xxl, // was: 28
+    borderTopRightRadius: radius.xxl,
     borderTopWidth: 1.5,
     borderLeftWidth: 1.5,
     borderRightWidth: 1.5,
     borderColor: "rgba(0,188,212,0.25)",
     alignItems: "center",
-    paddingTop: 8,
+    paddingTop: pad.s, // was: 8
     shadowColor: "#000",
     shadowOffset: { width: 0, height: -8 },
     shadowOpacity: 0.5,
@@ -549,6 +514,6 @@ const styles = StyleSheet.create({
     height: 5,
     borderRadius: 3,
     backgroundColor: "rgba(255,255,255,0.2)",
-    marginBottom: 6,
+    marginBottom: pad.xs, // was: 6
   },
 });

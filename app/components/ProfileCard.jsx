@@ -1,6 +1,7 @@
 import { StyleSheet, Text, View, Image, TouchableOpacity } from "react-native";
 import React from "react";
 import { COLORS, SHADOWS, FONTS } from "../theme";
+import { font, pad, radius, size } from "../theme/tokens";
 
 const ProfileCard = ({
   name,
@@ -109,9 +110,9 @@ const styles = StyleSheet.create({
   card: {
     flexDirection: "row",
     backgroundColor: "rgba(255,255,255,0.06)",
-    borderRadius: 20,
-    padding: 16,
-    marginBottom: 12,
+    borderRadius: radius.xl, // 20 → radius.xl (24/32)
+    padding: pad.md, // 16 → pad.md (16/22)
+    marginBottom: pad.sm, // 12 → pad.sm (12/16)
     alignItems: "center",
     borderWidth: 1.5,
     borderColor: COLORS.borderTeal,
@@ -122,13 +123,13 @@ const styles = StyleSheet.create({
     backgroundColor: COLORS.surfacePurple,
   },
   avatarContainer: {
-    width: 72,
-    height: 72,
-    borderRadius: 36,
+    width: size.avatarLg, // 72 → size.avatarLg (60/80) — closest to original 72
+    height: size.avatarLg, // 72 → size.avatarLg
+    borderRadius: size.avatarLg / 2,
     overflow: "hidden",
     borderWidth: 2.5,
     borderColor: COLORS.teal,
-    marginRight: 14,
+    marginRight: pad.sm, // 14 → pad.sm (12/16)
   },
   avatarContainerActive: {
     borderColor: COLORS.purple,
@@ -144,38 +145,38 @@ const styles = StyleSheet.create({
   // Profile name — bold, primary
   name: {
     fontFamily: FONTS.bold,
-    fontSize: 20,
+    fontSize: font.xl, // 20 → font.xl (20/26)
     color: COLORS.textPrimary,
-    marginBottom: 3,
+    marginBottom: pad.xs, // 3 → pad.xs (4/6)
   },
   // Age — light, muted
   age: {
     fontFamily: FONTS.light,
-    fontSize: 14,
+    fontSize: font.md, // 14 → font.md (15/19) — closest to 14
     color: COLORS.textMuted,
-    marginBottom: 8,
+    marginBottom: pad.s, // 8 → pad.s (8/11)
   },
   levelBadge: {
     alignSelf: "flex-start",
-    paddingHorizontal: 12,
-    paddingVertical: 4,
-    borderRadius: 12,
+    paddingHorizontal: pad.sm, // 12 → pad.sm (12/16)
+    paddingVertical: pad.xs, // 4 → pad.xs (4/6)
+    borderRadius: radius.sm, // 12 → radius.sm (10/14)
     borderWidth: 1,
   },
   // Reading level badge text — bold, accent coloured
   levelText: {
     fontFamily: FONTS.bold,
-    fontSize: 13,
+    fontSize: font.sm, // 13 → font.sm (13/17)
     textTransform: "capitalize",
   },
   actionsContainer: {
     flexDirection: "column",
-    gap: 8,
+    gap: pad.s, // 8 → pad.s (8/11)
   },
   actionButton: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
+    width: size.hitSm, // 36 → size.hitSm (36/48)
+    height: size.hitSm, // 36 → size.hitSm
+    borderRadius: size.hitSm / 2,
     backgroundColor: "rgba(255,255,255,0.08)",
     justifyContent: "center",
     alignItems: "center",
@@ -183,6 +184,6 @@ const styles = StyleSheet.create({
     borderColor: COLORS.borderTeal,
   },
   actionIcon: {
-    fontSize: 16,
+    fontSize: font.lg, // 16 → font.lg (17/22)
   },
 });

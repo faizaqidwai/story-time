@@ -1,11 +1,4 @@
-// components/Article.jsx  (updated)
-//
-// Changes from original:
-//  • Reads story-specific listening data from StoryActivityContext instead of
-//    the global articles.json — each story has its own listening article.
-//  • On completion (win or lose), calls completeActivity() then navigates
-//    to DescribeObjectGame (the final activity).
-//  • Falls back to global articles.json if no storySession exists (standalone).
+// components/Article.jsx
 
 import React, { useState, useRef, useEffect } from "react";
 import {
@@ -24,7 +17,7 @@ import {
 import * as Speech from "expo-speech";
 import { Audio } from "expo-av";
 import { useLocalSearchParams, useRouter } from "expo-router";
-import data from "../data/articles.json"; // fallback
+import data from "../data/articles.json";
 import GameEnd from "./GameEnd";
 import BadgePopup from "./BadgePopup";
 import {
@@ -33,6 +26,7 @@ import {
   ACTIVITY_ROUTES,
 } from "../_contexts/StoryActivityContext";
 import { FONTS } from "../theme";
+import { font, pad, radius, size } from "../theme/tokens"; // ← ADD
 
 const { width: SW } = Dimensions.get("window");
 const STATUS_H =
@@ -64,14 +58,13 @@ const C = {
 const COINS_PER_CORRECT = 10;
 
 // ─────────────────────────────────────────────────────────────────────────────
-// FLYING COIN (unchanged)
+// FLYING COIN
 // ─────────────────────────────────────────────────────────────────────────────
 function FlyingCoin({ fromX, fromY, toX, toY, delay, onLand }) {
   const animX = useRef(new Animated.Value(fromX - 13)).current;
   const animY = useRef(new Animated.Value(fromY - 13)).current;
   const op = useRef(new Animated.Value(0)).current;
   const sc = useRef(new Animated.Value(0.6)).current;
-
   useEffect(() => {
     const duration = 480 + Math.random() * 160;
     Animated.sequence([
@@ -110,7 +103,6 @@ function FlyingCoin({ fromX, fromY, toX, toY, delay, onLand }) {
       onLand?.();
     });
   }, []);
-
   return (
     <Animated.Image
       source={require("../../assets/img/coin.png")}
@@ -134,7 +126,9 @@ function FlyingCoin({ fromX, fromY, toX, toY, delay, onLand }) {
   );
 }
 
-// ── Waveform (unchanged) ─────────────────────────────────────────────────────
+// ─────────────────────────────────────────────────────────────────────────────
+// WAVEFORM
+// ─────────────────────────────────────────────────────────────────────────────
 function Waveform({ isPlaying }) {
   const bars = useRef(
     Array.from({ length: 22 }, () => new Animated.Value(0.2)),
@@ -205,12 +199,14 @@ const wS = StyleSheet.create({
     alignItems: "center",
     gap: 3,
     height: 44,
-    paddingHorizontal: 4,
+    paddingHorizontal: pad.xs,
   },
   bar: { width: 4, height: 36, borderRadius: 2 },
 });
 
-// ── Progress ring (unchanged) ────────────────────────────────────────────────
+// ─────────────────────────────────────────────────────────────────────────────
+// PROGRESS RING
+// ─────────────────────────────────────────────────────────────────────────────
 function ProgressRing({ progress }) {
   return (
     <View
@@ -245,9 +241,12 @@ function ProgressRing({ progress }) {
           transform: [{ rotate: "-90deg" }],
         }}
       />
-      {/* Progress % — bold, muted */}
       <Text
-        style={{ fontFamily: FONTS.bold, fontSize: 10, color: C.textMuted }}
+        style={{
+          fontFamily: FONTS.bold,
+          fontSize: font.xs,
+          color: C.textMuted,
+        }}
       >
         {Math.round(progress * 100)}%
       </Text>
@@ -255,7 +254,9 @@ function ProgressRing({ progress }) {
   );
 }
 
-// ── Option card ──────────────────────────────────────────────────────────────
+// ─────────────────────────────────────────────────────────────────────────────
+// OPTION CARD
+// ─────────────────────────────────────────────────────────────────────────────
 function OptionCard({ label, text, state, onPress, index, disabled }) {
   const scale = useRef(new Animated.Value(1)).current;
   const slideIn = useRef(new Animated.Value(30)).current;
@@ -509,17 +510,14 @@ function ListeningChallenge({ article, onFinish }) {
     setAnswers((prev) => ({ ...prev, [qIdx]: optIdx }));
     setRevealed((prev) => ({ ...prev, [qIdx]: true }));
     playSound(isCorrect ? sndCorrect : sndIncorrect);
-    if (isCorrect) {
-      onFinish?.("coins", { cardRef, qIdx });
-    }
+    if (isCorrect) onFinish?.("coins", { cardRef, qIdx });
     setTimeout(() => {
       if (qIdx + 1 >= article.questions.length) {
         const finalAnswers = { ...answers, [qIdx]: optIdx };
         const correct = article.questions.filter(
           (q, i) => finalAnswers[i] === q.correct_answer_index,
         ).length;
-        const total = article.questions.length;
-        onFinish?.("done", { correct, total });
+        onFinish?.("done", { correct, total: article.questions.length });
       } else {
         Animated.parallel([
           Animated.timing(pageSlide, {
@@ -651,7 +649,6 @@ function ListeningChallenge({ article, onFinish }) {
             </View>
           )}
         </View>
-
         {unlocked && (
           <View style={styles.qProgressTrack}>
             <View
@@ -740,8 +737,7 @@ function ListeningChallenge({ article, onFinish }) {
 const Article = () => {
   const { id } = useLocalSearchParams();
   const router = useRouter();
-
-  const { storySession, completeActivity } = useStoryActivity();
+  const { currentStory, storySession, completeActivity } = useStoryActivity();
 
   const article = (() => {
     const snap = storySession?.activityDataSnapshot?.listening;
@@ -791,7 +787,7 @@ const Article = () => {
   const [showBadgePopup, setShowBadgePopup] = useState(false);
   const [challengeKey, setChallengeKey] = useState(0);
 
-  if (!article) {
+  if (!article)
     return (
       <View
         style={[
@@ -799,12 +795,11 @@ const Article = () => {
           { justifyContent: "center", alignItems: "center" },
         ]}
       >
-        <Text style={{ color: C.textMuted, fontSize: 16 }}>
+        <Text style={{ color: C.textMuted, fontSize: font.lg }}>
           Article not found
         </Text>
       </View>
     );
-  }
 
   const spawnCoins = (cardRef) => {
     if (!cardRef?.current) return;
@@ -868,9 +863,8 @@ const Article = () => {
       spawnCoins(payload.cardRef);
     } else if (type === "done") {
       const { correct, total } = payload;
-      const won = correct === total;
       setGameEndScore({ correct, total });
-      setGameEndType(won ? "won" : "lose");
+      setGameEndType(correct === total ? "won" : "lose");
       setShowGameEnd(true);
     }
   };
@@ -945,7 +939,7 @@ const Article = () => {
       </View>
 
       <View style={styles.coverWrap}>
-        <Image
+        <Image //source={{ uri: currentStory.cover }}
           source={
             typeof cover === "string" && cover.startsWith("http")
               ? { uri: cover }
@@ -995,7 +989,6 @@ const Article = () => {
           storySession ? "Great listening! Next: Object Challenge →" : undefined
         }
       />
-
       <BadgePopup
         visible={showBadgePopup}
         badge="article_quiz_won"
@@ -1015,38 +1008,40 @@ const Article = () => {
 export default Article;
 
 // ─────────────────────────────────────────────────────────────────────────────
+// STYLES
+// ─────────────────────────────────────────────────────────────────────────────
 const styles = StyleSheet.create({
   root: { flex: 1, backgroundColor: C.bg },
   scroll: { flex: 1 },
-  scrollContent: { alignItems: "center", paddingBottom: 24 },
+  scrollContent: { alignItems: "center", paddingBottom: pad.xl },
+
   topBar: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
-    paddingHorizontal: 16,
-    paddingTop: STATUS_H + 8,
-    paddingBottom: 10,
+    paddingHorizontal: pad.md, // was: 16
+    paddingTop: STATUS_H + pad.s, // was: + 8
+    paddingBottom: pad.sm, // was: 10
   },
   backBtn: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
+    width: size.hitMd,
+    height: size.hitMd,
+    borderRadius: size.hitMd / 2, // was: 44
     backgroundColor: C.surfaceDim,
     borderWidth: 1,
     borderColor: C.border,
     alignItems: "center",
     justifyContent: "center",
   },
-  backIcon: { fontSize: 28, color: C.textSec, marginTop: -2 },
-  // Screen title — bold, teal
+  backIcon: { fontSize: font.xxl, color: C.textSec, marginTop: -2 }, // was: 28
   topTitle: {
     fontFamily: FONTS.bold,
     flex: 1,
     textAlign: "center",
-    fontSize: 15,
+    fontSize: font.md,
     color: C.teal,
-    letterSpacing: 0.3,
-    marginHorizontal: 8,
+    letterSpacing: 0.3, // was: 15
+    marginHorizontal: pad.s,
     textShadowColor: "rgba(0,188,212,0.5)",
     textShadowOffset: { width: 0, height: 0 },
     textShadowRadius: 10,
@@ -1054,26 +1049,22 @@ const styles = StyleSheet.create({
   coinBadge: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 5,
+    gap: pad.xs,
     backgroundColor: C.yellowDim,
-    borderRadius: 22,
+    borderRadius: radius.pill,
     borderWidth: 1.5,
     borderColor: C.yellowBorder,
-    paddingHorizontal: 11,
-    paddingVertical: 6,
+    paddingHorizontal: pad.sm, // was: 11
+    paddingVertical: pad.xs, // was: 6
     shadowColor: C.yellow,
     shadowOffset: { width: 0, height: 0 },
     shadowOpacity: 0.45,
     shadowRadius: 8,
     elevation: 5,
   },
-  coinIcon: { width: 22, height: 22 },
-  // Coin count — bold, yellow
-  coinCount: {
-    fontFamily: FONTS.bold,
-    fontSize: 14,
-    color: C.yellow,
-  },
+  coinIcon: { width: size.iconSm, height: size.iconSm }, // was: 22
+  coinCount: { fontFamily: FONTS.bold, fontSize: font.md, color: C.yellow }, // was: 14
+
   coverWrap: { width: "100%", height: 190, position: "relative" },
   coverImage: { width: "100%", height: "100%" },
   coverGradient: {
@@ -1082,34 +1073,31 @@ const styles = StyleSheet.create({
   },
   coverTags: {
     position: "absolute",
-    bottom: 12,
-    left: 16,
+    bottom: pad.sm,
+    left: pad.md,
     flexDirection: "row",
-    gap: 8,
+    gap: pad.s,
   },
   coverTag: {
     backgroundColor: "rgba(0,188,212,0.25)",
-    borderRadius: 12,
+    borderRadius: radius.sm,
     borderWidth: 1,
     borderColor: C.tealBorder,
-    paddingHorizontal: 10,
-    paddingVertical: 4,
+    paddingHorizontal: pad.sm,
+    paddingVertical: pad.xs,
   },
-  // Cover tag label — bold, teal
-  coverTagText: {
-    fontFamily: FONTS.bold,
-    fontSize: 12,
-    color: C.teal,
-  },
-  challengeWrap: { width: "100%", alignItems: "center", paddingTop: 16 },
+  coverTagText: { fontFamily: FONTS.bold, fontSize: font.sm, color: C.teal }, // was: 12
+
+  challengeWrap: { width: "100%", alignItems: "center", paddingTop: pad.md },
+
   playerCard: {
     width: "92%",
     backgroundColor: C.surface,
-    borderRadius: 22,
+    borderRadius: radius.xl, // was: 22
     borderWidth: 1.5,
     borderColor: C.tealBorder,
-    padding: 20,
-    marginBottom: 20,
+    padding: pad.lg, // was: 20
+    marginBottom: pad.lg,
     shadowColor: C.teal,
     shadowOffset: { width: 0, height: 0 },
     shadowOpacity: 0.2,
@@ -1120,12 +1108,12 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
-    marginBottom: 16,
+    marginBottom: pad.md,
   },
   playerHeaderLeft: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 12,
+    gap: pad.sm,
     flex: 1,
   },
   headphonesBadge: {
@@ -1138,36 +1126,34 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
   },
-  headphonesIcon: { fontSize: 22 },
-  // Player card title — bold
+  headphonesIcon: { fontSize: font.xl }, // was: 22
   playerTitle: {
     fontFamily: FONTS.bold,
-    fontSize: 15,
+    fontSize: font.md,
     color: C.textPri,
     letterSpacing: 0.3,
-  },
-  // Player sub-status — light, muted
+  }, // was: 15
   playerSub: {
     fontFamily: FONTS.light,
-    fontSize: 11,
+    fontSize: font.s,
     color: C.textMuted,
     marginTop: 2,
-  },
+  }, // was: 11
   waveformWrap: {
     backgroundColor: "rgba(0,0,0,0.25)",
-    borderRadius: 12,
+    borderRadius: radius.md,
     overflow: "hidden",
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    marginBottom: 16,
+    paddingHorizontal: pad.s,
+    paddingVertical: pad.xs,
+    marginBottom: pad.md,
     alignItems: "center",
   },
-  playerControls: { flexDirection: "row", gap: 10, alignItems: "center" },
+  playerControls: { flexDirection: "row", gap: pad.sm, alignItems: "center" },
   playBtn: {
     flex: 1,
     backgroundColor: C.teal,
-    borderRadius: 24,
-    paddingVertical: 13,
+    borderRadius: radius.pill,
+    paddingVertical: pad.sm,
     alignItems: "center",
     shadowColor: C.teal,
     shadowOffset: { width: 0, height: 0 },
@@ -1175,28 +1161,22 @@ const styles = StyleSheet.create({
     shadowRadius: 12,
     elevation: 8,
   },
-  // Play/Resume button text — bold, dark
   playBtnText: {
     fontFamily: FONTS.bold,
-    fontSize: 15,
+    fontSize: font.md,
     color: C.bg,
     letterSpacing: 0.4,
-  },
+  }, // was: 15
   pauseBtn: {
     flex: 1,
     backgroundColor: C.yellowDim,
-    borderRadius: 24,
-    paddingVertical: 13,
+    borderRadius: radius.pill,
+    paddingVertical: pad.sm,
     alignItems: "center",
     borderWidth: 1.5,
     borderColor: C.yellowBorder,
   },
-  // Pause button text — bold, yellow
-  pauseBtnText: {
-    fontFamily: FONTS.bold,
-    fontSize: 15,
-    color: C.yellow,
-  },
+  pauseBtnText: { fontFamily: FONTS.bold, fontSize: font.md, color: C.yellow },
   stopBtn: {
     width: 46,
     height: 46,
@@ -1207,36 +1187,31 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
   },
-  stopBtnText: { fontSize: 16 },
+  stopBtnText: { fontSize: font.lg },
   doneTag: {
     flex: 1,
     backgroundColor: C.greenDim,
-    borderRadius: 24,
-    paddingVertical: 13,
+    borderRadius: radius.pill,
+    paddingVertical: pad.sm,
     alignItems: "center",
     borderWidth: 1.5,
     borderColor: C.greenBorder,
   },
-  // "✅ Listening complete!" — bold, green
-  doneTxt: {
-    fontFamily: FONTS.bold,
-    fontSize: 14,
-    color: C.green,
-  },
-  quizSection: { width: "92%", marginBottom: 16 },
+  doneTxt: { fontFamily: FONTS.bold, fontSize: font.md, color: C.green }, // was: 14
+
+  quizSection: { width: "92%", marginBottom: pad.md },
   quizHeader: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
-    marginBottom: 10,
+    marginBottom: pad.sm,
   },
-  // Quiz header — bold
   quizHeaderTitle: {
     fontFamily: FONTS.bold,
-    fontSize: 15,
+    fontSize: font.md,
     color: C.textPri,
   },
-  qProgressDots: { flexDirection: "row", gap: 5 },
+  qProgressDots: { flexDirection: "row", gap: pad.xs },
   qDot: {
     width: 8,
     height: 8,
@@ -1249,7 +1224,7 @@ const styles = StyleSheet.create({
     height: 4,
     borderRadius: 2,
     backgroundColor: "rgba(255,255,255,0.07)",
-    marginBottom: 14,
+    marginBottom: pad.sm,
     overflow: "hidden",
   },
   qProgressFill: {
@@ -1262,75 +1237,70 @@ const styles = StyleSheet.create({
     shadowRadius: 4,
     elevation: 3,
   },
+
   lockedCard: {
     backgroundColor: C.surface,
-    borderRadius: 20,
-    borderWidth: 1.5,
+    borderRadius: radius.xl,
+    borderWidth: 1.5, // was: 20
     borderColor: "rgba(255,255,255,0.1)",
-    padding: 32,
-    alignItems: "center",
+    padding: pad.xxl,
+    alignItems: "center", // was: 32
   },
-  lockIcon: { fontSize: 48, marginBottom: 12 },
-  // Lock title — bold
+  lockIcon: { fontSize: size.iconXl, marginBottom: pad.sm }, // was: 48
   lockTitle: {
     fontFamily: FONTS.bold,
-    fontSize: 20,
+    fontSize: font.xl,
     color: C.textSec,
-    marginBottom: 6,
-  },
-  // Lock sub — light, muted
+    marginBottom: pad.xs,
+  }, // was: 20
   lockSub: {
     fontFamily: FONTS.light,
-    fontSize: 13,
+    fontSize: font.sm,
     color: C.textMuted,
     textAlign: "center",
-    lineHeight: 20,
-    marginBottom: 20,
+    lineHeight: font.sm * 1.6,
+    marginBottom: pad.lg,
   },
   lockHint: {
     backgroundColor: C.tealDim,
-    borderRadius: 14,
+    borderRadius: radius.md,
     borderWidth: 1,
     borderColor: C.tealBorder,
-    paddingHorizontal: 16,
-    paddingVertical: 8,
+    paddingHorizontal: pad.md,
+    paddingVertical: pad.s,
   },
-  // Lock hint text — bold, teal
-  lockHintText: {
-    fontFamily: FONTS.bold,
-    fontSize: 12,
-    color: C.teal,
-  },
+  lockHintText: { fontFamily: FONTS.bold, fontSize: font.sm, color: C.teal },
+
   questionCard: {
     backgroundColor: C.surface,
-    borderRadius: 18,
+    borderRadius: radius.lg,
     borderWidth: 1.5,
-    borderColor: C.tealBorder,
-    padding: 20,
-    marginBottom: 14,
+    borderColor: C.tealBorder, // was: 18
+    padding: pad.lg,
+    marginBottom: pad.sm,
     shadowColor: C.teal,
     shadowOffset: { width: 0, height: 0 },
     shadowOpacity: 0.15,
     shadowRadius: 16,
     elevation: 4,
   },
-  // Question text — bold, primary
   questionText: {
     fontFamily: FONTS.bold,
-    fontSize: 17,
+    fontSize: font.lg,
     color: C.textPri,
-    lineHeight: 26,
+    lineHeight: font.lg * 1.5,
     letterSpacing: 0.2,
-  },
-  optionsList: { gap: 9, marginBottom: 8 },
+  }, // was: 17
+
+  optionsList: { gap: pad.s, marginBottom: pad.s },
   optionCard: {
     flexDirection: "row",
     alignItems: "center",
-    borderRadius: 14,
+    borderRadius: radius.md, // was: 14
     borderWidth: 1.5,
-    paddingHorizontal: 14,
-    paddingVertical: 14,
-    gap: 12,
+    paddingHorizontal: pad.sm, // was: 14
+    paddingVertical: pad.sm,
+    gap: pad.sm, // was: 12
   },
   optionBullet: {
     width: 32,
@@ -1343,22 +1313,16 @@ const styles = StyleSheet.create({
     backgroundColor: "rgba(255,255,255,0.04)",
     flexShrink: 0,
   },
-  // Option bullet letter (A/B/C/D) — bold
   optionBulletLetter: {
     fontFamily: FONTS.bold,
-    fontSize: 13,
+    fontSize: font.sm,
     color: C.textMuted,
   },
-  // Option bullet icon (✓/✗/★) — bold
-  optionBulletIcon: {
-    fontFamily: FONTS.bold,
-    fontSize: 14,
-  },
-  // Option text — regular, readable
+  optionBulletIcon: { fontFamily: FONTS.bold, fontSize: font.md },
   optionText: {
     fontFamily: FONTS.regular,
     flex: 1,
-    fontSize: 14,
-    lineHeight: 21,
+    fontSize: font.md,
+    lineHeight: font.md * 1.5,
   },
 });

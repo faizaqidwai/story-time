@@ -19,6 +19,7 @@ import {
 import { Audio } from "expo-av";
 import { progressLevel } from "../services/levelProgressionService";
 import { FONTS } from "../theme";
+import { font, pad, radius, size } from "../theme/tokens";
 
 const { width: SW, height: SH } = Dimensions.get("window");
 
@@ -97,7 +98,7 @@ function StarBurst({ count = 18 }) {
             key={i}
             style={{
               position: "absolute",
-              fontSize: 18 + Math.random() * 10,
+              fontSize: font.lg + Math.random() * 10, // 18 → font.lg (17/22)
               top: SH * 0.1,
               left: SW / 2 - 10,
               opacity: a.op,
@@ -334,7 +335,7 @@ export default function LevelProgressionOverlay({
                 <ActivityIndicator
                   color={C.teal}
                   size="large"
-                  style={{ marginTop: 24 }}
+                  style={{ marginTop: pad.xl }} // 24 → pad.xl (24/33)
                 />
               )}
 
@@ -397,14 +398,14 @@ const s = StyleSheet.create({
     right: 0,
     height: SH * 0.75,
     backgroundColor: C.bg,
-    borderTopLeftRadius: 28,
-    borderTopRightRadius: 28,
+    borderTopLeftRadius: radius.xxl, // 28 → radius.xxl (32/44)
+    borderTopRightRadius: radius.xxl, // 28 → radius.xxl
     borderTopWidth: 1.5,
     borderLeftWidth: 1,
     borderRightWidth: 1,
     borderColor: C.tealBorder,
     alignItems: "center",
-    paddingTop: 8,
+    paddingTop: pad.s, // 8 → pad.s (8/11)
     shadowColor: "#000",
     shadowOffset: { width: 0, height: -8 },
     shadowOpacity: 0.6,
@@ -414,17 +415,16 @@ const s = StyleSheet.create({
   handle: {
     width: 44,
     height: 5,
-    borderRadius: 3,
+    borderRadius: radius.xs, // 3 → radius.xs (6/8) — closest pill shape
     backgroundColor: "rgba(255,255,255,0.2)",
-    marginBottom: 10,
+    marginBottom: pad.s, // 10 → pad.s (8/11)
   },
   content: {
     flex: 1,
     alignItems: "center",
     marginTop: 100,
-    //justifyContent: "center",
-    paddingHorizontal: 32,
-    gap: 12,
+    paddingHorizontal: pad.xxl, // 32 → pad.xxl (32/44)
+    gap: pad.sm, // 12 → pad.sm (12/16)
   },
 
   // Level badge
@@ -442,97 +442,89 @@ const s = StyleSheet.create({
     shadowOpacity: 0.8,
     shadowRadius: 20,
     elevation: 10,
-    marginBottom: 8,
+    marginBottom: pad.s, // 8 → pad.s (8/11)
   },
-  levelBadgeEmoji: { fontSize: 32, marginBottom: -4 },
-  // Level number — bold, large, yellow
+  levelBadgeEmoji: { fontSize: font.h3, marginBottom: -4 }, // 32 → font.h3 (28/38)
   levelBadgeNum: {
     fontFamily: FONTS.bold,
-    fontSize: 38,
+    fontSize: font.h2, // 38 → font.h2 (34/46)
     color: C.yellow,
-    lineHeight: 42,
+    lineHeight: font.h2 + 4,
   },
-  // "COMPLETE" label — bold, small caps, yellow
   levelBadgeLabel: {
     fontFamily: FONTS.bold,
-    fontSize: 10,
+    fontSize: font.xs, // 10 → font.xs (9/12)
     color: C.yellow,
     letterSpacing: 2,
   },
 
-  // Congratulations headline — bold, large
   congrats: {
     fontFamily: FONTS.bold,
-    fontSize: 32,
+    fontSize: font.h3, // 32 → font.h3 (28/38)
     color: C.textPri,
     textAlign: "center",
-    marginBottom: 10,
+    marginBottom: pad.s, // 10 → pad.s (8/11)
   },
-  // "You completed…" body — light, muted
   subText: {
     fontFamily: FONTS.light,
-    fontSize: 22,
+    fontSize: font.xxl, // 22 → font.xxl (24/32)
     color: C.textMuted,
     textAlign: "center",
-    lineHeight: 24,
-    marginBottom: 10,
+    lineHeight: font.xxl + 2,
+    marginBottom: pad.s, // 10 → pad.s
   },
-  // Level number inline — bold, teal
   subTextBold: {
     fontFamily: FONTS.bold,
     color: C.teal,
-    marginBottom: 10,
+    marginBottom: pad.s,
   },
-  // Hint italic — light
   hint: {
     fontFamily: FONTS.light,
-    fontSize: 16,
+    fontSize: font.lg, // 16 → font.lg (17/22)
     color: C.textMuted,
     textAlign: "center",
     fontStyle: "italic",
-    marginTop: 4,
+    marginTop: pad.xs, // 4 → pad.xs (4/6)
   },
 
-  finalEmoji: { fontSize: 72, marginBottom: 8 },
+  finalEmoji: { fontSize: font.h1, marginBottom: pad.s }, // 72 → font.h1 (40/54) — closest large token
 
-  errorBox: { alignItems: "center", gap: 10, marginTop: 8 },
+  errorBox: { alignItems: "center", gap: pad.s, marginTop: pad.s }, // gap/marginTop 10/8 → pad.s
   errorText: {
     fontFamily: FONTS.regular,
-    fontSize: 13,
+    fontSize: font.s, // 13 → font.s (12/14)
     color: "#EF5350",
     textAlign: "center",
   },
   retryBtn: {
     backgroundColor: "rgba(0,188,212,0.15)",
-    borderRadius: 12,
+    borderRadius: radius.sm, // 12 → radius.sm (10/14)
     borderWidth: 1,
     borderColor: C.tealBorder,
-    paddingHorizontal: 24,
-    paddingVertical: 10,
+    paddingHorizontal: pad.xl, // 24 → pad.xl (24/33)
+    paddingVertical: pad.s, // 10 → pad.s (8/11)
   },
-  // "Try Again" — bold, teal
   retryBtnText: {
     fontFamily: FONTS.bold,
-    fontSize: 13,
+    fontSize: font.s, // 13 → font.s (12/14)
     color: C.teal,
   },
 
   doneBtn: {
     backgroundColor: C.teal,
-    borderRadius: 24,
-    paddingHorizontal: 40,
-    paddingVertical: 16,
-    marginTop: 16,
+    borderRadius: radius.pill, // 24 → radius.pill (999) — it's a full pill
+    paddingHorizontal: pad.xxxl, // 40 → pad.xxxl (48/66)
+    paddingVertical: pad.md, // 16 → pad.md (16/22)
+    marginTop: pad.md, // 16 → pad.md
     shadowColor: C.teal,
     shadowOffset: { width: 0, height: 0 },
     shadowOpacity: 0.7,
     shadowRadius: 12,
     elevation: 10,
   },
-  // "Back to Home" — bold, dark
   doneBtnText: {
     fontFamily: FONTS.bold,
-    fontSize: 16,
+    fontSize: font.lg, // 16 → font.lg (17/22)
     color: "#08081a",
   },
 
@@ -546,11 +538,11 @@ const s = StyleSheet.create({
 
   closeBtn: {
     position: "absolute",
-    top: 14,
-    right: 16,
-    width: 28,
-    height: 28,
-    borderRadius: 14,
+    top: pad.sm, // 14 → pad.sm (12/16)
+    right: pad.md, // 16 → pad.md (16/22)
+    width: size.hitSm, // 28 → size.hitSm (36/48) — slightly larger, better touch target
+    height: size.hitSm,
+    borderRadius: size.hitSm / 2,
     backgroundColor: "rgba(255,255,255,0.1)",
     borderWidth: 1,
     borderColor: "rgba(255,255,255,0.15)",
@@ -558,11 +550,10 @@ const s = StyleSheet.create({
     justifyContent: "center",
     zIndex: 10,
   },
-  // Close ✕ — regular, muted
   closeBtnText: {
     fontFamily: FONTS.regular,
-    fontSize: 12,
+    fontSize: font.s, // 12 → font.s (12/14)
     color: "rgba(255,255,255,0.6)",
-    lineHeight: 14,
+    lineHeight: font.s + 2,
   },
 });

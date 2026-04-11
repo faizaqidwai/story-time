@@ -1,9 +1,4 @@
 // app/components/LearningPath.jsx
-//
-// Learning Path — compact zigzag cards in a proper flow layout.
-// No absolute positioning for cards — each card + connector is a normal View child.
-// Cards alternate left/right via marginLeft/marginRight.
-// Connectors are drawn with nested Views using borders for the U-turn path.
 
 import React, { useRef, useEffect } from "react";
 import {
@@ -22,21 +17,13 @@ import { useRouter } from "expo-router";
 import { useUser } from "../_contexts/UserContext";
 import { CURRICULUM } from "../data/curriculumData";
 import { FONTS } from "../theme";
+import { useTheme } from "../_contexts/ThemeContext";
 
 const { width: SW, height: SH } = Dimensions.get("window");
 const STATUS_BAR_HEIGHT =
   Platform.OS === "android" ? (StatusBar.currentHeight ?? 24) : 50;
 
-// ── Layout constants ──────────────────────────────────────────────────────────
-const SCREEN_PAD = 16;
-const CARD_W = Math.floor(SW * 0.42);
-// Card height is slightly taller to give "YOU ARE HERE" badge room to breathe
-const CARD_H = 162;
-const CONN_H = 60;
 const LW = 1.5;
-const CR = 16;
-
-// Colours — single uniform teal theme for all cards
 const C = {
   bg: "#08081a",
   teal: "#00BCD4",
@@ -48,7 +35,6 @@ const C = {
   textMuted: "#546E7A",
 };
 
-// ── Single accent used for every card (current level uses a brighter variant)
 const ACCENT = C.teal;
 const ACCENT_DIM = C.tealDim;
 const ACCENT_BORDER = C.tealBorder;
@@ -56,16 +42,19 @@ const ACCENT_BORDER = C.tealBorder;
 // ─────────────────────────────────────────────────────────────────────────────
 // ZigZag Connector
 // ─────────────────────────────────────────────────────────────────────────────
-function Connector({ fromSide, color }) {
+function Connector({ fromSide, color, sz }) {
   const lc = color ?? C.teal;
+  const SCREEN_PAD = sz.screenPad;
+  const CARD_W = Math.floor(SW * sz.cardWidth);
+  const CARD_H = sz.cardHeight;
+  const CONN_H = sz.connectorHeight;
+
   const containerW = SW - SCREEN_PAD * 2;
   const totalH = CARD_H / 2 + CONN_H;
-
   const leftCardRightX = CARD_W;
   const rightCardLeftX = containerW - CARD_W;
   const leftCardCenterX = CARD_W / 2;
   const rightCardCenterX = containerW - CARD_W / 2;
-
   const DOT = 5;
 
   if (fromSide === "left") {
@@ -180,9 +169,13 @@ function Connector({ fromSide, color }) {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Compact Level Card — uniform teal theme for all levels
+// Level Card
 // ─────────────────────────────────────────────────────────────────────────────
-function LevelCard({ item, isCurrent, side, index, cardRef }) {
+function LevelCard({ item, isCurrent, side, index, cardRef, sz }) {
+  const SCREEN_PAD = sz.screenPad;
+  const CARD_W = Math.floor(SW * sz.cardWidth);
+  const CARD_H = sz.cardHeight;
+
   const scaleAnim = useRef(new Animated.Value(0.88)).current;
   const opAnim = useRef(new Animated.Value(0)).current;
   const pulseAnim = useRef(new Animated.Value(1)).current;
@@ -234,12 +227,23 @@ function LevelCard({ item, isCurrent, side, index, cardRef }) {
     <Animated.View
       ref={cardRef}
       style={[
-        cardS.card,
+        {
+          width: CARD_W,
+          height: CARD_H,
+          backgroundColor: "rgba(255,255,255,0.05)",
+          borderRadius: sz.cardBorderRadius,
+          paddingTop: sz.cardPaddingTop,
+          paddingHorizontal: sz.cardPaddingH,
+          paddingBottom: sz.cardPaddingBottom,
+          shadowOffset: { width: 0, height: 0 },
+          shadowRadius: 12,
+          elevation: 6,
+          overflow: "hidden",
+        },
         alignStyle,
         {
           opacity: opAnim,
           transform: [{ scale: scaleAnim }, { scale: pulseAnim }],
-          // Current level gets a brighter teal border; others use a muted teal
           borderColor: isCurrent ? C.tealBorderBold : C.tealBorder,
           borderWidth: isCurrent ? 2 : 1.5,
           shadowColor: isCurrent ? C.teal : "#000",
@@ -247,118 +251,101 @@ function LevelCard({ item, isCurrent, side, index, cardRef }) {
         },
       ]}
     >
-      {/* Level badge + emoji row */}
-      <View style={cardS.topRow}>
+      <View
+        style={{
+          flexDirection: "row",
+          alignItems: "center",
+          justifyContent: "space-between",
+          marginBottom: 7,
+        }}
+      >
         <View
-          style={[
-            cardS.lvlBadge,
-            { backgroundColor: ACCENT_DIM, borderColor: ACCENT_BORDER },
-          ]}
+          style={{
+            width: sz.lvlBadgeSize,
+            height: sz.lvlBadgeSize,
+            borderRadius: sz.lvlBadgeBorderRadius,
+            borderWidth: 1.5,
+            alignItems: "center",
+            justifyContent: "center",
+            backgroundColor: ACCENT_DIM,
+            borderColor: ACCENT_BORDER,
+          }}
         >
-          <Text style={[cardS.lvlNum, { color: ACCENT }]}>{item.level}</Text>
+          <Text
+            style={{
+              fontFamily: FONTS.bold,
+              fontSize: sz.lvlNumFontSize,
+              color: ACCENT,
+            }}
+          >
+            {item.level}
+          </Text>
         </View>
-        <Text style={cardS.emoji}>{item.emoji}</Text>
+        <Text style={{ fontSize: sz.emojiFontSize }}>{item.emoji}</Text>
       </View>
 
-      {/* Grade name */}
-      <Text style={cardS.grade} numberOfLines={2}>
+      <Text
+        style={{
+          fontFamily: FONTS.bold,
+          fontSize: sz.gradeFontSize,
+          color: C.textPri,
+          marginBottom: sz.gradeMarginBottom,
+          lineHeight: sz.gradeLineHeight,
+        }}
+        numberOfLines={2}
+      >
         {item.grade}
       </Text>
-
-      {/* Compact stat */}
-      <Text style={[cardS.stat, { color: ACCENT }]} numberOfLines={1}>
+      <Text
+        style={{
+          fontFamily: FONTS.bold,
+          fontSize: sz.statFontSize,
+          color: ACCENT,
+          marginBottom: sz.statMarginBottom,
+          letterSpacing: 0.2,
+        }}
+        numberOfLines={1}
+      >
         {item.challengeWords} words · {item.sentenceLength}
       </Text>
-
-      {/* Key skill */}
-      <Text style={cardS.skill} numberOfLines={2}>
+      <Text
+        style={{
+          fontFamily: FONTS.light,
+          fontSize: sz.skillFontSize,
+          color: C.textMuted,
+          lineHeight: sz.skillLineHeight,
+        }}
+        numberOfLines={2}
+      >
         {item.introduces[0]}
       </Text>
 
-      {/* YOU ARE HERE — has bottom padding so it doesn't touch the card edge */}
       {isCurrent && (
-        <View style={cardS.youBadge}>
-          <Text style={cardS.youTxt}>YOU ARE HERE</Text>
+        <View
+          style={{
+            marginTop: "auto",
+            marginBottom: 2,
+            borderRadius: sz.youBadgeBorderRadius,
+            paddingVertical: sz.youBadgePaddingV,
+            alignItems: "center",
+            backgroundColor: C.teal,
+          }}
+        >
+          <Text
+            style={{
+              fontFamily: FONTS.bold,
+              fontSize: sz.youTxtFontSize,
+              color: "#08081a",
+              letterSpacing: sz.youTxtLetterSpacing,
+            }}
+          >
+            YOU ARE HERE
+          </Text>
         </View>
       )}
     </Animated.View>
   );
 }
-
-const cardS = StyleSheet.create({
-  card: {
-    width: CARD_W,
-    height: CARD_H,
-    backgroundColor: "rgba(255,255,255,0.05)",
-    borderRadius: 18,
-    // paddingBottom is larger so "YOU ARE HERE" badge has breathing room
-    paddingTop: 12,
-    paddingHorizontal: 12,
-    paddingBottom: 10,
-    shadowOffset: { width: 0, height: 0 },
-    shadowRadius: 12,
-    elevation: 6,
-    overflow: "hidden",
-  },
-  topRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    marginBottom: 7,
-  },
-  lvlBadge: {
-    width: 34,
-    height: 34,
-    borderRadius: 10,
-    borderWidth: 1.5,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  // Level number inside badge — bold
-  lvlNum: {
-    fontFamily: FONTS.bold,
-    fontSize: 15,
-  },
-  emoji: { fontSize: 20 },
-  // Grade name — bold
-  grade: {
-    fontFamily: FONTS.bold,
-    fontSize: 12,
-    color: C.textPri,
-    marginBottom: 4,
-    lineHeight: 16,
-  },
-  // Stats line — bold, teal
-  stat: {
-    fontFamily: FONTS.bold,
-    fontSize: 10,
-    marginBottom: 5,
-    letterSpacing: 0.2,
-  },
-  // Key skill intro — light, muted
-  skill: {
-    fontFamily: FONTS.light,
-    fontSize: 10,
-    color: C.textMuted,
-    lineHeight: 14,
-  },
-  // "YOU ARE HERE" badge — pushed to bottom with marginTop:auto + marginBottom
-  youBadge: {
-    marginTop: "auto",
-    marginBottom: 2, // space between badge bottom and card bottom edge
-    borderRadius: 6,
-    paddingVertical: 4,
-    alignItems: "center",
-    backgroundColor: C.teal,
-  },
-  // Badge label — bold, dark
-  youTxt: {
-    fontFamily: FONTS.bold,
-    fontSize: 8,
-    color: "#08081a",
-    letterSpacing: 1,
-  },
-});
 
 // ─────────────────────────────────────────────────────────────────────────────
 // MAIN SCREEN
@@ -366,13 +353,15 @@ const cardS = StyleSheet.create({
 export default function LearningPathScreen() {
   const router = useRouter();
   const { currentProfile } = useUser();
-  const currentLevel = currentProfile?.playLevel ?? 1;
+  const { sizes } = useTheme();
+  const sz = sizes.learningPath;
 
+  const currentLevel = currentProfile?.playLevel ?? 1;
   const scrollRef = useRef(null);
   const cardRefs = useRef(CURRICULUM.map(() => React.createRef()));
   const scrollReady = useRef(false);
-
   const headerOp = useRef(new Animated.Value(0)).current;
+
   useEffect(() => {
     Animated.timing(headerOp, {
       toValue: 1,
@@ -384,10 +373,8 @@ export default function LearningPathScreen() {
   const handleScrollViewLayout = () => {
     if (scrollReady.current) return;
     scrollReady.current = true;
-
     const currentIdx = CURRICULUM.findIndex((c) => c.level === currentLevel);
     if (currentIdx <= 0) return;
-
     setTimeout(() => {
       const cardRef = cardRefs.current[currentIdx];
       if (!cardRef?.current) return;
@@ -398,7 +385,7 @@ export default function LearningPathScreen() {
           scrollRef.current?.scrollTo({ y: scrollTo, animated: true });
         },
         () => {
-          const estY = currentIdx * (130 + CONN_H);
+          const estY = currentIdx * (130 + sz.connectorHeight);
           scrollRef.current?.scrollTo({
             y: Math.max(0, estY - SH / 2 + 65),
             animated: true,
@@ -408,12 +395,17 @@ export default function LearningPathScreen() {
     }, 600);
   };
 
+  const stripStats = [
+    { val: "5–8", lbl: "stories / level" },
+    { val: "3–4", lbl: "new words / story" },
+    { val: "4", lbl: "activities / story" },
+  ];
+
   return (
-    <View style={screenS.root}>
-      {/* BG glows */}
+    <View style={{ flex: 1, backgroundColor: C.bg }}>
       <View
         style={[
-          screenS.glow,
+          { position: "absolute", borderRadius: 999 },
           {
             backgroundColor: C.teal,
             top: -80,
@@ -426,7 +418,7 @@ export default function LearningPathScreen() {
       />
       <View
         style={[
-          screenS.glow,
+          { position: "absolute", borderRadius: 999 },
           {
             backgroundColor: "#9652D9",
             bottom: 60,
@@ -438,54 +430,150 @@ export default function LearningPathScreen() {
         ]}
       />
 
-      {/* Header */}
-      <Animated.View style={[screenS.header, { opacity: headerOp }]}>
+      <Animated.View
+        style={[
+          {
+            flexDirection: "row",
+            alignItems: "center",
+            paddingTop: STATUS_BAR_HEIGHT + 10,
+            paddingBottom: 12,
+            paddingHorizontal: 18,
+            borderBottomWidth: 1,
+            borderBottomColor: "rgba(0,188,212,0.12)",
+          },
+          { opacity: headerOp },
+        ]}
+      >
         <TouchableOpacity
-          style={screenS.backBtn}
+          style={{
+            width: sz.backBtnSize,
+            height: sz.backBtnSize,
+            borderRadius: sz.backBtnBorderRadius,
+            backgroundColor: "rgba(255,255,255,0.06)",
+            borderWidth: 1,
+            borderColor: "rgba(255,255,255,0.1)",
+            alignItems: "center",
+            justifyContent: "center",
+          }}
           onPress={() => router.back()}
           activeOpacity={0.75}
         >
-          <Text style={screenS.backIcon}>←</Text>
+          <Text
+            style={{
+              fontFamily: FONTS.bold,
+              fontSize: sz.backIconFontSize,
+              color: C.teal,
+            }}
+          >
+            ←
+          </Text>
         </TouchableOpacity>
         <View style={{ flex: 1, marginLeft: 12 }}>
-          <Text style={screenS.title}>Learning Path</Text>
-          <Text style={screenS.subTitle}>
+          <Text
+            style={{
+              fontFamily: FONTS.bold,
+              fontSize: sz.titleFontSize,
+              color: C.textPri,
+              textShadowColor: "rgba(0,188,212,0.4)",
+              textShadowOffset: { width: 0, height: 0 },
+              textShadowRadius: 8,
+            }}
+          >
+            Learning Path
+          </Text>
+          <Text
+            style={{
+              fontFamily: FONTS.light,
+              fontSize: sz.subtitleFontSize,
+              color: C.textMuted,
+              marginTop: 1,
+            }}
+          >
             {CURRICULUM.length} Levels · Curriculum Roadmap
           </Text>
         </View>
-        <View style={screenS.lvlPill}>
-          <Text style={screenS.lvlPillTxt}>Level {currentLevel}</Text>
+        <View
+          style={{
+            backgroundColor: "rgba(0,188,212,0.12)",
+            borderRadius: sz.lvlPillBorderRadius,
+            borderWidth: 1.5,
+            borderColor: C.tealBorder,
+            paddingHorizontal: sz.lvlPillPaddingH,
+            paddingVertical: sz.lvlPillPaddingV,
+          }}
+        >
+          <Text
+            style={{
+              fontFamily: FONTS.bold,
+              fontSize: sz.lvlPillFontSize,
+              color: C.teal,
+              letterSpacing: 0.3,
+            }}
+          >
+            Level {currentLevel}
+          </Text>
         </View>
       </Animated.View>
 
-      {/* Progress summary strip */}
-      <Animated.View style={[screenS.strip, { opacity: headerOp }]}>
-        {[
-          { val: "5–8", lbl: "stories / level" },
-          { val: "3–4", lbl: "new words / story" },
-          { val: "4", lbl: "activities / story" },
-        ].map((s, i) => (
+      <Animated.View
+        style={[
+          {
+            flexDirection: "row",
+            alignItems: "center",
+            paddingVertical: sz.stripPaddingV,
+            borderBottomWidth: 1,
+            borderBottomColor: "rgba(255,255,255,0.05)",
+            backgroundColor: "rgba(255,255,255,0.03)",
+          },
+          { opacity: headerOp },
+        ]}
+      >
+        {stripStats.map((s, i) => (
           <React.Fragment key={s.lbl}>
-            {i > 0 && <View style={screenS.stripDiv} />}
-            <View style={screenS.stripItem}>
-              <Text style={screenS.stripVal}>{s.val}</Text>
-              <Text style={screenS.stripLbl}>{s.lbl}</Text>
+            {i > 0 && (
+              <View
+                style={{
+                  width: 1,
+                  height: sz.stripDivHeight,
+                  backgroundColor: "rgba(255,255,255,0.08)",
+                }}
+              />
+            )}
+            <View style={{ flex: 1, alignItems: "center" }}>
+              <Text
+                style={{
+                  fontFamily: FONTS.bold,
+                  fontSize: sz.stripValFontSize,
+                  color: C.teal,
+                }}
+              >
+                {s.val}
+              </Text>
+              <Text
+                style={{
+                  fontFamily: FONTS.light,
+                  fontSize: sz.stripLblFontSize,
+                  color: C.textMuted,
+                  letterSpacing: 0.3,
+                  marginTop: 1,
+                }}
+              >
+                {s.lbl}
+              </Text>
             </View>
           </React.Fragment>
         ))}
       </Animated.View>
 
-      {/* Zigzag scroll content */}
       <ScrollView
         ref={scrollRef}
         onLayout={handleScrollViewLayout}
         showsVerticalScrollIndicator={false}
-        contentContainerStyle={screenS.scrollContent}
+        contentContainerStyle={{ paddingTop: 20, paddingBottom: 60 }}
       >
         {CURRICULUM.map((item, index) => {
           const side = index % 2 === 0 ? "left" : "right";
           const isLast = index === CURRICULUM.length - 1;
-
           return (
             <View key={item.level}>
               <LevelCard
@@ -494,115 +582,32 @@ export default function LearningPathScreen() {
                 side={side}
                 index={index}
                 cardRef={cardRefs.current[index]}
+                sz={sz}
               />
               {!isLast && (
-                <Connector fromSide={side} color="rgba(255,255,255,0.09)" />
+                <Connector
+                  fromSide={side}
+                  color="rgba(255,255,255,0.09)"
+                  sz={sz}
+                />
               )}
             </View>
           );
         })}
-
-        {/* End cap */}
-        <View style={screenS.endCap}>
-          <Text style={screenS.endCapTxt}>🚀 More levels coming soon</Text>
+        <View
+          style={{ alignItems: "center", paddingVertical: sz.endCapPaddingV }}
+        >
+          <Text
+            style={{
+              fontFamily: FONTS.light,
+              fontSize: sz.endCapFontSize,
+              color: C.textMuted,
+            }}
+          >
+            🚀 More levels coming soon
+          </Text>
         </View>
       </ScrollView>
     </View>
   );
 }
-
-const screenS = StyleSheet.create({
-  root: { flex: 1, backgroundColor: C.bg },
-  glow: { position: "absolute", borderRadius: 999 },
-  header: {
-    flexDirection: "row",
-    alignItems: "center",
-    paddingTop: STATUS_BAR_HEIGHT + 10,
-    paddingBottom: 12,
-    paddingHorizontal: 18,
-    borderBottomWidth: 1,
-    borderBottomColor: "rgba(0,188,212,0.12)",
-  },
-  backBtn: {
-    width: 38,
-    height: 38,
-    borderRadius: 19,
-    backgroundColor: "rgba(255,255,255,0.06)",
-    borderWidth: 1,
-    borderColor: "rgba(255,255,255,0.1)",
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  // Back arrow — bold, teal
-  backIcon: {
-    fontFamily: FONTS.bold,
-    fontSize: 18,
-    color: C.teal,
-  },
-  // Screen title — bold
-  title: {
-    fontFamily: FONTS.bold,
-    fontSize: 19,
-    color: C.textPri,
-    textShadowColor: "rgba(0,188,212,0.4)",
-    textShadowOffset: { width: 0, height: 0 },
-    textShadowRadius: 8,
-  },
-  // Subtitle — light, muted
-  subTitle: {
-    fontFamily: FONTS.light,
-    fontSize: 11,
-    color: C.textMuted,
-    marginTop: 1,
-  },
-  lvlPill: {
-    backgroundColor: "rgba(0,188,212,0.12)",
-    borderRadius: 10,
-    borderWidth: 1.5,
-    borderColor: C.tealBorder,
-    paddingHorizontal: 10,
-    paddingVertical: 5,
-  },
-  // Level pill text — bold, teal
-  lvlPillTxt: {
-    fontFamily: FONTS.bold,
-    fontSize: 11,
-    color: C.teal,
-    letterSpacing: 0.3,
-  },
-
-  strip: {
-    flexDirection: "row",
-    alignItems: "center",
-    paddingVertical: 10,
-    borderBottomWidth: 1,
-    borderBottomColor: "rgba(255,255,255,0.05)",
-    backgroundColor: "rgba(255,255,255,0.03)",
-  },
-  stripItem: { flex: 1, alignItems: "center" },
-  // Strip value — bold, teal
-  stripVal: {
-    fontFamily: FONTS.bold,
-    fontSize: 15,
-    color: C.teal,
-  },
-  // Strip label — light, muted
-  stripLbl: {
-    fontFamily: FONTS.light,
-    fontSize: 9,
-    color: C.textMuted,
-    letterSpacing: 0.3,
-    marginTop: 1,
-  },
-  stripDiv: { width: 1, height: 28, backgroundColor: "rgba(255,255,255,0.08)" },
-
-  scrollContent: { paddingTop: 20, paddingBottom: 60 },
-
-  endCap: { alignItems: "center", paddingVertical: 28 },
-  // End cap text — light, muted
-  endCapTxt: {
-    fontFamily: FONTS.light,
-    fontSize: 12,
-    color: C.textMuted,
-  },
-});

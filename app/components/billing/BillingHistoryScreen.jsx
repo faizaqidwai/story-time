@@ -1,7 +1,4 @@
 // app/components/billing/BillingHistoryScreen.jsx
-//
-// Billing history — lists all invoices with date, description, amount, status.
-// Download link shown when available (stubbed in mock mode).
 
 import React, { useEffect, useState, useRef } from "react";
 import {
@@ -19,6 +16,7 @@ import {
 import { useRouter } from "expo-router";
 import { getInvoices } from "../../services/billingService";
 import { FONTS } from "../../theme";
+import { font, pad, radius, size } from "../../theme/tokens"; // ← ADD THIS
 
 const STATUS_BAR_HEIGHT =
   Platform.OS === "android" ? (StatusBar.currentHeight ?? 24) : 50;
@@ -38,14 +36,33 @@ const C = {
 };
 
 const STATUS_CONFIG = {
-  paid:    { label: "Paid",    color: C.green,  bg: "rgba(76,175,80,0.12)",  border: "rgba(76,175,80,0.4)"  },
-  pending: { label: "Pending", color: C.orange, bg: "rgba(255,152,0,0.12)",  border: "rgba(255,152,0,0.4)"  },
-  failed:  { label: "Failed",  color: C.red,    bg: "rgba(239,83,80,0.12)",  border: "rgba(239,83,80,0.4)"  },
+  paid: {
+    label: "Paid",
+    color: C.green,
+    bg: "rgba(76,175,80,0.12)",
+    border: "rgba(76,175,80,0.4)",
+  },
+  pending: {
+    label: "Pending",
+    color: C.orange,
+    bg: "rgba(255,152,0,0.12)",
+    border: "rgba(255,152,0,0.4)",
+  },
+  failed: {
+    label: "Failed",
+    color: C.red,
+    bg: "rgba(239,83,80,0.12)",
+    border: "rgba(239,83,80,0.4)",
+  },
 };
 
 function formatDate(dateStr) {
   const d = new Date(dateStr);
-  return d.toLocaleDateString("en-US", { day: "numeric", month: "short", year: "numeric" });
+  return d.toLocaleDateString("en-US", {
+    day: "numeric",
+    month: "short",
+    year: "numeric",
+  });
 }
 
 function InvoiceRow({ invoice }) {
@@ -54,13 +71,21 @@ function InvoiceRow({ invoice }) {
     <View style={iS.row}>
       <View style={iS.rowLeft}>
         <Text style={iS.rowDate}>{formatDate(invoice.date)}</Text>
-        <Text style={iS.rowDesc} numberOfLines={1}>{invoice.description}</Text>
+        <Text style={iS.rowDesc} numberOfLines={1}>
+          {invoice.description}
+        </Text>
       </View>
       <View style={iS.rowRight}>
         <Text style={iS.rowAmount}>
-          {invoice.currency === "USD" ? "$" : invoice.currency}{invoice.amount.toFixed(2)}
+          {invoice.currency === "USD" ? "$" : invoice.currency}
+          {invoice.amount.toFixed(2)}
         </Text>
-        <View style={[iS.statusBadge, { backgroundColor: sc.bg, borderColor: sc.border }]}>
+        <View
+          style={[
+            iS.statusBadge,
+            { backgroundColor: sc.bg, borderColor: sc.border },
+          ]}
+        >
           <Text style={[iS.statusText, { color: sc.color }]}>{sc.label}</Text>
         </View>
         {invoice.downloadUrl && (
@@ -76,29 +101,56 @@ function InvoiceRow({ invoice }) {
   );
 }
 
+// ── Invoice row styles ────────────────────────────────────────
 const iS = StyleSheet.create({
   row: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
-    paddingVertical: 14,
+    paddingVertical: pad.sm, // was: 14
     borderBottomWidth: 1,
     borderBottomColor: "rgba(255,255,255,0.05)",
-    gap: 12,
+    gap: pad.sm, // was: 12
   },
   rowLeft: { flex: 1 },
-  rowDate: { fontFamily: FONTS.light, fontSize: 11, color: C.textMuted, marginBottom: 3 },
-  rowDesc: { fontFamily: FONTS.bold, fontSize: 13, color: C.textPri },
-  rowRight: { alignItems: "flex-end", gap: 5 },
-  rowAmount: { fontFamily: FONTS.bold, fontSize: 15, color: C.textPri },
-  statusBadge: {
-    borderRadius: 7, borderWidth: 1,
-    paddingHorizontal: 8, paddingVertical: 2,
+  rowRight: { alignItems: "flex-end", gap: pad.xs }, // was: 5
+  rowDate: {
+    fontFamily: FONTS.light,
+    fontSize: font.s, // was: 11
+    color: C.textMuted,
+    marginBottom: 3,
   },
-  statusText: { fontFamily: FONTS.bold, fontSize: 9, letterSpacing: 0.5 },
-  downloadLink: { fontFamily: FONTS.bold, fontSize: 10, color: C.teal },
+  rowDesc: {
+    fontFamily: FONTS.bold,
+    fontSize: font.sm, // was: 13
+    color: C.textPri,
+  },
+  rowAmount: {
+    fontFamily: FONTS.bold,
+    fontSize: font.md, // was: 15
+    color: C.textPri,
+  },
+  statusBadge: {
+    borderRadius: radius.xs, // was: 7
+    borderWidth: 1,
+    paddingHorizontal: pad.s, // was: 8
+    paddingVertical: 2,
+  },
+  statusText: {
+    fontFamily: FONTS.bold,
+    fontSize: font.xs, // was: 9
+    letterSpacing: 0.5,
+  },
+  downloadLink: {
+    fontFamily: FONTS.bold,
+    fontSize: font.s, // was: 10
+    color: C.teal,
+  },
 });
 
+// ─────────────────────────────────────────────────────────────
+// MAIN SCREEN
+// ─────────────────────────────────────────────────────────────
 export default function BillingHistoryScreen() {
   const router = useRouter();
   const [invoices, setInvoices] = useState([]);
@@ -110,7 +162,11 @@ export default function BillingHistoryScreen() {
       .then(setInvoices)
       .finally(() => {
         setLoading(false);
-        Animated.timing(fadeAnim, { toValue: 1, duration: 350, useNativeDriver: true }).start();
+        Animated.timing(fadeAnim, {
+          toValue: 1,
+          duration: 350,
+          useNativeDriver: true,
+        }).start();
       });
   }, []);
 
@@ -121,17 +177,27 @@ export default function BillingHistoryScreen() {
   return (
     <View style={styles.root}>
       <View style={styles.header}>
-        <TouchableOpacity style={styles.backBtn} onPress={() => router.back()} activeOpacity={0.75}>
+        <TouchableOpacity
+          style={styles.backBtn}
+          onPress={() => router.back()}
+          activeOpacity={0.75}
+        >
           <Text style={styles.backIcon}>←</Text>
         </TouchableOpacity>
         <Text style={styles.title}>Billing History</Text>
-        <View style={{ width: 38 }} />
+        <View style={{ width: size.hitMd }} />
       </View>
 
       {loading ? (
-        <View style={styles.center}><ActivityIndicator color={C.teal} size="large" /></View>
+        <View style={styles.center}>
+          <ActivityIndicator color={C.teal} size="large" />
+        </View>
       ) : (
-        <Animated.ScrollView style={{ opacity: fadeAnim }} contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
+        <Animated.ScrollView
+          style={{ opacity: fadeAnim }}
+          contentContainerStyle={styles.scroll}
+          showsVerticalScrollIndicator={false}
+        >
           {invoices.length > 0 && (
             <View style={styles.summaryCard}>
               <View style={styles.summaryItem}>
@@ -157,7 +223,9 @@ export default function BillingHistoryScreen() {
             <View style={styles.empty}>
               <Text style={styles.emptyIcon}>🧾</Text>
               <Text style={styles.emptyTitle}>No billing history</Text>
-              <Text style={styles.emptySubtitle}>Your invoices will appear here after your first payment</Text>
+              <Text style={styles.emptySubtitle}>
+                Your invoices will appear here after your first payment
+              </Text>
             </View>
           ) : (
             <View style={styles.listCard}>
@@ -175,51 +243,96 @@ export default function BillingHistoryScreen() {
   );
 }
 
+// ── Screen styles ─────────────────────────────────────────────
 const styles = StyleSheet.create({
   root: { flex: 1, backgroundColor: C.bg },
   center: { flex: 1, justifyContent: "center", alignItems: "center" },
+
   header: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
-    paddingTop: STATUS_BAR_HEIGHT + 10,
-    paddingBottom: 14,
-    paddingHorizontal: 18,
+    paddingTop: STATUS_BAR_HEIGHT + pad.sm, // was: + 10
+    paddingBottom: pad.sm, // was: 14
+    paddingHorizontal: pad.md, // was: 18
     borderBottomWidth: 1,
     borderBottomColor: "rgba(0,188,212,0.12)",
   },
   backBtn: {
-    width: 38, height: 38, borderRadius: 19,
+    width: size.hitMd, // was: 38
+    height: size.hitMd, // was: 38
+    borderRadius: size.hitMd / 2, // was: 19
     backgroundColor: "rgba(255,255,255,0.06)",
-    borderWidth: 1, borderColor: "rgba(255,255,255,0.1)",
-    alignItems: "center", justifyContent: "center",
+    borderWidth: 1,
+    borderColor: "rgba(255,255,255,0.1)",
+    alignItems: "center",
+    justifyContent: "center",
   },
-  backIcon: { fontFamily: FONTS.bold, fontSize: 18, color: C.teal },
-  title: { fontFamily: FONTS.bold, fontSize: 18, color: C.textPri },
-  scroll: { padding: 18 },
+  backIcon: {
+    fontFamily: FONTS.bold,
+    fontSize: font.lg, // was: 18
+    color: C.teal,
+  },
+  title: {
+    fontFamily: FONTS.bold,
+    fontSize: font.xl, // was: 18
+    color: C.textPri,
+  },
+
+  scroll: { padding: pad.md }, // was: 18
+
   summaryCard: {
     flexDirection: "row",
     backgroundColor: "rgba(255,255,255,0.05)",
-    borderRadius: 16,
+    borderRadius: radius.lg, // was: 16
     borderWidth: 1,
     borderColor: "rgba(255,255,255,0.07)",
-    padding: 16,
-    marginBottom: 20,
+    padding: pad.md, // was: 16
+    marginBottom: pad.lg, // was: 20
   },
   summaryItem: { flex: 1, alignItems: "center" },
-  summaryVal: { fontFamily: FONTS.bold, fontSize: 18, color: C.teal },
-  summaryLbl: { fontFamily: FONTS.light, fontSize: 9, color: C.textMuted, marginTop: 2, textAlign: "center" },
+  summaryVal: {
+    fontFamily: FONTS.bold,
+    fontSize: font.xl, // was: 18
+    color: C.teal,
+  },
+  summaryLbl: {
+    fontFamily: FONTS.light,
+    fontSize: font.xs, // was: 9
+    color: C.textMuted,
+    marginTop: 2,
+    textAlign: "center",
+  },
   summaryDiv: { width: 1, backgroundColor: "rgba(255,255,255,0.08)" },
+
   listCard: {
     backgroundColor: C.surface,
-    borderRadius: 16,
+    borderRadius: radius.lg, // was: 16
     borderWidth: 1,
     borderColor: "rgba(255,255,255,0.07)",
-    padding: 16,
+    padding: pad.md, // was: 16
   },
-  listLabel: { fontFamily: FONTS.bold, fontSize: 11, color: C.textMuted, letterSpacing: 1, textTransform: "uppercase", marginBottom: 8 },
-  empty: { alignItems: "center", paddingVertical: 60, gap: 8 },
-  emptyIcon: { fontSize: 48, marginBottom: 8 },
-  emptyTitle: { fontFamily: FONTS.bold, fontSize: 18, color: C.textPri },
-  emptySubtitle: { fontFamily: FONTS.light, fontSize: 13, color: C.textMuted, textAlign: "center", maxWidth: 260 },
+  listLabel: {
+    fontFamily: FONTS.bold,
+    fontSize: font.s, // was: 11
+    color: C.textMuted,
+    letterSpacing: 1,
+    textTransform: "uppercase",
+    marginBottom: pad.s, // was: 8
+  },
+
+  empty: {
+    alignItems: "center",
+    paddingVertical: pad.xxxl, // was: 60
+    gap: pad.s, // was: 8
+  },
+  emptyIcon: { fontSize: size.iconXl, marginBottom: pad.s }, // was: 48
+  emptyTitle: { fontFamily: FONTS.bold, fontSize: font.xl, color: C.textPri },
+  emptySubtitle: {
+    fontFamily: FONTS.light,
+    fontSize: font.sm,
+    color: C.textMuted,
+    textAlign: "center",
+    maxWidth: 260,
+  },
 });

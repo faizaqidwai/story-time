@@ -23,12 +23,15 @@ import {
   fetchUserAccount,
 } from "./services/authService";
 import { saveAccessToken } from "./services/tokenStorage";
+import { useTheme } from "./_contexts/ThemeContext";
 
 const Login = () => {
   const router = useRouter();
   const { execute } = useApiCall();
   const { setLoginUserAccount } = useUser();
   const { clearAllData } = useUser();
+  const { sizes } = useTheme();
+  const sz = sizes.login;
 
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -44,7 +47,9 @@ const Login = () => {
     await execute(
       async () => {
         const loginResponse = await loginWithPrimaryAccount();
-        await saveAccessToken(loginResponse.token);
+        // loginWithPrimaryAccount() in authService.js already saves both
+        // access token and refresh token — nothing extra needed here.
+        if (!loginResponse) return;
         const userAccount = await fetchUserAccount();
         await setLoginUserAccount(userAccount);
       },
@@ -53,7 +58,7 @@ const Login = () => {
         successMessage: "Login Successful",
         errorDisplay: "toast",
         onSuccess: () => router.replace("/home"),
-        onError: (err) => setIsLoading(false),
+        onError: () => setIsLoading(false),
       },
     );
     setIsLoading(false);
@@ -64,18 +69,24 @@ const Login = () => {
       Alert.alert("Error", "Email and password are required.");
       return;
     }
-    try {
-      setIsLoading(true);
-      const loginResponse = await loginWithEmail(email, password);
-      await saveAccessToken(loginResponse.token);
-      const userAccount = await fetchUserAccount();
-      await setLoginUserAccount(userAccount);
-      router.replace("/home");
-    } catch (error) {
-      Alert.alert("Error", "Invalid email or password.");
-    } finally {
-      setIsLoading(false);
-    }
+    setIsLoading(true);
+    await execute(
+      async () => {
+        const loginResponse = await loginWithEmail(email, password);
+        // loginWithEmail() in authService.js already saves both tokens.
+        if (!loginResponse) return;
+        const userAccount = await fetchUserAccount();
+        await setLoginUserAccount(userAccount);
+      },
+      {
+        successDisplay: "toast",
+        successMessage: "Login Successful",
+        errorDisplay: "toast",
+        onSuccess: () => router.replace("/home"),
+        onError: () => setIsLoading(false),
+      },
+    );
+    setIsLoading(false);
   };
 
   return (
@@ -86,12 +97,22 @@ const Login = () => {
 
       {/* Back button — same style as AccountChoice */}
       <TouchableOpacity
-        style={styles.backBtn}
+        style={[
+          styles.backBtn,
+          {
+            width: sz.backBtnSize,
+            height: sz.backBtnSize,
+            borderRadius: sz.backBtnSize / 2,
+            top: Platform.OS === "ios" ? 54 : 20,
+          },
+        ]}
         onPress={() => router.replace("/AccountChoice")}
         activeOpacity={0.8}
         hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
       >
-        <Text style={styles.backIcon}>‹</Text>
+        <Text style={[styles.backIcon, { fontSize: sz.backIconFontSize }]}>
+          ‹
+        </Text>
       </TouchableOpacity>
 
       <SafeAreaView style={styles.safeArea} edges={["top", "bottom"]}>
@@ -108,19 +129,43 @@ const Login = () => {
             {/* ── Bird ── */}
             <Image
               source={require("../assets/img/story-time-logo-4.png")}
-              style={styles.bird}
+              style={[
+                styles.bird,
+                {
+                  width: sz.birdSize,
+                  height: sz.birdSize,
+                  marginBottom: sz.birdMarginBottom,
+                },
+              ]}
               resizeMode="contain"
             />
 
             {/* ── Title ── */}
-            <Text style={styles.title}>Welcome Back</Text>
-            <Text style={styles.subtitle}>
+            <Text style={[styles.title, { fontSize: sz.titleFontSize }]}>
+              Welcome Back
+            </Text>
+            <Text
+              style={[
+                styles.subtitle,
+                {
+                  fontSize: sz.subtitleFontSize,
+                  marginBottom: sz.subtitleMarginBottom,
+                },
+              ]}
+            >
               Sign in to continue your journey
             </Text>
 
             {/* ── Primary Account Login ── */}
             <TouchableOpacity
-              style={[styles.primaryButton, isLoading && styles.buttonDisabled]}
+              style={[
+                styles.primaryButton,
+                {
+                  paddingVertical: sz.primaryBtnPaddingV,
+                  marginBottom: sz.primaryBtnMarginBottom,
+                },
+                isLoading && styles.buttonDisabled,
+              ]}
               onPress={handlePrimaryLogin}
               disabled={isLoading}
               activeOpacity={0.85}
@@ -129,8 +174,20 @@ const Login = () => {
                 <ActivityIndicator color="#08081a" />
               ) : (
                 <>
-                  <Text style={styles.primaryButtonIcon}>🔑</Text>
-                  <Text style={styles.primaryButtonText}>
+                  <Text
+                    style={[
+                      styles.primaryButtonIcon,
+                      { fontSize: sz.primaryBtnIconSize },
+                    ]}
+                  >
+                    🔑
+                  </Text>
+                  <Text
+                    style={[
+                      styles.primaryButtonText,
+                      { fontSize: sz.primaryBtnFontSize },
+                    ]}
+                  >
                     Login with Primary Account
                   </Text>
                 </>
@@ -138,18 +195,40 @@ const Login = () => {
             </TouchableOpacity>
 
             {/* ── Divider ── */}
-            <View style={styles.dividerRow}>
+            <View
+              style={[
+                styles.dividerRow,
+                { marginBottom: sz.dividerMarginBottom },
+              ]}
+            >
               <View style={styles.dividerLine} />
-              <Text style={styles.dividerText}>OR</Text>
+              <Text
+                style={[styles.dividerText, { fontSize: sz.dividerFontSize }]}
+              >
+                OR
+              </Text>
               <View style={styles.dividerLine} />
             </View>
 
             {/* ── Email / Password card ── */}
-            <View style={styles.formCard}>
+            <View style={[styles.formCard, { padding: sz.formCardPadding }]}>
               <View style={styles.inputGroup}>
-                <Text style={styles.label}>Email</Text>
+                <Text
+                  style={[
+                    styles.label,
+                    {
+                      fontSize: sz.labelFontSize,
+                      marginBottom: sz.labelMarginBottom,
+                    },
+                  ]}
+                >
+                  Email
+                </Text>
                 <TextInput
-                  style={styles.input}
+                  style={[
+                    styles.input,
+                    { fontSize: sz.inputFontSize, padding: sz.inputPadding },
+                  ]}
                   placeholder="Enter email"
                   placeholderTextColor={COLORS.textMuted}
                   value={email}
@@ -161,9 +240,22 @@ const Login = () => {
               </View>
 
               <View style={styles.inputGroup}>
-                <Text style={styles.label}>Password</Text>
+                <Text
+                  style={[
+                    styles.label,
+                    {
+                      fontSize: sz.labelFontSize,
+                      marginBottom: sz.labelMarginBottom,
+                    },
+                  ]}
+                >
+                  Password
+                </Text>
                 <TextInput
-                  style={styles.input}
+                  style={[
+                    styles.input,
+                    { fontSize: sz.inputFontSize, padding: sz.inputPadding },
+                  ]}
                   placeholder="Enter password"
                   placeholderTextColor={COLORS.textMuted}
                   secureTextEntry
@@ -173,7 +265,11 @@ const Login = () => {
               </View>
 
               <TouchableOpacity
-                style={[styles.loginButton, isLoading && styles.buttonDisabled]}
+                style={[
+                  styles.loginButton,
+                  { paddingVertical: sz.loginBtnPaddingV },
+                  isLoading && styles.buttonDisabled,
+                ]}
                 onPress={handleEmailLogin}
                 disabled={isLoading}
                 activeOpacity={0.85}
@@ -181,7 +277,14 @@ const Login = () => {
                 {isLoading ? (
                   <ActivityIndicator color="#08081a" />
                 ) : (
-                  <Text style={styles.loginButtonText}>Login ➜</Text>
+                  <Text
+                    style={[
+                      styles.loginButtonText,
+                      { fontSize: sz.loginBtnFontSize },
+                    ]}
+                  >
+                    Login ➜
+                  </Text>
                 )}
               </TouchableOpacity>
             </View>
@@ -195,6 +298,7 @@ const Login = () => {
 export default Login;
 
 // ── Styles ────────────────────────────────────────────────────
+// All font sizes and key dimensions are applied inline from sz.*
 const styles = StyleSheet.create({
   // ── Background — same as IntroCarousel / AccountChoice ───
   root: { flex: 1, backgroundColor: "#08081a" },
@@ -217,22 +321,18 @@ const styles = StyleSheet.create({
     backgroundColor: "rgba(150,82,217,0.07)",
   },
 
-  // ── Back button — same as AccountChoice ──────────────────
+  // ── Back button — size/radius applied inline from sz ─────
   backBtn: {
     position: "absolute",
-    top: Platform.OS === "ios" ? 54 : 20,
     left: 20,
     zIndex: 20,
-    width: 40,
-    height: 40,
-    borderRadius: 20,
     backgroundColor: "rgba(255,255,255,0.06)",
     borderWidth: 1,
     borderColor: "rgba(255,255,255,0.12)",
     alignItems: "center",
     justifyContent: "center",
   },
-  backIcon: { fontSize: 28, color: "#E0F7FA", marginTop: -2 },
+  backIcon: { color: "#E0F7FA", marginTop: -2 },
 
   safeArea: { flex: 1 },
   scrollContent: {
@@ -243,13 +343,12 @@ const styles = StyleSheet.create({
     paddingVertical: 32,
   },
 
-  // ── Bird ─────────────────────────────────────────────────
-  bird: { width: 150, height: 150, marginBottom: 15 },
+  // ── Bird — width/height/marginBottom applied inline ──────
+  bird: { resizeMode: "contain" },
 
-  // ── Title ────────────────────────────────────────────────
+  // ── Title — fontSize applied inline from sz ──────────────
   title: {
     fontFamily: FONTS.bold,
-    fontSize: 38,
     color: COLORS.textPrimary,
     textAlign: "center",
     marginBottom: 4,
@@ -259,14 +358,12 @@ const styles = StyleSheet.create({
   },
   subtitle: {
     fontFamily: FONTS.light,
-    fontSize: 16,
     color: COLORS.textMuted,
     textAlign: "center",
-    marginBottom: 20,
     letterSpacing: 0.3,
   },
 
-  // ── Primary button — teal (was purple) ───────────────────
+  // ── Primary button — paddingV/marginBottom applied inline ─
   primaryButton: {
     width: "100%",
     flexDirection: "row",
@@ -274,17 +371,14 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     gap: 10,
     backgroundColor: COLORS.teal,
-    paddingVertical: 16,
     borderRadius: 16,
-    marginBottom: 24,
     borderWidth: 1.5,
     borderColor: "rgba(0,188,212,0.6)",
     ...SHADOWS.tealGlow,
   },
-  primaryButtonIcon: { fontSize: 18 },
+  primaryButtonIcon: {},
   primaryButtonText: {
     fontFamily: FONTS.bold,
-    fontSize: 18,
     color: "#08081a",
     letterSpacing: 0.3,
   },
@@ -295,49 +389,45 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     gap: 12,
-    marginBottom: 24,
   },
   dividerLine: { flex: 1, height: 1, backgroundColor: COLORS.borderTeal },
   dividerText: {
     fontFamily: FONTS.regular,
-    fontSize: 14,
     color: COLORS.textMuted,
     letterSpacing: 1,
   },
 
-  // ── Form card ─────────────────────────────────────────────
+  // ── Form card — padding applied inline from sz ────────────
   formCard: {
     width: "100%",
     backgroundColor: "rgba(255,255,255,0.05)",
     borderRadius: 24,
     borderWidth: 1.5,
     borderColor: COLORS.borderTeal,
-    padding: 20,
     gap: 4,
     ...SHADOWS.tealGlow,
   },
   inputGroup: { marginBottom: 16 },
+
+  // ── Label — fontSize/marginBottom applied inline from sz ──
   label: {
     fontFamily: FONTS.bold,
-    fontSize: 15,
     color: COLORS.textSecondary,
-    marginBottom: 8,
   },
+
+  // ── Input — fontSize/padding applied inline from sz ───────
   input: {
     fontFamily: FONTS.regular,
-    fontSize: 17,
     backgroundColor: COLORS.surfaceDim,
     borderRadius: 12,
-    padding: 14,
     color: COLORS.textPrimary,
     borderWidth: 1.5,
     borderColor: COLORS.borderTeal,
   },
 
-  // ── Login button — teal ───────────────────────────────────
+  // ── Login button — paddingV applied inline from sz ────────
   loginButton: {
     backgroundColor: COLORS.teal,
-    paddingVertical: 15,
     borderRadius: 14,
     alignItems: "center",
     marginTop: 4,
@@ -345,7 +435,6 @@ const styles = StyleSheet.create({
   },
   loginButtonText: {
     fontFamily: FONTS.bold,
-    fontSize: 18,
     color: "#08081a",
     letterSpacing: 0.4,
   },

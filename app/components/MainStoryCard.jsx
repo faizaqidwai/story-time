@@ -12,6 +12,7 @@ import {
 } from "react-native";
 import { Image as ExpoImage } from "expo-image";
 import { FONTS } from "../../app/theme";
+import { useTheme } from "../../app/_contexts/ThemeContext";
 
 const { width: SW } = Dimensions.get("window");
 const T = {
@@ -35,7 +36,7 @@ const STEPS = [
 // ─────────────────────────────────────────────────────────────
 // Play button
 // ─────────────────────────────────────────────────────────────
-function PlayButton({ onPress }) {
+function PlayButton({ onPress, sz }) {
   const pulse = useRef(new Animated.Value(1)).current;
   const sndSelect = useRef(null);
 
@@ -87,14 +88,36 @@ function PlayButton({ onPress }) {
   }, []);
 
   return (
-    <View style={{ marginHorizontal: 20 }}>
+    <View style={{ marginHorizontal: sz.tapHintMarginH }}>
       <Animated.View style={{ transform: [{ scale: pulse }] }}>
         <TouchableOpacity
           onPress={handlePress}
           activeOpacity={0.85}
-          style={s.tapHint}
+          style={{
+            backgroundColor: T.teal,
+            width: "100%",
+            borderRadius: sz.tapHintBorderRadius,
+            paddingHorizontal: sz.tapHintPaddingH,
+            paddingVertical: sz.tapHintPaddingV,
+            alignItems: "center",
+            justifyContent: "center",
+            shadowColor: T.teal,
+            shadowOffset: { width: 0, height: 0 },
+            shadowOpacity: 0.7,
+            shadowRadius: 12,
+            elevation: 12,
+          }}
         >
-          <Text style={s.tapHintText}>▶ START</Text>
+          <Text
+            style={{
+              fontFamily: FONTS.bold,
+              fontSize: sz.tapHintFontSize,
+              color: "#08081a",
+              letterSpacing: sz.tapHintLetterSpacing,
+            }}
+          >
+            ▶ START
+          </Text>
         </TouchableOpacity>
       </Animated.View>
     </View>
@@ -117,11 +140,213 @@ export default function MainStoryCard({
   listenIconRef,
   describeIconRef,
 }) {
-  const cardW = Math.min(SW - 45, 420);
-  const pulseAnims = useRef(STEPS.map(() => new Animated.Value(1))).current; // ← ADD
+  const { sizes } = useTheme();
+  const sz = sizes.mainStoryCard;
+
+  const cardW = Math.min(SW - sz.cardMarginHorizontal, sz.cardMaxWidth);
+  const pulseAnims = useRef(STEPS.map(() => new Animated.Value(1))).current;
   const activeIdx = progressIndex < 4 ? progressIndex : -1;
 
   const stepRefs = [readIconRef, guessIconRef, listenIconRef, describeIconRef];
+
+  // Build styles from tokens
+  const s = StyleSheet.create({
+    wrapper: {
+      alignSelf: "center",
+      marginVertical: sz.cardMarginVertical,
+      alignItems: "center",
+      shadowColor: T.teal,
+      shadowOffset: { width: 0, height: 0 },
+      shadowOpacity: 0.7,
+      shadowRadius: 12,
+      elevation: 12,
+    },
+    card: {
+      backgroundColor: T.darkBg2,
+      borderRadius: sz.cardBorderRadius,
+      borderWidth: 1.5,
+      borderColor: "rgba(0,188,212,0.35)",
+      overflow: "hidden",
+      shadowColor: T.teal,
+      shadowOffset: { width: 0, height: 0 },
+      shadowOpacity: 0.7,
+      shadowRadius: 18,
+      elevation: 12,
+      paddingBottom: sz.cardPaddingBottom,
+    },
+    imageFrame: {
+      marginHorizontal: sz.imageFrameMarginH,
+      marginTop: sz.imageFrameMarginTop,
+      marginBottom: sz.imageFrameMarginBottom,
+      borderRadius: sz.imageFrameBorderRadius,
+      overflow: "hidden",
+      height: sz.imageFrameHeight,
+      borderWidth: 2,
+      borderColor: "rgba(255,213,79,0.3)",
+      backgroundColor: "#0d0d24",
+    },
+    storyImage: {
+      width: "100%",
+      height: "100%",
+      borderRadius: sz.imageFrameBorderRadius - 2,
+    },
+    imageOverlay: {
+      position: "absolute",
+      bottom: 0,
+      left: 0,
+      right: 0,
+      paddingTop: sz.titleOverlayPaddingTop,
+      paddingBottom: sz.titleOverlayPaddingBottom,
+      paddingHorizontal: sz.titleOverlayPaddingH,
+      backgroundColor: "rgba(10,12,30,0.72)",
+      justifyContent: "flex-end",
+    },
+    title: {
+      fontFamily: FONTS.bold,
+      fontSize: sz.titleFontSize,
+      color: T.textPrimary,
+      lineHeight: sz.titleLineHeight,
+      textShadowColor: "rgba(0,0,0,0.6)",
+      textShadowOffset: { width: 0, height: 1 },
+      textShadowRadius: 6,
+    },
+    corner: {
+      position: "absolute",
+      width: sz.cornerSize,
+      height: sz.cornerSize,
+      borderColor: "rgba(255,213,79,0.7)",
+      zIndex: 3,
+    },
+    cornerTL: {
+      top: sz.cornerInset,
+      left: sz.cornerInset,
+      borderTopWidth: sz.cornerBorderWidth,
+      borderLeftWidth: sz.cornerBorderWidth,
+      borderTopLeftRadius: sz.cornerBorderRadius,
+    },
+    cornerTR: {
+      top: sz.cornerInset,
+      right: sz.cornerInset,
+      borderTopWidth: sz.cornerBorderWidth,
+      borderRightWidth: sz.cornerBorderWidth,
+      borderTopRightRadius: sz.cornerBorderRadius,
+    },
+    cornerBL: {
+      bottom: sz.cornerInset,
+      left: sz.cornerInset,
+      borderBottomWidth: sz.cornerBorderWidth,
+      borderLeftWidth: sz.cornerBorderWidth,
+      borderBottomLeftRadius: sz.cornerBorderRadius,
+    },
+    cornerBR: {
+      bottom: sz.cornerInset,
+      right: sz.cornerInset,
+      borderBottomWidth: sz.cornerBorderWidth,
+      borderRightWidth: sz.cornerBorderWidth,
+      borderBottomRightRadius: sz.cornerBorderRadius,
+    },
+    newBadge: {
+      position: "absolute",
+      top: sz.newBadgeTop,
+      right: sz.newBadgeRight,
+      backgroundColor: T.yellow,
+      borderRadius: sz.newBadgeBorderRadius,
+      paddingHorizontal: sz.newBadgePaddingH,
+      paddingVertical: sz.newBadgePaddingV,
+      zIndex: 4,
+    },
+    newBadgeTxt: {
+      fontFamily: FONTS.bold,
+      fontSize: sz.newBadgeFontSize,
+      color: "#0d0d1a",
+      letterSpacing: sz.newBadgeLetterSpacing,
+    },
+    body: {
+      paddingHorizontal: sz.descPaddingH,
+      paddingTop: sz.descPaddingTop,
+      paddingBottom: sz.descPaddingBottom,
+    },
+    desc: {
+      fontFamily: FONTS.light,
+      fontSize: sz.descFontSize,
+      color: T.textMuted,
+      lineHeight: sz.descLineHeight,
+      fontStyle: "italic",
+    },
+    stepsRow: {
+      flexDirection: "row",
+      alignItems: "stretch",
+      justifyContent: "space-between",
+      marginHorizontal: sz.stepsRowMarginH,
+      marginBottom: sz.stepsRowMarginBottom,
+      gap: sz.stepsRowGap,
+    },
+    stepCard: {
+      flex: 1,
+      height: sz.stepCardHeight,
+      alignItems: "center",
+      justifyContent: "center",
+      paddingVertical: sz.stepCardPaddingV,
+      paddingHorizontal: sz.stepCardPaddingH,
+      backgroundColor: "rgba(0,0,0,0.30)",
+      borderRadius: sz.stepCardBorderRadius,
+      borderWidth: 1,
+      borderColor: "rgba(255,255,255,0.08)",
+      overflow: "hidden",
+      gap: sz.stepCardGap,
+    },
+    stepCardActive: {
+      borderColor: "rgba(0,188,212,0.75)",
+      backgroundColor: "rgba(0,188,212,0.13)",
+      borderWidth: 2,
+      shadowOffset: { width: 0, height: 0 },
+      shadowOpacity: 0.7,
+      shadowRadius: 8,
+      elevation: 8,
+    },
+    stepCardDone: {
+      borderColor: "rgba(255,255,255,0.05)",
+      backgroundColor: "rgba(0,0,0,0.18)",
+    },
+    stepImage: { width: sz.stepImageSize, height: sz.stepImageSize },
+    stepImageDone: { opacity: 0.45 },
+    stepLabel: {
+      fontFamily: FONTS.bold,
+      fontSize: sz.stepLabelFontSize,
+      color: T.textPrimary,
+      letterSpacing: sz.stepLabelLetterSpacing,
+      textAlign: "center",
+    },
+    stepLabelActive: { color: T.teal },
+    checkBadge: {
+      position: "absolute",
+      top: sz.checkBadgeTop,
+      right: sz.checkBadgeRight,
+      width: sz.checkBadgeSize,
+      height: sz.checkBadgeSize,
+      borderRadius: sz.checkBadgeSize / 2,
+      backgroundColor: T.teal,
+      alignItems: "center",
+      justifyContent: "center",
+    },
+    checkText: {
+      fontFamily: FONTS.bold,
+      fontSize: sz.checkBadgeFontSize,
+      color: "#08081a",
+    },
+    activeDot: {
+      position: "absolute",
+      bottom: sz.activeDotBottom,
+      width: sz.activeDotSize,
+      height: sz.activeDotSize,
+      borderRadius: sz.activeDotSize / 2,
+      backgroundColor: T.teal,
+      shadowColor: T.teal,
+      shadowOffset: { width: 0, height: 0 },
+      shadowOpacity: 1,
+      shadowRadius: 4,
+    },
+  });
 
   return (
     <View style={[s.wrapper, { width: cardW }]}>
@@ -196,235 +421,9 @@ export default function MainStoryCard({
 
         {/* PLAY BUTTON */}
         <View style={{ alignItems: "center" }}>
-          <PlayButton onPress={onPress} />
+          <PlayButton onPress={onPress} sz={sz} />
         </View>
       </View>
     </View>
   );
 }
-
-// ─────────────────────────────────────────────────────────────
-// STYLES
-// ─────────────────────────────────────────────────────────────
-const s = StyleSheet.create({
-  wrapper: {
-    alignSelf: "center",
-    marginVertical: 20,
-    alignItems: "center",
-    shadowColor: T.teal,
-    shadowOffset: { width: 0, height: 0 },
-    shadowOpacity: 0.7,
-    shadowRadius: 12,
-    elevation: 12,
-  },
-  card: {
-    backgroundColor: T.darkBg2,
-    borderRadius: 24,
-    borderWidth: 1.5,
-    borderColor: "rgba(0,188,212,0.35)",
-    overflow: "hidden",
-    shadowColor: T.teal,
-    shadowOffset: { width: 0, height: 0 },
-    shadowOpacity: 0.7,
-    shadowRadius: 18,
-    elevation: 12,
-    paddingBottom: 20,
-  },
-  imageFrame: {
-    marginHorizontal: 16,
-    marginTop: 16,
-    marginBottom: 4,
-    borderRadius: 16,
-    overflow: "hidden",
-    height: 180,
-    borderWidth: 2,
-    borderColor: "rgba(255,213,79,0.3)",
-    backgroundColor: "#0d0d24",
-  },
-  storyImage: { width: "100%", height: "100%", borderRadius: 14 },
-  imageOverlay: {
-    position: "absolute",
-    bottom: 0,
-    left: 0,
-    right: 0,
-    paddingTop: 28,
-    paddingBottom: 12,
-    paddingHorizontal: 14,
-    backgroundColor: "rgba(10,12,30,0.72)",
-    justifyContent: "flex-end",
-  },
-  // Story title overlay — bold, CoText replaces Noteworthy
-  title: {
-    fontFamily: FONTS.bold,
-    fontSize: 20,
-    color: T.textPrimary,
-    lineHeight: 26,
-    textShadowColor: "rgba(0,0,0,0.6)",
-    textShadowOffset: { width: 0, height: 1 },
-    textShadowRadius: 6,
-  },
-  corner: {
-    position: "absolute",
-    width: 16,
-    height: 16,
-    borderColor: "rgba(255,213,79,0.7)",
-    zIndex: 3,
-  },
-  cornerTL: {
-    top: 4,
-    left: 4,
-    borderTopWidth: 2.5,
-    borderLeftWidth: 2.5,
-    borderTopLeftRadius: 4,
-  },
-  cornerTR: {
-    top: 4,
-    right: 4,
-    borderTopWidth: 2.5,
-    borderRightWidth: 2.5,
-    borderTopRightRadius: 4,
-  },
-  cornerBL: {
-    bottom: 4,
-    left: 4,
-    borderBottomWidth: 2.5,
-    borderLeftWidth: 2.5,
-    borderBottomLeftRadius: 4,
-  },
-  cornerBR: {
-    bottom: 4,
-    right: 4,
-    borderBottomWidth: 2.5,
-    borderRightWidth: 2.5,
-    borderBottomRightRadius: 4,
-  },
-  newBadge: {
-    position: "absolute",
-    top: 10,
-    right: 10,
-    backgroundColor: T.yellow,
-    borderRadius: 8,
-    paddingHorizontal: 8,
-    paddingVertical: 3,
-    zIndex: 4,
-  },
-  // "NEW" badge label — bold, very small
-  newBadgeTxt: {
-    fontFamily: FONTS.bold,
-    fontSize: 9,
-    color: "#0d0d1a",
-    letterSpacing: 1.5,
-  },
-  body: { paddingHorizontal: 20, paddingTop: 12, paddingBottom: 10 },
-  // Story description — light italic
-  desc: {
-    fontFamily: FONTS.light,
-    fontSize: 12,
-    color: T.textMuted,
-    lineHeight: 18,
-    fontStyle: "italic",
-  },
-
-  stepCardActive: {
-    borderColor: "rgba(0,188,212,0.75)",
-    backgroundColor: "rgba(0,188,212,0.13)",
-    // shadowColor: T.teal,
-    borderWidth: 2,
-    shadowOffset: { width: 0, height: 0 },
-    shadowOpacity: 0.7,
-    shadowRadius: 8,
-    elevation: 8,
-  },
-  stepCardDone: {
-    borderColor: "rgba(255,255,255,0.05)",
-    backgroundColor: "rgba(0,0,0,0.18)",
-    //  opacity: 0.55,
-  },
-  stepImageDone: {
-    opacity: 0.45,
-  },
-  stepLabelActive: {
-    color: T.teal,
-  },
-  checkBadge: {
-    position: "absolute",
-    top: 6,
-    right: 6,
-    width: 18,
-    height: 18,
-    borderRadius: 9,
-    backgroundColor: T.teal,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  checkText: {
-    fontFamily: FONTS.bold,
-    fontSize: 10,
-    color: "#08081a",
-  },
-  activeDot: {
-    position: "absolute",
-    bottom: 6,
-    width: 6,
-    height: 6,
-    borderRadius: 3,
-    backgroundColor: T.teal,
-    shadowColor: T.teal,
-    shadowOffset: { width: 0, height: 0 },
-    shadowOpacity: 1,
-    shadowRadius: 4,
-  },
-
-  stepsRow: {
-    flexDirection: "row",
-    alignItems: "stretch",
-    justifyContent: "space-between",
-    marginHorizontal: 14,
-    marginBottom: 16,
-    gap: 8,
-  },
-  stepCard: {
-    flex: 1,
-    height: 100,
-    alignItems: "center",
-    justifyContent: "center",
-    paddingVertical: 10,
-    paddingHorizontal: 4,
-    backgroundColor: "rgba(0,0,0,0.30)",
-    borderRadius: 14,
-    borderWidth: 1,
-    borderColor: "rgba(255,255,255,0.08)",
-    overflow: "hidden",
-    gap: 6,
-  },
-  stepImage: { width: 52, height: 52 },
-  // Activity step label — bold, small caps feel
-  stepLabel: {
-    fontFamily: FONTS.bold,
-    fontSize: 11,
-    color: T.textPrimary,
-    letterSpacing: 0.2,
-    textAlign: "center",
-  },
-  tapHint: {
-    backgroundColor: T.teal,
-    width: "100%",
-    borderRadius: 30,
-    paddingHorizontal: 36,
-    paddingVertical: 16,
-    alignItems: "center",
-    justifyContent: "center",
-    shadowColor: T.teal,
-    shadowOffset: { width: 0, height: 0 },
-    shadowOpacity: 0.7,
-    shadowRadius: 12,
-    elevation: 12,
-  },
-  // START button text — bold, dark background CTA
-  tapHintText: {
-    fontFamily: FONTS.bold,
-    fontSize: 18,
-    color: "#08081a",
-    letterSpacing: 1,
-  },
-});

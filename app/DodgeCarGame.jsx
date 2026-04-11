@@ -40,7 +40,7 @@ const SPEED_INC_EVERY = 250;
 const SPEED_INC_AMT = 0.6;
 
 // Dodge this many cars to win
-const WIN_SCORE = 30;
+const WIN_SCORE = 35;
 
 // Word spawns once every N car-cooldown cycles
 const WORD_SPAWN_CHANCE = 0.28; // ~28% chance a word spawns instead of a car slot

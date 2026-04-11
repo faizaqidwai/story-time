@@ -21,6 +21,7 @@ import { useRouter } from "expo-router";
 import { LinearGradient } from "expo-linear-gradient";
 import { FONTS } from "./theme";
 import { Audio } from "expo-av";
+import { useTheme } from "./_contexts/ThemeContext";
 
 const { width: SW, height: SH } = Dimensions.get("window");
 
@@ -35,6 +36,7 @@ const C = {
   textSec: "#B2EBF2",
   textMuted: "#7a9aaa",
 };
+
 async function playSound(file) {
   try {
     await Audio.setAudioModeAsync({ playsInSilentModeIOS: true });
@@ -48,6 +50,8 @@ async function playSound(file) {
 
 export default function AccountChoice() {
   const router = useRouter();
+  const { sizes } = useTheme();
+  const sz = sizes.accountChoice;
 
   // Entrance animations
   const logoOp = useRef(new Animated.Value(0)).current;
@@ -59,6 +63,7 @@ export default function AccountChoice() {
   const dividerOp = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
+    playSound(require("../assets/sounds/fairy-sparkle-1.mp3")); // ← add this line
     Animated.sequence([
       Animated.parallel([
         Animated.timing(logoOp, {
@@ -142,24 +147,62 @@ export default function AccountChoice() {
 
       {/* Back button */}
       <TouchableOpacity
-        style={styles.backBtn}
+        style={[
+          styles.backBtn,
+          {
+            width: sz.backBtnSize,
+            height: sz.backBtnSize,
+            borderRadius: sz.backBtnSize / 2,
+            top: Platform.OS === "ios" ? 54 : 20,
+          },
+        ]}
         onPress={() => router.replace("/IntroCarousel")}
         activeOpacity={0.8}
         hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
       >
-        <Text style={styles.backIcon}>‹</Text>
+        <Text style={[styles.backIcon, { fontSize: sz.backIconFontSize }]}>
+          ‹
+        </Text>
       </TouchableOpacity>
 
-      <View style={styles.inner}>
+      <View
+        style={[
+          styles.inner,
+          {
+            paddingTop:
+              Platform.OS === "ios"
+                ? sz.innerPaddingTop_ios
+                : sz.innerPaddingTop_android,
+            paddingBottom:
+              Platform.OS === "ios"
+                ? sz.innerPaddingBottom_ios
+                : sz.innerPaddingBottom_android,
+          },
+        ]}
+      >
         {/* Logo / branding */}
         <Animated.View
           style={[
             styles.logoWrap,
-            { opacity: logoOp, transform: [{ translateY: logoY }] },
+            {
+              marginBottom: sz.logoMarginBottom,
+              opacity: logoOp,
+              transform: [{ translateY: logoY }],
+            },
           ]}
         >
-          <Text style={styles.appName}>Story Time</Text>
-          <Text style={styles.appTagline}>
+          <Text style={[styles.appName, { fontSize: sz.appNameFontSize }]}>
+            Story Time
+          </Text>
+          <Text
+            style={[
+              styles.appTagline,
+              {
+                fontSize: sz.appTaglineFontSize,
+                lineHeight: sz.appTaglineLineHeight,
+              },
+            ]}
+          >
             Your child's vocabulary adventure begins here
           </Text>
         </Animated.View>
@@ -171,7 +214,10 @@ export default function AccountChoice() {
             style={{ opacity: card1Op, transform: [{ translateY: card1Y }] }}
           >
             <TouchableOpacity
-              style={styles.primaryCard}
+              style={[
+                styles.primaryCard,
+                { padding: sz.cardPadding, borderRadius: sz.cardBorderRadius },
+              ]}
               onPress={() => {
                 playSound(require("../assets/sounds/sparkle.mp3"));
                 setTimeout(() => router.push("/OnboardingScreen"), 1000);
@@ -184,23 +230,58 @@ export default function AccountChoice() {
                 start={{ x: 0, y: 0 }}
                 end={{ x: 1, y: 1 }}
               />
-              <View style={styles.cardIconWrap}>
-                <Text style={styles.cardIcon}>✨</Text>
+              <View
+                style={[
+                  styles.cardIconWrap,
+                  { width: sz.cardIconBoxSize, height: sz.cardIconBoxSize },
+                ]}
+              >
+                <Text style={[styles.cardIcon, { fontSize: sz.cardIconSize }]}>
+                  ✨
+                </Text>
               </View>
               <View style={styles.cardText}>
-                <Text style={styles.cardTitle}>Create New Account</Text>
-                <Text style={styles.cardSub}>
+                <Text
+                  style={[styles.cardTitle, { fontSize: sz.cardTitleFontSize }]}
+                >
+                  Create New Account
+                </Text>
+                <Text
+                  style={[
+                    styles.cardSub,
+                    {
+                      fontSize: sz.cardSubFontSize,
+                      lineHeight: sz.cardSubLineHeight,
+                    },
+                  ]}
+                >
                   Set up your child's profile and start the adventure
                 </Text>
               </View>
-              <Text style={[styles.cardArrow, { color: C.teal }]}>›</Text>
+              <Text
+                style={[
+                  styles.cardArrow,
+                  { color: C.teal, fontSize: sz.cardArrowFontSize },
+                ]}
+              >
+                ›
+              </Text>
             </TouchableOpacity>
           </Animated.View>
 
           {/* Divider */}
-          <Animated.View style={[styles.divider, { opacity: dividerOp }]}>
+          <Animated.View
+            style={[
+              styles.divider,
+              { opacity: dividerOp, marginVertical: sz.dividerMarginV },
+            ]}
+          >
             <View style={styles.dividerLine} />
-            <Text style={styles.dividerText}>or</Text>
+            <Text
+              style={[styles.dividerText, { fontSize: sz.dividerTextFontSize }]}
+            >
+              or
+            </Text>
             <View style={styles.dividerLine} />
           </Animated.View>
 
@@ -209,31 +290,71 @@ export default function AccountChoice() {
             style={{ opacity: card2Op, transform: [{ translateY: card2Y }] }}
           >
             <TouchableOpacity
-              style={styles.secondaryCard}
+              style={[
+                styles.secondaryCard,
+                { padding: sz.cardPadding, borderRadius: sz.cardBorderRadius },
+              ]}
               onPress={() => {
                 playSound(require("../assets/sounds/sparkle.mp3"));
                 setTimeout(() => router.push("/login"), 1000);
               }}
               activeOpacity={0.88}
             >
-              <View style={styles.cardIconWrap}>
-                <Text style={styles.cardIcon}>🔑</Text>
+              <View
+                style={[
+                  styles.cardIconWrap,
+                  { width: sz.cardIconBoxSize, height: sz.cardIconBoxSize },
+                ]}
+              >
+                <Text style={[styles.cardIcon, { fontSize: sz.cardIconSize }]}>
+                  🔑
+                </Text>
               </View>
               <View style={styles.cardText}>
-                <Text style={[styles.cardTitle, { color: C.textSec }]}>
+                <Text
+                  style={[
+                    styles.cardTitle,
+                    { color: C.textSec, fontSize: sz.cardTitleFontSize },
+                  ]}
+                >
                   I Already Have an Account
                 </Text>
-                <Text style={styles.cardSub}>
+                <Text
+                  style={[
+                    styles.cardSub,
+                    {
+                      fontSize: sz.cardSubFontSize,
+                      lineHeight: sz.cardSubLineHeight,
+                    },
+                  ]}
+                >
                   Sign in with your email address
                 </Text>
               </View>
-              <Text style={[styles.cardArrow, { color: C.textMuted }]}>›</Text>
+              <Text
+                style={[
+                  styles.cardArrow,
+                  { color: C.textMuted, fontSize: sz.cardArrowFontSize },
+                ]}
+              >
+                ›
+              </Text>
             </TouchableOpacity>
           </Animated.View>
         </View>
 
         {/* Footer note */}
-        <Animated.Text style={[styles.footerNote, { opacity: card2Op }]}>
+        <Animated.Text
+          style={[
+            styles.footerNote,
+            {
+              opacity: card2Op,
+              fontSize: sz.footerFontSize,
+              lineHeight: sz.footerLineHeight,
+              marginTop: sz.footerMarginTop,
+            },
+          ]}
+        >
           By continuing you agree to our Terms of Service and Privacy Policy
         </Animated.Text>
       </View>
@@ -266,34 +387,27 @@ const styles = StyleSheet.create({
 
   backBtn: {
     position: "absolute",
-    top: Platform.OS === "ios" ? 54 : 20,
     left: 20,
     zIndex: 20,
-    width: 40,
-    height: 40,
-    borderRadius: 20,
     backgroundColor: "rgba(255,255,255,0.06)",
     borderWidth: 1,
     borderColor: "rgba(255,255,255,0.12)",
     alignItems: "center",
     justifyContent: "center",
   },
-  backIcon: { fontSize: 28, color: "#E0F7FA", marginTop: -2 },
+  backIcon: { color: "#E0F7FA", marginTop: -2 },
 
   inner: {
     flex: 1,
     paddingHorizontal: 24,
-    paddingTop: Platform.OS === "ios" ? 120 : 90,
-    paddingBottom: Platform.OS === "ios" ? 44 : 28,
     justifyContent: "center",
   },
 
-  logoWrap: { alignItems: "center", marginBottom: 44 },
+  logoWrap: { alignItems: "center" },
 
   appName: {
     fontFamily:
       Platform.OS === "ios" ? "Noteworthy-Bold" : "sans-serif-condensed",
-    fontSize: 38,
     fontWeight: "900",
     color: C.teal,
     letterSpacing: 1,
@@ -305,10 +419,8 @@ const styles = StyleSheet.create({
 
   appTagline: {
     fontFamily: FONTS.light,
-    fontSize: 18,
     color: C.textMuted,
     textAlign: "center",
-    lineHeight: 20,
     paddingHorizontal: 20,
   },
 
@@ -318,10 +430,8 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     gap: 14,
-    borderRadius: 20,
     borderWidth: 1.5,
     borderColor: C.tealBorder,
-    padding: 18,
     overflow: "hidden",
     marginBottom: 0,
   },
@@ -329,45 +439,37 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     gap: 14,
-    borderRadius: 20,
     borderWidth: 1.5,
     borderColor: "rgba(255,255,255,0.1)",
     backgroundColor: "rgba(255,255,255,0.04)",
-    padding: 18,
   },
 
   cardIconWrap: {
-    width: 54,
-    height: 54,
     borderRadius: 14,
     backgroundColor: "rgba(255,255,255,0.07)",
     alignItems: "center",
     justifyContent: "center",
     flexShrink: 0,
   },
-  cardIcon: { fontSize: 24 },
+  cardIcon: {},
   cardText: { flex: 1, gap: 3 },
 
   cardTitle: {
     fontFamily: FONTS.bold,
-    fontSize: 16,
     color: C.teal,
     letterSpacing: 0.2,
   },
   cardSub: {
     fontFamily: FONTS.light,
-    fontSize: 14,
     color: C.textMuted,
-    lineHeight: 17,
   },
 
-  cardArrow: { fontSize: 26, flexShrink: 0 },
+  cardArrow: { flexShrink: 0 },
 
   divider: {
     flexDirection: "row",
     alignItems: "center",
     gap: 12,
-    marginVertical: 18,
   },
   dividerLine: {
     flex: 1,
@@ -376,18 +478,14 @@ const styles = StyleSheet.create({
   },
   dividerText: {
     fontFamily: FONTS.regular,
-    fontSize: 16,
     color: C.textMuted,
     letterSpacing: 0.5,
   },
 
   footerNote: {
     fontFamily: FONTS.light,
-    fontSize: 14,
     color: "rgba(255,255,255,0.2)",
     textAlign: "center",
-    marginTop: 36,
-    lineHeight: 17,
     paddingHorizontal: 20,
   },
 });

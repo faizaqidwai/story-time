@@ -1,3 +1,5 @@
+// components/DescribeObjectGame.jsx
+
 import React, { useState, useEffect, useRef } from "react";
 import {
   View,
@@ -19,8 +21,9 @@ import { useStoryActivity, ACTIVITY } from "../_contexts/StoryActivityContext";
 import OBJECTS from "../data/describeObjects.json";
 import BadgePopup from "./BadgePopup";
 import { FONTS } from "../theme";
+import { font, pad, radius, size } from "../theme/tokens"; // ← ADD
 
-const { width: SW, height: SH } = Dimensions.get("window");
+const { width: SW } = Dimensions.get("window");
 const STATUS_BAR_HEIGHT =
   Platform.OS === "android" ? (StatusBar.currentHeight ?? 24) : 50;
 
@@ -63,7 +66,6 @@ function FlyingCoin({ fromX, fromY, toX, toY, delay, onLand }) {
   const animY = useRef(new Animated.Value(fromY - 14)).current;
   const op = useRef(new Animated.Value(0)).current;
   const sc = useRef(new Animated.Value(0.6)).current;
-
   useEffect(() => {
     const duration = 480 + Math.random() * 160;
     Animated.sequence([
@@ -102,7 +104,6 @@ function FlyingCoin({ fromX, fromY, toX, toY, delay, onLand }) {
       onLand?.();
     });
   }, []);
-
   return (
     <Animated.Image
       source={require("../../assets/img/coin.png")}
@@ -303,11 +304,11 @@ function ProgressBar({ current, total }) {
 // RESULT SCREEN
 // ─────────────────────────────────────────────────────────────────────────────
 function ResultScreen({ score, total, onReplay, onExit }) {
-  const scale = useRef(new Animated.Value(0.7)).current;
+  const scaleA = useRef(new Animated.Value(0.7)).current;
   const op = useRef(new Animated.Value(0)).current;
   useEffect(() => {
     Animated.parallel([
-      Animated.spring(scale, {
+      Animated.spring(scaleA, {
         toValue: 1,
         friction: 5,
         tension: 60,
@@ -316,7 +317,6 @@ function ResultScreen({ score, total, onReplay, onExit }) {
       Animated.timing(op, { toValue: 1, duration: 400, useNativeDriver: true }),
     ]).start();
   }, []);
-
   const pct = Math.round((score / total) * 100);
   const emoji = pct === 100 ? "🏆" : pct >= 70 ? "🌟" : pct >= 40 ? "👍" : "💪";
   const msg =
@@ -327,10 +327,12 @@ function ResultScreen({ score, total, onReplay, onExit }) {
         : pct >= 40
           ? "Good Effort!"
           : "Keep Practising!";
-
   return (
     <Animated.View
-      style={[styles.resultCard, { opacity: op, transform: [{ scale }] }]}
+      style={[
+        styles.resultCard,
+        { opacity: op, transform: [{ scale: scaleA }] },
+      ]}
     >
       <Text style={styles.resultEmoji}>{emoji}</Text>
       <Text style={styles.resultMsg}>{msg}</Text>
@@ -371,7 +373,6 @@ const DescribeObjectGame = ({ onExit }) => {
     if (snap && snap.length > 0) return snap;
     return OBJECTS;
   })();
-
   const doExit = () => {
     Speech.stop();
     if (typeof onExit === "function") onExit();
@@ -384,16 +385,13 @@ const DescribeObjectGame = ({ onExit }) => {
   const [showResult, setShowResult] = useState(false);
   const [badgeVisible, setBadgeVisible] = useState(false);
   const totalCoinsRef = useRef(0);
-
   const finalScoreRef = useRef(0);
-  const pendingCompleteRef = useRef(false);
 
   const [options, setOptions] = useState([]);
   const [optionStates, setOptionStates] = useState({});
   const [correctFound, setCorrectFound] = useState(0);
   const [revealed, setRevealed] = useState(false);
   const [speakingId, setSpeakingId] = useState(null);
-
   const [flyingCoins, setFlyingCoins] = useState([]);
   const coinIdRef = useRef(0);
   const scoreBadgeRef = useRef(null);
@@ -401,7 +399,6 @@ const DescribeObjectGame = ({ onExit }) => {
 
   const badgeScale = useRef(new Animated.Value(1)).current;
   const badgeShake = useRef(new Animated.Value(0)).current;
-
   const objectScale = useRef(new Animated.Value(0.5)).current;
   const objectOp = useRef(new Animated.Value(0)).current;
   const emojiPulse = useRef(new Animated.Value(1)).current;
@@ -438,7 +435,6 @@ const DescribeObjectGame = ({ onExit }) => {
         .then(() => sndButton.current?.playAsync());
     } catch (_) {}
   };
-
   const autoAdvanceTimer = useRef(null);
   const pageSlide = useRef(new Animated.Value(0)).current;
   const pageOp = useRef(new Animated.Value(1)).current;
@@ -453,7 +449,6 @@ const DescribeObjectGame = ({ onExit }) => {
     titleSlide.setValue(-20);
     titleOp.setValue(0);
     emojiPulse.setValue(1);
-
     const shuffled = shuffle(current.options);
     setOptions(shuffled);
     setOptionStates(Object.fromEntries(shuffled.map((o) => [o.id, "idle"])));
@@ -461,7 +456,6 @@ const DescribeObjectGame = ({ onExit }) => {
     setRevealed(false);
     setFlyingCoins([]);
     optionRefs.current = {};
-
     Animated.parallel([
       Animated.spring(objectScale, {
         toValue: 1,
@@ -658,10 +652,8 @@ const DescribeObjectGame = ({ onExit }) => {
             finalScoreRef.current = finalScore;
             return finalScore;
           });
-
           const isWin = finalScoreRef.current === queue.length;
           if (isWin) {
-            // Complete activity FIRST before showing badge or navigating
             await completeActivity(
               ACTIVITY.WORD_UNDERSTANDING_CHALLENGE,
               { score: finalScoreRef.current },
@@ -770,24 +762,14 @@ const DescribeObjectGame = ({ onExit }) => {
   }
 
   if (!current) return null;
-
   const allCorrectFound = correctFound === CORRECT_NEEDED;
 
   return (
     <View style={styles.root}>
       {flyingCoins.map((c) => (
-        <FlyingCoin
-          key={c.id}
-          fromX={c.fromX}
-          fromY={c.fromY}
-          toX={c.toX}
-          toY={c.toY}
-          delay={c.delay}
-          onLand={() => handleCoinLand(c.id)}
-        />
+        <FlyingCoin key={c.id} {...c} onLand={() => handleCoinLand(c.id)} />
       ))}
 
-      {/* Top bar */}
       <View style={styles.topBar}>
         <TouchableOpacity
           style={styles.exitBtn}
@@ -824,17 +806,15 @@ const DescribeObjectGame = ({ onExit }) => {
           contentContainerStyle={styles.scrollContent}
           showsVerticalScrollIndicator={false}
         >
-          {/* Progress */}
           <View style={styles.progressRow}>
             <Text style={styles.progressLabel}>
               {qIndex + 1} / {queue.length}
             </Text>
-            <View style={{ flex: 1, marginLeft: 10 }}>
+            <View style={{ flex: 1, marginLeft: pad.sm }}>
               <ProgressBar current={qIndex + 1} total={queue.length} />
             </View>
           </View>
 
-          {/* Object display */}
           <Animated.View
             style={[
               styles.objectCard,
@@ -861,7 +841,6 @@ const DescribeObjectGame = ({ onExit }) => {
             </Animated.Text>
           </Animated.View>
 
-          {/* Instruction */}
           <View style={styles.instructionRow}>
             <View style={styles.instructionBadge}>
               <Text style={styles.instructionBadgeText}>Pick 3</Text>
@@ -873,7 +852,6 @@ const DescribeObjectGame = ({ onExit }) => {
             </Text>
           </View>
 
-          {/* Selection tracker */}
           <View style={styles.trackerRow}>
             {Array.from({ length: CORRECT_NEEDED }).map((_, i) => (
               <View
@@ -893,7 +871,6 @@ const DescribeObjectGame = ({ onExit }) => {
             </Text>
           </View>
 
-          {/* Options */}
           <View style={styles.optionsList}>
             {options.map((opt, i) => {
               if (!optionRefs.current[opt.id])
@@ -914,14 +891,12 @@ const DescribeObjectGame = ({ onExit }) => {
             })}
           </View>
 
-          {/* TTS hint */}
           <View style={styles.ttsHint}>
             <Text style={styles.ttsHintText}>
               🔈 Tap the speaker on any option to hear it read aloud
             </Text>
           </View>
 
-          {/* Result feedback */}
           {revealed && (
             <Animated.View
               style={[
@@ -944,7 +919,6 @@ const DescribeObjectGame = ({ onExit }) => {
               </Text>
             </Animated.View>
           )}
-
           <View style={{ height: 40 }} />
         </ScrollView>
       </Animated.View>
@@ -952,6 +926,10 @@ const DescribeObjectGame = ({ onExit }) => {
   );
 };
 
+export default DescribeObjectGame;
+
+// ─────────────────────────────────────────────────────────────────────────────
+// STYLES
 // ─────────────────────────────────────────────────────────────────────────────
 const styles = StyleSheet.create({
   root: { flex: 1, backgroundColor: C.bg },
@@ -963,75 +941,58 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "space-between",
     width: "100%",
-    paddingHorizontal: 18,
-    paddingTop: STATUS_BAR_HEIGHT + 10,
-    paddingBottom: 10,
+    paddingHorizontal: pad.md, // was: 18
+    paddingTop: STATUS_BAR_HEIGHT + pad.sm, // was: + 10
+    paddingBottom: pad.sm,
   },
   exitBtn: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 5,
+    gap: pad.xs,
     backgroundColor: "rgba(255,255,255,0.06)",
-    borderRadius: 18,
+    borderRadius: radius.lg, // was: 18
     borderWidth: 1,
     borderColor: "rgba(255,255,255,0.12)",
-    paddingHorizontal: 12,
-    paddingVertical: 7,
+    paddingHorizontal: pad.sm,
+    paddingVertical: pad.s,
     width: 70,
   },
-  // Exit ✕ icon — bold, muted
-  exitIcon: {
-    fontFamily: FONTS.bold,
-    fontSize: 11,
-    color: C.textMuted,
-  },
-  // Exit label — bold, secondary
-  exitText: {
-    fontFamily: FONTS.bold,
-    fontSize: 12,
-    color: C.textSec,
-  },
-  // Screen title — bold, teal
+  exitIcon: { fontFamily: FONTS.bold, fontSize: font.s, color: C.textMuted }, // was: 11
+  exitText: { fontFamily: FONTS.bold, fontSize: font.sm, color: C.textSec }, // was: 12
   topTitle: {
     fontFamily: FONTS.bold,
-    fontSize: 18,
+    fontSize: font.xl,
     color: C.teal,
     letterSpacing: 0.4,
     textShadowColor: "rgba(0,188,212,0.6)",
     textShadowOffset: { width: 0, height: 0 },
     textShadowRadius: 12,
-  },
+  }, // was: 18
   scorePill: {
     backgroundColor: C.yellowDim,
-    borderRadius: 18,
+    borderRadius: radius.lg,
     borderWidth: 1.5,
     borderColor: C.yellowBorder,
-    paddingHorizontal: 12,
-    paddingVertical: 5,
+    paddingHorizontal: pad.sm,
+    paddingVertical: pad.xs,
     width: 70,
     alignItems: "center",
   },
-  // Score "⭐ N" — bold, yellow
-  scoreText: {
-    fontFamily: FONTS.bold,
-    fontSize: 14,
-    color: C.yellow,
-  },
+  scoreText: { fontFamily: FONTS.bold, fontSize: font.md, color: C.yellow }, // was: 14
 
   progressRow: {
     flexDirection: "row",
     alignItems: "center",
     width: "92%",
-    marginTop: 6,
-    marginBottom: 14,
+    marginTop: pad.xs,
+    marginBottom: pad.sm,
   },
-  // Progress "N / N" — bold, muted
   progressLabel: {
     fontFamily: FONTS.bold,
-    fontSize: 12,
+    fontSize: font.sm,
     color: C.textMuted,
     width: 42,
-  },
+  }, // was: 12
   progressTrack: {
     flex: 1,
     height: 6,
@@ -1053,13 +1014,13 @@ const styles = StyleSheet.create({
   objectCard: {
     alignItems: "center",
     backgroundColor: C.surface,
-    borderRadius: 28,
+    borderRadius: radius.xxl, // was: 28
     borderWidth: 1.5,
     borderColor: C.tealBorder,
-    paddingVertical: 28,
-    paddingHorizontal: 24,
+    paddingVertical: pad.xl,
+    paddingHorizontal: pad.xl, // was: 28, 24
     width: "92%",
-    marginBottom: 16,
+    marginBottom: pad.md,
     shadowColor: C.teal,
     shadowOffset: { width: 0, height: 0 },
     shadowOpacity: 0.18,
@@ -1075,66 +1036,59 @@ const styles = StyleSheet.create({
     borderColor: C.tealBorder,
     alignItems: "center",
     justifyContent: "center",
-    marginBottom: 14,
+    marginBottom: pad.sm,
     shadowColor: C.teal,
     shadowOffset: { width: 0, height: 0 },
     shadowOpacity: 0.35,
     shadowRadius: 18,
     elevation: 5,
   },
-  objectEmoji: { fontSize: 62 },
-  // Object name — bold, large, white
+  objectEmoji: { fontSize: font.h1 }, // was: 62
   objectName: {
     fontFamily: FONTS.bold,
-    fontSize: 32,
+    fontSize: font.h3,
     color: C.white,
     letterSpacing: 0.5,
     textShadowColor: "rgba(0,188,212,0.4)",
     textShadowOffset: { width: 0, height: 0 },
     textShadowRadius: 14,
-  },
+  }, // was: 32
 
   instructionRow: {
     flexDirection: "row",
     alignItems: "center",
     width: "92%",
-    gap: 10,
-    marginBottom: 10,
+    gap: pad.sm,
+    marginBottom: pad.sm,
   },
   instructionBadge: {
     backgroundColor: C.purpleDim,
-    borderRadius: 10,
+    borderRadius: pad.sm,
     borderWidth: 1,
     borderColor: C.purpleBorder,
-    paddingHorizontal: 10,
-    paddingVertical: 4,
+    paddingHorizontal: pad.sm,
+    paddingVertical: pad.xs,
   },
-  // "Pick 3" badge text — bold, purple
   instructionBadgeText: {
     fontFamily: FONTS.bold,
-    fontSize: 12,
+    fontSize: font.sm,
     color: C.purple,
-  },
-  // Instruction body — regular, secondary
+  }, // was: 12
   instructionText: {
     fontFamily: FONTS.regular,
     flex: 1,
-    fontSize: 13,
+    fontSize: font.sm,
     color: C.textSec,
-    lineHeight: 19,
-  },
-  // Highlighted words within instruction — bold, teal
-  instructionHighlight: {
-    fontFamily: FONTS.bold,
-    color: C.teal,
-  },
+    lineHeight: font.sm * 1.5,
+  }, // was: 13
+  instructionHighlight: { fontFamily: FONTS.bold, color: C.teal },
 
   trackerRow: {
     flexDirection: "row",
     alignItems: "center",
     width: "92%",
-    gap: 8,
-    marginBottom: 16,
+    gap: pad.s,
+    marginBottom: pad.md,
   },
   trackerDot: {
     width: 30,
@@ -1157,30 +1111,24 @@ const styles = StyleSheet.create({
     shadowRadius: 6,
     elevation: 3,
   },
-  // Tracker ✓ glyph — bold, green
-  trackerCheck: {
-    fontFamily: FONTS.bold,
-    fontSize: 14,
-    color: C.green,
-  },
-  // "N/3 found" label — bold, muted
+  trackerCheck: { fontFamily: FONTS.bold, fontSize: font.md, color: C.green }, // was: 14
   trackerLabel: {
     fontFamily: FONTS.bold,
-    fontSize: 12,
+    fontSize: font.sm,
     color: C.textMuted,
-    marginLeft: 4,
-  },
+    marginLeft: pad.xs,
+  }, // was: 12
 
-  optionsList: { width: "92%", gap: 9, marginBottom: 6 },
+  optionsList: { width: "92%", gap: pad.s, marginBottom: pad.xs },
   optionCard: {
     flexDirection: "row",
     alignItems: "center",
-    borderRadius: 14,
+    borderRadius: radius.md,
     borderWidth: 1.5,
-    paddingHorizontal: 12,
-    paddingVertical: 13,
-    gap: 10,
-  },
+    paddingHorizontal: pad.sm,
+    paddingVertical: pad.sm,
+    gap: pad.sm,
+  }, // was: 14, 13
   optionBullet: {
     width: 30,
     height: 30,
@@ -1192,24 +1140,18 @@ const styles = StyleSheet.create({
     backgroundColor: "rgba(255,255,255,0.04)",
     flexShrink: 0,
   },
-  // Option letter (A/B/C/D) — bold
   optionBulletLetter: {
     fontFamily: FONTS.bold,
-    fontSize: 13,
+    fontSize: font.sm,
     color: C.textMuted,
-  },
-  // Option state icon (✓/✗/!) — bold
-  optionBulletIcon: {
-    fontFamily: FONTS.bold,
-    fontSize: 14,
-  },
-  // Option description text — regular
+  }, // was: 13
+  optionBulletIcon: { fontFamily: FONTS.bold, fontSize: font.md }, // was: 14
   optionText: {
     fontFamily: FONTS.regular,
     flex: 1,
-    fontSize: 14,
-    lineHeight: 20,
-  },
+    fontSize: font.md,
+    lineHeight: font.md * 1.5,
+  }, // was: 14
 
   speakerBtn: {
     width: 34,
@@ -1223,70 +1165,49 @@ const styles = StyleSheet.create({
     flexShrink: 0,
   },
   speakerBtnActive: { backgroundColor: C.tealDim, borderColor: C.tealBold },
-  speakerIcon: { fontSize: 16 },
+  speakerIcon: { fontSize: font.lg }, // was: 16
 
-  ttsHint: { width: "92%", marginBottom: 12, alignItems: "center" },
-  // TTS hint — light, italic, muted
+  ttsHint: { width: "92%", marginBottom: pad.sm, alignItems: "center" },
   ttsHintText: {
     fontFamily: FONTS.light,
-    fontSize: 11,
+    fontSize: font.s,
     color: C.textMuted,
     fontStyle: "italic",
     textAlign: "center",
-  },
+  }, // was: 11
 
   feedbackBanner: {
     flexDirection: "row",
     alignItems: "center",
     width: "92%",
-    borderRadius: 14,
+    borderRadius: radius.md,
     borderWidth: 1.5,
-    padding: 14,
-    gap: 10,
-    marginBottom: 14,
+    padding: pad.sm,
+    gap: pad.sm,
+    marginBottom: pad.sm,
   },
   feedbackWin: { backgroundColor: C.greenDim, borderColor: C.greenBorder },
   feedbackLose: { backgroundColor: C.redDim, borderColor: C.redBorder },
-  feedbackIcon: { fontSize: 22 },
-  // Feedback message — bold
+  feedbackIcon: { fontSize: font.xl }, // was: 22
   feedbackText: {
     fontFamily: FONTS.bold,
     flex: 1,
-    fontSize: 14,
-    lineHeight: 20,
-  },
-
-  nextBtn: {
-    backgroundColor: C.teal,
-    borderRadius: 30,
-    paddingHorizontal: 42,
-    paddingVertical: 15,
-    marginBottom: 8,
-    shadowColor: C.teal,
-    shadowOffset: { width: 0, height: 0 },
-    shadowOpacity: 0.6,
-    shadowRadius: 14,
-    elevation: 8,
-  },
-  nextBtnText: {
-    fontFamily: FONTS.bold,
-    fontSize: 16,
-    color: C.bg,
-    letterSpacing: 0.4,
-  },
+    fontSize: font.md,
+    lineHeight: font.md * 1.5,
+  }, // was: 14
 
   resultContainer: {
     flex: 1,
     alignItems: "center",
     justifyContent: "center",
-    padding: 24,
+    padding: pad.xl,
   },
   resultCard: {
     backgroundColor: "rgba(255,255,255,0.05)",
-    borderRadius: 30,
+    borderRadius: radius.xxl, // was: 30
     borderWidth: 1.5,
     borderColor: C.tealBorder,
-    padding: 32,
+    padding: pad.xxl, // was: 32
     alignItems: "center",
     width: "100%",
     shadowColor: C.teal,
@@ -1295,48 +1216,40 @@ const styles = StyleSheet.create({
     shadowRadius: 24,
     elevation: 8,
   },
-  resultEmoji: { fontSize: 72, marginBottom: 12 },
-  // Result message — bold, white
+  resultEmoji: { fontSize: size.iconXl + 8, marginBottom: pad.sm }, // was: 72
   resultMsg: {
     fontFamily: FONTS.bold,
-    fontSize: 26,
+    fontSize: font.xxl,
     color: C.white,
     letterSpacing: 0.3,
-    marginBottom: 20,
+    marginBottom: pad.lg,
     textShadowColor: "rgba(0,188,212,0.5)",
     textShadowOffset: { width: 0, height: 0 },
     textShadowRadius: 16,
-  },
+  }, // was: 26
   resultScoreRow: {
     flexDirection: "row",
     alignItems: "baseline",
-    gap: 4,
-    marginBottom: 6,
+    gap: pad.xs,
+    marginBottom: pad.xs,
   },
-  // Large score number — bold, teal
-  resultScore: {
-    fontFamily: FONTS.bold,
-    fontSize: 64,
-    color: C.teal,
-  },
-  // "/ N" denominator — bold, muted
+  resultScore: { fontFamily: FONTS.bold, fontSize: font.h1, color: C.teal }, // was: 64
   resultScoreOf: {
     fontFamily: FONTS.bold,
-    fontSize: 28,
+    fontSize: font.h3,
     color: C.textMuted,
-  },
-  // Percentage label — light, secondary
+  }, // was: 28
   resultPct: {
     fontFamily: FONTS.light,
-    fontSize: 16,
+    fontSize: font.lg,
     color: C.textSec,
-    marginBottom: 32,
-  },
-  resultBtns: { gap: 12, width: "100%" },
+    marginBottom: pad.xxl,
+  }, // was: 16
+  resultBtns: { gap: pad.sm, width: "100%" },
   replayBtn: {
     backgroundColor: C.teal,
-    borderRadius: 28,
-    paddingVertical: 15,
+    borderRadius: radius.xxl,
+    paddingVertical: pad.md,
     alignItems: "center",
     shadowColor: C.teal,
     shadowOffset: { width: 0, height: 0 },
@@ -1344,27 +1257,23 @@ const styles = StyleSheet.create({
     shadowRadius: 14,
     elevation: 8,
   },
-  // "▶ Play Again" — bold, dark
   replayBtnText: {
     fontFamily: FONTS.bold,
-    fontSize: 16,
+    fontSize: font.lg,
     color: C.bg,
     letterSpacing: 0.4,
-  },
+  }, // was: 16
   exitResultBtn: {
     backgroundColor: "rgba(255,255,255,0.06)",
-    borderRadius: 28,
+    borderRadius: radius.xxl,
     borderWidth: 1,
     borderColor: "rgba(255,255,255,0.14)",
-    paddingVertical: 13,
+    paddingVertical: pad.sm,
     alignItems: "center",
   },
-  // "✕ Exit" — bold, secondary
   exitResultBtnText: {
     fontFamily: FONTS.bold,
-    fontSize: 14,
+    fontSize: font.md,
     color: C.textSec,
-  },
+  }, // was: 14
 });
-
-export default DescribeObjectGame;

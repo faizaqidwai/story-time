@@ -19,7 +19,7 @@
 //   swish.mp3  — carousel page turn + slide 3 auto-scroll tick
 //   button.mp3 — Get Started button pressed
 //
-// Background: two static glow circles (teal top-left, purple bottom-right) — no dots, no pulsing.
+// Background: full-screen looping video with dark blue overlay.
 // After last slide (or Skip) → AccountChoice screen.
 
 import React, { useRef, useState, useEffect, useCallback } from "react";
@@ -35,19 +35,13 @@ import {
   StatusBar,
   ScrollView,
   FlatList,
+  useWindowDimensions,
 } from "react-native";
 import { useRouter } from "expo-router";
 import { Audio } from "expo-av";
+import { Video, ResizeMode } from "expo-av";
 import { FONTS, COLORS } from "./theme";
-
-const { width: SW, height: SH } = Dimensions.get("window");
-
-// ── Layout constants ───────────────────────────────────────────────────────
-const TOP_H = SH * 0.3;
-const BOT_H = SH * 0.7;
-const HALF_W = SW * 0.5;
-const S1_DESC_W = SW * 0.65;
-const S1_VIS_W = SW * 0.35;
+import { useTheme } from "./_contexts/ThemeContext";
 
 // ── Timing (ms) ────────────────────────────────────────────────────────────
 const LINE_DUR = 480;
@@ -56,7 +50,6 @@ const VIS_DELAY = 250;
 const VIS_STAGGER = 220;
 
 // ── Sound helper ──────────────────────────────────────────────────────────
-// Fire-and-forget: loads, plays, then unloads. Safe to call rapidly.
 async function playSound(file) {
   try {
     await Audio.setAudioModeAsync({ playsInSilentModeIOS: true });
@@ -270,34 +263,6 @@ const ACTIVITY_STEPS = [
 // ── Slide definitions ─────────────────────────────────────────────────────
 const SLIDES = [
   {
-    id: "1",
-    accentColor: COLORS.teal,
-    title: "Welcome to Story Time",
-    subtitle: "A Journey Built to Grow With Them",
-    descSide: "left",
-    visSide: "right",
-    visType: "levels",
-    lines: [
-      "Where every story\nplants the seed of a\npowerful vocabulary",
-      "Your child enters a world of carefully crafted stories — built for their age, curiosity, and growing mind.",
-      "A guided journey from beginner to advanced vocabulary — natural, playful, and perfectly paced.",
-    ],
-  },
-  {
-    id: "2",
-    accentColor: COLORS.coral,
-    title: "Learning That Feels Like Playing",
-    subtitle: "Read · Guess · Listen · Describe",
-    descSide: "right",
-    visSide: "left",
-    visType: "activities",
-    lines: [
-      "Four fun challenges\nbuilt into every story",
-      "After every story: guess, listen, answer, and describe — turning every word into a lasting skill.",
-      "Kids don't just read words — they hear, use, and own them. Vocabulary that truly stays.",
-    ],
-  },
-  {
     id: "3",
     accentColor: "#31ad79",
     title: "Get Ready to Explore Story Time",
@@ -313,9 +278,7 @@ const SLIDES = [
   },
 ];
 
-// ─────────────────────────────────────────────────────────────────────────────
-// LEVEL BADGE MINI — slide 1 visual
-// ─────────────────────────────────────────────────────────────────────────────
+// ── Level badge data ───────────────────────────────────────────────────────
 const LEVEL_NUMS = [1, 5, 10, 20, "30+"];
 const LEVEL_COLORS = [
   COLORS.teal,
@@ -325,126 +288,193 @@ const LEVEL_COLORS = [
   COLORS.teal,
   COLORS.yellow,
 ];
+const STEP_COLORS = [COLORS.teal, COLORS.yellow, COLORS.coral, COLORS.purple];
 
+// ─────────────────────────────────────────────────────────────────────────────
+// LEVEL BADGE MINI — slide 1 visual
+// ─────────────────────────────────────────────────────────────────────────────
 function LevelBadgeMini({ level, color, anim }) {
+  const { sizes } = useTheme();
+  const sz = sizes.carousel;
   const slideX = anim.interpolate({ inputRange: [0, 1], outputRange: [28, 0] });
   const barPct =
     typeof level === "number" ? `${Math.round((level / 30) * 100)}%` : "100%";
+  const innerSize = sz.badgeInnerSize;
   return (
     <Animated.View
-      style={[
-        lbS.outer,
-        { opacity: anim, transform: [{ translateX: slideX }] },
-      ]}
+      style={{
+        alignItems: "center",
+        marginVertical: sz.badgeMarginV,
+        opacity: anim,
+        transform: [{ translateX: slideX }],
+      }}
     >
-      <View style={[lbS.ring, { borderColor: color + "77" }]}>
-        <View style={lbS.inner}>
-          <View style={[lbS.diagBg, { backgroundColor: color + "20" }]} />
-          <Text style={[lbS.lvlLabel, { color }]}>LEVEL</Text>
-          <Text style={[lbS.lvlNum, { textShadowColor: color }]}>{level}</Text>
+      <View
+        style={{
+          width: sz.badgeRingSize,
+          height: sz.badgeRingSize,
+          borderRadius: sz.badgeRingSize / 2,
+          backgroundColor: "#0d0f22",
+          borderWidth: 2.5,
+          borderColor: color + "77",
+          alignItems: "center",
+          justifyContent: "center",
+          shadowColor: "#000",
+          shadowOffset: { width: 0, height: 3 },
+          shadowOpacity: 0.7,
+          shadowRadius: 8,
+          elevation: 10,
+        }}
+      >
+        <View
+          style={{
+            width: innerSize,
+            height: innerSize,
+            borderRadius: innerSize / 2,
+            backgroundColor: "#10122a",
+            alignItems: "center",
+            justifyContent: "center",
+            overflow: "hidden",
+          }}
+        >
+          <View
+            style={{
+              position: "absolute",
+              top: 0,
+              left: -6,
+              right: -6,
+              height: "55%",
+              backgroundColor: color + "20",
+              transform: [{ rotate: "-6deg" }, { translateY: -3 }],
+            }}
+          />
+          <Text
+            style={{
+              fontFamily: FONTS.bold,
+              fontSize: sz.badgeLvlLabelSize,
+              color,
+              letterSpacing: 2,
+            }}
+          >
+            LEVEL
+          </Text>
+          <Text
+            style={{
+              fontFamily: FONTS.bold,
+              fontSize: sz.badgeLvlNumSize,
+              color: "#E0F7FA",
+              lineHeight: sz.badgeLvlNumSize + 4,
+              textShadowColor: color,
+              textShadowOffset: { width: 0, height: 0 },
+              textShadowRadius: 8,
+            }}
+          >
+            {level}
+          </Text>
         </View>
       </View>
-      <View style={lbS.barTrack}>
+      <View
+        style={{
+          width: sz.badgeBarWidth,
+          height: 6,
+          borderRadius: 3,
+          backgroundColor: "rgba(255,255,255,0.08)",
+          marginTop: 6,
+          overflow: "hidden",
+        }}
+      >
         <View
-          style={[lbS.barFill, { backgroundColor: color, width: barPct }]}
+          style={{
+            height: "100%",
+            borderRadius: 3,
+            backgroundColor: color,
+            width: barPct,
+          }}
         />
       </View>
     </Animated.View>
   );
 }
 
-const lbS = StyleSheet.create({
-  outer: { alignItems: "center", marginVertical: 5 },
-  ring: {
-    width: 88,
-    height: 88,
-    borderRadius: 44,
-    backgroundColor: "#0d0f22",
-    borderWidth: 2.5,
-    alignItems: "center",
-    justifyContent: "center",
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 3 },
-    shadowOpacity: 0.7,
-    shadowRadius: 8,
-    elevation: 10,
-  },
-  inner: {
-    width: 74,
-    height: 74,
-    borderRadius: 37,
-    backgroundColor: "#10122a",
-    alignItems: "center",
-    justifyContent: "center",
-    overflow: "hidden",
-  },
-  diagBg: {
-    position: "absolute",
-    top: 0,
-    left: -6,
-    right: -6,
-    height: "55%",
-    transform: [{ rotate: "-6deg" }, { translateY: -3 }],
-  },
-  lvlLabel: { fontFamily: FONTS.bold, fontSize: 10, letterSpacing: 2 },
-  lvlNum: {
-    fontFamily: FONTS.bold,
-    fontSize: 28,
-    color: "#E0F7FA",
-    lineHeight: 32,
-    textShadowOffset: { width: 0, height: 0 },
-    textShadowRadius: 8,
-  },
-  barTrack: {
-    width: 78,
-    height: 6,
-    borderRadius: 3,
-    backgroundColor: "rgba(255,255,255,0.08)",
-    marginTop: 6,
-    overflow: "hidden",
-  },
-  barFill: { height: "100%", borderRadius: 3 },
-});
-
 // ─────────────────────────────────────────────────────────────────────────────
 // ACTIVITY BADGE MINI — slide 2 visual
 // ─────────────────────────────────────────────────────────────────────────────
-function ActivityBadgeMini({ step, anim }) {
+function ActivityBadgeMini({ step, anim, halfW }) {
+  const { sizes } = useTheme();
+  const sz = sizes.carousel;
   const slideX = anim.interpolate({
     inputRange: [0, 1],
     outputRange: [-28, 0],
   });
   return (
     <Animated.View
-      style={[
-        abS.outer,
-        { opacity: anim, transform: [{ translateX: slideX }] },
-      ]}
+      style={{
+        marginVertical: sz.activityMarginV,
+        opacity: anim,
+        transform: [{ translateX: slideX }],
+      }}
     >
       <View
-        style={[
-          abS.card,
-          {
-            borderColor: step.color + "66",
-            backgroundColor: step.color + "16",
-          },
-        ]}
+        style={{
+          flexDirection: "row",
+          alignItems: "center",
+          borderRadius: 20,
+          borderWidth: 1.5,
+          paddingVertical: sz.activityCardPaddingV,
+          paddingHorizontal: sz.activityCardPaddingH,
+          gap: 12,
+          width: halfW - 22,
+          borderColor: step.color + "66",
+          backgroundColor: step.color + "16",
+        }}
       >
         <View
-          style={[
-            abS.iconBox,
-            {
-              borderColor: step.color + "88",
-              backgroundColor: step.color + "20",
-            },
-          ]}
+          style={{
+            width: sz.activityIconBoxSize,
+            height: sz.activityIconBoxSize,
+            borderRadius: 16,
+            borderWidth: 1.5,
+            alignItems: "center",
+            justifyContent: "center",
+            flexShrink: 0,
+            borderColor: step.color + "88",
+            backgroundColor: step.color + "20",
+          }}
         >
-          <Image source={step.image} style={abS.icon} resizeMode="contain" />
+          <Image
+            source={step.image}
+            style={{ width: sz.activityIconSize, height: sz.activityIconSize }}
+            resizeMode="contain"
+          />
         </View>
-        <View style={abS.textCol}>
-          <Text style={[abS.label, { color: step.color }]}>{step.label}</Text>
-          <View style={[abS.pill, { backgroundColor: step.color + "33" }]}>
-            <View style={[abS.pillDot, { backgroundColor: step.color }]} />
+        <View style={{ flex: 1, gap: 7 }}>
+          <Text
+            style={{
+              fontFamily: FONTS.bold,
+              fontSize: sz.activityLabelFontSize,
+              color: step.color,
+              letterSpacing: 0.3,
+            }}
+          >
+            {step.label}
+          </Text>
+          <View
+            style={{
+              width: 36,
+              height: 6,
+              borderRadius: 3,
+              justifyContent: "center",
+              backgroundColor: step.color + "33",
+            }}
+          >
+            <View
+              style={{
+                width: 12,
+                height: 6,
+                borderRadius: 3,
+                backgroundColor: step.color,
+              }}
+            />
           </View>
         </View>
       </View>
@@ -452,83 +482,168 @@ function ActivityBadgeMini({ step, anim }) {
   );
 }
 
-const abS = StyleSheet.create({
-  outer: { marginVertical: 7 },
-  card: {
-    flexDirection: "row",
-    alignItems: "center",
-    borderRadius: 20,
-    borderWidth: 1.5,
-    paddingVertical: 14,
-    paddingHorizontal: 14,
-    gap: 12,
-    width: HALF_W - 22,
-  },
-  iconBox: {
-    width: 60,
-    height: 60,
-    borderRadius: 16,
-    borderWidth: 1.5,
-    alignItems: "center",
-    justifyContent: "center",
-    flexShrink: 0,
-  },
-  icon: { width: 38, height: 38 },
-  textCol: { flex: 1, gap: 7 },
-  label: { fontFamily: FONTS.bold, fontSize: 18, letterSpacing: 0.3 },
-  pill: { width: 36, height: 6, borderRadius: 3, justifyContent: "center" },
-  pillDot: { width: 12, height: 6, borderRadius: 3 },
-});
-
 // ─────────────────────────────────────────────────────────────────────────────
 // STORY CARD MINI
 // ─────────────────────────────────────────────────────────────────────────────
-const CARD_W = HALF_W - 22;
-const IMAGE_H = Math.round(CARD_W * 0.72);
-const STEP_COLORS = [COLORS.teal, COLORS.yellow, COLORS.coral, COLORS.purple];
-
 function StoryCardMini({ story }) {
+  const { sizes } = useTheme();
+  const sz = sizes.carousel;
+  const { width: SW } = useWindowDimensions();
+  const cardW = SW * 0.5 - 22;
+  const imageH = Math.round(cardW * 0.72);
   return (
     <View
-      style={[
-        scS.card,
-        {
-          borderColor: story.isCompleted
-            ? "rgba(76,175,80,0.45)"
-            : "rgba(0,188,212,0.28)",
-        },
-      ]}
+      style={{
+        width: cardW,
+        backgroundColor: "#16213e",
+        borderRadius: 22,
+        borderWidth: 1.5,
+        marginBottom: sz.storyCardMarginBottom,
+        overflow: "hidden",
+        borderColor: story.isCompleted
+          ? "rgba(76,175,80,0.45)"
+          : "rgba(0,188,212,0.28)",
+      }}
     >
-      <View style={[scS.imageWrap, { height: IMAGE_H }]}>
+      <View
+        style={{
+          width: "100%",
+          height: imageH,
+          overflow: "hidden",
+          borderTopLeftRadius: 20,
+          borderTopRightRadius: 20,
+        }}
+      >
         {story.image ? (
           <Image
             source={story.image}
-            style={scS.coverImage}
+            style={{ width: "100%", height: "100%" }}
             resizeMode="cover"
           />
         ) : (
           <View
-            style={[scS.coverSwatch, { backgroundColor: story.color + "55" }]}
+            style={{
+              width: "100%",
+              height: "100%",
+              alignItems: "center",
+              justifyContent: "center",
+              backgroundColor: story.color + "55",
+            }}
           >
-            <Text style={scS.coverEmoji}>📖</Text>
+            <Text style={{ fontSize: 28 }}>📖</Text>
           </View>
         )}
-        <View style={[scS.newBadge, { backgroundColor: story.color }]}>
-          <Text style={scS.newTxt}>NEW</Text>
+        <View
+          style={{
+            position: "absolute",
+            top: 8,
+            right: 8,
+            borderRadius: 7,
+            paddingHorizontal: 7,
+            paddingVertical: 3,
+            zIndex: 2,
+            backgroundColor: story.color,
+          }}
+        >
+          <Text
+            style={{
+              fontFamily: FONTS.bold,
+              fontSize: 8,
+              color: "#08081a",
+              letterSpacing: 1.2,
+            }}
+          >
+            NEW
+          </Text>
         </View>
-        <View style={scS.titleOverlayBg} />
-        <View style={scS.titleOverlay}>
-          <Text style={scS.title}>{story.title}</Text>
+        <View
+          style={{
+            position: "absolute",
+            bottom: 0,
+            left: 0,
+            right: 0,
+            height: "30%",
+            backgroundColor: "rgba(13,13,36,0.78)",
+          }}
+        />
+        <View
+          style={{
+            position: "absolute",
+            bottom: 0,
+            left: 0,
+            right: 0,
+            paddingHorizontal: 10,
+            paddingBottom: 9,
+            paddingTop: 6,
+            zIndex: 1,
+          }}
+        >
+          <Text
+            style={{
+              fontFamily: FONTS.bold,
+              fontSize: sz.storyCardTitleFontSize,
+              color: "#E0F7FA",
+              lineHeight: sz.storyCardTitleLineHeight,
+              textShadowColor: "rgba(0,0,0,0.7)",
+              textShadowOffset: { width: 0, height: 1 },
+              textShadowRadius: 4,
+            }}
+          >
+            {story.title}
+          </Text>
         </View>
       </View>
-      <Text style={scS.intro} numberOfLines={3}>
+      <Text
+        style={{
+          fontFamily: FONTS.light,
+          fontSize: sz.storyCardIntroFontSize,
+          color: "#7a9aaa",
+          fontStyle: "italic",
+          lineHeight: sz.storyCardIntroLineHeight,
+          paddingHorizontal: 10,
+          paddingTop: 8,
+          paddingBottom: 4,
+          flexShrink: 1,
+        }}
+        numberOfLines={3}
+      >
         {story.intro}
       </Text>
-      <View style={scS.stepsRow}>
+      <View
+        style={{
+          flexDirection: "row",
+          alignItems: "center",
+          justifyContent: "center",
+          paddingHorizontal: 10,
+          paddingVertical: 8,
+          marginHorizontal: 10,
+          marginBottom: 10,
+          backgroundColor: "rgba(0,0,0,0.3)",
+          borderRadius: 20,
+          borderWidth: 1,
+          borderColor: "rgba(0,188,212,0.2)",
+        }}
+      >
         {STEP_COLORS.map((c, i) => (
-          <View key={i} style={scS.stepItem}>
-            <View style={[scS.stepDot, { backgroundColor: c + "99" }]} />
-            {i < STEP_COLORS.length - 1 && <View style={scS.connector} />}
+          <View key={i} style={{ flexDirection: "row", alignItems: "center" }}>
+            <View
+              style={{
+                width: sz.storyDotSize,
+                height: sz.storyDotSize,
+                borderRadius: sz.storyDotSize / 2,
+                backgroundColor: c + "99",
+              }}
+            />
+            {i < STEP_COLORS.length - 1 && (
+              <View
+                style={{
+                  width: sz.storyConnectorWidth,
+                  height: 2,
+                  backgroundColor: "rgba(0,188,212,0.25)",
+                  marginHorizontal: 3,
+                }}
+              />
+            )}
           </View>
         ))}
       </View>
@@ -536,120 +651,12 @@ function StoryCardMini({ story }) {
   );
 }
 
-const scS = StyleSheet.create({
-  card: {
-    width: CARD_W,
-    backgroundColor: "#16213e",
-    borderRadius: 22,
-    borderWidth: 1.5,
-    marginBottom: 12,
-    overflow: "hidden",
-  },
-  imageWrap: {
-    width: "100%",
-    position: "relative",
-    overflow: "hidden",
-    borderTopLeftRadius: 20,
-    borderTopRightRadius: 20,
-  },
-  coverImage: {
-    ...StyleSheet.absoluteFillObject,
-    width: "100%",
-    height: "100%",
-  },
-  coverSwatch: {
-    ...StyleSheet.absoluteFillObject,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  coverInner: {
-    width: CARD_W * 0.45,
-    height: CARD_W * 0.45,
-    borderRadius: CARD_W * 0.225,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  coverEmoji: { fontSize: 28 },
-  newBadge: {
-    position: "absolute",
-    top: 8,
-    right: 8,
-    borderRadius: 7,
-    paddingHorizontal: 7,
-    paddingVertical: 3,
-    zIndex: 2,
-  },
-  newTxt: {
-    fontFamily: FONTS.bold,
-    fontSize: 8,
-    color: "#08081a",
-    letterSpacing: 1.2,
-  },
-  titleOverlayBg: {
-    position: "absolute",
-    bottom: 0,
-    left: 0,
-    right: 0,
-    height: "30%",
-    backgroundColor: "rgba(13,13,36,0.78)",
-  },
-  titleOverlay: {
-    position: "absolute",
-    bottom: 0,
-    left: 0,
-    right: 0,
-    paddingHorizontal: 10,
-    paddingBottom: 9,
-    paddingTop: 6,
-    zIndex: 1,
-  },
-  title: {
-    fontFamily: FONTS.bold,
-    fontSize: 13,
-    color: "#E0F7FA",
-    lineHeight: 17,
-    textShadowColor: "rgba(0,0,0,0.7)",
-    textShadowOffset: { width: 0, height: 1 },
-    textShadowRadius: 4,
-  },
-  intro: {
-    fontFamily: FONTS.light,
-    fontSize: 10,
-    color: "#7a9aaa",
-    fontStyle: "italic",
-    lineHeight: 14,
-    paddingHorizontal: 10,
-    paddingTop: 8,
-    paddingBottom: 4,
-    flexShrink: 1,
-  },
-  stepsRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-    paddingHorizontal: 10,
-    paddingVertical: 8,
-    marginHorizontal: 10,
-    marginBottom: 10,
-    backgroundColor: "rgba(0,0,0,0.3)",
-    borderRadius: 20,
-    borderWidth: 1,
-    borderColor: "rgba(0,188,212,0.2)",
-  },
-  stepItem: { flexDirection: "row", alignItems: "center" },
-  stepDot: { width: 10, height: 10, borderRadius: 5 },
-  connector: {
-    width: 12,
-    height: 2,
-    backgroundColor: "rgba(0,188,212,0.25)",
-    marginHorizontal: 3,
-  },
-});
-
 // ─────────────────────────────────────────────────────────────────────────────
 // DESCRIPTION LINE — fade + slide up on appear
 // ─────────────────────────────────────────────────────────────────────────────
 function DescLine({ text, anim, isFirst }) {
+  const { sizes } = useTheme();
+  const sz = sizes.carousel;
   const translateY = anim.interpolate({
     inputRange: [0, 1],
     outputRange: [14, 0],
@@ -657,7 +664,21 @@ function DescLine({ text, anim, isFirst }) {
   return (
     <Animated.Text
       style={[
-        isFirst ? dlS.lineFirst : dlS.lineBody,
+        isFirst
+          ? {
+              fontFamily: FONTS.bold,
+              fontSize: sz.descLineFirstFontSize,
+              color: "#E0F7FA",
+              lineHeight: sz.descLineFirstLineHeight,
+              marginBottom: 14,
+            }
+          : {
+              fontFamily: FONTS.light,
+              fontSize: sz.descLineBodyFontSize,
+              color: "#E0F7FA",
+              lineHeight: sz.descLineBodyLineHeight,
+              marginBottom: 10,
+            },
         { opacity: anim, transform: [{ translateY }] },
       ]}
     >
@@ -666,27 +687,20 @@ function DescLine({ text, anim, isFirst }) {
   );
 }
 
-const dlS = StyleSheet.create({
-  lineFirst: {
-    fontFamily: FONTS.bold,
-    fontSize: 22,
-    color: "#E0F7FA",
-    lineHeight: 30,
-    marginBottom: 14,
-  },
-  lineBody: {
-    fontFamily: FONTS.light,
-    fontSize: 16,
-    color: "#7a9aaa",
-    lineHeight: 23,
-    marginBottom: 10,
-  },
-});
-
 // ─────────────────────────────────────────────────────────────────────────────
 // SLIDE PANEL
 // ─────────────────────────────────────────────────────────────────────────────
 function SlidePanel({ slide, isActive }) {
+  const { width: SW, height: SH } = useWindowDimensions();
+  const { sizes } = useTheme();
+  const sz = sizes.carousel;
+  const TOP_H = SH * sz.topHeightRatio;
+  const BOT_H = SH * sz.botHeightRatio;
+  const HALF_W = SW * 0.5;
+  const S1_DESC_W = SW * sz.s1DescRatio;
+  const S1_VIS_W = SW * sz.s1VisRatio;
+  const CARD_W = HALF_W - 22;
+
   const lineCount = slide.lines.length;
   const visCount =
     slide.visType === "levels"
@@ -696,7 +710,7 @@ function SlidePanel({ slide, isActive }) {
         : 0;
 
   // ── Slide 1: compute how many level badges fit ────────────────────────────
-  const BADGE_H = 112;
+  const BADGE_H = sz.badgeRingSize + 12 + sz.badgeMarginV * 2;
   const AVAILABLE_H = BOT_H - 16 - 88 - 20;
   const MAX_FIT = Math.floor(AVAILABLE_H / BADGE_H);
 
@@ -738,7 +752,7 @@ function SlidePanel({ slide, isActive }) {
   const storyScrollRef = useRef(null);
   const scrollTimerRef = useRef(null);
   const scrollOffsetRef = useRef(0);
-  const CARD_H = 240;
+  const CARD_H = sz.badgeRingSize > 100 ? 280 : 240;
   const VISIBLE_H = BOT_H - 88 - 16;
   const PAGE_STEP = Math.floor(VISIBLE_H / CARD_H) * CARD_H;
   const MAX_OFFSET = DUMMY_STORIES.length * CARD_H - VISIBLE_H;
@@ -769,9 +783,10 @@ function SlidePanel({ slide, isActive }) {
 
     const allLinesDone = (lineCount - 1) * LINE_STAGGER + LINE_DUR + VIS_DELAY;
 
-    // ── Visual items (level badges / activity badges) ──────────────────────
-    // Each item plays pop.mp3 when it becomes visible
-    const visSeq = visAnims.slice(0, visCount).map((anim, i) =>
+    // ── Visual items ──────────────────────────────────────────────────────
+    const actualVisCount =
+      slide.visType === "levels" ? levelSubset.length : visCount;
+    const visSeq = visAnims.slice(0, actualVisCount).map((anim, i) =>
       Animated.sequence([
         Animated.delay(allLinesDone + i * VIS_STAGGER),
         Animated.timing(anim, {
@@ -782,9 +797,8 @@ function SlidePanel({ slide, isActive }) {
       ]),
     );
 
-    // Schedule pop sounds to match each visual item's reveal time
     const popTimers = visAnims
-      .slice(0, visCount)
+      .slice(0, actualVisCount)
       .map((_, i) =>
         setTimeout(
           () => playSound(require("../assets/sounds/pop.mp3")),
@@ -794,7 +808,7 @@ function SlidePanel({ slide, isActive }) {
 
     Animated.parallel([...lineSeq, ...visSeq]).start();
 
-    // ── Slide 3: story cards + auto-scroll with swish ──────────────────────
+    // ── Slide 3: story cards + auto-scroll ────────────────────────────────
     if (slide.visType === "stories") {
       const CARD_STAGGER = 80;
       const CARD_DUR = 250;
@@ -821,7 +835,6 @@ function SlidePanel({ slide, isActive }) {
             y: scrollOffsetRef.current,
             animated: true,
           });
-          // swish on each auto-scroll page turn
           playSound(require("../assets/sounds/button.mp3"), { volume: 0.4 });
         }, 2600);
       }, firstPageDone);
@@ -840,7 +853,7 @@ function SlidePanel({ slide, isActive }) {
 
   // ── Section builders ───────────────────────────────────────────────────────
   const DescSection = (
-    <View style={pnlS.descWrap}>
+    <View>
       {slide.lines.map((line, i) => (
         <DescLine key={i} text={line} anim={lineAnims[i]} isFirst={i === 0} />
       ))}
@@ -850,7 +863,13 @@ function SlidePanel({ slide, isActive }) {
   const VisSection = (() => {
     if (slide.visType === "levels") {
       return (
-        <View style={pnlS.visWrapCentered}>
+        <View
+          style={{
+            flex: 1,
+            alignItems: "center",
+            justifyContent: "flex-start",
+          }}
+        >
           {levelSubset.map(({ lv, i }) => (
             <LevelBadgeMini
               key={i}
@@ -864,16 +883,35 @@ function SlidePanel({ slide, isActive }) {
     }
     if (slide.visType === "activities") {
       return (
-        <View style={pnlS.visWrapTop}>
+        <View
+          style={{
+            flex: 1,
+            alignItems: "flex-start",
+            justifyContent: "flex-start",
+          }}
+        >
           {ACTIVITY_STEPS.map((step, i) => (
-            <ActivityBadgeMini key={i} step={step} anim={visAnims[i]} />
+            <ActivityBadgeMini
+              key={i}
+              step={step}
+              anim={visAnims[i]}
+              halfW={HALF_W}
+            />
           ))}
         </View>
       );
     }
     if (slide.visType === "stories") {
       return (
-        <View style={[pnlS.visWrapTop, pnlS.storyBox]}>
+        <View
+          style={{
+            flex: 1,
+            alignItems: "flex-start",
+            justifyContent: "flex-start",
+            position: "relative",
+            overflow: "hidden",
+          }}
+        >
           <ScrollView
             ref={storyScrollRef}
             scrollEnabled={false}
@@ -912,29 +950,102 @@ function SlidePanel({ slide, isActive }) {
   const visW = slide.visType === "levels" ? S1_VIS_W : HALF_W;
 
   return (
-    <View style={pnlS.root}>
+    <View style={{ width: SW, flex: 1 }}>
       <View
-        style={[pnlS.topArea, slide.visType === "levels" && pnlS.topAreaSlide1]}
+        style={{
+          height: TOP_H,
+          paddingHorizontal: sz.panelPaddingH,
+          paddingTop:
+            Platform.OS === "ios"
+              ? sz.panelPaddingTop_ios
+              : sz.panelPaddingTop_android,
+          paddingBottom: slide.visType === "levels" ? 8 : 20,
+          justifyContent: "flex-end",
+        }}
       >
-        <View style={[pnlS.accentBar, { backgroundColor: accent }]} />
-        <Text style={pnlS.title}>{slide.title}</Text>
+        <View
+          style={{
+            width: sz.accentBarWidth,
+            height: sz.accentBarHeight,
+            borderRadius: 2,
+            marginBottom: 12,
+            backgroundColor: accent,
+          }}
+        />
+        <Text
+          style={{
+            fontFamily: FONTS.bold,
+            fontSize: sz.titleFontSize,
+            color: "#E0F7FA",
+            lineHeight: sz.titleLineHeight,
+            letterSpacing: 0.15,
+          }}
+        >
+          {slide.title}
+        </Text>
         {slide.subtitle ? (
-          <Text style={[pnlS.subtitle, { color: accent }]}>
+          <Text
+            style={{
+              fontFamily: FONTS.light,
+              fontSize: sz.subtitleFontSize,
+              marginTop: 6,
+              letterSpacing: 0.35,
+              color: accent,
+            }}
+          >
             {slide.subtitle}
           </Text>
         ) : null}
       </View>
 
-      <View style={pnlS.botArea}>
+      <View style={{ height: BOT_H, flexDirection: "row" }}>
         {slide.descSide === "left" ? (
           <>
-            <View style={[pnlS.halfLeft, { width: descW }]}>{DescSection}</View>
-            <View style={[pnlS.halfRight, { width: visW }]}>{VisSection}</View>
+            <View
+              style={{
+                width: descW,
+                paddingLeft: 18,
+                paddingRight: 8,
+                paddingTop: sz.panelHalfPaddingV,
+                paddingBottom: sz.panelHalfPaddingBottom,
+              }}
+            >
+              {DescSection}
+            </View>
+            <View
+              style={{
+                width: visW,
+                paddingLeft: 8,
+                paddingRight: 14,
+                paddingTop: sz.panelHalfPaddingV,
+                paddingBottom: sz.panelHalfPaddingBottom,
+              }}
+            >
+              {VisSection}
+            </View>
           </>
         ) : (
           <>
-            <View style={[pnlS.halfLeft, { width: visW }]}>{VisSection}</View>
-            <View style={[pnlS.halfRight, { width: descW }]}>
+            <View
+              style={{
+                width: visW,
+                paddingLeft: 18,
+                paddingRight: 8,
+                paddingTop: sz.panelHalfPaddingV,
+                paddingBottom: sz.panelHalfPaddingBottom,
+              }}
+            >
+              {VisSection}
+            </View>
+            <View
+              style={{
+                width: descW,
+                paddingLeft: 8,
+                paddingRight: 14,
+                paddingTop: sz.panelHalfPaddingV,
+                paddingBottom: sz.panelHalfPaddingBottom,
+              }}
+            >
               {DescSection}
             </View>
           </>
@@ -944,84 +1055,29 @@ function SlidePanel({ slide, isActive }) {
   );
 }
 
-const pnlS = StyleSheet.create({
-  root: { width: SW, flex: 1 },
-  topArea: {
-    height: TOP_H,
-    paddingHorizontal: 22,
-    paddingTop: Platform.OS === "ios" ? 52 : 32,
-    paddingBottom: 20,
-    justifyContent: "flex-end",
-  },
-  topAreaSlide1: { paddingBottom: 8 },
-  accentBar: { width: 44, height: 4, borderRadius: 2, marginBottom: 12 },
-  title: {
-    fontFamily: FONTS.bold,
-    fontSize: 32,
-    color: "#E0F7FA",
-    lineHeight: 39,
-    letterSpacing: 0.15,
-  },
-  subtitle: {
-    fontFamily: FONTS.light,
-    fontSize: 15,
-    marginTop: 6,
-    letterSpacing: 0.35,
-  },
-  botArea: { height: BOT_H, flexDirection: "row" },
-  halfLeft: {
-    paddingLeft: 18,
-    paddingRight: 8,
-    paddingTop: 16,
-    paddingBottom: 88,
-  },
-  halfRight: {
-    paddingLeft: 8,
-    paddingRight: 14,
-    paddingTop: 16,
-    paddingBottom: 88,
-  },
-  descWrap: { gap: 0 },
-  visWrapCentered: {
-    flex: 1,
-    alignItems: "center",
-    justifyContent: "flex-start",
-  },
-  visWrapTop: {
-    flex: 1,
-    alignItems: "flex-start",
-    justifyContent: "flex-start",
-  },
-  storyBox: { position: "relative", overflow: "hidden" },
-});
-
 // ─────────────────────────────────────────────────────────────────────────────
 // DOT INDICATORS
 // ─────────────────────────────────────────────────────────────────────────────
 function Dots({ total, current, accentColor }) {
+  const { sizes } = useTheme();
+  const sz = sizes.carousel;
   return (
-    <View style={dotS.row}>
+    <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
       {Array.from({ length: total }).map((_, i) => (
         <View
           key={i}
-          style={[
-            dotS.dot,
-            {
-              backgroundColor:
-                i === current ? accentColor : "rgba(255,255,255,0.2)",
-              width: i === current ? 26 : 8,
-            },
-          ]}
+          style={{
+            height: sz.dotHeight,
+            borderRadius: sz.dotHeight / 2,
+            backgroundColor:
+              i === current ? accentColor : "rgba(255,255,255,0.2)",
+            width: i === current ? sz.dotActiveWidth : sz.dotInactiveWidth,
+          }}
         />
       ))}
     </View>
   );
 }
-
-const dotS = StyleSheet.create({
-  row: { flexDirection: "row", alignItems: "center", gap: 6 },
-  dot: { height: 8, borderRadius: 4 },
-});
 
 // ─────────────────────────────────────────────────────────────────────────────
 // MAIN COMPONENT
@@ -1029,46 +1085,132 @@ const dotS = StyleSheet.create({
 export default function IntroCarousel() {
   const router = useRouter();
   const flatRef = useRef(null);
+  const videoRef = useRef(null);
   const [currentIndex, setCurrentIndex] = useState(0);
+  const { width: SW, height: SH } = useWindowDimensions();
+  const { sizes } = useTheme();
+  const sz = sizes.carousel;
 
-  // ── swish.mp3 on page turn ────────────────────────────────────────────────
   const playSwish = () => playSound(require("../assets/sounds/swish.mp3"));
   const playButton = () => playSound(require("../assets/sounds/button.mp3"));
+  const bgMusicRef = useRef(null);
+
+  // Start music when component mounts, stop on unmount
+  useEffect(() => {
+    let mounted = true;
+
+    const startMusic = async () => {
+      try {
+        await Audio.setAudioModeAsync({
+          playsInSilentModeIOS: true,
+          staysActiveInBackground: false,
+        });
+        const { sound } = await Audio.Sound.createAsync(
+          require("../assets/sounds/intro_music.mp3"),
+          { shouldPlay: true, isLooping: true, volume: 0.5 },
+        );
+        if (mounted) bgMusicRef.current = sound;
+      } catch (_) {}
+    };
+
+    startMusic();
+
+    return () => {
+      mounted = false;
+      bgMusicRef.current?.unloadAsync();
+    };
+  }, []);
+
+  const stopMusicAndGo = useCallback(async () => {
+    try {
+      await bgMusicRef.current?.stopAsync();
+      await bgMusicRef.current?.unloadAsync();
+      bgMusicRef.current = null;
+    } catch (_) {}
+    router.replace("/AccountChoice");
+  }, []);
 
   const goNext = useCallback(() => {
     playButton();
-    router.replace("/AccountChoice");
-  }, []);
+    stopMusicAndGo();
+  }, [stopMusicAndGo]);
 
   const handleNext = () => {
     if (currentIndex < SLIDES.length - 1) {
       const next = currentIndex + 1;
       flatRef.current?.scrollToIndex({ index: next, animated: true });
       setCurrentIndex(next);
-      playSwish(); // swish on Next button press
+      playSwish();
     } else {
-      goNext(); // button.mp3 on Get Started
+      goNext();
     }
   };
 
   const isLast = currentIndex === SLIDES.length - 1;
   const accent = SLIDES[currentIndex].accentColor;
 
+  const videos = [
+    require("../assets/videos/intro0.mp4"),
+    require("../assets/videos/intro.mp4"),
+  ];
+
+  const [videoIndex, setVideoIndex] = useState(0);
+
+  const videoRefs = useRef([]);
+
+  // useEffect(() => {
+  //   videos.forEach(async (vid, i) => {
+  //     const { sound } = await Video.createAsync(vid, {
+  //       shouldPlay: false,
+  //     });
+  //     videoRefs.current[i] = sound;
+  //   });
+  // }, []);
+
   return (
     <View style={styles.root}>
-      <View style={styles.glowTL} pointerEvents="none" />
-      <View style={styles.glowBR} pointerEvents="none" />
+      <StatusBar
+        barStyle="light-content"
+        translucent
+        backgroundColor="transparent"
+      />
 
-      <StatusBar barStyle="light-content" />
+      {/* ── Full-screen looping background video ── */}
+      <Video
+        key={videoIndex}
+        ref={videoRef}
+        source={videos[videoIndex]}
+        style={StyleSheet.absoluteFill}
+        resizeMode={ResizeMode.COVER}
+        isMuted
+        shouldPlay
+        onPlaybackStatusUpdate={(status) => {
+          if (!status.isLoaded) return;
+
+          if (status.positionMillis >= status.durationMillis - 100) {
+            setVideoIndex((prev) => (prev + 1) % videos.length);
+          }
+        }}
+      />
+
+      {/* ── Dark blue opaque overlay ── */}
+      {/* Adjust the last value (0.65) between 0.4–0.8 to taste */}
+      <View style={styles.videoOverlay} />
+
+      {/* ── Subtle vignette corners (optional depth) ── */}
+      <View style={styles.vignetteTL} pointerEvents="none" />
+      <View style={styles.vignetteBR} pointerEvents="none" />
 
       {!isLast && (
         <TouchableOpacity
-          style={styles.skipBtn}
+          style={[styles.skipBtn, { top: Platform.OS === "ios" ? 54 : 20 }]}
           onPress={goNext}
           activeOpacity={0.7}
           hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
         >
-          <Text style={styles.skipText}>Skip</Text>
+          <Text style={[styles.skipText, { fontSize: sz.skipFontSize }]}>
+            Skip
+          </Text>
         </TouchableOpacity>
       )}
 
@@ -1085,7 +1227,7 @@ export default function IntroCarousel() {
           const idx = Math.round(e.nativeEvent.contentOffset.x / SW);
           if (idx !== currentIndex) {
             setCurrentIndex(idx);
-            playSwish(); // swish when user swipes manually
+            playSwish();
           }
         }}
         renderItem={({ item, index }) => (
@@ -1098,7 +1240,18 @@ export default function IntroCarousel() {
         })}
       />
 
-      <View style={styles.bottomBar}>
+      <View
+        style={[
+          styles.bottomBar,
+          {
+            paddingHorizontal: sz.bottomBarPaddingH,
+            paddingBottom:
+              Platform.OS === "ios"
+                ? sz.bottomBarPaddingBottom_ios
+                : sz.bottomBarPaddingBottom_android,
+          },
+        ]}
+      >
         <Dots
           total={SLIDES.length}
           current={currentIndex}
@@ -1109,20 +1262,46 @@ export default function IntroCarousel() {
           <TouchableOpacity
             style={[
               styles.getStartedBtn,
-              { backgroundColor: accent, shadowColor: accent },
+              {
+                backgroundColor: accent,
+                shadowColor: accent,
+                paddingHorizontal: sz.getStartedPaddingH,
+                paddingVertical: sz.getStartedPaddingV,
+              },
             ]}
             onPress={goNext}
             activeOpacity={0.85}
           >
-            <Text style={styles.getStartedText}>Get Started ✦</Text>
+            <Text
+              style={[
+                styles.getStartedText,
+                { fontSize: sz.getStartedFontSize },
+              ]}
+            >
+              Get Started ✦
+            </Text>
           </TouchableOpacity>
         ) : (
           <TouchableOpacity
-            style={[styles.nextBtn, { borderColor: accent + "80" }]}
+            style={[
+              styles.nextBtn,
+              {
+                borderColor: accent + "80",
+                paddingHorizontal: sz.nextBtnPaddingH,
+                paddingVertical: sz.nextBtnPaddingV,
+              },
+            ]}
             onPress={handleNext}
             activeOpacity={0.8}
           >
-            <Text style={[styles.nextText, { color: accent }]}>Next →</Text>
+            <Text
+              style={[
+                styles.nextText,
+                { color: accent, fontSize: sz.nextFontSize },
+              ]}
+            >
+              Next →
+            </Text>
           </TouchableOpacity>
         )}
       </View>
@@ -1134,28 +1313,40 @@ export default function IntroCarousel() {
 // ROOT STYLES
 // ─────────────────────────────────────────────────────────────────────────────
 const styles = StyleSheet.create({
-  root: { flex: 1, backgroundColor: "#08081a" },
-  glowTL: {
+  root: {
+    flex: 1,
+    backgroundColor: "#08081a", // fallback color shown before video loads
+  },
+
+  // ── Dark blue overlay on top of the video ──────────────────────────────────
+  // rgba(R, G, B, opacity) — tweak opacity (0.4 lighter ↔ 0.8 darker)
+  videoOverlay: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: "rgba(1, 6, 24, 0.79)",
+  },
+
+  // ── Soft corner vignettes for extra depth (optional) ─────────────────────
+  vignetteTL: {
     position: "absolute",
     top: -60,
     left: -60,
     width: 280,
     height: 280,
     borderRadius: 140,
-    backgroundColor: "rgba(0,188,212,0.07)",
+    backgroundColor: "rgba(0,188,212,0.06)",
   },
-  glowBR: {
+  vignetteBR: {
     position: "absolute",
     bottom: -40,
     right: -40,
     width: 240,
     height: 240,
     borderRadius: 120,
-    backgroundColor: "rgba(150,82,217,0.07)",
+    backgroundColor: "rgba(150,82,217,0.06)",
   },
+
   skipBtn: {
     position: "absolute",
-    top: Platform.OS === "ios" ? 54 : 20,
     right: 20,
     zIndex: 30,
     paddingHorizontal: 14,
@@ -1167,7 +1358,6 @@ const styles = StyleSheet.create({
   },
   skipText: {
     fontFamily: FONTS.regular,
-    fontSize: 15,
     color: "#7a9aaa",
     letterSpacing: 0.3,
   },
@@ -1179,28 +1369,21 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
-    paddingHorizontal: 26,
-    paddingBottom: Platform.OS === "ios" ? 44 : 24,
     paddingTop: 14,
-    backgroundColor: "rgba(8,8,26,0.88)",
+    backgroundColor: "rgba(1, 6, 24, 0.79)",
     borderTopWidth: 1,
     borderTopColor: "rgba(255,255,255,0.07)",
   },
   nextBtn: {
-    paddingHorizontal: 24,
-    paddingVertical: 13,
     borderRadius: 30,
     borderWidth: 2.5,
     backgroundColor: "rgba(255,255,255,0.04)",
   },
   nextText: {
     fontFamily: FONTS.bold,
-    fontSize: 18,
     letterSpacing: 0.3,
   },
   getStartedBtn: {
-    paddingHorizontal: 32,
-    paddingVertical: 14,
     borderRadius: 30,
     shadowOffset: { width: 0, height: 0 },
     shadowOpacity: 0.65,
@@ -1209,7 +1392,6 @@ const styles = StyleSheet.create({
   },
   getStartedText: {
     fontFamily: FONTS.bold,
-    fontSize: 16,
     color: "#08081a",
     letterSpacing: 0.5,
   },

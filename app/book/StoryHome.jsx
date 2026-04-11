@@ -1,15 +1,4 @@
-// app/book/[id].jsx  — Story Home Screen
-//
-// Shown after the user taps a story card on home.
-// startStorySession() has already been called by home.jsx before navigation,
-// so currentStory and storySession are already populated in context.
-//
-// Rules:
-//  • First visit (nextActivityIndex === 0): only Read is enabled, rest locked
-//  • In-progress (nextActivityIndex 1–3): Read + current activity enabled
-//  • Completed (nextActivityIndex >= 4): Read enabled, rest shown as Done/disabled
-//  • Read is ALWAYS tappable. When replaying after completion, replay=1 is
-//    passed so BookReader skips calling completeActivity.
+// app/book/[id]/index.jsx  — Story Home Screen
 
 import React, { useRef, useEffect } from "react";
 import {
@@ -32,6 +21,7 @@ import {
 } from "../_contexts/StoryActivityContext";
 import AppBackground from "../components/AppBackground";
 import { FONTS } from "../theme";
+import { font, pad, radius, size } from "../theme/tokens"; // ← REPLACES hardcoded numbers
 
 const { height: SH } = Dimensions.get("window");
 
@@ -52,7 +42,6 @@ const C = {
   lockedIconBorder: "rgba(255,255,255,0.08)",
 };
 
-// ── Activity definitions ───────────────────────────────────────────────────
 const ACTIVITIES = [
   {
     index: 0,
@@ -84,7 +73,6 @@ const ACTIVITIES = [
   },
 ];
 
-// ── Status from session index ──────────────────────────────────────────────
 function getActivityStatus(activityIndex, nextActivityIndex) {
   if (nextActivityIndex >= 4) return "done";
   if (activityIndex < nextActivityIndex) return "done";
@@ -92,7 +80,9 @@ function getActivityStatus(activityIndex, nextActivityIndex) {
   return "locked";
 }
 
-// ── Single activity row ────────────────────────────────────────────────────
+// ─────────────────────────────────────────────────────────────────────────────
+// ACTIVITY CARD
+// ─────────────────────────────────────────────────────────────────────────────
 function ActivityCard({ activity, status, isEnabled, onPress, delay }) {
   const slideIn = useRef(new Animated.Value(36)).current;
   const fadeIn = useRef(new Animated.Value(0)).current;
@@ -136,13 +126,7 @@ function ActivityCard({ activity, status, isEnabled, onPress, delay }) {
 
   const isDone = status === "done";
   const isCurrent = status === "current";
-  const isLocked = status === "locked";
-
-  const isInactive = isDone || isLocked;
-  const cardBg = isInactive ? C.lockedBg : C.tealDim;
-  const cardBorder = isInactive ? C.lockedBorder : C.tealBorder;
-  const iconBg = isInactive ? C.lockedIconBg : C.tealDim;
-  const iconBorder = isInactive ? C.lockedIconBorder : C.tealBorder;
+  const isInactive = isDone || status === "locked";
 
   return (
     <Animated.View
@@ -154,7 +138,10 @@ function ActivityCard({ activity, status, isEnabled, onPress, delay }) {
       <TouchableOpacity
         style={[
           styles.activityCard,
-          { backgroundColor: cardBg, borderColor: cardBorder },
+          {
+            backgroundColor: isInactive ? C.lockedBg : C.tealDim,
+            borderColor: isInactive ? C.lockedBorder : C.tealBorder,
+          },
         ]}
         onPress={onPress}
         onPressIn={handlePressIn}
@@ -162,11 +149,13 @@ function ActivityCard({ activity, status, isEnabled, onPress, delay }) {
         disabled={!isEnabled}
         activeOpacity={1}
       >
-        {/* Icon box */}
         <View
           style={[
             styles.iconBox,
-            { backgroundColor: iconBg, borderColor: iconBorder },
+            {
+              backgroundColor: isInactive ? C.lockedIconBg : C.tealDim,
+              borderColor: isInactive ? C.lockedIconBorder : C.tealBorder,
+            },
           ]}
         >
           <Image
@@ -176,7 +165,6 @@ function ActivityCard({ activity, status, isEnabled, onPress, delay }) {
           />
         </View>
 
-        {/* Title + subtitle */}
         <View style={styles.textCol}>
           <Text
             style={[
@@ -198,29 +186,7 @@ function ActivityCard({ activity, status, isEnabled, onPress, delay }) {
           </Text>
         </View>
 
-        {/* Right column — fixed width, always aligned */}
         <View style={styles.rightCol}>
-          {/* Label — solid filled teal when active, dim when not */}
-          {/* <View
-            style={[
-              styles.labelBadge,
-              {
-                backgroundColor: isInactive ? "rgba(255,255,255,0.05)" : C.teal,
-                borderColor: isInactive ? C.lockedIconBorder : C.teal,
-              },
-            ]}
-          >
-            <Text
-              style={[
-                styles.labelText,
-                { color: isInactive ? C.lockedText : "#08081a" },
-              ]}
-            >
-              {activity.label}
-            </Text>
-          </View> */}
-
-          {/* Status — solid green for Done, solid teal for Start, dim for Locked */}
           <View
             style={[
               styles.statusBadge,
@@ -250,7 +216,7 @@ function ActivityCard({ activity, status, isEnabled, onPress, delay }) {
                 },
               ]}
             >
-              {isDone ? "✓ Done" : isCurrent ? "▶ Start" : "Locked"}
+              {isDone ? "Done" : isCurrent ? "Start" : "Locked"}
             </Text>
           </View>
         </View>
@@ -259,7 +225,9 @@ function ActivityCard({ activity, status, isEnabled, onPress, delay }) {
   );
 }
 
-// ── MAIN SCREEN ────────────────────────────────────────────────────────────
+// ─────────────────────────────────────────────────────────────────────────────
+// MAIN SCREEN
+// ─────────────────────────────────────────────────────────────────────────────
 export default function StoryHome() {
   const router = useRouter();
   const { currentStory, storySession } = useStoryActivity();
@@ -267,7 +235,7 @@ export default function StoryHome() {
   if (!currentStory) {
     return (
       <View style={styles.center}>
-        <Text style={{ color: C.textMuted, fontSize: 15 }}>
+        <Text style={{ color: C.textMuted, fontSize: font.md }}>
           Story not available. Please go back.
         </Text>
         <TouchableOpacity
@@ -300,7 +268,7 @@ export default function StoryHome() {
       });
     } else {
       const route = ACTIVITY_ROUTES[idx];
-      if (route) {
+      if (route)
         router.push({
           pathname: `/components/${route}`,
           params: {
@@ -309,7 +277,6 @@ export default function StoryHome() {
             resuming: nextActivityIndex > idx ? "1" : "0",
           },
         });
-      }
     }
   };
 
@@ -322,7 +289,7 @@ export default function StoryHome() {
     }).start();
   }, []);
 
-  const IMAGE_HEIGHT = Math.min(SH * 0.38, 300);
+  // const IMAGE_HEIGHT = Math.min(SH * 0.38, 300);
 
   return (
     <View style={styles.root}>
@@ -331,22 +298,9 @@ export default function StoryHome() {
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
       >
-        {/* Back button — floats over image */}
-        {/* <TouchableOpacity
-          style={styles.backBtn}
-          onPress={() => router.back()}
-          activeOpacity={0.8}
-          hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-        >
-          <Text style={styles.backBtnText}>‹</Text>
-        </TouchableOpacity> */}
-
         {/* Cover image */}
         <Animated.View
-          style={[
-            styles.imageContainer,
-            { height: IMAGE_HEIGHT, opacity: headerOp },
-          ]}
+          style={[styles.imageContainer, { height: "80%", opacity: headerOp }]}
         >
           <ExpoImage
             source={{ uri: currentStory.cover }}
@@ -354,11 +308,7 @@ export default function StoryHome() {
             contentFit="cover"
             cachePolicy="disk"
           />
-
-          {/* Gradient only behind the text — not a full-image overlay */}
           <View style={styles.imageGradient} pointerEvents="none" />
-
-          {/* Title + intro sit at very bottom of image */}
           <View style={styles.textOverlay} pointerEvents="none">
             <Text style={styles.storyTitle} numberOfLines={2}>
               {currentStory.title}
@@ -391,6 +341,8 @@ export default function StoryHome() {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
+// STYLES
+// ─────────────────────────────────────────────────────────────────────────────
 const styles = StyleSheet.create({
   root: { flex: 1, backgroundColor: C.bg },
   scroll: { flex: 1 },
@@ -401,54 +353,26 @@ const styles = StyleSheet.create({
     backgroundColor: C.bg,
     alignItems: "center",
     justifyContent: "center",
-    gap: 16,
-    padding: 32,
+    gap: pad.md, // was: 16
+    padding: pad.xxl, // was: 32
   },
   fallbackBtn: {
     backgroundColor: C.tealDim,
-    borderRadius: 16,
+    borderRadius: radius.lg, // was: 16
     borderWidth: 1,
     borderColor: C.tealBorder,
-    paddingHorizontal: 20,
-    paddingVertical: 10,
+    paddingHorizontal: pad.lg, // was: 20
+    paddingVertical: pad.sm, // was: 10
   },
-  // "← Back to Home" fallback button text — bold, teal
   fallbackBtnText: {
     fontFamily: FONTS.bold,
-    fontSize: 14,
+    fontSize: font.md, // was: 14
     color: C.teal,
   },
 
-  // Back button
-  backBtn: {
-    position: "absolute",
-    top: Platform.OS === "ios" ? 54 : 20,
-    left: 16,
-    zIndex: 20,
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: "rgba(8,8,26,0.65)",
-    borderWidth: 1,
-    borderColor: "rgba(255,255,255,0.15)",
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  backBtnText: {
-    fontFamily: FONTS.light,
-    fontSize: 28,
-    color: C.textPri,
-    marginTop: -2,
-  },
-
-  // Image
-  imageContainer: {
-    width: "100%",
-    position: "relative",
-    overflow: "hidden",
-  },
+  // Cover image
+  imageContainer: { width: "100%", position: "relative", overflow: "hidden" },
   coverImage: { width: "100%", height: "100%" },
-
   imageGradient: {
     position: "absolute",
     bottom: 0,
@@ -462,27 +386,25 @@ const styles = StyleSheet.create({
     bottom: 0,
     left: 0,
     right: 0,
-    paddingHorizontal: 18,
-    paddingBottom: 14,
-    paddingTop: 8,
+    paddingHorizontal: pad.md,
+    paddingBottom: pad.sm,
+    paddingTop: pad.s,
   },
-  // Story title on cover — CoText-Bold replaces Noteworthy
   storyTitle: {
     fontFamily: FONTS.bold,
-    fontSize: 22,
+    fontSize: font.xl, // was: 22
     color: "#E0F7FA",
-    lineHeight: 26,
+    lineHeight: font.xl * 1.2,
     textShadowColor: "rgba(0,0,0,0.7)",
     textShadowOffset: { width: 0, height: 1 },
     textShadowRadius: 5,
     marginBottom: 3,
   },
-  // Story intro on cover — light italic
   storyIntro: {
     fontFamily: FONTS.light,
-    fontSize: 13,
+    fontSize: font.sm, // was: 13
     color: "rgba(224,247,250,0.7)",
-    lineHeight: 16,
+    lineHeight: font.sm * 1.3,
     fontStyle: "italic",
     textShadowColor: "rgba(0,0,0,0.6)",
     textShadowOffset: { width: 0, height: 1 },
@@ -490,27 +412,26 @@ const styles = StyleSheet.create({
   },
 
   // Activities section
-  section: { paddingHorizontal: 16, paddingTop: 22 },
-  // "ACTIVITIES" section heading — bold, spaced caps
+  section: { paddingHorizontal: pad.md, paddingTop: pad.lg }, // was: 16, 22
   sectionHeading: {
     fontFamily: FONTS.bold,
-    fontSize: 11,
+    fontSize: font.s, // was: 11
     color: C.textMuted,
     letterSpacing: 2.5,
     textTransform: "uppercase",
-    marginBottom: 14,
+    marginBottom: pad.sm, // was: 14
   },
 
   // Activity card
   activityCard: {
     flexDirection: "row",
     alignItems: "center",
-    borderRadius: 16,
+    borderRadius: radius.lg, // was: 16
     borderWidth: 1.5,
-    paddingVertical: 13,
-    paddingHorizontal: 13,
-    marginBottom: 11,
-    gap: 13,
+    paddingVertical: pad.sm, // was: 13
+    paddingHorizontal: pad.sm, // was: 13
+    marginBottom: pad.sm, // was: 11
+    gap: pad.sm, // was: 13
     elevation: 2,
     shadowColor: "#00BCD4",
     shadowOffset: { width: 0, height: 0 },
@@ -520,70 +441,54 @@ const styles = StyleSheet.create({
 
   // Icon box
   iconBox: {
-    width: 60,
-    height: 60,
-    borderRadius: 16,
+    width: size.avatarMd, // was: 60
+    height: size.avatarMd,
+    borderRadius: radius.lg, // was: 16
     borderWidth: 1.5,
     alignItems: "center",
     justifyContent: "center",
     flexShrink: 0,
   },
-  icon: { width: 36, height: 36 },
+  icon: {
+    width: size.iconMd, // was: 36
+    height: size.iconMd,
+  },
 
   // Text
-  textCol: { flex: 1, gap: 3 },
-  // Activity title — bold, primary colour when active
+  textCol: { flex: 1, gap: pad.xs / 2 },
   activityTitle: {
     fontFamily: FONTS.bold,
-    fontSize: 16,
+    fontSize: font.lg, // was: 16
     letterSpacing: 0.15,
-    lineHeight: 18,
+    lineHeight: font.lg * 1.15,
   },
-  // Activity subtitle — light, muted when active
   activitySubtitle: {
     fontFamily: FONTS.light,
-    fontSize: 13,
-    lineHeight: 15,
+    fontSize: font.sm, // was: 13
+    lineHeight: font.sm * 1.2,
   },
 
   // Right column
   rightCol: {
-    width: 70,
+    width: (isTablet) => 90,
     alignItems: "flex-end",
-    gap: 6,
+    gap: pad.s,
     flexShrink: 0,
-  },
-
-  // Label badge
-  labelBadge: {
-    borderRadius: 20,
-    borderWidth: 1,
-    paddingHorizontal: 9,
-    paddingVertical: 3,
-    alignItems: "center",
-    minWidth: 52,
-  },
-  // Label text — bold, small caps
-  labelText: {
-    fontFamily: FONTS.bold,
-    fontSize: 12,
-    letterSpacing: 0.8,
-    textTransform: "uppercase",
   },
 
   // Status badge
   statusBadge: {
-    borderRadius: 10,
+    borderRadius: radius.sm, // was: 10
     borderWidth: 1,
-    paddingHorizontal: 7,
-    paddingVertical: 3,
+    paddingHorizontal: pad.sm, // was: 7
+    paddingVertical: pad.s,
     alignItems: "center",
     minWidth: 80,
   },
-  // Status text — bold ("▶ Start", "✓ Done", "Locked")
   statusText: {
     fontFamily: FONTS.bold,
-    fontSize: 14,
+    fontSize: font.md, // was: 14
     letterSpacing: 0.2,
+    // padding: 5,
   },
 });

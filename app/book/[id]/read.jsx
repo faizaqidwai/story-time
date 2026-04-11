@@ -13,7 +13,7 @@ export default function BookReaderRoute() {
 
   const level = currentStory?.readingLevel?.toUpperCase();
 
-  if (level === "MID" || level === "ADVANCE") {
+  if (level === "MIDDLE" || level === "ADVANCE") {
     return <AdvancedBookReader />;
   }
 

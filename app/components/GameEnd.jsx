@@ -1,14 +1,4 @@
 // components/GameEnd.jsx
-// Props:
-//   visible   — boolean
-//   onClose   — () => void
-//   badge     — "won" | "lose"
-//   word      — string (optional, shown as "The word was …")
-//   onBadge   — optional callback (shows "Collect Stars!" instead of Play Again)
-//   winTitle  — optional override for the "You Won!" headline
-//   winSubtitle — optional override for the win subtitle
-//   loseTitle   — optional override for the "Game Over" headline
-//   loseSubtitle — optional override for the lose subtitle
 
 import React, { useRef, useEffect, useState } from "react";
 import {
@@ -25,6 +15,7 @@ import {
 } from "react-native";
 import { Audio } from "expo-av";
 import { FONTS } from "../theme";
+import { font, pad, radius, size } from "../theme/tokens"; // ← ADD
 
 const { width: SW, height: SH } = Dimensions.get("window");
 
@@ -53,7 +44,10 @@ const C = {
 const CONFETTI = ["🎉", "⭐", "🌟", "✨", "🎊", "💫", "🎈", "🥳", "🌈", "🏆"];
 const PART_CNT = 24;
 
-function Particle({ emoji, startX, startY, delay, size }) {
+// ─────────────────────────────────────────────────────────────────────────────
+// PARTICLE
+// ─────────────────────────────────────────────────────────────────────────────
+function Particle({ emoji, startX, startY, delay, size: pSize }) {
   const tx = useRef(new Animated.Value(0)).current;
   const ty = useRef(new Animated.Value(0)).current;
   const op = useRef(new Animated.Value(0)).current;
@@ -117,7 +111,7 @@ function Particle({ emoji, startX, startY, delay, size }) {
         position: "absolute",
         left: startX,
         top: startY,
-        fontSize: size,
+        fontSize: pSize,
         opacity: op,
         zIndex: 200,
         pointerEvents: "none",
@@ -134,6 +128,9 @@ function Particle({ emoji, startX, startY, delay, size }) {
   );
 }
 
+// ─────────────────────────────────────────────────────────────────────────────
+// WIN CARD
+// ─────────────────────────────────────────────────────────────────────────────
 function WinCard({
   word,
   onClose,
@@ -224,14 +221,12 @@ function WinCard({
       <Text style={styles.winSubtitle}>
         {winSubtitle ?? "Brilliant! You guessed the word!"}
       </Text>
-
-      {word ? (
+      {word && (
         <View style={styles.wordRevealWin}>
           <Text style={styles.wordRevealLabel}>The word was</Text>
           <Text style={styles.wordRevealValueWin}>{word}</Text>
         </View>
-      ) : null}
-
+      )}
       <View style={styles.starsRow}>
         {["⭐", "🌟", "⭐"].map((s, i) => (
           <Text
@@ -245,7 +240,6 @@ function WinCard({
           </Text>
         ))}
       </View>
-
       <View style={styles.btnRow}>
         {onBadge ? (
           <Animated.View style={{ transform: [{ scale: btnPulse }], flex: 1 }}>
@@ -267,7 +261,6 @@ function WinCard({
           </Animated.View>
         )}
       </View>
-
       {onBadge && (
         <Pressable onPress={onClose} style={styles.skipBtn}>
           <Text style={styles.skipText}>Play Again →</Text>
@@ -277,6 +270,9 @@ function WinCard({
   );
 }
 
+// ─────────────────────────────────────────────────────────────────────────────
+// LOSE CARD
+// ─────────────────────────────────────────────────────────────────────────────
 function LoseCard({
   word,
   onClose,
@@ -341,21 +337,18 @@ function LoseCard({
       <Text style={styles.loseSubtitle}>
         {loseSubtitle ?? "Don't give up — you'll get it next time!"}
       </Text>
-
-      {word ? (
+      {word && (
         <View style={styles.wordRevealLose}>
           <Text style={styles.wordRevealLabel}>The word was</Text>
           <Text style={styles.wordRevealValueLose}>{word}</Text>
         </View>
-      ) : null}
-
+      )}
       <View style={styles.tipBox}>
         <Text style={styles.tipIcon}>💡</Text>
         <Text style={styles.tipText}>
           Try using the hints more carefully next time!
         </Text>
       </View>
-
       <Pressable style={[styles.btn, styles.btnRetry]} onPress={onClose}>
         <Text style={styles.btnRetryText}>↺ Try Again</Text>
       </Pressable>
@@ -363,6 +356,9 @@ function LoseCard({
   );
 }
 
+// ─────────────────────────────────────────────────────────────────────────────
+// MAIN COMPONENT
+// ─────────────────────────────────────────────────────────────────────────────
 const GameEnd = ({
   visible,
   onClose,
@@ -381,7 +377,6 @@ const GameEnd = ({
   const cardOp = useRef(new Animated.Value(0)).current;
   const bgOp = useRef(new Animated.Value(0)).current;
   const soundRef = useRef(null);
-
   const [particles, setParticles] = useState([]);
   const [particleKey, setParticleKey] = useState(0);
 
@@ -390,7 +385,6 @@ const GameEnd = ({
     cardSlide.setValue(60);
     cardOp.setValue(0);
     bgOp.setValue(0);
-
     Animated.timing(bgOp, {
       toValue: 1,
       duration: 300,
@@ -412,7 +406,6 @@ const GameEnd = ({
         }),
       ]),
     ]).start();
-
     if (badge === "won") {
       setParticles(
         Array.from({ length: PART_CNT }, (_, i) => ({
@@ -462,7 +455,6 @@ const GameEnd = ({
           particles.map((p) => (
             <Particle key={`${particleKey}-${p.id}`} {...p} />
           ))}
-
         {badge === "won" && (
           <Image
             source={require("../../assets/img/bird_happy.png")}
@@ -473,7 +465,6 @@ const GameEnd = ({
             resizeMode="contain"
           />
         )}
-
         {badge === "won" ? (
           <WinCard
             word={word}
@@ -499,6 +490,11 @@ const GameEnd = ({
   );
 };
 
+export default GameEnd;
+
+// ─────────────────────────────────────────────────────────────────────────────
+// STYLES
+// ─────────────────────────────────────────────────────────────────────────────
 const styles = StyleSheet.create({
   overlay: {
     flex: 1,
@@ -507,8 +503,8 @@ const styles = StyleSheet.create({
     alignItems: "center",
   },
   card: {
-    borderRadius: 28,
-    padding: 28,
+    borderRadius: radius.xxl, // was: 28
+    padding: pad.xl, // was: 28
     width: "88%",
     maxWidth: 400,
     alignItems: "center",
@@ -550,126 +546,125 @@ const styles = StyleSheet.create({
     borderColor: C.redBorder,
   },
 
-  bigIcon: { fontSize: 72, marginBottom: 12, zIndex: 1 },
+  bigIcon: { fontSize: size.iconXl + 24, marginBottom: pad.sm, zIndex: 1 }, // was: 72
 
-  // Win title — bold, yellow, glowing
+  // Win
   winTitle: {
     fontFamily: FONTS.bold,
-    fontSize: 28,
+    fontSize: font.h3, // was: 28
     color: C.yellow,
     letterSpacing: 0.4,
-    marginBottom: 6,
+    marginBottom: pad.xs,
     textShadowColor: "rgba(255,213,79,0.5)",
     textShadowOffset: { width: 0, height: 0 },
     textShadowRadius: 14,
   },
-  // Win subtitle — light, secondary
   winSubtitle: {
     fontFamily: FONTS.light,
-    fontSize: 14,
+    fontSize: font.md,
     color: C.textSec,
     textAlign: "center",
-    marginBottom: 18,
-    lineHeight: 20,
+    marginBottom: pad.lg,
+    lineHeight: font.md * 1.5,
   },
+
+  // Stars
   starsRow: {
     flexDirection: "row",
     alignItems: "flex-end",
-    gap: 4,
-    marginBottom: 20,
-    marginTop: 4,
+    gap: pad.xs,
+    marginBottom: pad.lg,
+    marginTop: pad.xs,
   },
   starDeco: {},
 
-  // Lose title — bold, red, glowing
+  // Lose
   loseTitle: {
     fontFamily: FONTS.bold,
-    fontSize: 28,
+    fontSize: font.h3, // was: 28
     color: C.red,
     letterSpacing: 0.4,
-    marginBottom: 6,
+    marginBottom: pad.xs,
     textShadowColor: "rgba(239,83,80,0.45)",
     textShadowOffset: { width: 0, height: 0 },
     textShadowRadius: 14,
   },
-  // Lose subtitle — light, secondary
   loseSubtitle: {
     fontFamily: FONTS.light,
-    fontSize: 14,
+    fontSize: font.md,
     color: C.textSec,
     textAlign: "center",
-    marginBottom: 18,
-    lineHeight: 20,
+    marginBottom: pad.lg,
+    lineHeight: font.md * 1.5,
   },
+
+  // Tip box
   tipBox: {
     flexDirection: "row",
     alignItems: "flex-start",
     backgroundColor: "rgba(255,213,79,0.07)",
-    borderRadius: 12,
+    borderRadius: radius.md, // was: 12
     borderWidth: 1,
     borderColor: "rgba(255,213,79,0.2)",
-    padding: 12,
-    gap: 10,
-    marginBottom: 20,
+    padding: pad.sm, // was: 12
+    gap: pad.sm, // was: 10
+    marginBottom: pad.lg,
     width: "100%",
   },
-  tipIcon: { fontSize: 16 },
-  // Tip body — regular
+  tipIcon: { fontSize: font.lg },
   tipText: {
     fontFamily: FONTS.regular,
     flex: 1,
-    fontSize: 13,
+    fontSize: font.sm,
     color: C.textSec,
-    lineHeight: 19,
+    lineHeight: font.sm * 1.5,
   },
 
+  // Word reveal
   wordRevealWin: {
     backgroundColor: C.yellowDim,
-    borderRadius: 14,
+    borderRadius: radius.md,
     borderWidth: 1.5,
     borderColor: C.yellowBorder,
-    paddingHorizontal: 20,
-    paddingVertical: 10,
+    paddingHorizontal: pad.lg,
+    paddingVertical: pad.sm,
     alignItems: "center",
-    marginBottom: 16,
+    marginBottom: pad.md,
     width: "100%",
   },
   wordRevealLose: {
     backgroundColor: C.redDim,
-    borderRadius: 14,
+    borderRadius: radius.md,
     borderWidth: 1.5,
     borderColor: C.redBorder,
-    paddingHorizontal: 20,
-    paddingVertical: 10,
+    paddingHorizontal: pad.lg,
+    paddingVertical: pad.sm,
     alignItems: "center",
-    marginBottom: 16,
+    marginBottom: pad.md,
     width: "100%",
   },
-  // "THE WORD WAS" label — bold, spaced caps
   wordRevealLabel: {
     fontFamily: FONTS.bold,
-    fontSize: 11,
-    color: C.textMuted,
+    fontSize: font.s,
+    color: C.textMuted, // was: 11
     letterSpacing: 0.8,
     textTransform: "uppercase",
-    marginBottom: 4,
+    marginBottom: pad.xs,
   },
-  // Revealed word on win — bold, yellow, glowing
   wordRevealValueWin: {
     fontFamily: FONTS.bold,
-    fontSize: 26,
-    color: C.yellow,
+    fontSize: font.h3,
+    color: C.yellow, // was: 26
     letterSpacing: 1.5,
     textTransform: "uppercase",
     textShadowColor: "rgba(255,213,79,0.4)",
     textShadowOffset: { width: 0, height: 0 },
     textShadowRadius: 10,
   },
-  // Revealed word on lose — bold, red, glowing
   wordRevealValueLose: {
     fontFamily: FONTS.bold,
-    fontSize: 26,
-    color: C.red,
+    fontSize: font.h3,
+    color: C.red, // was: 26
     letterSpacing: 1.5,
     textTransform: "uppercase",
     textShadowColor: "rgba(239,83,80,0.4)",
@@ -677,13 +672,14 @@ const styles = StyleSheet.create({
     textShadowRadius: 10,
   },
 
-  btnRow: { flexDirection: "row", width: "100%", gap: 10 },
+  // Buttons
+  btnRow: { flexDirection: "row", width: "100%", gap: pad.sm },
   btn: {
-    borderRadius: 28,
-    paddingVertical: 15,
+    borderRadius: radius.pill,
+    paddingVertical: pad.md,
     alignItems: "center",
     width: "100%",
-  },
+  }, // was: 28, 15
   btnPrimary: {
     backgroundColor: C.teal,
     shadowColor: C.teal,
@@ -692,35 +688,30 @@ const styles = StyleSheet.create({
     shadowRadius: 14,
     elevation: 8,
   },
-  // Primary CTA — bold, dark
   btnPrimaryText: {
     fontFamily: FONTS.bold,
-    fontSize: 16,
+    fontSize: font.lg,
     color: C.bg,
     letterSpacing: 0.4,
-  },
+  }, // was: 16
   btnRetry: {
     backgroundColor: "rgba(239,83,80,0.15)",
     borderWidth: 1.5,
     borderColor: C.redBorder,
     width: "100%",
   },
-  // "↺ Try Again" — bold, red
   btnRetryText: {
     fontFamily: FONTS.bold,
-    fontSize: 16,
+    fontSize: font.lg,
     color: C.red,
     letterSpacing: 0.3,
+  }, // was: 16
+  skipBtn: {
+    marginTop: pad.sm,
+    paddingVertical: pad.xs,
+    paddingHorizontal: pad.sm,
   },
-  skipBtn: { marginTop: 10, paddingVertical: 6, paddingHorizontal: 14 },
-  // Skip / Play Again → link — light, muted
-  skipText: {
-    fontFamily: FONTS.light,
-    fontSize: 13,
-    color: C.textMuted,
-  },
+  skipText: { fontFamily: FONTS.light, fontSize: font.sm, color: C.textMuted }, // was: 13
 
   bird: { position: "absolute", bottom: 40, alignSelf: "center" },
 });
-
-export default GameEnd;

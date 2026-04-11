@@ -18,11 +18,15 @@ import { useUser } from "./_contexts/UserContext";
 import { fetchRegisterToken, registerUser } from "./services/authService";
 import { clearPrimaryUser } from "./services/identityStorage";
 import { FONTS } from "./theme";
+import { useTheme } from "./_contexts/ThemeContext";
 
 const { width, height } = Dimensions.get("window");
 
 const SplashScreen = () => {
   const router = useRouter();
+  const { sizes } = useTheme();
+  const sz = sizes.splash;
+
   const {
     isFirstTime,
     addProfile,
@@ -65,8 +69,8 @@ const SplashScreen = () => {
 
   useEffect(() => {
     // Todo remove this line later
-    clearAllData();
-    clearPrimaryUser();
+    //clearAllData();
+    //clearPrimaryUser();
 
     // ── 1. Logo fades + scales in ────────────────────────────
     Animated.parallel([
@@ -210,6 +214,8 @@ const SplashScreen = () => {
     }
   };
 
+  const logoSize = width * sz.logoSizeRatio;
+
   return (
     <View style={styles.container}>
       {/* ── Background glow circles — same as IntroCarousel ── */}
@@ -222,6 +228,8 @@ const SplashScreen = () => {
         style={[
           styles.logo,
           {
+            width: logoSize,
+            height: logoSize,
             opacity: logoOp,
             transform: [{ scale: logoScale }],
           },
@@ -233,7 +241,11 @@ const SplashScreen = () => {
       <Animated.Text
         style={[
           styles.title,
-          { opacity: titleOp, transform: [{ translateY: titleY }] },
+          {
+            fontSize: sz.titleFontSize,
+            opacity: titleOp,
+            transform: [{ translateY: titleY }],
+          },
         ]}
       >
         Story Time
@@ -243,7 +255,11 @@ const SplashScreen = () => {
       <Animated.Text
         style={[
           styles.sub1,
-          { opacity: sub1Op, transform: [{ translateY: sub1Y }] },
+          {
+            fontSize: sz.sub1FontSize,
+            opacity: sub1Op,
+            transform: [{ translateY: sub1Y }],
+          },
         ]}
       >
         A kids learning App
@@ -253,7 +269,11 @@ const SplashScreen = () => {
       <Animated.Text
         style={[
           styles.sub2,
-          { opacity: sub2Op, transform: [{ translateY: sub2Y }] },
+          {
+            fontSize: sz.sub2FontSize,
+            opacity: sub2Op,
+            transform: [{ translateY: sub2Y }],
+          },
         ]}
       >
         From Codklusters Education
@@ -345,6 +365,8 @@ const SplashScreen = () => {
 export default SplashScreen;
 
 // ── Styles ─────────────────────────────────────────────────────
+// Font sizes for the splash screen are applied inline via sz.*
+// so they respond to the loaded device theme.
 const styles = StyleSheet.create({
   container: {
     flex: 1,
@@ -374,20 +396,16 @@ const styles = StyleSheet.create({
     backgroundColor: "rgba(150,82,217,0.07)",
   },
 
-  // ── Logo ────────────────────────────────────────────────────
+  // ── Logo — width/height applied inline from sz ───────────────
   logo: {
-    width: width * 0.52,
-    height: width * 0.52,
     border: 1,
     borderRadius: 3,
-    // marginBottom: 28,
   },
 
-  // ── Main title ──────────────────────────────────────────────
+  // ── Main title — fontSize applied inline from sz ─────────────
   title: {
     fontFamily:
       Platform.OS === "ios" ? "Noteworthy-Bold" : "sans-serif-condensed",
-    fontSize: 42,
     fontWeight: "900",
     color: "#00BCD4",
     letterSpacing: 1.5,
@@ -395,22 +413,19 @@ const styles = StyleSheet.create({
     textShadowOffset: { width: 0, height: 0 },
     textShadowRadius: 18,
     marginBottom: 10,
-    // marginTop: -40,
   },
 
-  // ── Sub-text 1 ───────────────────────────────────────────────
+  // ── Sub-text 1 — fontSize applied inline from sz ─────────────
   sub1: {
     fontFamily: FONTS.light,
-    fontSize: 17,
     color: "#B2EBF2",
     letterSpacing: 0.4,
     marginBottom: 6,
   },
 
-  // ── Sub-text 2 ───────────────────────────────────────────────
+  // ── Sub-text 2 — fontSize applied inline from sz ─────────────
   sub2: {
     fontFamily: FONTS.light,
-    fontSize: 13,
     color: "rgba(255,255,255,0.28)",
     letterSpacing: 0.8,
   },

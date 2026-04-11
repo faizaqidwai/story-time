@@ -1,15 +1,4 @@
 // components/BadgePopup.jsx
-//
-// ── DYNAMIC — works for both story completions AND game wins ──────────────────
-//
-// Props:
-//   visible     — boolean
-//   onClose     — () => void
-//   onPlay      — () => void   (next challenge CTA)
-//   badge       — one of the keys in BADGE_CONFIGS below
-//   finishMode  — boolean (optional). When true, replaces the "Next Challenge"
-//                 panel with a single "Finish" button that calls onClose.
-//                 Zero impact when not passed (defaults to false).
 
 import React, { useRef, useEffect, useState } from "react";
 import {
@@ -25,10 +14,10 @@ import {
 } from "react-native";
 import { Audio } from "expo-av";
 import { COLORS, FONTS } from "../theme";
+import { font, pad, radius, size } from "../theme/tokens"; // ← ADD
 
 const { width: SW, height: SH } = Dimensions.get("window");
 
-// ── Badge registry ────────────────────────────────────────────────────────────
 const BADGE_CONFIGS = {
   first_story: {
     icon: "📖",
@@ -69,7 +58,6 @@ const BADGE_CONFIGS = {
     nextLabel: "Listen Quest!",
     nextSub: "Listen. Think. Choose.",
     nextImage: require("../../assets/img/listen_icon.png"),
-    nextEmoji: null,
   },
   describe_won: {
     icon: "🧠",
@@ -112,7 +100,6 @@ const BADGE_CONFIGS = {
     nextLabel: "Spot the Truth",
     nextSub: "Choose what's true.",
     nextImage: require("../../assets/img/describe_icon.png"),
-    nextEmoji: null,
   },
 };
 
@@ -120,7 +107,6 @@ const COIN_COUNT = 10;
 const PART_CNT = 28;
 const EMOJIS = ["🎉", "⭐", "🌟", "✨", "🎊", "💫", "🎈", "❤️", "🥳", "🌈"];
 
-// ── Layout maths ──────────────────────────────────────────────────────────────
 const CARD_PADDING = 22;
 const ICON_BOX = 108;
 const ARROW_ZONE = 60;
@@ -132,13 +118,12 @@ const WALLET_CTR_X = ROW_LEFT_X + ICON_BOX + 8 + ARROW_ZONE + 8 + ICON_BOX / 2;
 // ─────────────────────────────────────────────────────────────────────────────
 // PARTICLE
 // ─────────────────────────────────────────────────────────────────────────────
-function Particle({ emoji, startX, startY, delay, size }) {
+function Particle({ emoji, startX, startY, delay, size: pSize }) {
   const tx = useRef(new Animated.Value(0)).current;
   const ty = useRef(new Animated.Value(0)).current;
   const op = useRef(new Animated.Value(0)).current;
   const sc = useRef(new Animated.Value(0)).current;
   const rot = useRef(new Animated.Value(0)).current;
-
   useEffect(() => {
     const dx = (Math.random() - 0.5) * SW * 1.5;
     const dy = -(Math.random() * SH * 0.7 + 80);
@@ -185,7 +170,6 @@ function Particle({ emoji, startX, startY, delay, size }) {
       ]),
     ]).start();
   }, []);
-
   const spin = rot.interpolate({
     inputRange: [-3, 3],
     outputRange: ["-540deg", "540deg"],
@@ -196,7 +180,7 @@ function Particle({ emoji, startX, startY, delay, size }) {
         position: "absolute",
         left: startX,
         top: startY,
-        fontSize: size,
+        fontSize: pSize,
         opacity: op,
         zIndex: 200,
         pointerEvents: "none",
@@ -220,7 +204,6 @@ function Coin({ fromX, fromY, toX, toY, delay, onLand }) {
   const progress = useRef(new Animated.Value(0)).current;
   const op = useRef(new Animated.Value(0)).current;
   const sc = useRef(new Animated.Value(0.6)).current;
-
   const translateX = progress.interpolate({
     inputRange: [0, 1],
     outputRange: [fromX - 11, toX - 11],
@@ -231,7 +214,6 @@ function Coin({ fromX, fromY, toX, toY, delay, onLand }) {
     outputRange: [fromY - 11, peakY, toY - 11],
     extrapolate: "clamp",
   });
-
   useEffect(() => {
     const duration = 700 + Math.random() * 200;
     Animated.sequence([
@@ -264,7 +246,6 @@ function Coin({ fromX, fromY, toX, toY, delay, onLand }) {
       onLand?.();
     });
   }, []);
-
   return (
     <Animated.Image
       source={require("../../assets/img/coin.png")}
@@ -326,7 +307,6 @@ const BadgePopup = ({
 
   useEffect(() => {
     if (!visible || !cfg) return;
-
     slideAnim.setValue(400);
     birdBounce.setValue(1);
     cardOpacity.setValue(0);
@@ -377,7 +357,6 @@ const BadgePopup = ({
     ).start();
 
     playSound();
-
     Animated.spring(slideAnim, {
       toValue: 0,
       useNativeDriver: true,
@@ -471,7 +450,6 @@ const BadgePopup = ({
         delay: i * 130,
       })),
     );
-
     let count = 0;
     const step = cfg.rewardAmount / COIN_COUNT;
     const ticker = setInterval(() => {
@@ -569,7 +547,6 @@ const BadgePopup = ({
       playLoop.current?.stop();
     }
   }, [visible]);
-
   useEffect(
     () => () => {
       soundRef.current?.unloadAsync();
@@ -591,7 +568,6 @@ const BadgePopup = ({
   };
 
   if (!visible || !cfg) return null;
-
   const accent = cfg.accentColor;
 
   return (
@@ -602,17 +578,13 @@ const BadgePopup = ({
       onRequestClose={onClose}
     >
       <View style={styles.overlay}>
-        {/* Confetti */}
         {particles.map((p) => (
           <Particle key={`${particleKey}-${p.id}`} {...p} />
         ))}
-
-        {/* Flying coins */}
         {coins.map((c) => (
           <Coin key={c.id} {...c} onLand={handleCoinLand} />
         ))}
 
-        {/* ── Card ─────────────────────────────────────────────────────────── */}
         <Animated.View
           style={[
             styles.card,
@@ -642,14 +614,12 @@ const BadgePopup = ({
               <Text style={styles.description}>{cfg.description}</Text>
             </View>
           </View>
-
           <View style={styles.divider} />
 
-          {/* ── PANEL: REWARD ─────────────────────────────────────────────── */}
+          {/* Reward panel */}
           {panel === "reward" && (
             <Animated.View style={{ opacity: rewardRowOp }}>
               <View style={styles.rewardRow}>
-                {/* Source icon (left) */}
                 <View style={styles.iconCol}>
                   <Animated.View
                     style={[
@@ -676,8 +646,6 @@ const BadgePopup = ({
                   </Animated.View>
                   <Text style={styles.iconLabel}>{cfg.sourceLabel}</Text>
                 </View>
-
-                {/* Animated arrows */}
                 <View style={styles.arrowTrail}>
                   {[0, 1, 2].map((i) => (
                     <Text
@@ -691,8 +659,6 @@ const BadgePopup = ({
                     </Text>
                   ))}
                 </View>
-
-                {/* Wallet (right) */}
                 <View style={styles.iconCol}>
                   <View>
                     <Animated.View
@@ -723,15 +689,13 @@ const BadgePopup = ({
                   <Text style={styles.iconLabel}>{cfg.rewardLabel}</Text>
                 </View>
               </View>
-
-              {/* Skip */}
               <Pressable onPress={onClose} style={styles.skipBtn}>
                 <Text style={styles.skipText}>Skip →</Text>
               </Pressable>
             </Animated.View>
           )}
 
-          {/* ── PANEL: CHALLENGE ──────────────────────────────────────────── */}
+          {/* Challenge panel */}
           {panel === "challenge" && (
             <Animated.View
               style={[
@@ -751,7 +715,7 @@ const BadgePopup = ({
                   <View
                     style={{
                       alignItems: "center",
-                      marginBottom: 4,
+                      marginBottom: pad.xs,
                       width: "100%",
                     }}
                   >
@@ -786,17 +750,20 @@ const BadgePopup = ({
                   <Text style={styles.challengeHeadline}>
                     🔥 Next Challenge
                   </Text>
-
                   <View style={styles.gameThumb}>
                     {cfg.nextImage ? (
                       <Image
                         source={cfg.nextImage}
-                        style={{ width: 60, height: 60, borderRadius: 12 }}
+                        style={{
+                          width: 60,
+                          height: 60,
+                          borderRadius: radius.md,
+                        }}
                         resizeMode="cover"
                       />
                     ) : (
                       <View style={styles.gameThumbEmojiBg}>
-                        <Text style={{ fontSize: 36 }}>
+                        <Text style={{ fontSize: font.h3 }}>
                           {cfg.nextEmoji ?? "🎮"}
                         </Text>
                       </View>
@@ -808,8 +775,7 @@ const BadgePopup = ({
                       <Text style={styles.gameThumbSub}>{cfg.nextSub}</Text>
                     </View>
                   </View>
-
-                  <View style={{ alignItems: "center", marginBottom: 4 }}>
+                  <View style={{ alignItems: "center", marginBottom: pad.xs }}>
                     <Animated.View
                       style={[
                         styles.playGlowRing,
@@ -828,7 +794,6 @@ const BadgePopup = ({
                       </Pressable>
                     </Animated.View>
                   </View>
-
                   <Pressable onPress={onClose} style={styles.skipBtn}>
                     <Text style={styles.skipText}>Maybe later</Text>
                   </Pressable>
@@ -838,7 +803,6 @@ const BadgePopup = ({
           )}
         </Animated.View>
 
-        {/* Bird */}
         <Animated.Image
           source={require("../../assets/img/bird_happy.png")}
           style={[
@@ -852,6 +816,10 @@ const BadgePopup = ({
   );
 };
 
+export default BadgePopup;
+
+// ─────────────────────────────────────────────────────────────────────────────
+// STYLES
 // ─────────────────────────────────────────────────────────────────────────────
 const styles = StyleSheet.create({
   overlay: {
@@ -862,7 +830,7 @@ const styles = StyleSheet.create({
   },
   card: {
     backgroundColor: COLORS.darkBg2,
-    borderRadius: 26,
+    borderRadius: radius.xxl, // was: 26
     padding: CARD_PADDING,
     width: "91%",
     maxWidth: 420,
@@ -873,13 +841,11 @@ const styles = StyleSheet.create({
     shadowRadius: 24,
     elevation: 12,
   },
-
-  // Header
   header: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 14,
-    marginBottom: 4,
+    gap: pad.sm,
+    marginBottom: pad.xs,
   },
   iconCircle: {
     width: 62,
@@ -889,40 +855,33 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
   },
-  headerIcon: { fontSize: 34 },
-  // Badge title — bold, accent coloured
-  title: {
-    fontFamily: FONTS.bold,
-    fontSize: 20,
-    letterSpacing: 0.2,
-  },
-  // Badge description — light, muted
+  headerIcon: { fontSize: font.h3 }, // was: 34
+  title: { fontFamily: FONTS.bold, fontSize: font.xl, letterSpacing: 0.2 }, // was: 20
   description: {
     fontFamily: FONTS.light,
-    fontSize: 13,
+    fontSize: font.sm,
     color: COLORS.textMuted,
     marginTop: 3,
-  },
-
+  }, // was: 13
   divider: {
     height: 1,
     backgroundColor: COLORS.borderTeal,
-    marginVertical: 14,
+    marginVertical: pad.sm,
   },
 
-  // ── Reward row ────────────────────────────────────────────────────────────
+  // Reward row
   rewardRow: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
-    gap: 8,
-    paddingVertical: 4,
+    gap: pad.s,
+    paddingVertical: pad.xs,
   },
-  iconCol: { alignItems: "center", gap: 8 },
+  iconCol: { alignItems: "center", gap: pad.s },
   iconBox: {
     width: ICON_BOX,
     height: ICON_BOX,
-    borderRadius: 26,
+    borderRadius: radius.xl,
     alignItems: "center",
     justifyContent: "center",
   },
@@ -936,27 +895,22 @@ const styles = StyleSheet.create({
     borderWidth: 2,
     borderColor: COLORS.yellow,
   },
-  bigIcon: { fontSize: 58 },
+  bigIcon: { fontSize: font.h1 }, // was: 58
   bigIconImg: { width: 62, height: 62 },
-  // Icon label — bold, spaced caps
   iconLabel: {
     fontFamily: FONTS.bold,
-    fontSize: 11,
+    fontSize: font.s,
     color: COLORS.textSecondary,
     letterSpacing: 1.2,
     textTransform: "uppercase",
-  },
+  }, // was: 11
   arrowTrail: {
     flexDirection: "row",
     alignItems: "center",
     marginBottom: 18,
     gap: -2,
   },
-  // Arrow › — bold
-  arrowChar: {
-    fontFamily: FONTS.bold,
-    fontSize: 30,
-  },
+  arrowChar: { fontFamily: FONTS.bold, fontSize: font.h3 }, // was: 30
 
   counterBadge: {
     position: "absolute",
@@ -965,66 +919,62 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     backgroundColor: COLORS.darkBg,
-    borderRadius: 20,
-    paddingHorizontal: 8,
-    paddingVertical: 4,
+    borderRadius: radius.pill,
+    paddingHorizontal: pad.s,
+    paddingVertical: pad.xs,
     borderWidth: 1.5,
     borderColor: COLORS.yellow,
     gap: 3,
     zIndex: 10,
   },
-  // Counter "+N" — bold, yellow
   counterText: {
     fontFamily: FONTS.bold,
-    fontSize: 19,
+    fontSize: font.xl,
     color: COLORS.yellow,
-  },
-  counterStar: { fontSize: 14 },
+  }, // was: 19
+  counterStar: { fontSize: font.md },
 
-  // ── Challenge panel ───────────────────────────────────────────────────────
+  // Challenge panel
   challengeSection: { alignItems: "center" },
-  // "🔥 Next Challenge" / "🎉 All Done!" — bold
   challengeHeadline: {
     fontFamily: FONTS.bold,
-    fontSize: 22,
+    fontSize: font.xl,
     color: COLORS.textPrimary,
     textAlign: "center",
     letterSpacing: 0.3,
-    marginBottom: 14,
-  },
+    marginBottom: pad.sm,
+  }, // was: 22
   gameThumb: {
     flexDirection: "row",
     alignItems: "center",
     width: "92%",
     backgroundColor: COLORS.surfaceDim,
-    borderRadius: 16,
+    borderRadius: radius.lg, // was: 16
     borderWidth: 1.5,
     borderColor: COLORS.borderTealBold,
-    padding: 14,
-    marginBottom: 18,
-    gap: 16,
+    padding: pad.sm, // was: 14
+    marginBottom: pad.lg,
+    gap: pad.md,
   },
   gameThumbEmojiBg: {
     width: 60,
     height: 60,
-    borderRadius: 12,
+    borderRadius: radius.md,
     backgroundColor: "rgba(255,255,255,0.06)",
     alignItems: "center",
     justifyContent: "center",
   },
-  // Next challenge title — bold, accent coloured
   gameThumbTitle: {
     fontFamily: FONTS.bold,
-    fontSize: 17,
+    fontSize: font.lg,
     letterSpacing: 0.3,
-  },
-  // Next challenge subtitle — light, muted
+  }, // was: 17
   gameThumbSub: {
     fontFamily: FONTS.light,
-    fontSize: 12,
+    fontSize: font.sm,
     color: COLORS.textMuted,
     marginTop: 3,
-  },
+  }, // was: 12
 
   playGlowRing: {
     position: "absolute",
@@ -1038,52 +988,48 @@ const styles = StyleSheet.create({
   playBtn: {
     flexDirection: "row",
     alignItems: "center",
-    paddingVertical: 14,
-    paddingHorizontal: 38,
-    borderRadius: 40,
-    gap: 10,
+    paddingVertical: pad.md, // was: 14
+    paddingHorizontal: pad.xxl, // was: 38
+    borderRadius: radius.pill, // was: 40
+    gap: pad.sm,
     shadowOffset: { width: 0, height: 0 },
     shadowOpacity: 0.8,
     shadowRadius: 14,
     elevation: 10,
   },
-  // Play button ▶ / 🏁 icon glyph — bold, dark
   playBtnIcon: {
     fontFamily: FONTS.bold,
-    fontSize: 20,
+    fontSize: font.xl,
     color: COLORS.darkBg,
-  },
-  // Play / Finish button label — bold, dark
+  }, // was: 20
   playBtnText: {
     fontFamily: FONTS.bold,
-    fontSize: 18,
+    fontSize: font.xl,
     color: COLORS.darkBg,
     letterSpacing: 0.4,
-  },
+  }, // was: 18
 
   skipBtn: {
-    marginTop: 10,
+    marginTop: pad.sm,
     alignSelf: "center",
-    paddingVertical: 6,
-    paddingHorizontal: 14,
+    paddingVertical: pad.xs,
+    paddingHorizontal: pad.sm,
   },
-  // Skip / Maybe later — light, muted
   skipText: {
     fontFamily: FONTS.light,
-    fontSize: 13,
+    fontSize: font.sm,
     color: COLORS.textMuted,
-  },
+  }, // was: 13
 
   finishBtn: { width: "100%", justifyContent: "center" },
-  // Finish mode subtitle — light, secondary
   finishSubtitle: {
     fontFamily: FONTS.light,
-    fontSize: 14,
+    fontSize: font.md,
     color: COLORS.textSecondary,
     textAlign: "center",
-    lineHeight: 20,
-    marginBottom: 22,
-  },
+    lineHeight: font.md * 1.5,
+    marginBottom: pad.lg,
+  }, // was: 14
 
   bird: {
     position: "absolute",
@@ -1093,5 +1039,3 @@ const styles = StyleSheet.create({
     height: 190,
   },
 });
-
-export default BadgePopup;

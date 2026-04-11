@@ -1,25 +1,4 @@
-// app/home.jsx  (updated for Level Access Layer)
-//
-// Changes from original:
-//   1. Imports useLevelAccess — calls initForProfile() when currentProfile changes.
-//   2. loadedLevel drives what stories are shown (not always profile.playLevel).
-//   3. Story loading uses getBooksByLevel(loadedLevel) when loadedLevel ≠ playLevel,
-//      otherwise falls back to the existing getBooks(profileId) path (no change to sync).
-//   4. Access guards (canPlay, canRead, isStoryAccessible) control what the user can do.
-//   5. LevelBadge shows loadedLevel and opens the upgraded Levels screen (selector).
-//   6. AccessModeBanner shown when viewing a non-current or restricted level.
-//   7. VIEW_ONLY levels show a locked placeholder instead of story cards.
-//   8. PARTIAL scope: only the first story card is interactive.
-//
-// Sync strategy changes:
-//   • On first home screen visit → fire a pull sync (once per session, guarded by hasInitialSyncedRef)
-//   • After activity completion (handleFinishDone) → fire a push sync
-//   • 15-min fallback interval runs in SyncEngine (no AppState trigger)
-//
-// Freeze fix:
-//   • _finishHandled — module-level guard prevents handleFinishDone running twice across remounts
-//   • _overlayShownForStoryId — module-level guard prevents finish overlay showing twice
-//     for the same story across remounts (root cause: router.replace + iOS Modal remounts Home)
+// app/home.jsx
 
 import {
   StyleSheet,
@@ -62,29 +41,25 @@ import {
 
 import { SafeAreaView } from "react-native-safe-area-context";
 import { FONTS } from "./theme";
+import { font, pad, radius, size, isTablet } from "./theme/tokens"; // ← REPLACES useTheme
 
-// ── Module-level guards — outside component so they survive remounts ──────────
-// Root cause: router.replace("/home") + iOS Modal causes Home to fully unmount
-// and remount multiple times. These module-level variables persist across remounts
-// unlike useRef which resets on each mount.
+// ── Module-level guards ───────────────────────────────────────────────────────
 let _finishHandled = false;
 let _overlayShownForStoryId = null;
 
 const { width, height } = Dimensions.get("window");
 
-const HEADER_HEIGHT = 190;
 const DARK_BG = "#1a1a2e";
 const TEAL = "#00BCD4";
 const YELLOW = "#FFD54F";
 const CORAL = "#FF7043";
 
-// user accounts already seen Tutorial
-const _tutorialCheckedAccounts = new Set();
+// Header height — how far the main content sits below the side UI
+const HEADER_HEIGHT = isTablet ? 260 : 190; // was: s.headerHeight
 
-// ── AsyncStorage key (per level number) ──────────────────────────────────────
+const _tutorialCheckedAccounts = new Set();
 const storyCacheKey = (levelNumber) => `@stories_cache_v2_level_${levelNumber}`;
 
-// ── Game card data ────────────────────────────────────────────────────────────
 const GAMES = [
   {
     id: "flappy",
@@ -104,7 +79,6 @@ const GAMES = [
   },
 ];
 
-// ── Tutorial steps ────────────────────────────────────────────────────────────
 const TUTORIAL_STEPS = [
   {
     key: "account",
@@ -167,6 +141,18 @@ const TUTORIAL_STEPS = [
   },
 ];
 
+async function playSound(file, { volume = 1.0 } = {}) {
+  try {
+    await Audio.setAudioModeAsync({ playsInSilentModeIOS: true });
+    const { sound } = await Audio.Sound.createAsync(file);
+    await sound.setVolumeAsync(volume);
+    sound.setOnPlaybackStatusUpdate((status) => {
+      if (status.didJustFinish) sound.unloadAsync();
+    });
+    await sound.playAsync();
+  } catch (_) {}
+}
+
 // ─────────────────────────────────────────────────────────────────────────────
 // ACCESS MODE BANNER
 // ─────────────────────────────────────────────────────────────────────────────
@@ -181,9 +167,8 @@ function AccessModeBanner({
     mode === "PLAY" &&
     levelNumber === currentPlayLevel &&
     accessScope !== "PARTIAL"
-  ) {
+  )
     return null;
-  }
 
   let bgColor, borderColor, emoji, messageText;
 
@@ -234,34 +219,34 @@ function AccessModeBanner({
 
 const bannerS = StyleSheet.create({
   container: {
-    marginHorizontal: 15,
-    marginBottom: 8,
-    borderRadius: 14,
+    marginHorizontal: pad.sm, // was: s.bannerMarginH → 15/22
+    marginBottom: pad.s, // was: s.bannerMarginBottom → 8/12
+    borderRadius: radius.md, // was: s.bannerBorderRadius → 14/18
     borderWidth: 1.5,
-    paddingHorizontal: 14,
-    paddingVertical: 10,
+    paddingHorizontal: pad.sm, // was: s.bannerPaddingH → 14/20
+    paddingVertical: pad.sm / 1.4, // was: s.bannerPaddingV → 10/14
     flexDirection: "row",
     alignItems: "center",
     gap: 8,
   },
-  emoji: { fontSize: 16 },
+  emoji: { fontSize: font.lg }, // was: s.bannerEmojiFontSize → 16/22
   text: {
     fontFamily: FONTS.light,
     flex: 1,
-    fontSize: 12,
+    fontSize: font.sm,
     color: "#B2EBF2",
-    lineHeight: 17,
+    lineHeight: font.sm * 1.4,
   },
   btn: {
     backgroundColor: "rgba(0,188,212,0.18)",
-    borderRadius: 10,
+    borderRadius: radius.sm,
     borderWidth: 1,
     borderColor: "rgba(0,188,212,0.4)",
-    paddingHorizontal: 10,
-    paddingVertical: 5,
+    paddingHorizontal: pad.sm,
+    paddingVertical: pad.xs,
     flexShrink: 0,
   },
-  btnText: { fontFamily: FONTS.bold, fontSize: 11, color: TEAL },
+  btnText: { fontFamily: FONTS.bold, fontSize: font.s, color: TEAL },
 });
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -287,13 +272,12 @@ function HomeTutorial({ visible, refs, onDone }) {
       if (!ref?.current) return;
       ref.current.measureInWindow((x, y, w, h) => {
         if (w === 0 && h === 0) return;
-        const newRect = {
+        setRect({
           x: x - PADDING,
           y: y - PADDING,
           width: w + PADDING * 2,
           height: h + PADDING * 2,
-        };
-        setRect(newRect);
+        });
         tooltipAnim.setValue(0);
         Animated.timing(tooltipAnim, {
           toValue: 1,
@@ -337,17 +321,19 @@ function HomeTutorial({ visible, refs, onDone }) {
   }, [visible]);
 
   const handleNext = () => {
+    playSound(require("../assets/sounds/tick1.mp3"));
     if (isLast) {
       onDone();
       return;
     }
     setRect(null);
-    setStep((s) => s + 1);
+    setStep((p) => p + 1);
   };
   const handlePrev = () => {
     if (isFirst) return;
+    playSound(require("../assets/sounds/tick1.mp3"));
     setRect(null);
-    setStep((s) => s - 1);
+    setStep((p) => p - 1);
   };
   const handleSkip = () => onDone();
 
@@ -373,8 +359,6 @@ function HomeTutorial({ visible, refs, onDone }) {
       onRequestClose={handleSkip}
     >
       <View style={tutS.container} pointerEvents="box-none">
-        {/* Left/Right tap zones for prev/next navigation */}
-
         <View style={tutS.tapZones} pointerEvents="box-none">
           <TouchableOpacity
             style={tutS.tapLeft}
@@ -442,6 +426,7 @@ function HomeTutorial({ visible, refs, onDone }) {
         ) : (
           <View style={[tutS.scrimPanel, StyleSheet.absoluteFillObject]} />
         )}
+
         {rect && (
           <Animated.View
             pointerEvents="none"
@@ -465,6 +450,7 @@ function HomeTutorial({ visible, refs, onDone }) {
             <Text style={tutS.tooltipDesc}>{stepData.description}</Text>
           </Animated.View>
         )}
+
         <View style={tutS.topBar} pointerEvents="box-none">
           <TouchableOpacity
             onPress={handleSkip}
@@ -479,6 +465,7 @@ function HomeTutorial({ visible, refs, onDone }) {
             ))}
           </View>
         </View>
+
         <View style={tutS.navBar} pointerEvents="box-none">
           <TouchableOpacity
             style={[
@@ -536,12 +523,12 @@ const tutS = StyleSheet.create({
     position: "absolute",
     left: 20,
     right: 20,
-    backgroundColor: "rgba(10, 18, 36, 0.97)",
-    borderRadius: 18,
+    backgroundColor: "rgba(10,18,36,0.97)",
+    borderRadius: radius.xl, // was: s.tutorialTooltipBorderRadius → 18/24
     borderWidth: 1.5,
     borderColor: "rgba(0,188,212,0.55)",
-    paddingVertical: 16,
-    paddingHorizontal: 18,
+    paddingVertical: pad.md, // was: s.tutorialTooltipPaddingV → 16/22
+    paddingHorizontal: pad.md, // was: s.tutorialTooltipPaddingH → 18/26
     shadowColor: "#000",
     shadowOffset: { width: 0, height: 6 },
     shadowOpacity: 0.5,
@@ -551,20 +538,20 @@ const tutS = StyleSheet.create({
   },
   tooltipTitle: {
     fontFamily: FONTS.bold,
-    fontSize: 16,
+    fontSize: font.lg,
     color: TEAL,
-    marginBottom: 6,
+    marginBottom: pad.s,
     letterSpacing: 0.3,
   },
   tooltipDesc: {
     fontFamily: FONTS.light,
-    fontSize: 13,
+    fontSize: font.sm,
     color: "#B2EBF2",
-    lineHeight: 20,
+    lineHeight: font.sm * 1.5,
   },
   topBar: {
     position: "absolute",
-    top: Platform.OS === "ios" ? 56 : 32,
+    top: Platform.OS === "ios" ? (isTablet ? 68 : 56) : isTablet ? 44 : 32, // was: s.tutorialTopBarTop_ios/android
     left: 20,
     right: 20,
     flexDirection: "row",
@@ -573,8 +560,8 @@ const tutS = StyleSheet.create({
     zIndex: 200,
   },
   skipBtn: {
-    paddingHorizontal: 14,
-    paddingVertical: 7,
+    paddingHorizontal: pad.sm,
+    paddingVertical: pad.s,
     borderRadius: 20,
     borderWidth: 1,
     borderColor: "rgba(255,255,255,0.25)",
@@ -582,7 +569,7 @@ const tutS = StyleSheet.create({
   },
   skipText: {
     fontFamily: FONTS.bold,
-    fontSize: 13,
+    fontSize: font.sm,
     color: "rgba(255,255,255,0.8)",
   },
   dotsRow: {
@@ -596,15 +583,15 @@ const tutS = StyleSheet.create({
     justifyContent: "center",
   },
   dot: {
-    width: 6,
-    height: 6,
-    borderRadius: 3,
+    width: isTablet ? 8 : 6,
+    height: isTablet ? 8 : 6,
+    borderRadius: isTablet ? 4 : 3,
     backgroundColor: "rgba(255,255,255,0.25)",
   },
-  dotActive: { width: 18, backgroundColor: TEAL },
+  dotActive: { width: isTablet ? 26 : 18, backgroundColor: TEAL },
   navBar: {
     position: "absolute",
-    bottom: Platform.OS === "ios" ? 44 : 24,
+    bottom: Platform.OS === "ios" ? (isTablet ? 56 : 44) : isTablet ? 36 : 24, // was: s.tutorialNavBottom_ios/android
     left: 20,
     right: 20,
     flexDirection: "row",
@@ -613,13 +600,13 @@ const tutS = StyleSheet.create({
     zIndex: 200,
   },
   navBtn: {
-    paddingHorizontal: 25,
-    paddingVertical: 15,
-    borderRadius: 14,
+    paddingHorizontal: pad.lg,
+    paddingVertical: pad.sm,
+    borderRadius: radius.lg,
     borderWidth: 1.5,
     borderColor: "rgba(0,188,212,0.35)",
     backgroundColor: "rgba(0,188,212,0.1)",
-    minWidth: 100,
+    minWidth: isTablet ? 140 : 100,
     alignItems: "center",
   },
   navBtnSecondary: {
@@ -633,7 +620,7 @@ const tutS = StyleSheet.create({
   },
   navBtnText: {
     fontFamily: FONTS.bold,
-    fontSize: 18,
+    fontSize: font.lg,
     color: TEAL,
     letterSpacing: 0.3,
   },
@@ -642,7 +629,7 @@ const tutS = StyleSheet.create({
   navBtnTextDisabled: { color: "rgba(255,255,255,0.2)" },
   stepCounter: {
     fontFamily: FONTS.regular,
-    fontSize: 13,
+    fontSize: font.sm,
     color: "rgba(255,255,255,0.45)",
     letterSpacing: 0.5,
   },
@@ -653,16 +640,10 @@ const tutS = StyleSheet.create({
     right: 0,
     bottom: 0,
     flexDirection: "row",
-    zIndex: 50, // above scrims, below tooltip and nav bar
+    zIndex: 50,
   },
-  tapLeft: {
-    flex: 1,
-    height: "100%",
-  },
-  tapRight: {
-    flex: 1,
-    height: "100%",
-  },
+  tapLeft: { flex: 1, height: "100%" },
+  tapRight: { flex: 1, height: "100%" },
 });
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -690,82 +671,95 @@ function MiniBird() {
     inputRange: [0, 1],
     outputRange: [0, -6],
   });
+
+  // Container and body scale up on tablet
+  const containerH = isTablet ? 100 : 72;
+  const bodyW = isTablet ? 94 : 68;
+  const bodyH = isTablet ? 70 : 50;
+
   return (
-    <View style={mbS.container}>
-      <View style={mbS.body}>
+    <View
+      style={{
+        alignItems: "center",
+        justifyContent: "center",
+        marginTop: 18,
+        marginBottom: 6,
+        height: containerH,
+      }}
+    >
+      <View
+        style={{
+          width: bodyW,
+          height: bodyH,
+          borderRadius: 25,
+          backgroundColor: "#FFD54F",
+          borderWidth: 3,
+          borderColor: "#FF8F00",
+          alignItems: "center",
+          justifyContent: "center",
+          overflow: "visible",
+          shadowColor: "#FFD54F",
+          shadowOffset: { width: 0, height: 0 },
+          shadowOpacity: 0.9,
+          shadowRadius: 14,
+          elevation: 10,
+        }}
+      >
         <Animated.View
-          style={[mbS.wing, { transform: [{ translateY: wingY }] }]}
+          style={{
+            position: "absolute",
+            top: -12,
+            left: 20,
+            width: 30,
+            height: 16,
+            borderRadius: 8,
+            backgroundColor: "#FFA000",
+            borderWidth: 2,
+            borderColor: "#FF6F00",
+            transform: [{ rotate: "-15deg" }, { translateY: wingY }],
+          }}
         />
-        <View style={mbS.eye}>
-          <View style={mbS.pupil} />
+        <View
+          style={{
+            position: "absolute",
+            right: 13,
+            top: 10,
+            width: 14,
+            height: 14,
+            borderRadius: 7,
+            backgroundColor: "#fff",
+            borderWidth: 1.5,
+            borderColor: "rgba(0,0,0,0.15)",
+            alignItems: "center",
+            justifyContent: "center",
+          }}
+        >
+          <View
+            style={{
+              width: 7,
+              height: 7,
+              borderRadius: 3.5,
+              backgroundColor: "#111",
+            }}
+          />
         </View>
-        <View style={mbS.beak} />
+        <View
+          style={{
+            position: "absolute",
+            right: -10,
+            top: "38%",
+            width: 14,
+            height: 10,
+            borderRadius: 4,
+            backgroundColor: "#FF6D00",
+            borderWidth: 1.5,
+            borderColor: "#E65100",
+          }}
+        />
       </View>
     </View>
   );
 }
-const mbS = StyleSheet.create({
-  container: {
-    alignItems: "center",
-    justifyContent: "center",
-    marginTop: 18,
-    marginBottom: 6,
-    height: 72,
-  },
-  body: {
-    width: 68,
-    height: 50,
-    borderRadius: 25,
-    backgroundColor: "#FFD54F",
-    borderWidth: 3,
-    borderColor: "#FF8F00",
-    alignItems: "center",
-    justifyContent: "center",
-    overflow: "visible",
-    shadowColor: "#FFD54F",
-    shadowOffset: { width: 0, height: 0 },
-    shadowOpacity: 0.9,
-    shadowRadius: 14,
-    elevation: 10,
-  },
-  wing: {
-    position: "absolute",
-    top: -12,
-    left: 20,
-    width: 30,
-    height: 16,
-    borderRadius: 8,
-    backgroundColor: "#FFA000",
-    borderWidth: 2,
-    borderColor: "#FF6F00",
-    transform: [{ rotate: "-15deg" }],
-  },
-  eye: {
-    position: "absolute",
-    right: 13,
-    top: 10,
-    width: 14,
-    height: 14,
-    borderRadius: 7,
-    backgroundColor: "#fff",
-    borderWidth: 1.5,
-    borderColor: "rgba(0,0,0,0.15)",
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  pupil: { width: 7, height: 7, borderRadius: 3.5, backgroundColor: "#111" },
-  beak: {
-    position: "absolute",
-    right: -10,
-    top: "38%",
-    width: 14,
-    height: 10,
-    borderRadius: 4,
-    backgroundColor: "#FF6D00",
-    borderWidth: 1.5,
-    borderColor: "#E65100",
-  },
-});
 
 // ─────────────────────────────────────────────────────────────────────────────
 // MINI CAT
@@ -814,398 +808,526 @@ function MiniCat() {
     inputRange: [0, 1],
     outputRange: [1, 1.3],
   });
+
+  const containerSize = isTablet ? 100 : 72;
+
   return (
-    <View style={mcS.container}>
-      <Animated.View style={[mcS.tail, { transform: [{ rotate: tailRot }] }]} />
-      <View style={mcS.body}>
-        <View style={mcS.tummy} />
-        <View style={mcS.paws}>
-          <View style={mcS.paw} />
-          <View style={mcS.paw} />
+    <View
+      style={{
+        alignItems: "center",
+        justifyContent: "center",
+        width: containerSize,
+        height: containerSize,
+        alignSelf: "center",
+        marginTop: 14,
+        marginBottom: 6,
+      }}
+    >
+      <Animated.View
+        style={{
+          position: "absolute",
+          bottom: 4,
+          right: 2,
+          width: 16,
+          height: 30,
+          backgroundColor: "#F4A460",
+          borderRadius: 8,
+          borderWidth: 2,
+          borderColor: "#CD853F",
+          transform: [{ rotate: tailRot }],
+        }}
+      />
+      <View
+        style={{
+          position: "absolute",
+          bottom: 0,
+          left: 8,
+          width: 52,
+          height: 38,
+          backgroundColor: "#F4A460",
+          borderRadius: 14,
+          borderWidth: 2,
+          borderColor: "#CD853F",
+          alignItems: "center",
+          justifyContent: "center",
+          paddingBottom: 4,
+          shadowColor: "#CD853F",
+          shadowOffset: { width: 0, height: 2 },
+          shadowOpacity: 0.5,
+          shadowRadius: 3,
+          elevation: 5,
+        }}
+      >
+        <View
+          style={{
+            width: "52%",
+            height: "42%",
+            backgroundColor: "#FAEBD7",
+            borderRadius: 18,
+            borderWidth: 1,
+            borderColor: "rgba(205,133,63,0.3)",
+          }}
+        />
+        <View style={{ flexDirection: "row", gap: 8, marginTop: 2 }}>
+          <View
+            style={{
+              width: 10,
+              height: 7,
+              borderRadius: 5,
+              backgroundColor: "#F4A460",
+              borderWidth: 1.5,
+              borderColor: "#CD853F",
+            }}
+          />
+          <View
+            style={{
+              width: 10,
+              height: 7,
+              borderRadius: 5,
+              backgroundColor: "#F4A460",
+              borderWidth: 1.5,
+              borderColor: "#CD853F",
+            }}
+          />
         </View>
       </View>
-      <View style={mcS.head}>
-        <Animated.View style={[mcS.earL, { transform: [{ scale: earSc }] }]}>
-          <View style={mcS.earInner} />
+      <View
+        style={{
+          position: "absolute",
+          top: 0,
+          left: 10,
+          width: 44,
+          height: 36,
+          backgroundColor: "#F4A460",
+          borderRadius: 22,
+          borderWidth: 2,
+          borderColor: "#CD853F",
+        }}
+      >
+        <Animated.View
+          style={{
+            position: "absolute",
+            top: -9,
+            left: 4,
+            width: 0,
+            height: 0,
+            borderLeftWidth: 7,
+            borderRightWidth: 7,
+            borderBottomWidth: 11,
+            borderLeftColor: "transparent",
+            borderRightColor: "transparent",
+            borderBottomColor: "#F4A460",
+            transform: [{ scale: earSc }],
+          }}
+        >
+          <View
+            style={{
+              position: "absolute",
+              top: 3,
+              left: -4,
+              width: 0,
+              height: 0,
+              borderLeftWidth: 4,
+              borderRightWidth: 4,
+              borderBottomWidth: 6,
+              borderLeftColor: "transparent",
+              borderRightColor: "transparent",
+              borderBottomColor: "#FFB6C1",
+            }}
+          />
         </Animated.View>
-        <Animated.View style={[mcS.earR, { transform: [{ scale: earSc }] }]}>
-          <View style={mcS.earInner} />
+        <Animated.View
+          style={{
+            position: "absolute",
+            top: -9,
+            right: 4,
+            width: 0,
+            height: 0,
+            borderLeftWidth: 7,
+            borderRightWidth: 7,
+            borderBottomWidth: 11,
+            borderLeftColor: "transparent",
+            borderRightColor: "transparent",
+            borderBottomColor: "#F4A460",
+            transform: [{ scale: earSc }],
+          }}
+        >
+          <View
+            style={{
+              position: "absolute",
+              top: 3,
+              left: -4,
+              width: 0,
+              height: 0,
+              borderLeftWidth: 4,
+              borderRightWidth: 4,
+              borderBottomWidth: 6,
+              borderLeftColor: "transparent",
+              borderRightColor: "transparent",
+              borderBottomColor: "#FFB6C1",
+            }}
+          />
         </Animated.View>
-        <View style={mcS.eyeL}>
-          <View style={mcS.pupilSlit} />
+        <View
+          style={{
+            position: "absolute",
+            top: 8,
+            left: 7,
+            width: 9,
+            height: 9,
+            borderRadius: 4.5,
+            backgroundColor: "#7CFC00",
+            borderWidth: 1.5,
+            borderColor: "#228B22",
+            alignItems: "center",
+            justifyContent: "center",
+          }}
+        >
+          <View
+            style={{
+              width: 3,
+              height: 6,
+              borderRadius: 1.5,
+              backgroundColor: "#111",
+            }}
+          />
         </View>
-        <View style={mcS.eyeR}>
-          <View style={mcS.pupilSlit} />
+        <View
+          style={{
+            position: "absolute",
+            top: 8,
+            right: 7,
+            width: 9,
+            height: 9,
+            borderRadius: 4.5,
+            backgroundColor: "#7CFC00",
+            borderWidth: 1.5,
+            borderColor: "#228B22",
+            alignItems: "center",
+            justifyContent: "center",
+          }}
+        >
+          <View
+            style={{
+              width: 3,
+              height: 6,
+              borderRadius: 1.5,
+              backgroundColor: "#111",
+            }}
+          />
         </View>
-        <View style={mcS.nose} />
-        <View style={mcS.wL1} />
-        <View style={mcS.wL2} />
-        <View style={mcS.wR1} />
-        <View style={mcS.wR2} />
+        <View
+          style={{
+            position: "absolute",
+            bottom: 9,
+            left: "50%",
+            marginLeft: -3,
+            width: 0,
+            height: 0,
+            borderLeftWidth: 3,
+            borderRightWidth: 3,
+            borderTopWidth: 4,
+            borderLeftColor: "transparent",
+            borderRightColor: "transparent",
+            borderTopColor: "#FF69B4",
+          }}
+        />
+        {[
+          { bottom: 12, left: 0 },
+          { bottom: 9, left: 0 },
+          { bottom: 12, right: 0 },
+          { bottom: 9, right: 0 },
+        ].map((pos, i) => (
+          <View
+            key={i}
+            style={{
+              position: "absolute",
+              ...pos,
+              width: 12,
+              height: 1.5,
+              backgroundColor: "rgba(100,60,20,0.45)",
+              borderRadius: 1,
+            }}
+          />
+        ))}
       </View>
     </View>
   );
 }
-const mcS = StyleSheet.create({
-  container: {
-    alignItems: "center",
-    justifyContent: "center",
-    width: 72,
-    height: 72,
-    alignSelf: "center",
-    marginTop: 14,
-    marginBottom: 6,
-  },
-  body: {
-    position: "absolute",
-    bottom: 0,
-    left: 8,
-    width: 52,
-    height: 38,
-    backgroundColor: "#F4A460",
-    borderRadius: 14,
-    borderWidth: 2,
-    borderColor: "#CD853F",
-    alignItems: "center",
-    justifyContent: "center",
-    paddingBottom: 4,
-    shadowColor: "#CD853F",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.5,
-    shadowRadius: 3,
-    elevation: 5,
-  },
-  tummy: {
-    width: "52%",
-    height: "42%",
-    backgroundColor: "#FAEBD7",
-    borderRadius: 18,
-    borderWidth: 1,
-    borderColor: "rgba(205,133,63,0.3)",
-  },
-  paws: { flexDirection: "row", gap: 8, marginTop: 2 },
-  paw: {
-    width: 10,
-    height: 7,
-    borderRadius: 5,
-    backgroundColor: "#F4A460",
-    borderWidth: 1.5,
-    borderColor: "#CD853F",
-  },
-  tail: {
-    position: "absolute",
-    bottom: 4,
-    right: 2,
-    width: 16,
-    height: 30,
-    backgroundColor: "#F4A460",
-    borderRadius: 8,
-    borderWidth: 2,
-    borderColor: "#CD853F",
-  },
-  head: {
-    position: "absolute",
-    top: 0,
-    left: 10,
-    width: 44,
-    height: 36,
-    backgroundColor: "#F4A460",
-    borderRadius: 22,
-    borderWidth: 2,
-    borderColor: "#CD853F",
-  },
-  earL: {
-    position: "absolute",
-    top: -9,
-    left: 4,
-    width: 0,
-    height: 0,
-    borderLeftWidth: 7,
-    borderRightWidth: 7,
-    borderBottomWidth: 11,
-    borderLeftColor: "transparent",
-    borderRightColor: "transparent",
-    borderBottomColor: "#F4A460",
-  },
-  earR: {
-    position: "absolute",
-    top: -9,
-    right: 4,
-    width: 0,
-    height: 0,
-    borderLeftWidth: 7,
-    borderRightWidth: 7,
-    borderBottomWidth: 11,
-    borderLeftColor: "transparent",
-    borderRightColor: "transparent",
-    borderBottomColor: "#F4A460",
-  },
-  earInner: {
-    position: "absolute",
-    top: 3,
-    left: -4,
-    width: 0,
-    height: 0,
-    borderLeftWidth: 4,
-    borderRightWidth: 4,
-    borderBottomWidth: 6,
-    borderLeftColor: "transparent",
-    borderRightColor: "transparent",
-    borderBottomColor: "#FFB6C1",
-  },
-  eyeL: {
-    position: "absolute",
-    top: 8,
-    left: 7,
-    width: 9,
-    height: 9,
-    borderRadius: 4.5,
-    backgroundColor: "#7CFC00",
-    borderWidth: 1.5,
-    borderColor: "#228B22",
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  eyeR: {
-    position: "absolute",
-    top: 8,
-    right: 7,
-    width: 9,
-    height: 9,
-    borderRadius: 4.5,
-    backgroundColor: "#7CFC00",
-    borderWidth: 1.5,
-    borderColor: "#228B22",
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  pupilSlit: {
-    width: 3,
-    height: 6,
-    borderRadius: 1.5,
-    backgroundColor: "#111",
-  },
-  nose: {
-    position: "absolute",
-    bottom: 9,
-    left: "50%",
-    marginLeft: -3,
-    width: 0,
-    height: 0,
-    borderLeftWidth: 3,
-    borderRightWidth: 3,
-    borderTopWidth: 4,
-    borderLeftColor: "transparent",
-    borderRightColor: "transparent",
-    borderTopColor: "#FF69B4",
-  },
-  wL1: {
-    position: "absolute",
-    bottom: 12,
-    left: 0,
-    width: 12,
-    height: 1.5,
-    backgroundColor: "rgba(100,60,20,0.45)",
-    borderRadius: 1,
-  },
-  wL2: {
-    position: "absolute",
-    bottom: 9,
-    left: 0,
-    width: 12,
-    height: 1.5,
-    backgroundColor: "rgba(100,60,20,0.45)",
-    borderRadius: 1,
-  },
-  wR1: {
-    position: "absolute",
-    bottom: 12,
-    right: 0,
-    width: 12,
-    height: 1.5,
-    backgroundColor: "rgba(100,60,20,0.45)",
-    borderRadius: 1,
-  },
-  wR2: {
-    position: "absolute",
-    bottom: 9,
-    right: 0,
-    width: 12,
-    height: 1.5,
-    backgroundColor: "rgba(100,60,20,0.45)",
-    borderRadius: 1,
-  },
-});
 
 // ─────────────────────────────────────────────────────────────────────────────
 // PROFILE ICON
 // ─────────────────────────────────────────────────────────────────────────────
 function ProfileIcon({ name }) {
   const initial = name ? name.charAt(0).toUpperCase() : "?";
+  const outerSize = isTablet ? 80 : 60; // was: s.profileIconOuterSize
+  const halfOuter = outerSize / 2;
+  const letterSize = isTablet ? 14 : 10; // was: s.profileIconLetterFontSize
+
   return (
-    <View style={piS.outer}>
-      <View style={piS.ring}>
-        <View style={piS.inner}>
-          <View style={piS.highlight} />
-          <View style={piS.silHead} />
-          <View style={piS.silBody} />
-          <View style={piS.letterBadge}>
-            <Text style={piS.letterText}>{initial}</Text>
+    <View
+      style={{
+        width: outerSize,
+        height: outerSize,
+        borderRadius: halfOuter,
+        overflow: "hidden",
+        shadowColor: TEAL,
+        shadowOffset: { width: 0, height: 0 },
+        shadowOpacity: 0.65,
+        shadowRadius: 10,
+        elevation: 10,
+      }}
+    >
+      <View
+        style={{
+          flex: 1,
+          borderRadius: halfOuter,
+          borderWidth: 2.5,
+          borderColor: TEAL,
+          backgroundColor: "#0d0f22",
+          alignItems: "center",
+          justifyContent: "center",
+          overflow: "hidden",
+        }}
+      >
+        <View
+          style={{
+            width: "100%",
+            height: "100%",
+            backgroundColor: "#111830",
+            alignItems: "center",
+            justifyContent: "center",
+          }}
+        >
+          <View
+            style={{
+              position: "absolute",
+              top: 5,
+              left: 8,
+              width: outerSize - 16,
+              height: 12,
+              borderRadius: 8,
+              backgroundColor: "rgba(0,188,212,0.09)",
+            }}
+          />
+          <View
+            style={{
+              position: "absolute",
+              top: 9,
+              width: outerSize * 0.33,
+              height: outerSize * 0.33,
+              borderRadius: outerSize * 0.165,
+              backgroundColor: "rgba(0,188,212,0.22)",
+              borderWidth: 1.5,
+              borderColor: "rgba(0,188,212,0.55)",
+            }}
+          />
+          <View
+            style={{
+              position: "absolute",
+              bottom: -6,
+              width: outerSize * 0.73,
+              height: outerSize * 0.43,
+              borderRadius: outerSize * 0.365,
+              backgroundColor: "rgba(0,188,212,0.16)",
+              borderWidth: 1.5,
+              borderColor: "rgba(0,188,212,0.38)",
+            }}
+          />
+          <View
+            style={{
+              position: "absolute",
+              bottom: 11,
+              width: outerSize * 0.33,
+              height: outerSize * 0.33,
+              borderRadius: outerSize * 0.165,
+              backgroundColor: "rgba(255,213,79,0.13)",
+              borderWidth: 1,
+              borderColor: YELLOW,
+              alignItems: "center",
+              justifyContent: "center",
+            }}
+          >
+            <Text
+              style={{
+                fontFamily: FONTS.bold,
+                fontSize: letterSize,
+                color: YELLOW,
+                textShadowColor: "rgba(255,213,79,0.7)",
+                textShadowOffset: { width: 0, height: 0 },
+                textShadowRadius: 4,
+              }}
+            >
+              {initial}
+            </Text>
           </View>
         </View>
       </View>
-      <View style={piS.shine} />
+      <View
+        style={{
+          position: "absolute",
+          bottom: 0,
+          left: 0,
+          right: 0,
+          height: 3,
+          backgroundColor: TEAL,
+          opacity: 0.5,
+        }}
+      />
     </View>
   );
 }
-const piS = StyleSheet.create({
-  outer: {
-    width: 60,
-    height: 60,
-    borderRadius: 30,
-    overflow: "hidden",
-    shadowColor: TEAL,
-    shadowOffset: { width: 0, height: 0 },
-    shadowOpacity: 0.65,
-    shadowRadius: 10,
-    elevation: 10,
-  },
-  ring: {
-    flex: 1,
-    borderRadius: 30,
-    borderWidth: 2.5,
-    borderColor: TEAL,
-    backgroundColor: "#0d0f22",
-    alignItems: "center",
-    justifyContent: "center",
-    overflow: "hidden",
-  },
-  inner: {
-    width: "100%",
-    height: "100%",
-    backgroundColor: "#111830",
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  highlight: {
-    position: "absolute",
-    top: 5,
-    left: 8,
-    width: 44,
-    height: 12,
-    borderRadius: 8,
-    backgroundColor: "rgba(0,188,212,0.09)",
-  },
-  silHead: {
-    position: "absolute",
-    top: 9,
-    width: 20,
-    height: 20,
-    borderRadius: 10,
-    backgroundColor: "rgba(0,188,212,0.22)",
-    borderWidth: 1.5,
-    borderColor: "rgba(0,188,212,0.55)",
-  },
-  silBody: {
-    position: "absolute",
-    bottom: -6,
-    width: 44,
-    height: 26,
-    borderRadius: 22,
-    backgroundColor: "rgba(0,188,212,0.16)",
-    borderWidth: 1.5,
-    borderColor: "rgba(0,188,212,0.38)",
-  },
-  letterBadge: {
-    position: "absolute",
-    bottom: 11,
-    width: 20,
-    height: 20,
-    borderRadius: 10,
-    backgroundColor: "rgba(255,213,79,0.13)",
-    borderWidth: 1,
-    borderColor: YELLOW,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  letterText: {
-    fontFamily: FONTS.bold,
-    fontSize: 10,
-    color: YELLOW,
-    textShadowColor: "rgba(255,213,79,0.7)",
-    textShadowOffset: { width: 0, height: 0 },
-    textShadowRadius: 4,
-  },
-  shine: {
-    position: "absolute",
-    bottom: 0,
-    left: 0,
-    right: 0,
-    height: 3,
-    backgroundColor: TEAL,
-    opacity: 0.5,
-  },
-});
 
 // ─────────────────────────────────────────────────────────────────────────────
 // GAME CARD
 // ─────────────────────────────────────────────────────────────────────────────
 function GameCard({ game, onPress }) {
-  const scale = useRef(new Animated.Value(1)).current;
+  const cardW = isTablet ? 220 : 160; // was: s.gameCardWidth
+  const cardH = isTablet ? 270 : 200; // was: s.gameCardHeight
+  const scaleA = useRef(new Animated.Value(1)).current;
   const pressIn = () =>
-    Animated.spring(scale, {
+    Animated.spring(scaleA, {
       toValue: 0.95,
       friction: 5,
       tension: 200,
       useNativeDriver: true,
     }).start();
   const pressOut = () =>
-    Animated.spring(scale, {
+    Animated.spring(scaleA, {
       toValue: 1,
       friction: 5,
       tension: 200,
       useNativeDriver: true,
     }).start();
+
   return (
-    <Animated.View style={{ transform: [{ scale }] }}>
+    <Animated.View style={{ transform: [{ scale: scaleA }] }}>
       <TouchableOpacity
         activeOpacity={1}
         onPress={onPress}
         onPressIn={pressIn}
         onPressOut={pressOut}
-        style={styles.gameCard}
+        style={{
+          width: cardW,
+          height: cardH,
+          borderRadius: radius.xl,
+          marginRight: pad.sm,
+          overflow: "hidden",
+          elevation: 10,
+          shadowColor: "#00BCD4",
+          shadowOffset: { width: 0, height: 6 },
+          shadowOpacity: 0.35,
+          shadowRadius: 12,
+        }}
       >
         <View
-          style={[styles.gameCardBg, { backgroundColor: game.gradient[1] }]}
-        />
-        <View
-          style={[styles.gameCardBgTop, { backgroundColor: game.gradient[0] }]}
-        />
-        <View
           style={[
-            styles.gameCardCircle1,
-            { backgroundColor: "rgba(255,255,255,0.07)" },
+            StyleSheet.absoluteFillObject,
+            { backgroundColor: game.gradient[1] },
           ]}
         />
         <View
-          style={[
-            styles.gameCardCircle2,
-            { backgroundColor: "rgba(255,255,255,0.05)" },
-          ]}
+          style={{
+            position: "absolute",
+            top: 0,
+            left: 0,
+            right: 0,
+            height: "60%",
+            borderRadius: radius.xl,
+            opacity: 0.9,
+            backgroundColor: game.gradient[0],
+          }}
         />
         <View
-          style={[styles.gamePlayBadge, { backgroundColor: game.accentColor }]}
+          style={{
+            position: "absolute",
+            width: 130,
+            height: 130,
+            borderRadius: 65,
+            top: -30,
+            right: -30,
+            backgroundColor: "rgba(255,255,255,0.07)",
+          }}
+        />
+        <View
+          style={{
+            position: "absolute",
+            width: 80,
+            height: 80,
+            borderRadius: 40,
+            bottom: 30,
+            left: -20,
+            backgroundColor: "rgba(255,255,255,0.05)",
+          }}
+        />
+        <View
+          style={{
+            position: "absolute",
+            top: 12,
+            right: 12,
+            width: isTablet ? 44 : 32,
+            height: isTablet ? 44 : 32,
+            borderRadius: isTablet ? 22 : 16,
+            alignItems: "center",
+            justifyContent: "center",
+            elevation: 4,
+            backgroundColor: game.accentColor,
+          }}
         >
-          <Text style={styles.gamePlayTxt}>▶</Text>
+          <Text
+            style={{
+              fontFamily: FONTS.bold,
+              fontSize: font.sm,
+              color: "#08081a",
+              marginLeft: 2,
+            }}
+          >
+            ▶
+          </Text>
         </View>
         {game.id === "flappy" && <MiniBird />}
         {game.id === "dodge" && <MiniCat />}
-        <View style={styles.gameCardTextWrap}>
-          <Text style={styles.gameCardTitle}>{game.title}</Text>
-          <Text style={styles.gameCardSub}>{game.subtitle}</Text>
+        <View
+          style={{
+            paddingHorizontal: pad.sm,
+            paddingBottom: pad.sm,
+            marginTop: "auto",
+          }}
+        >
+          <Text
+            style={{
+              fontFamily: FONTS.bold,
+              fontSize: font.md,
+              color: "#fff",
+              letterSpacing: 0.2,
+              textShadowColor: "rgba(0,0,0,0.4)",
+              textShadowOffset: { width: 0, height: 1 },
+              textShadowRadius: 4,
+            }}
+          >
+            {game.title}
+          </Text>
+          <Text
+            style={{
+              fontFamily: FONTS.light,
+              fontSize: font.s,
+              color: "rgba(255,255,255,0.7)",
+              marginTop: 2,
+            }}
+          >
+            {game.subtitle}
+          </Text>
         </View>
         <View
-          style={[styles.gameCardStrip, { backgroundColor: game.accentColor }]}
+          style={{
+            position: "absolute",
+            bottom: 0,
+            left: 0,
+            right: 0,
+            height: 3,
+            opacity: 0.8,
+            backgroundColor: game.accentColor,
+          }}
         />
       </TouchableOpacity>
     </Animated.View>
@@ -1221,6 +1343,13 @@ function LevelBadge({
   progress = 0.62,
   onPress,
 }) {
+  // was: s.levelBadgeRingSize / innerSize / etc.
+  const ringSize = isTablet ? 110 : 82;
+  const innerSize = isTablet ? 92 : 68;
+  const barW = isTablet ? 102 : 76;
+  const barH = isTablet ? 8 : 6;
+  const dotSize = isTablet ? 16 : 12;
+
   const fillAnim = useRef(new Animated.Value(0)).current;
   useEffect(() => {
     Animated.timing(fillAnim, {
@@ -1236,128 +1365,153 @@ function LevelBadge({
     outputRange: ["0%", "100%"],
   });
   const isViewingOther = displayLevel !== currentLevel;
+
   return (
     <TouchableOpacity
-      style={lb.outer}
+      style={{ alignItems: "center" }}
       onPress={onPress}
       activeOpacity={onPress ? 0.8 : 1}
     >
-      <View style={[lb.pitRing, isViewingOther && lb.pitRingAlt]}>
-        <View style={lb.pitInner}>
-          <View style={lb.diagonalTop} />
-          <Text style={lb.label}>LEVEL</Text>
-          <Text style={lb.number}>{displayLevel}</Text>
-          {isViewingOther && <Text style={lb.viewingDot}>●</Text>}
+      <View
+        style={[
+          {
+            width: ringSize,
+            height: ringSize,
+            borderRadius: ringSize / 2,
+            backgroundColor: "#0d0f22",
+            shadowColor: "#000",
+            shadowOffset: { width: 0, height: 4 },
+            shadowOpacity: 0.9,
+            shadowRadius: 8,
+            elevation: 12,
+            alignItems: "center",
+            justifyContent: "center",
+            borderWidth: 2,
+          },
+          isViewingOther
+            ? { borderColor: "rgba(255,213,79,0.5)" }
+            : { borderColor: "rgba(255,255,255,0.06)" },
+        ]}
+      >
+        <View
+          style={{
+            width: innerSize,
+            height: innerSize,
+            borderRadius: innerSize / 2,
+            backgroundColor: "#10122a",
+            alignItems: "center",
+            justifyContent: "center",
+            borderWidth: 1.5,
+            borderColor: "rgba(0,0,0,0.6)",
+            overflow: "hidden",
+          }}
+        >
+          <View
+            style={{
+              position: "absolute",
+              top: 0,
+              left: -10,
+              right: -10,
+              height: "58%",
+              backgroundColor: "#1a2540",
+              transform: [{ rotate: "-6deg" }, { translateY: -4 }],
+              borderRadius: 4,
+              opacity: 0.9,
+            }}
+          />
+          <Text
+            style={{
+              fontFamily: FONTS.bold,
+              fontSize: isTablet ? 11 : 8,
+              color: TEAL,
+              letterSpacing: isTablet ? 2.5 : 2,
+              marginBottom: 1,
+              opacity: 0.9,
+            }}
+          >
+            LEVEL
+          </Text>
+          <Text
+            style={{
+              fontFamily: FONTS.bold,
+              fontSize: isTablet ? 36 : 26,
+              color: "#E0F7FA",
+              lineHeight: isTablet ? 38 : 28,
+              textShadowColor: TEAL,
+              textShadowOffset: { width: 0, height: 0 },
+              textShadowRadius: 8,
+            }}
+          >
+            {displayLevel}
+          </Text>
+          {isViewingOther && (
+            <Text
+              style={{
+                fontSize: isTablet ? 8 : 6,
+                color: YELLOW,
+                marginTop: 1,
+              }}
+            >
+              ●
+            </Text>
+          )}
         </View>
       </View>
-      <View style={lb.barTrack}>
-        <Animated.View style={[lb.barFill, { width: fillW }]} />
-        <Animated.View style={[lb.barDot, { left: fillW }]} />
+      <View
+        style={{
+          width: barW,
+          height: barH,
+          borderRadius: barH / 2,
+          backgroundColor: "rgba(255,255,255,0.08)",
+          marginTop: isTablet ? 7 : 5,
+          overflow: "visible",
+          borderWidth: 1,
+          borderColor: "rgba(0,0,0,0.35)",
+        }}
+      >
+        <Animated.View
+          style={{
+            height: "100%",
+            borderRadius: barH / 2,
+            backgroundColor: TEAL,
+            shadowColor: TEAL,
+            shadowOffset: { width: 0, height: 0 },
+            shadowOpacity: 0.9,
+            shadowRadius: 4,
+            elevation: 4,
+            width: fillW,
+          }}
+        />
+        <Animated.View
+          style={{
+            position: "absolute",
+            top: -(dotSize / 2 - barH / 2),
+            width: dotSize,
+            height: dotSize,
+            borderRadius: dotSize / 2,
+            backgroundColor: "#fff",
+            borderWidth: 2,
+            borderColor: TEAL,
+            marginLeft: -(dotSize / 2),
+            shadowColor: TEAL,
+            shadowOffset: { width: 0, height: 0 },
+            shadowOpacity: 1,
+            shadowRadius: 6,
+            elevation: 6,
+            left: fillW,
+          }}
+        />
       </View>
     </TouchableOpacity>
   );
 }
-const lb = StyleSheet.create({
-  outer: { alignItems: "center" },
-  pitRing: {
-    width: 82,
-    height: 82,
-    borderRadius: 41,
-    backgroundColor: "#0d0f22",
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.9,
-    shadowRadius: 8,
-    elevation: 12,
-    alignItems: "center",
-    justifyContent: "center",
-    borderWidth: 2,
-    borderColor: "rgba(255,255,255,0.06)",
-  },
-  pitRingAlt: { borderColor: "rgba(255,213,79,0.5)" },
-  pitInner: {
-    width: 68,
-    height: 68,
-    borderRadius: 34,
-    backgroundColor: "#10122a",
-    alignItems: "center",
-    justifyContent: "center",
-    borderWidth: 1.5,
-    borderColor: "rgba(0,0,0,0.6)",
-    overflow: "hidden",
-  },
-  diagonalTop: {
-    position: "absolute",
-    top: 0,
-    left: -10,
-    right: -10,
-    height: "58%",
-    backgroundColor: "#1a2540",
-    transform: [{ rotate: "-6deg" }, { translateY: -4 }],
-    borderRadius: 4,
-    opacity: 0.9,
-  },
-  label: {
-    fontFamily: FONTS.bold,
-    fontSize: 8,
-    color: TEAL,
-    letterSpacing: 2,
-    marginBottom: 1,
-    opacity: 0.9,
-  },
-  number: {
-    fontFamily: FONTS.bold,
-    fontSize: 26,
-    color: "#E0F7FA",
-    lineHeight: 28,
-    textShadowColor: TEAL,
-    textShadowOffset: { width: 0, height: 0 },
-    textShadowRadius: 8,
-  },
-  viewingDot: { fontSize: 6, color: YELLOW, marginTop: 1 },
-  barTrack: {
-    width: 76,
-    height: 6,
-    borderRadius: 3,
-    backgroundColor: "rgba(255,255,255,0.08)",
-    marginTop: 5,
-    overflow: "visible",
-    borderWidth: 1,
-    borderColor: "rgba(0,0,0,0.35)",
-  },
-  barFill: {
-    height: "100%",
-    borderRadius: 3,
-    backgroundColor: TEAL,
-    shadowColor: TEAL,
-    shadowOffset: { width: 0, height: 0 },
-    shadowOpacity: 0.9,
-    shadowRadius: 4,
-    elevation: 4,
-  },
-  barDot: {
-    position: "absolute",
-    top: -3,
-    width: 12,
-    height: 12,
-    borderRadius: 6,
-    backgroundColor: "#fff",
-    borderWidth: 2,
-    borderColor: TEAL,
-    marginLeft: -6,
-    shadowColor: TEAL,
-    shadowOffset: { width: 0, height: 0 },
-    shadowOpacity: 1,
-    shadowRadius: 6,
-    elevation: 6,
-  },
-});
 
 // ─────────────────────────────────────────────────────────────────────────────
 // HOME SCREEN
 // ─────────────────────────────────────────────────────────────────────────────
 const Home = () => {
   const router = useRouter();
+
   const {
     currentProfile,
     isLoading: profileLoading,
@@ -1372,7 +1526,6 @@ const Home = () => {
     syncNow,
     hasInitialSyncedRef,
   } = useStoryActivity();
-
   const {
     loadedLevel,
     loadedLevelContext,
@@ -1435,7 +1588,7 @@ const Home = () => {
   const [showLevelProgression, setShowLevelProgression] = useState(false);
   const [completedLevelRef, setCompletedLevelRef] = useState(null);
   const [pendingProgression, setPendingProgression] = useState(null);
-  const [showPremiumModal, setShowPremiumModal] = useState(false); // ← NEW
+  const [showPremiumModal, setShowPremiumModal] = useState(false);
   const DIAMONDS_PER_FINISH = 3;
 
   const coinIconRef = useRef(null);
@@ -1532,12 +1685,10 @@ const Home = () => {
 
   const _fetchBooksFromApi = async (levelNumber, profileId, playLevel) => {
     try {
-      let data;
-      if (levelNumber === playLevel) {
-        data = await bookService.getBooks(profileId);
-      } else {
-        data = await bookService.getBooksByLevel(levelNumber);
-      }
+      const data =
+        levelNumber === playLevel
+          ? await bookService.getBooks(profileId)
+          : await bookService.getBooksByLevel(levelNumber);
       setBooks(data);
       await saveStoriesToCache(data, levelNumber);
     } catch (e) {
@@ -1547,7 +1698,6 @@ const Home = () => {
     }
   };
 
-  // ── Profile change → reinitialise everything ──────────────────────────────
   useEffect(() => {
     if (!currentProfile) return;
     resetSessionForProfileSwitch();
@@ -1563,8 +1713,6 @@ const Home = () => {
     });
     loadAllStoryProgress(currentProfile.id);
     getPendingProgression(currentProfile.id).then(setPendingProgression);
-
-    // In profile useEffect — use userAccount.id not currentProfile.id
     if (!userAccount?.id || _tutorialCheckedAccounts.has(userAccount.id)) {
       setShowTutorial(false);
     } else {
@@ -1578,14 +1726,12 @@ const Home = () => {
         }
       });
     }
-
     if (!hasInitialSyncedRef.current) {
       hasInitialSyncedRef.current = true;
       syncNow().catch(() => {});
     }
   }, [currentProfile?.id]);
 
-  // ── Level switch ──────────────────────────────────────────────────────────
   const prevLoadedLevelRef = useRef(null);
   useEffect(() => {
     if (!currentProfile) return;
@@ -1602,17 +1748,13 @@ const Home = () => {
     );
   }, [loadedLevel, currentProfile?.id]);
 
-  // ── Activity progress updates ─────────────────────────────────────────────
   useEffect(() => {
     if (currentProfile) loadAllStoryProgress(currentProfile.id);
   }, [storySession?.nextActivityIndex, storySession?.storyId]);
 
-  // ── Finish overlay trigger ────────────────────────────────────────────────
   useEffect(() => {
-    if (!storySession) return;
-    if (storySession.nextActivityIndex < 4) return;
-    if (showFinish) return;
-
+    if (!storySession || storySession.nextActivityIndex < 4 || showFinish)
+      return;
     pendingSessionRef.current = storySession;
     const challengeWords = storySession.challengeWords || [];
     const rewards = storySession.totalRewards;
@@ -1625,21 +1767,16 @@ const Home = () => {
     setShowFinish(true);
   }, [storySession?.nextActivityIndex, storySession?.storyId]);
 
-  // ── Story press ───────────────────────────────────────────────────────────
   const handleStoryPress = async (story, storyIndex) => {
     _finishHandled = false;
     _overlayShownForStoryId = null;
-
     if (!currentProfile) return;
     const ctx = loadedLevelContext;
     if (!canView(ctx)) return;
-
-    // Show premium modal instead of alert
     if (!isStoryAccessible(storyIndex, ctx)) {
       setShowPremiumModal(true);
       return;
     }
-
     await startStorySession(story, currentProfile.id, !canPlay(ctx));
     router.push({
       pathname: `/book/${story.id}`,
@@ -1647,27 +1784,25 @@ const Home = () => {
     });
   };
 
-  // ── Finish done ───────────────────────────────────────────────────────────
   const handleFinishDone = async () => {
     if (_finishHandled) return;
     _finishHandled = true;
     setShowFinish(false);
-
     setTimeout(async () => {
       const session = pendingSessionRef.current;
       if (currentProfile && session) {
         const rewards = session.totalRewards;
-        const coinsToAdd = rewards.coins || 0;
-        const diamondsToAdd = DIAMONDS_PER_FINISH;
         const storyId = String(session.storyId);
-        const wordsToAdd = session.challengeWords || [];
         const updatedProfile = {
           ...currentProfile,
-          coins: (currentProfile.coins || 0) + coinsToAdd,
-          diamonds: (currentProfile.diamonds || 0) + diamondsToAdd,
+          coins: (currentProfile.coins || 0) + (rewards.coins || 0),
+          diamonds: (currentProfile.diamonds || 0) + DIAMONDS_PER_FINISH,
           wordBag: {
             ...currentProfile.wordBag,
-            words: [...(currentProfile.wordBag?.words || []), ...wordsToAdd],
+            words: [
+              ...(currentProfile.wordBag?.words || []),
+              ...(session.challengeWords || []),
+            ],
           },
           readingHistory: currentProfile.readingHistory?.includes(storyId)
             ? currentProfile.readingHistory
@@ -1677,22 +1812,16 @@ const Home = () => {
         await updateProfile(updatedProfile);
         pendingSessionRef.current = null;
       }
-
       await clearStorySession();
       if (currentProfile) loadAllStoryProgress(currentProfile.id);
       syncNow().catch(() => {});
-
       if (currentProfile) {
-        const session = pendingSessionRef.current;
-        if (session) return;
+        if (pendingSessionRef.current) return;
         const updatedCompletedIds = new Set([
           ...(currentProfile?.readingHistory?.map(String) ?? []),
           ...localCompletedIds,
         ]);
-        const allDone = books.every((b) =>
-          updatedCompletedIds.has(String(b.id)),
-        );
-        if (allDone) {
+        if (books.every((b) => updatedCompletedIds.has(String(b.id)))) {
           const level = currentProfile.playLevel ?? 1;
           setCompletedLevelRef(level);
           const pendingBody = {
@@ -1707,12 +1836,10 @@ const Home = () => {
           setTimeout(() => setShowLevelProgression(true), 600);
         }
       }
-
       _overlayShownForStoryId = null;
     }, 300);
   };
 
-  // ── Level progression complete ────────────────────────────────────────────
   const handleLevelProgressComplete = async (result) => {
     setShowLevelProgression(false);
     setPendingProgression(null);
@@ -1730,61 +1857,48 @@ const Home = () => {
     setCompletedLevelRef(pendingProgression.completedLevel);
     setShowLevelProgression(true);
   };
-
   const handleSwitchToCurrent = () =>
     switchLevel(currentProfile?.playLevel ?? 1);
 
-  // ── Render ────────────────────────────────────────────────────────────────
-  if (profileLoading || loading) {
+  if (profileLoading || loading)
     return (
       <View style={styles.center}>
         <ActivityIndicator size="large" color="#9652D9" />
       </View>
     );
-  }
-  if (!currentProfile) {
+  if (!currentProfile)
     return (
       <View style={styles.center}>
         <Text>Select profile first</Text>
       </View>
     );
-  }
 
   const formatNumber = (n) => (!n ? 0 : n > 999 ? "999+" : n);
   const isViewOnly = loadedLevelContext.mode === "VIEW_ONLY";
   const isPlayMode = canPlay(loadedLevelContext);
-  // ── Find the recommended story to show on MainStoryCard ──────────────────
-  // Priority: first in-progress story → first not-yet-started story → first story
+
   const getRecommendedStory = () => {
     if (!books.length) return null;
-
     const completedIds = new Set([
       ...(currentProfile?.readingHistory?.map(String) ?? []),
       ...localCompletedIds,
     ]);
-
-    // First pass: find the first in-progress story (started but not finished)
     for (const book of books) {
       const sid = String(book.id);
-      if (completedIds.has(sid)) continue; // skip completed
+      if (completedIds.has(sid)) continue;
       const progressIdx = storyProgressMap[sid] ?? 0;
-      if ([progressIdx > 0 && progressIdx < 4]) return book; // in progress
+      if ([progressIdx > 0 && progressIdx < 4]) return book;
     }
-
-    // Second pass: find the first not-yet-started story
     for (const book of books) {
       const sid = String(book.id);
-      if (completedIds.has(sid)) continue; // skip completed
+      if (completedIds.has(sid)) continue;
       const progressIdx = storyProgressMap[sid] ?? 0;
-      if (progressIdx === 0) return book; // not started
+      if (progressIdx === 0) return book;
     }
-
-    // All stories completed — show the first one
     return books[0];
   };
 
   const recommendedStory = isPlayMode ? getRecommendedStory() : books[0];
-  // ── Level progress for badge bar ─────────────────────────────
   const completedIdsForProgress = new Set([
     ...(currentProfile?.readingHistory?.map(String) ?? []),
     ...localCompletedIds,
@@ -1794,10 +1908,21 @@ const Home = () => {
       ? books.filter((b) => completedIdsForProgress.has(String(b.id))).length /
         books.length
       : 0;
+
+  // Badge / side icon sizing — from tokens
+  const SIDE_ICON = isTablet ? 80 : 60; // was: s.sideIconSize
+  const BADGE_SIZE = isTablet ? 34 : 26; // was: s.badgeMinWidth / badgeHeight
+  const BADGE_FONT = isTablet ? 14 : 11; // was: s.badgeFontSize
+  const SIDE_LEFT = isTablet ? 28 : 20; // was: s.sideLayerLeft
+  const SIDE_TOP = isTablet ? 12 : 8; // was: s.sideLayerTop
+  const BADGE_ANCHOR_TOP = isTablet ? 52 : 40; // was: s.levelBadgeAnchorTop
+  const ROW_MB = isTablet ? 32 : 25; // was: s.sideRowMarginBottom
+
   return (
     <>
       <ScreenWrapper>
         <View style={styles.background}>
+          {/* Background circles */}
           <Animated.View
             style={[
               styles.bgCircle,
@@ -1823,8 +1948,27 @@ const Home = () => {
           <SafeAreaView style={styles.safeTop} edges={["top"]}>
             <ScrollView showsVerticalScrollIndicator={false}>
               {/* ── SIDE UI ── */}
-              <View style={styles.sideLayer}>
-                <View style={styles.levelBadgeAnchor} pointerEvents="box-none">
+              <View
+                style={{
+                  position: "absolute",
+                  top: SIDE_TOP,
+                  left: SIDE_LEFT,
+                  right: SIDE_LEFT,
+                }}
+              >
+                {/* Level badge centre */}
+                <View
+                  style={{
+                    position: "absolute",
+                    left: 0,
+                    right: 0,
+                    top: BADGE_ANCHOR_TOP,
+                    alignItems: "center",
+                    justifyContent: "center",
+                    zIndex: 10,
+                  }}
+                  pointerEvents="box-none"
+                >
                   {pendingProgression && (
                     <NewLevelBanner onPress={handleRetryLevelProgression} />
                   )}
@@ -1838,10 +1982,23 @@ const Home = () => {
                   </View>
                 </View>
 
-                <View style={styles.sideRow}>
+                {/* Row 1 — account | diamond */}
+                <View
+                  style={{
+                    flexDirection: "row",
+                    justifyContent: "space-between",
+                    alignItems: "center",
+                    marginBottom: ROW_MB,
+                  }}
+                >
                   <View ref={tutorialRefs.account} collapsable={false}>
                     <TouchableOpacity
-                      style={styles.profileWrapper}
+                      style={{
+                        width: SIDE_ICON,
+                        height: SIDE_ICON,
+                        justifyContent: "center",
+                        alignItems: "center",
+                      }}
                       activeOpacity={0.8}
                       onPress={() => router.push("/account")}
                     >
@@ -1852,14 +2009,40 @@ const Home = () => {
                     <View
                       ref={diamondIconRef}
                       collapsable={false}
-                      style={styles.currencyWrapper}
+                      style={{ alignItems: "center" }}
                     >
                       <Image
                         source={require("../assets/img/diamond.png")}
-                        style={styles.sideIcon}
+                        style={{
+                          width: SIDE_ICON,
+                          height: SIDE_ICON,
+                          resizeMode: "contain",
+                        }}
                       />
-                      <View style={styles.badge}>
-                        <Text style={styles.badgeText}>
+                      <View
+                        style={{
+                          position: "absolute",
+                          top: -6,
+                          right: -6,
+                          minWidth: BADGE_SIZE,
+                          height: BADGE_SIZE,
+                          paddingHorizontal: pad.s,
+                          borderRadius: BADGE_SIZE / 2,
+                          backgroundColor: "#FF3B30",
+                          justifyContent: "center",
+                          alignItems: "center",
+                          borderWidth: 2,
+                          borderColor: "#fff",
+                          elevation: 8,
+                        }}
+                      >
+                        <Text
+                          style={{
+                            fontFamily: FONTS.bold,
+                            color: "#fff",
+                            fontSize: BADGE_FONT,
+                          }}
+                        >
                           {formatNumber(currentProfile?.diamonds ?? 0)}
                         </Text>
                       </View>
@@ -1867,21 +2050,55 @@ const Home = () => {
                   </View>
                 </View>
 
-                <View style={styles.sideRow}>
+                {/* Row 2 — wordbag | coins */}
+                <View
+                  style={{
+                    flexDirection: "row",
+                    justifyContent: "space-between",
+                    alignItems: "center",
+                    marginBottom: ROW_MB,
+                  }}
+                >
                   <View ref={tutorialRefs.wordbag} collapsable={false}>
                     <TouchableOpacity
                       ref={bagIconRef}
                       collapsable={false}
-                      style={styles.currencyWrapper}
+                      style={{ alignItems: "center" }}
                       onPress={() => router.push("/components/WordBag")}
                       activeOpacity={0.8}
                     >
                       <Image
                         source={require("../assets/img/bag.png")}
-                        style={styles.sideIcon}
+                        style={{
+                          width: SIDE_ICON,
+                          height: SIDE_ICON,
+                          resizeMode: "contain",
+                        }}
                       />
-                      <View style={styles.badge}>
-                        <Text style={styles.badgeText}>
+                      <View
+                        style={{
+                          position: "absolute",
+                          top: -6,
+                          right: -6,
+                          minWidth: BADGE_SIZE,
+                          height: BADGE_SIZE,
+                          paddingHorizontal: pad.s,
+                          borderRadius: BADGE_SIZE / 2,
+                          backgroundColor: "#FF3B30",
+                          justifyContent: "center",
+                          alignItems: "center",
+                          borderWidth: 2,
+                          borderColor: "#fff",
+                          elevation: 8,
+                        }}
+                      >
+                        <Text
+                          style={{
+                            fontFamily: FONTS.bold,
+                            color: "#fff",
+                            fontSize: BADGE_FONT,
+                          }}
+                        >
                           {formatNumber(
                             currentProfile?.wordBag?.words?.length ?? 0,
                           )}
@@ -1893,14 +2110,40 @@ const Home = () => {
                     <View
                       ref={coinIconRef}
                       collapsable={false}
-                      style={styles.currencyWrapper}
+                      style={{ alignItems: "center" }}
                     >
                       <Image
                         source={require("../assets/img/coin.png")}
-                        style={styles.sideIcon}
+                        style={{
+                          width: SIDE_ICON,
+                          height: SIDE_ICON,
+                          resizeMode: "contain",
+                        }}
                       />
-                      <View style={styles.coinBadge}>
-                        <Text style={styles.badgeText}>
+                      <View
+                        style={{
+                          position: "absolute",
+                          top: -6,
+                          right: -6,
+                          minWidth: BADGE_SIZE,
+                          height: BADGE_SIZE,
+                          paddingHorizontal: pad.s,
+                          borderRadius: BADGE_SIZE / 2,
+                          backgroundColor: "#FFD700",
+                          justifyContent: "center",
+                          alignItems: "center",
+                          borderWidth: 2,
+                          borderColor: "#fff",
+                          elevation: 8,
+                        }}
+                      >
+                        <Text
+                          style={{
+                            fontFamily: FONTS.bold,
+                            color: "#fff",
+                            fontSize: BADGE_FONT,
+                          }}
+                        >
                           {formatNumber(currentProfile?.coins ?? 0)}
                         </Text>
                       </View>
@@ -1952,7 +2195,6 @@ const Home = () => {
                             )
                           }
                           progressIndex={
-                            // ← ADD these 3 lines
                             storyProgressMap[String(recommendedStory.id)] ?? 0
                           }
                           readIconRef={tutorialRefs.readIcon}
@@ -1985,7 +2227,6 @@ const Home = () => {
                               return storySession.nextActivityIndex;
                             return storyProgressMap[sid] ?? 0;
                           };
-
                           return books.map((item, index) => {
                             const sid = String(item.id);
                             const isCompleted =
@@ -2001,7 +2242,6 @@ const Home = () => {
                               index,
                               loadedLevelContext,
                             );
-
                             return (
                               <View
                                 key={item.id}
@@ -2073,7 +2313,6 @@ const Home = () => {
         wordTargetRef={bagIconRef}
         onDone={handleFinishDone}
       />
-
       <LevelProgressionOverlay
         visible={showLevelProgression}
         completedLevel={completedLevelRef}
@@ -2082,14 +2321,11 @@ const Home = () => {
         onProgressComplete={handleLevelProgressComplete}
         onDismiss={() => setShowLevelProgression(false)}
       />
-
       <HomeTutorial
         visible={showTutorial}
         refs={tutorialRefs}
         onDone={handleTutorialDone}
       />
-
-      {/* ── Premium Upgrade Modal ── */}
       <PremiumUpgradeModal
         visible={showPremiumModal}
         onClose={() => setShowPremiumModal(false)}
@@ -2107,29 +2343,33 @@ export default Home;
 // ─────────────────────────────────────────────────────────────────────────────
 // STYLES
 // ─────────────────────────────────────────────────────────────────────────────
+const BG_CIRCLE1_SIZE = isTablet ? 500 : 350;
+const BG_CIRCLE2_SIZE = isTablet ? 300 : 200;
+const BG_CIRCLE3_SIZE = isTablet ? 220 : 150;
+
 const styles = StyleSheet.create({
   background: { flex: 1, backgroundColor: DARK_BG },
   bgCircle: { position: "absolute", borderRadius: 999, opacity: 0.18 },
   bgCircle1: {
-    width: 350,
-    height: 350,
+    width: BG_CIRCLE1_SIZE,
+    height: BG_CIRCLE1_SIZE,
     backgroundColor: TEAL,
-    top: -80,
-    right: -80,
+    top: isTablet ? -120 : -80,
+    right: isTablet ? -120 : -80,
   },
   bgCircle2: {
-    width: 200,
-    height: 200,
+    width: BG_CIRCLE2_SIZE,
+    height: BG_CIRCLE2_SIZE,
     backgroundColor: YELLOW,
-    bottom: 100,
-    left: -60,
+    bottom: isTablet ? 140 : 100,
+    left: isTablet ? -80 : -60,
   },
   bgCircle3: {
-    width: 150,
-    height: 150,
+    width: BG_CIRCLE3_SIZE,
+    height: BG_CIRCLE3_SIZE,
     backgroundColor: CORAL,
-    bottom: 200,
-    right: -40,
+    bottom: isTablet ? 280 : 200,
+    right: isTablet ? -60 : -40,
   },
   center: {
     flex: 1,
@@ -2138,188 +2378,56 @@ const styles = StyleSheet.create({
     backgroundColor: DARK_BG,
   },
   safeTop: { alignItems: "center" },
-  sideLayer: { position: "absolute", top: 8, left: 20, right: 20 },
-  sideRow: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    marginBottom: 25,
-  },
-  levelBadgeAnchor: {
-    position: "absolute",
-    left: 0,
-    right: 0,
-    top: 40,
-    alignItems: "center",
-    justifyContent: "center",
-    zIndex: 10,
-  },
-  profileWrapper: {
-    width: 60,
-    height: 60,
-    justifyContent: "center",
-    alignItems: "center",
-  },
-  currencyWrapper: { alignItems: "center" },
-  sideIcon: { width: 60, height: 60, resizeMode: "contain" },
-  badge: {
-    position: "absolute",
-    top: -6,
-    right: -6,
-    minWidth: 26,
-    height: 26,
-    paddingHorizontal: 6,
-    borderRadius: 13,
-    backgroundColor: "#FF3B30",
-    justifyContent: "center",
-    alignItems: "center",
-    borderWidth: 2,
-    borderColor: "#fff",
-    elevation: 8,
-  },
-  coinBadge: {
-    position: "absolute",
-    top: -6,
-    right: -6,
-    minWidth: 26,
-    height: 26,
-    paddingHorizontal: 6,
-    borderRadius: 13,
-    backgroundColor: "#FFD700",
-    justifyContent: "center",
-    alignItems: "center",
-    borderWidth: 2,
-    borderColor: "#fff",
-    elevation: 8,
-  },
-  badgeText: { fontFamily: FONTS.bold, color: "#fff", fontSize: 11 },
+
   sectionHeader: { paddingHorizontal: 15, marginTop: 8, marginBottom: 2 },
   sectionTitle: {
     fontFamily: FONTS.bold,
-    fontSize: 20,
+    fontSize: font.xl,
     color: "#fff",
-    marginBottom: 4,
-  },
+    marginBottom: pad.xs,
+  }, // was: s.sectionTitleFontSize → 20/28
   sectionTagline: {
     fontFamily: FONTS.light,
-    fontSize: 12,
+    fontSize: font.sm,
     color: "rgba(255,255,255,0.45)",
-    marginBottom: 10,
-  },
-  gameCard: {
-    width: 160,
-    height: 200,
-    borderRadius: 20,
-    marginRight: 14,
-    overflow: "hidden",
-    elevation: 10,
-    shadowColor: "#00BCD4",
-    shadowOffset: { width: 0, height: 6 },
-    shadowOpacity: 0.35,
-    shadowRadius: 12,
-  },
-  gameCardBg: { ...StyleSheet.absoluteFillObject },
-  gameCardBgTop: {
-    position: "absolute",
-    top: 0,
-    left: 0,
-    right: 0,
-    height: "60%",
-    borderRadius: 20,
-    opacity: 0.9,
-  },
-  gameCardCircle1: {
-    position: "absolute",
-    width: 130,
-    height: 130,
-    borderRadius: 65,
-    top: -30,
-    right: -30,
-  },
-  gameCardCircle2: {
-    position: "absolute",
-    width: 80,
-    height: 80,
-    borderRadius: 40,
-    bottom: 30,
-    left: -20,
-  },
-  gamePlayBadge: {
-    position: "absolute",
-    top: 12,
-    right: 12,
-    width: 32,
-    height: 32,
-    borderRadius: 16,
-    alignItems: "center",
-    justifyContent: "center",
-    elevation: 4,
-  },
-  gamePlayTxt: {
-    fontFamily: FONTS.bold,
-    fontSize: 11,
-    color: "#08081a",
-    marginLeft: 2,
-  },
-  gameCardTextWrap: {
-    paddingHorizontal: 12,
-    paddingBottom: 14,
-    marginTop: "auto",
-  },
-  gameCardTitle: {
-    fontFamily: FONTS.bold,
-    fontSize: 15,
-    color: "#fff",
-    letterSpacing: 0.2,
-    textShadowColor: "rgba(0,0,0,0.4)",
-    textShadowOffset: { width: 0, height: 1 },
-    textShadowRadius: 4,
-  },
-  gameCardSub: {
-    fontFamily: FONTS.light,
-    fontSize: 11,
-    color: "rgba(255,255,255,0.7)",
-    marginTop: 2,
-  },
-  gameCardStrip: {
-    position: "absolute",
-    bottom: 0,
-    left: 0,
-    right: 0,
-    height: 3,
-    opacity: 0.8,
-  },
+    marginBottom: pad.sm,
+  }, // was: s.sectionTaglineFontSize
+
   viewOnlyContainer: {
     alignItems: "center",
-    paddingVertical: 60,
-    paddingHorizontal: 32,
-    gap: 14,
+    paddingVertical: isTablet ? pad.xxxl : 60,
+    paddingHorizontal: isTablet ? pad.xxl : pad.xxl,
+    gap: isTablet ? 20 : 14,
   },
-  viewOnlyEmoji: { fontSize: 64 },
+  viewOnlyEmoji: { fontSize: isTablet ? 88 : 64 },
   viewOnlyTitle: {
     fontFamily: FONTS.bold,
-    fontSize: 22,
+    fontSize: isTablet ? font.h3 : font.xxl,
     color: "#E0F7FA",
     textAlign: "center",
   },
   viewOnlyText: {
     fontFamily: FONTS.light,
-    fontSize: 14,
+    fontSize: isTablet ? font.lg : font.md,
     color: "#7a9aaa",
     textAlign: "center",
-    lineHeight: 22,
+    lineHeight: isTablet ? font.lg * 1.5 : font.md * 1.6,
   },
   goCurrentBtn: {
     backgroundColor: TEAL,
-    borderRadius: 24,
-    paddingHorizontal: 28,
-    paddingVertical: 13,
-    marginTop: 4,
+    borderRadius: radius.pill,
+    paddingHorizontal: isTablet ? 40 : pad.xl,
+    paddingVertical: isTablet ? 18 : pad.sm,
+    marginTop: pad.xs,
     shadowColor: TEAL,
     shadowOffset: { width: 0, height: 0 },
     shadowOpacity: 0.55,
     shadowRadius: 12,
     elevation: 8,
   },
-  goCurrentBtnText: { fontFamily: FONTS.bold, fontSize: 14, color: "#08081a" },
+  goCurrentBtnText: {
+    fontFamily: FONTS.bold,
+    fontSize: isTablet ? font.lg : font.md,
+    color: "#08081a",
+  },
 });

@@ -17,6 +17,7 @@ import { useRouter } from "expo-router";
 import { useUser } from "./_contexts/UserContext";
 import { registerUser } from "./services/authService";
 import { FONTS } from "./theme";
+import { useTheme } from "./_contexts/ThemeContext";
 
 const { width, height } = Dimensions.get("window");
 
@@ -62,12 +63,15 @@ async function playSound(file) {
     await sound.playAsync();
   } catch (_) {}
 }
-// Add these to your state/logic
+
 // ─────────────────────────────────────────────────────────────
 // Main OnboardingScreen
 // ─────────────────────────────────────────────────────────────
 export default function OnboardingScreen() {
   const router = useRouter();
+  const { sizes } = useTheme();
+  const sz = sizes.onboarding;
+
   const [step, setStep] = useState(STEP.NAME);
   const [userName, setUserName] = useState("");
   const [userAge, setUserAge] = useState(null);
@@ -200,7 +204,7 @@ export default function OnboardingScreen() {
 
   const handleNameSubmit = () => {
     if (!userName.trim()) return;
-    playSound(require("../assets/sounds/button.mp3")); // ← add this
+    playSound(require("../assets/sounds/button.mp3"));
     slideCard(() => {
       setStep(STEP.AGE);
       setDialogueText("How old is your child?");
@@ -210,7 +214,7 @@ export default function OnboardingScreen() {
 
   const handleAgeSelect = (age) => {
     setUserAge(age);
-    playSound(require("../assets/sounds/ping.mp3")); // ← add this
+    playSound(require("../assets/sounds/ping.mp3"));
     slideCard(() => {
       setStep(STEP.GENDER);
       setDialogueText("Your child is a Boy or a Girl?");
@@ -243,21 +247,33 @@ export default function OnboardingScreen() {
     }, 700);
   };
 
+  // ── Derived sizes ─────────────────────────────────────────
+  const cardWidth = width - sz.cardWidthOffset;
+
   return (
     <View style={{ flex: 1, backgroundColor: "#08081a" }}>
       {/* ── Background: same glow circles as IntroCarousel / AccountChoice ── */}
       <View style={styles.glowTL} pointerEvents="none" />
       <View style={styles.glowBR} pointerEvents="none" />
 
-      {/* ── Back button — shown only on NAME step, same style as AccountChoice ── */}
-
+      {/* ── Back button ── */}
       <TouchableOpacity
-        style={styles.backBtn}
+        style={[
+          styles.backBtn,
+          {
+            width: sz.backBtnSize,
+            height: sz.backBtnSize,
+            borderRadius: sz.backBtnSize / 2,
+            top: Platform.OS === "ios" ? 54 : 20,
+          },
+        ]}
         onPress={() => router.replace("/AccountChoice")}
         activeOpacity={0.8}
         hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
       >
-        <Text style={styles.backIcon}>‹</Text>
+        <Text style={[styles.backIcon, { fontSize: sz.backIconFontSize }]}>
+          ‹
+        </Text>
       </TouchableOpacity>
 
       <View
@@ -289,23 +305,25 @@ export default function OnboardingScreen() {
 
         <KeyboardAvoidingView
           behavior={Platform.OS === "ios" ? "padding" : "height"}
-          style={styles.inner}
+          style={[styles.inner, { paddingTop: sz.innerPaddingTop }]}
         >
-          <View style={styles.container}>
-            {/* <Animated.View style={[styles.birdContainer]}>
-            <Image
-              source={require("../assets/img/story-time-logo-4.png")}
-              style={styles.birdVideo}
-              resizeMode="contain"
-            />
-          </Animated.View> */}
+          <View style={[styles.container, { marginTop: 0 }]}>
             {/* Progress pips */}
-            <View style={styles.progressRow}>
+            <View
+              style={[
+                styles.progressRow,
+                {
+                  marginBottom: sz.progressMarginBottom,
+                  width: cardWidth,
+                },
+              ]}
+            >
               {[0, 1, 2].map((i) => (
                 <View
                   key={i}
                   style={[
                     styles.pip,
+                    { height: sz.progressPipHeight },
                     i < stepIndex && styles.pipDone,
                     i === stepIndex && styles.pipActive,
                   ]}
@@ -314,24 +332,89 @@ export default function OnboardingScreen() {
             </View>
 
             {/* Step header */}
-            <Text style={styles.stepTag}>{meta.tag}</Text>
-            <Text style={styles.stepHeading}>{meta.heading}</Text>
-            <Text style={styles.stepHint}>{meta.hint}</Text>
+            <Text
+              style={[
+                styles.stepTag,
+                {
+                  fontSize: sz.stepTagFontSize,
+                  letterSpacing: sz.stepTagLetterSpacing,
+                  marginBottom: sz.stepTagMarginBottom,
+                },
+              ]}
+            >
+              {meta.tag}
+            </Text>
+            <Text
+              style={[
+                styles.stepHeading,
+                {
+                  fontSize: sz.stepHeadingFontSize,
+                  lineHeight: sz.stepHeadingLineHeight,
+                  marginBottom: sz.stepHeadingMarginBottom,
+                },
+              ]}
+            >
+              {meta.heading}
+            </Text>
+            <Text
+              style={[
+                styles.stepHint,
+                {
+                  fontSize: sz.stepHintFontSize,
+                  marginBottom: sz.stepHintMarginBottom,
+                },
+              ]}
+            >
+              {meta.hint}
+            </Text>
 
             <Animated.View
-              style={[styles.card, { transform: [{ translateX: cardSlide }] }]}
+              style={[
+                styles.card,
+                {
+                  width: cardWidth,
+                  borderRadius: sz.cardBorderRadius,
+                  transform: [{ translateX: cardSlide }],
+                },
+              ]}
             >
               {/* Dialogue bubble */}
-              <View style={styles.dialogueBubble}>
-                {/* <View style={styles.bubbleTail} /> */}
-                <Text style={styles.dialogueText}>{dialogueText}</Text>
+              <View
+                style={[
+                  styles.dialogueBubble,
+                  {
+                    paddingTop: sz.dialoguePaddingTop,
+                    paddingBottom: sz.dialoguePaddingBottom,
+                    borderTopLeftRadius: sz.cardBorderRadius - 2,
+                    borderTopRightRadius: sz.cardBorderRadius - 2,
+                  },
+                ]}
+              >
+                <Text
+                  style={[
+                    styles.dialogueText,
+                    {
+                      fontSize: sz.dialogueFontSize,
+                      lineHeight: sz.dialogueLineHeight,
+                    },
+                  ]}
+                >
+                  {dialogueText}
+                </Text>
               </View>
 
               <View style={styles.contentArea}>
                 {step === STEP.NAME && (
                   <View style={styles.inputSection}>
                     <TextInput
-                      style={styles.nameInput}
+                      style={[
+                        styles.nameInput,
+                        {
+                          fontSize: sz.nameFontSize,
+                          paddingHorizontal: sz.namePaddingH,
+                          paddingVertical: sz.namePaddingV,
+                        },
+                      ]}
                       placeholder="Type name here..."
                       placeholderTextColor="#546E7A"
                       value={userName}
@@ -349,12 +432,24 @@ export default function OnboardingScreen() {
                     <TouchableOpacity
                       style={[
                         styles.continueBtn,
+                        {
+                          marginTop: sz.continueMarginTop,
+                          paddingHorizontal: sz.continuePaddingH,
+                          paddingVertical: sz.continuePaddingV,
+                        },
                         !userName.trim() && styles.continueBtnDisabled,
                       ]}
                       onPress={handleNameSubmit}
                       disabled={!userName.trim()}
                     >
-                      <Text style={styles.continueBtnText}>Continue ➜</Text>
+                      <Text
+                        style={[
+                          styles.continueBtnText,
+                          { fontSize: sz.continueFontSize },
+                        ]}
+                      >
+                        Continue ➜
+                      </Text>
                     </TouchableOpacity>
                   </View>
                 )}
@@ -364,42 +459,89 @@ export default function OnboardingScreen() {
                     {AGE_OPTIONS.map((opt) => (
                       <TouchableOpacity
                         key={opt.value}
-                        style={styles.ageBtn}
+                        style={[
+                          styles.ageBtn,
+                          {
+                            width: sz.ageBtnWidth,
+                            height: sz.ageBtnHeight,
+                            borderRadius: sz.ageBtnBorderRadius,
+                          },
+                        ]}
                         onPress={() => handleAgeSelect(opt.value)}
                         activeOpacity={0.8}
                       >
-                        {/* <Text style={styles.ageEmoji}>
-                          {opt.value <= 5 ? "🐣" : opt.value <= 7 ? "🐥" : "🐦"}
-                        </Text> */}
-                        <Text style={styles.ageBtnText}>{opt.label}</Text>
+                        <Text
+                          style={[
+                            styles.ageBtnText,
+                            { fontSize: sz.ageFontSize },
+                          ]}
+                        >
+                          {opt.label}
+                        </Text>
                       </TouchableOpacity>
                     ))}
                   </View>
                 )}
 
                 {step === STEP.GENDER && (
-                  <View style={styles.genderSection}>
+                  <View style={[styles.genderSection, { gap: sz.genderGap }]}>
                     <TouchableOpacity
-                      style={[styles.genderBtn, styles.genderBtnBoy]}
+                      style={[
+                        styles.genderBtn,
+                        styles.genderBtnBoy,
+                        { paddingVertical: sz.genderPaddingV },
+                      ]}
                       onPress={() => {
-                        playSound(require("../assets/sounds/magical.mp3")); // ← add this
+                        playSound(require("../assets/sounds/magical.mp3"));
                         handleRegisterUser("MALE");
                       }}
                       activeOpacity={0.85}
                     >
-                      <Text style={styles.genderEmoji}>🧒</Text>
-                      <Text style={styles.genderLabel}>Boy</Text>
+                      <Text
+                        style={[
+                          styles.genderEmoji,
+                          { fontSize: sz.genderEmojiFontSize },
+                        ]}
+                      >
+                        🧒
+                      </Text>
+                      <Text
+                        style={[
+                          styles.genderLabel,
+                          { fontSize: sz.genderLabelFontSize },
+                        ]}
+                      >
+                        Boy
+                      </Text>
                     </TouchableOpacity>
                     <TouchableOpacity
-                      style={[styles.genderBtn, styles.genderBtnGirl]}
+                      style={[
+                        styles.genderBtn,
+                        styles.genderBtnGirl,
+                        { paddingVertical: sz.genderPaddingV },
+                      ]}
                       onPress={() => {
-                        playSound(require("../assets/sounds/magical.mp3")); // ← add this
+                        playSound(require("../assets/sounds/magical.mp3"));
                         handleRegisterUser("FEMALE");
                       }}
                       activeOpacity={0.85}
                     >
-                      <Text style={styles.genderEmoji}>👧</Text>
-                      <Text style={styles.genderLabel}>Girl</Text>
+                      <Text
+                        style={[
+                          styles.genderEmoji,
+                          { fontSize: sz.genderEmojiFontSize },
+                        ]}
+                      >
+                        👧
+                      </Text>
+                      <Text
+                        style={[
+                          styles.genderLabel,
+                          { fontSize: sz.genderLabelFontSize },
+                        ]}
+                      >
+                        Girl
+                      </Text>
                     </TouchableOpacity>
                   </View>
                 )}
@@ -430,7 +572,7 @@ const YELLOW = "#FFD54F";
 const PINK = "#EC407A";
 
 const styles = StyleSheet.create({
-  // ── Glow circles — same as IntroCarousel / AccountChoice, sit behind zIndex 2 ──
+  // ── Glow circles ──────────────────────────────────────────
   glowTL: {
     position: "absolute",
     top: -60,
@@ -443,9 +585,6 @@ const styles = StyleSheet.create({
   },
   container: {
     alignItems: "center",
-    // justifyContent: "center",
-    //  backgroundColor: "pink",
-    //  marginTop: "40%",
     height: "100%",
   },
   glowBR: {
@@ -459,28 +598,23 @@ const styles = StyleSheet.create({
     zIndex: 0,
   },
 
-  // ── Back button ────────────────────────────────────────────
+  // ── Back button — size/radius applied inline from sz ─────
   backBtn: {
     position: "absolute",
-    top: Platform.OS === "ios" ? 54 : 20,
     left: 20,
     zIndex: 30,
-    width: 40,
-    height: 40,
-    borderRadius: 20,
     backgroundColor: "rgba(255,255,255,0.06)",
     borderWidth: 1,
     borderColor: "rgba(255,255,255,0.12)",
     alignItems: "center",
     justifyContent: "center",
   },
-  backIcon: { fontSize: 28, color: "#E0F7FA", marginTop: -2 },
+  backIcon: { color: "#E0F7FA", marginTop: -2 },
 
   inner: {
     flex: 1,
     alignItems: "center",
     justifyContent: "flex-start",
-    paddingTop: "30%",
   },
 
   bgCircle: { position: "absolute", borderRadius: 999, opacity: 0.2 },
@@ -511,15 +645,13 @@ const styles = StyleSheet.create({
     height: 200,
     alignItems: "center",
     justifyContent: "center",
-    marginTop: 10,
+    marginTop: 50,
   },
   birdVideo: { width: 200, height: 200 },
 
+  // ── Card — width/radius applied inline from sz ────────────
   card: {
-    width: width - 32,
     backgroundColor: "#111830",
-    borderRadius: 28,
-    //marginTop: 12,
     paddingBottom: 20,
     shadowColor: TEAL,
     shadowOffset: { width: 0, height: 6 },
@@ -529,18 +661,14 @@ const styles = StyleSheet.create({
     borderWidth: 2,
     borderColor: "rgba(0,188,212,0.4)",
     alignItems: "center",
+    marginTop: "3%",
   },
 
+  // ── Dialogue bubble ────────────────────────────────────────
   dialogueBubble: {
-    //  paddingHorizontal: 18,
-    paddingTop: 16,
-    paddingBottom: 16,
     alignItems: "center",
     width: "100%",
     backgroundColor: "#0d1b2e",
-    borderTopLeftRadius: 26,
-    borderTopRightRadius: 26,
-    // backgroundColor: "pink",
   },
   bubbleTail: {
     width: 0,
@@ -556,83 +684,70 @@ const styles = StyleSheet.create({
   },
   dialogueText: {
     fontFamily: FONTS.bold,
-    fontSize: 21,
     color: "#E0F7FA",
     textAlign: "center",
-    lineHeight: 30,
     letterSpacing: 0.3,
     paddingHorizontal: 4,
     marginTop: 10,
   },
+
+  // ── Progress row — height/marginBottom applied inline ─────
   progressRow: {
     flexDirection: "row",
     gap: 6,
-    marginBottom: 14,
-    width: width - 32,
   },
   pip: {
     flex: 1,
-    height: 3,
     borderRadius: 2,
     backgroundColor: "rgba(255,255,255,0.1)",
   },
   pipDone: { backgroundColor: "rgba(0,188,212,0.4)" },
   pipActive: { backgroundColor: TEAL },
+
+  // ── Step header — sizes applied inline from sz ────────────
   stepTag: {
     fontFamily: FONTS.regular,
-    fontSize: 11,
     color: "rgba(0,188,212,0.7)",
-    letterSpacing: 1.5,
     textTransform: "uppercase",
-    marginBottom: "10%",
     alignSelf: "flex-start",
   },
   stepHeading: {
     fontFamily: FONTS.bold,
-    fontSize: 25,
     color: "#E0F7FA",
-    lineHeight: 29,
-    marginBottom: 4,
+    marginTop: "10%",
   },
   stepHint: {
     fontFamily: FONTS.light,
-    fontSize: 15,
     color: "#546E7A",
-    marginBottom: "8%",
   },
+
   contentArea: {
     width: "100%",
     alignItems: "center",
     paddingHorizontal: 20,
     paddingBottom: 16,
-    //  paddingTop: 16,
-    //  backgroundColor: "red",
   },
   inputSection: {
     width: "100%",
     alignItems: "center",
-    //  gap: 16,
-    //  backgroundColor: "yellow",
   },
+
+  // ── Name input — sizes applied inline from sz ─────────────
   nameInput: {
     width: "100%",
     backgroundColor: "#0d1b2e",
     borderRadius: 18,
-    paddingHorizontal: 22,
-    paddingVertical: 16,
-    fontSize: 20,
     color: "#E0F7FA",
     borderWidth: 2,
     borderColor: "rgba(0,188,212,0.5)",
     elevation: 3,
     fontFamily: FONTS.regular,
   },
+
+  // ── Continue button — sizes applied inline from sz ────────
   continueBtn: {
     backgroundColor: TEAL,
-    marginTop: 22,
     borderRadius: 50,
-    paddingHorizontal: 40,
-    paddingVertical: 16,
     elevation: 6,
     shadowColor: TEAL,
     shadowOffset: { width: 0, height: 0 },
@@ -646,11 +761,11 @@ const styles = StyleSheet.create({
   },
   continueBtnText: {
     fontFamily: FONTS.bold,
-    fontSize: 19,
     color: "#08081a",
     letterSpacing: 0.5,
   },
 
+  // ── Age buttons — sizes applied inline from sz ────────────
   ageSection: {
     flexDirection: "row",
     flexWrap: "wrap",
@@ -659,11 +774,8 @@ const styles = StyleSheet.create({
     marginTop: 10,
   },
   ageBtn: {
-    width: 82,
-    height: 92,
     alignItems: "center",
     justifyContent: "center",
-    borderRadius: 22,
     backgroundColor: "rgba(0,188,212,0.1)",
     borderWidth: 2,
     borderColor: "rgba(0,188,212,0.45)",
@@ -674,16 +786,16 @@ const styles = StyleSheet.create({
     elevation: 4,
     gap: 4,
   },
-  ageEmoji: { fontSize: 28 },
-  ageBtnText: { fontFamily: FONTS.bold, fontSize: 26, color: "#E0F7FA" },
+  ageEmoji: {},
+  ageBtnText: { fontFamily: FONTS.bold, color: "#E0F7FA" },
 
-  genderSection: { flexDirection: "row", gap: 20, marginTop: 10 },
+  // ── Gender section — sizes applied inline from sz ─────────
+  genderSection: { flexDirection: "row", marginTop: 10 },
   genderBtn: {
     flex: 1,
     alignItems: "center",
     justifyContent: "center",
     borderRadius: 24,
-    paddingVertical: 26,
     elevation: 6,
     borderWidth: 2.5,
   },
@@ -703,10 +815,9 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.45,
     shadowRadius: 10,
   },
-  genderEmoji: { fontSize: 52, marginBottom: 10 },
+  genderEmoji: { marginBottom: 10 },
   genderLabel: {
     fontFamily: FONTS.bold,
-    fontSize: 24,
     color: "#E0F7FA",
     letterSpacing: 1,
   },

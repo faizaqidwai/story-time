@@ -1,8 +1,4 @@
 // app/components/billing/PlanBillingScreen.jsx
-//
-// Main Plan & Billing hub — fully wired to real backend APIs:
-//   GET /subscriptions/my         → current subscription
-//   GET /account/payments/methods → saved cards
 
 import React, { useEffect, useState, useRef, useCallback } from "react";
 import {
@@ -19,7 +15,11 @@ import {
 import { useRouter } from "expo-router";
 import { FONTS } from "../../theme";
 import { useApiCall } from "../../_hooks/useApiCall";
-import { fetchMySubscription, fetchPaymentMethods } from "../../services/subscriptionService";
+import {
+  fetchMySubscription,
+  fetchPaymentMethods,
+} from "../../services/subscriptionService";
+import { font, pad, radius, size } from "../../theme/tokens"; // ← REPLACES useTheme
 
 const STATUS_BAR_HEIGHT =
   Platform.OS === "android" ? (StatusBar.currentHeight ?? 24) : 50;
@@ -39,43 +39,62 @@ const C = {
 };
 
 const BRAND_COLORS = {
-  visa: "#1A1F71", mastercard: "#EB001B", amex: "#007BC1", discover: "#FF6600",
+  visa: "#1A1F71",
+  mastercard: "#EB001B",
+  amex: "#007BC1",
+  discover: "#FF6600",
 };
 
 function formatDate(str) {
   if (!str) return "—";
-  return new Date(str).toLocaleDateString("en-US", { day: "numeric", month: "long", year: "numeric" });
+  return new Date(str).toLocaleDateString("en-US", {
+    day: "numeric",
+    month: "long",
+    year: "numeric",
+  });
 }
-
 function cycleLabel(cycle) {
   switch (cycle) {
-    case "MONTHLY":  return "/mo";
-    case "YEARLY":   return "/yr";
-    case "LIFETIME": return " (one-time)";
-    default:         return "";
+    case "MONTHLY":
+      return "/mo";
+    case "YEARLY":
+      return "/yr";
+    case "LIFETIME":
+      return " (one-time)";
+    default:
+      return "";
   }
 }
-
 function statusColor(status) {
   switch (status) {
-    case "ACTIVE":    return C.green;
-    case "TRIAL":     return C.teal;
-    case "PAST_DUE":  return C.yellow;
+    case "ACTIVE":
+      return C.green;
+    case "TRIAL":
+      return C.teal;
+    case "PAST_DUE":
+      return C.yellow;
     case "CANCELLED":
-    case "EXPIRED":   return C.red;
-    default:          return C.textMuted;
+    case "EXPIRED":
+      return C.red;
+    default:
+      return C.textMuted;
   }
 }
-
 function statusLabel(status, cancelAtPeriodEnd) {
   if (cancelAtPeriodEnd) return "Cancels soon";
   switch (status) {
-    case "ACTIVE":    return "Active";
-    case "TRIAL":     return "Trial";
-    case "PAST_DUE":  return "Past Due";
-    case "CANCELLED": return "Cancelled";
-    case "EXPIRED":   return "Expired";
-    default:          return status ?? "—";
+    case "ACTIVE":
+      return "Active";
+    case "TRIAL":
+      return "Trial";
+    case "PAST_DUE":
+      return "Past Due";
+    case "CANCELLED":
+      return "Cancelled";
+    case "EXPIRED":
+      return "Expired";
+    default:
+      return status ?? "—";
   }
 }
 
@@ -84,8 +103,8 @@ export default function PlanBillingScreen() {
   const { execute } = useApiCall();
 
   const [subscription, setSubscription] = useState(null);
-  const [defaultCard, setDefaultCard]   = useState(null);
-  const [loading, setLoading]           = useState(true);
+  const [defaultCard, setDefaultCard] = useState(null);
+  const [loading, setLoading] = useState(true);
   const fadeAnim = useRef(new Animated.Value(0)).current;
 
   const loadData = useCallback(async () => {
@@ -105,114 +124,180 @@ export default function PlanBillingScreen() {
       }),
     ]);
     setLoading(false);
-    Animated.timing(fadeAnim, { toValue: 1, duration: 380, useNativeDriver: true }).start();
+    Animated.timing(fadeAnim, {
+      toValue: 1,
+      duration: 380,
+      useNativeDriver: true,
+    }).start();
   }, [execute]);
 
-  useEffect(() => { loadData(); }, []);
+  useEffect(() => {
+    loadData();
+  }, []);
 
-  const isFree      = !subscription || subscription.billingCycle === "NONE";
-  const planName    = subscription?.packageName ?? "Free";
-  const planAmount  = subscription?.amount ?? 0;
-  const planCurr    = subscription?.currency ?? "USD";
-  const planCycle   = subscription?.billingCycle ?? "NONE";
-  const subStatus   = subscription?.status ?? "ACTIVE";
-  const cancelSoon  = subscription?.cancelAtPeriodEnd === true;
-
-  const priceText = planAmount === 0
-    ? "Free"
-    : `${planCurr === "USD" ? "$" : planCurr}${Number(planAmount).toFixed(2)}${cycleLabel(planCycle)}`;
+  const isFree = !subscription || subscription.billingCycle === "NONE";
+  const planName = subscription?.packageName ?? "Free";
+  const planAmount = subscription?.amount ?? 0;
+  const planCurr = subscription?.currency ?? "USD";
+  const planCycle = subscription?.billingCycle ?? "NONE";
+  const subStatus = subscription?.status ?? "ACTIVE";
+  const cancelSoon = subscription?.cancelAtPeriodEnd === true;
+  const priceText =
+    planAmount === 0
+      ? "Free"
+      : `${planCurr === "USD" ? "$" : planCurr}${Number(planAmount).toFixed(2)}${cycleLabel(planCycle)}`;
 
   if (loading) {
     return (
-      <View style={[s.root, s.center]}>
+      <View
+        style={[
+          styles.root,
+          { justifyContent: "center", alignItems: "center" },
+        ]}
+      >
         <ActivityIndicator color={C.teal} size="large" />
       </View>
     );
   }
 
   return (
-    <View style={s.root}>
-      <View style={s.header}>
-        <TouchableOpacity style={s.backBtn} onPress={() => router.back()} activeOpacity={0.75}>
-          <Text style={s.backIcon}>←</Text>
+    <View style={styles.root}>
+      {/* Header */}
+      <View style={styles.header}>
+        <TouchableOpacity
+          style={styles.backBtn}
+          onPress={() => router.back()}
+          activeOpacity={0.75}
+        >
+          <Text style={styles.backIcon}>←</Text>
         </TouchableOpacity>
-        <Text style={s.title}>Plan & Billing</Text>
-        <View style={{ width: 38 }} />
+        <Text style={styles.title}>Plan & Billing</Text>
+        <View style={{ width: size.hitMd }} />
       </View>
 
-      <Animated.ScrollView style={{ opacity: fadeAnim }} contentContainerStyle={s.scroll} showsVerticalScrollIndicator={false}>
-
-        {/* ── Current plan ── */}
-        <View style={s.planCard}>
-          <View style={s.planTop}>
+      <Animated.ScrollView
+        style={{ opacity: fadeAnim }}
+        contentContainerStyle={styles.scroll}
+        showsVerticalScrollIndicator={false}
+      >
+        {/* Plan card */}
+        <View style={styles.planCard}>
+          <View style={styles.planTop}>
             <View style={{ flex: 1 }}>
-              <Text style={s.planLabel}>Current Plan</Text>
-              <Text style={s.planName}>{planName}</Text>
-              <Text style={s.planPrice}>{priceText}</Text>
+              <Text style={styles.planLabel}>Current Plan</Text>
+              <Text style={styles.planName}>{planName}</Text>
+              <Text style={styles.planPrice}>{priceText}</Text>
             </View>
-            <View style={[s.statusBadge, { backgroundColor: `${statusColor(subStatus)}22`, borderColor: `${statusColor(subStatus)}66` }]}>
-              <Text style={[s.statusText, { color: statusColor(subStatus) }]}>
+            <View
+              style={[
+                styles.statusBadge,
+                {
+                  backgroundColor: `${statusColor(subStatus)}22`,
+                  borderColor: `${statusColor(subStatus)}66`,
+                },
+              ]}
+            >
+              <Text
+                style={[styles.statusText, { color: statusColor(subStatus) }]}
+              >
                 {statusLabel(subStatus, cancelSoon)}
               </Text>
             </View>
           </View>
-
           {subscription?.nextDueDate && !isFree && (
-            <Text style={s.nextBilling}>
-              {cancelSoon ? "Access until" : "Next billing"}: {formatDate(subscription.nextDueDate)}
+            <Text style={styles.billingNote}>
+              {cancelSoon ? "Access until" : "Next billing"}:{" "}
+              {formatDate(subscription.nextDueDate)}
             </Text>
           )}
-
           {subscription?.cardLast4 && !isFree && (
-            <Text style={s.chargedTo}>Charged to •••• {subscription.cardLast4}</Text>
+            <Text style={styles.billingNote}>
+              Charged to •••• {subscription.cardLast4}
+            </Text>
           )}
-
           <TouchableOpacity
-            style={s.upgradeBtn}
-            onPress={() => router.push("/components/billing/SubscriptionPlansScreen")}
+            style={styles.upgradeBtn}
+            onPress={() =>
+              router.push("/components/billing/SubscriptionPlansScreen")
+            }
             activeOpacity={0.85}
           >
-            <Text style={s.upgradeBtnText}>{isFree ? "Upgrade Plan" : "Change Plan"}</Text>
+            <Text style={styles.upgradeBtnText}>
+              {isFree ? "Upgrade Plan" : "Change Plan"}
+            </Text>
           </TouchableOpacity>
         </View>
 
-        {/* ── Payment method ── */}
-        <View style={s.section}>
-          <View style={s.sectionRow}>
-            <Text style={s.sectionTitle}>Payment Method</Text>
-            <TouchableOpacity onPress={() => router.push("/components/billing/PaymentMethodScreen")} activeOpacity={0.75}>
-              <Text style={s.sectionLink}>Manage →</Text>
+        {/* Payment method section */}
+        <View style={styles.section}>
+          <View style={styles.sectionRow}>
+            <Text style={styles.sectionTitle}>Payment Method</Text>
+            <TouchableOpacity
+              onPress={() =>
+                router.push("/components/billing/PaymentMethodScreen")
+              }
+              activeOpacity={0.75}
+            >
+              <Text style={styles.sectionLink}>Manage →</Text>
             </TouchableOpacity>
           </View>
-
           {defaultCard ? (
-            <View style={s.cardRow}>
-              <View style={[s.cardChip, { backgroundColor: BRAND_COLORS[defaultCard.brand?.toLowerCase()] ?? C.teal }]}>
-                <Text style={s.cardChipText}>{(defaultCard.brand ?? "CARD").slice(0, 4).toUpperCase()}</Text>
+            <View style={styles.cardRow}>
+              <View
+                style={[
+                  styles.cardChip,
+                  {
+                    backgroundColor:
+                      BRAND_COLORS[defaultCard.brand?.toLowerCase()] ?? C.teal,
+                  },
+                ]}
+              >
+                <Text style={styles.cardChipText}>
+                  {(defaultCard.brand ?? "CARD").slice(0, 4).toUpperCase()}
+                </Text>
               </View>
-              <View style={{ flex: 1, marginLeft: 12 }}>
-                <Text style={s.cardNum}>{defaultCard.brand?.toUpperCase()} •••• {defaultCard.last4}</Text>
-                <Text style={s.cardExp}>Expires {defaultCard.expMonth}/{defaultCard.expYear}</Text>
+              <View style={{ flex: 1, marginLeft: pad.sm }}>
+                <Text style={styles.cardNum}>
+                  {defaultCard.brand?.toUpperCase()} •••• {defaultCard.last4}
+                </Text>
+                <Text style={styles.cardExp}>
+                  Expires {defaultCard.expMonth}/{defaultCard.expYear}
+                </Text>
               </View>
-              <View style={s.defaultBadge}><Text style={s.defaultBadgeText}>Default</Text></View>
+              <View style={styles.defaultBadge}>
+                <Text style={styles.defaultBadgeText}>Default</Text>
+              </View>
             </View>
           ) : (
-            <TouchableOpacity style={s.addCardBtn} onPress={() => router.push("/components/billing/PaymentMethodScreen")} activeOpacity={0.85}>
-              <Text style={s.addCardText}>+ Add Payment Method</Text>
+            <TouchableOpacity
+              style={styles.addCardBtn}
+              onPress={() =>
+                router.push("/components/billing/PaymentMethodScreen")
+              }
+              activeOpacity={0.85}
+            >
+              <Text style={styles.addCardText}>+ Add Payment Method</Text>
             </TouchableOpacity>
           )}
         </View>
 
-        {/* ── Billing history ── */}
-        <View style={s.section}>
-          <View style={s.sectionRow}>
-            <Text style={s.sectionTitle}>Billing History</Text>
-            <TouchableOpacity onPress={() => router.push("/components/billing/BillingHistoryScreen")} activeOpacity={0.75}>
-              <Text style={s.sectionLink}>View all →</Text>
+        {/* Billing history section */}
+        <View style={styles.section}>
+          <View style={styles.sectionRow}>
+            <Text style={styles.sectionTitle}>Billing History</Text>
+            <TouchableOpacity
+              onPress={() =>
+                router.push("/components/billing/BillingHistoryScreen")
+              }
+              activeOpacity={0.75}
+            >
+              <Text style={styles.sectionLink}>View all →</Text>
             </TouchableOpacity>
           </View>
-          <View style={s.historyHint}>
-            <Text style={s.historyHintText}>View your past invoices and download receipts</Text>
+          <View style={styles.historyHint}>
+            <Text style={styles.historyHintText}>
+              View your past invoices and download receipts
+            </Text>
           </View>
         </View>
 
@@ -222,59 +307,180 @@ export default function PlanBillingScreen() {
   );
 }
 
-const s = StyleSheet.create({
+// ─────────────────────────────────────────────────────────────────────────────
+// STYLES
+// ─────────────────────────────────────────────────────────────────────────────
+const styles = StyleSheet.create({
   root: { flex: 1, backgroundColor: C.bg },
-  center: { justifyContent: "center", alignItems: "center" },
+
+  // Header
   header: {
-    flexDirection: "row", alignItems: "center", justifyContent: "space-between",
-    paddingTop: STATUS_BAR_HEIGHT + 10, paddingBottom: 14, paddingHorizontal: 18,
-    borderBottomWidth: 1, borderBottomColor: "rgba(0,188,212,0.12)",
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    paddingTop: STATUS_BAR_HEIGHT + pad.sm, // was: + 10
+    paddingBottom: pad.sm, // was: sz.headerPaddingBottom
+    paddingHorizontal: pad.md, // was: sz.headerPaddingH
+    borderBottomWidth: 1,
+    borderBottomColor: "rgba(0,188,212,0.12)",
   },
   backBtn: {
-    width: 38, height: 38, borderRadius: 19,
+    width: size.hitMd, // was: sz.backBtnSize
+    height: size.hitMd,
+    borderRadius: size.hitMd / 2, // was: sz.backBtnBorderRadius
     backgroundColor: "rgba(255,255,255,0.06)",
-    borderWidth: 1, borderColor: "rgba(255,255,255,0.1)",
-    alignItems: "center", justifyContent: "center",
+    borderWidth: 1,
+    borderColor: "rgba(255,255,255,0.1)",
+    alignItems: "center",
+    justifyContent: "center",
   },
-  backIcon: { fontFamily: FONTS.bold, fontSize: 18, color: C.teal },
-  title: { fontFamily: FONTS.bold, fontSize: 18, color: C.textPri, letterSpacing: 0.3 },
-  scroll: { padding: 18, paddingTop: 20 },
+  backIcon: { fontFamily: FONTS.bold, fontSize: font.lg, color: C.teal },
+  title: {
+    fontFamily: FONTS.bold,
+    fontSize: font.xl,
+    color: C.textPri,
+    letterSpacing: 0.3,
+  },
 
+  scroll: { padding: pad.md, paddingTop: pad.lg }, // was: sz.scrollPadding / scrollPaddingTop
+
+  // Plan card
   planCard: {
-    backgroundColor: C.surface, borderRadius: 20,
-    borderWidth: 1.5, borderColor: C.tealBorder,
-    padding: 18, marginBottom: 20,
+    backgroundColor: C.surface,
+    borderRadius: radius.xl, // was: sz.planCardBorderRadius
+    borderWidth: 1.5,
+    borderColor: C.tealBorder,
+    padding: pad.md, // was: sz.planCardPadding
+    marginBottom: pad.lg, // was: sz.planCardMarginBottom
   },
-  planTop: { flexDirection: "row", alignItems: "flex-start", justifyContent: "space-between", marginBottom: 10 },
-  planLabel: { fontFamily: FONTS.bold, fontSize: 10, color: C.textMuted, letterSpacing: 1, textTransform: "uppercase", marginBottom: 4 },
-  planName: { fontFamily: FONTS.bold, fontSize: 26, color: C.teal, letterSpacing: 0.2 },
-  planPrice: { fontFamily: FONTS.light, fontSize: 15, color: C.textSec, marginTop: 2 },
-  statusBadge: { borderRadius: 10, borderWidth: 1, paddingHorizontal: 10, paddingVertical: 4 },
-  statusText: { fontFamily: FONTS.bold, fontSize: 11, letterSpacing: 0.3 },
-  nextBilling: { fontFamily: FONTS.light, fontSize: 12, color: C.textMuted, marginBottom: 4 },
-  chargedTo: { fontFamily: FONTS.light, fontSize: 12, color: C.textMuted, marginBottom: 14 },
-  upgradeBtn: { backgroundColor: C.teal, borderRadius: 12, paddingVertical: 12, alignItems: "center", marginTop: 8 },
-  upgradeBtnText: { fontFamily: FONTS.bold, fontSize: 14, color: "#08081a" },
+  planTop: {
+    flexDirection: "row",
+    alignItems: "flex-start",
+    justifyContent: "space-between",
+    marginBottom: pad.sm,
+  },
+  planLabel: {
+    fontFamily: FONTS.bold,
+    fontSize: font.xs, // was: sz.planLabelFontSize
+    color: C.textMuted,
+    letterSpacing: 1,
+    textTransform: "uppercase",
+    marginBottom: pad.xs,
+  },
+  planName: {
+    fontFamily: FONTS.bold,
+    fontSize: font.h3,
+    color: C.teal,
+    letterSpacing: 0.2,
+  },
+  planPrice: {
+    fontFamily: FONTS.light,
+    fontSize: font.md,
+    color: C.textSec,
+    marginTop: 2,
+  },
+  statusBadge: {
+    borderRadius: radius.sm, // was: sz.statusBadgeBorderRadius
+    borderWidth: 1,
+    paddingHorizontal: pad.sm, // was: sz.statusBadgePaddingH
+    paddingVertical: pad.xs / 2, // was: sz.statusBadgePaddingV
+  },
+  statusText: { fontFamily: FONTS.bold, fontSize: font.s, letterSpacing: 0.3 },
+  billingNote: {
+    fontFamily: FONTS.light,
+    fontSize: font.sm, // was: sz.nextBillingFontSize
+    color: C.textMuted,
+    marginBottom: pad.xs,
+  },
+  upgradeBtn: {
+    backgroundColor: C.teal,
+    borderRadius: radius.md, // was: sz.upgradeBtnBorderRadius
+    paddingVertical: pad.sm, // was: sz.upgradeBtnPaddingV
+    alignItems: "center",
+    marginTop: pad.s,
+  },
+  upgradeBtnText: {
+    fontFamily: FONTS.bold,
+    fontSize: font.md,
+    color: "#08081a",
+  },
 
+  // Section cards
   section: {
-    backgroundColor: C.surface, borderRadius: 16,
-    borderWidth: 1, borderColor: "rgba(255,255,255,0.07)",
-    padding: 16, marginBottom: 16,
+    backgroundColor: C.surface,
+    borderRadius: radius.lg, // was: sz.sectionBorderRadius
+    borderWidth: 1,
+    borderColor: "rgba(255,255,255,0.07)",
+    padding: pad.md, // was: sz.sectionPadding
+    marginBottom: pad.md, // was: sz.sectionMarginBottom
   },
-  sectionRow: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: 14 },
-  sectionTitle: { fontFamily: FONTS.bold, fontSize: 13, color: C.textPri, letterSpacing: 0.3 },
-  sectionLink: { fontFamily: FONTS.bold, fontSize: 12, color: C.teal },
+  sectionRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginBottom: pad.sm,
+  },
+  sectionTitle: {
+    fontFamily: FONTS.bold,
+    fontSize: font.sm,
+    color: C.textPri,
+    letterSpacing: 0.3,
+  },
+  sectionLink: { fontFamily: FONTS.bold, fontSize: font.sm, color: C.teal },
 
+  // Card row (payment method preview)
   cardRow: { flexDirection: "row", alignItems: "center" },
-  cardChip: { width: 44, height: 30, borderRadius: 6, alignItems: "center", justifyContent: "center" },
-  cardChipText: { fontFamily: FONTS.bold, fontSize: 8, color: "#fff", letterSpacing: 0.5 },
-  cardNum: { fontFamily: FONTS.bold, fontSize: 14, color: C.textPri },
-  cardExp: { fontFamily: FONTS.light, fontSize: 11, color: C.textMuted, marginTop: 2 },
-  defaultBadge: { backgroundColor: C.tealDim, borderRadius: 8, borderWidth: 1, borderColor: C.tealBorder, paddingHorizontal: 8, paddingVertical: 3 },
-  defaultBadgeText: { fontFamily: FONTS.bold, fontSize: 10, color: C.teal },
-  addCardBtn: { borderRadius: 12, borderWidth: 1.5, borderStyle: "dashed", borderColor: C.tealBorder, paddingVertical: 14, alignItems: "center" },
-  addCardText: { fontFamily: FONTS.bold, fontSize: 13, color: C.teal },
+  cardChip: {
+    width: size.chipW, // was: sz.cardChipWidth
+    height: size.chipH, // was: sz.cardChipHeight
+    borderRadius: radius.xs, // was: sz.cardChipBorderRadius
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  cardChipText: {
+    fontFamily: FONTS.bold,
+    fontSize: font.xs,
+    color: "#fff",
+    letterSpacing: 0.5,
+  },
+  cardNum: { fontFamily: FONTS.bold, fontSize: font.md, color: C.textPri },
+  cardExp: {
+    fontFamily: FONTS.light,
+    fontSize: font.s,
+    color: C.textMuted,
+    marginTop: 2,
+  },
+  defaultBadge: {
+    backgroundColor: C.tealDim,
+    borderRadius: radius.xs,
+    borderWidth: 1,
+    borderColor: C.tealBorder,
+    paddingHorizontal: pad.s,
+    paddingVertical: 3,
+  },
+  defaultBadgeText: { fontFamily: FONTS.bold, fontSize: font.s, color: C.teal },
 
-  historyHint: { backgroundColor: "rgba(255,255,255,0.03)", borderRadius: 10, padding: 12 },
-  historyHintText: { fontFamily: FONTS.light, fontSize: 12, color: C.textMuted, fontStyle: "italic" },
+  // Add card CTA (dashed)
+  addCardBtn: {
+    borderRadius: radius.md,
+    borderWidth: 1.5,
+    borderStyle: "dashed",
+    borderColor: C.tealBorder,
+    paddingVertical: pad.sm,
+    alignItems: "center",
+  },
+  addCardText: { fontFamily: FONTS.bold, fontSize: font.sm, color: C.teal },
+
+  // History hint
+  historyHint: {
+    backgroundColor: "rgba(255,255,255,0.03)",
+    borderRadius: radius.sm,
+    padding: pad.sm,
+  },
+  historyHintText: {
+    fontFamily: FONTS.light,
+    fontSize: font.sm,
+    color: C.textMuted,
+    fontStyle: "italic",
+  },
 });

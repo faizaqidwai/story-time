@@ -6,9 +6,14 @@ import {
   saveRegisterToken,
   saveAccessToken,
   getAccessToken,
+  saveRefreshToken, // ← add this
+  getRefreshToken, // ← add this
   clearRegisterToken,
 } from "./tokenStorage";
-import { savePrimaryUserAccountId, getPrimaryUserAccountId } from "./identityStorage";
+import {
+  savePrimaryUserAccountId,
+  getPrimaryUserAccountId,
+} from "./identityStorage";
 
 /** STEP 1 — Get register token. No auth header. */
 export async function fetchRegisterToken() {
@@ -46,11 +51,16 @@ export async function logoutUser() {
 export async function loginWithPrimaryAccount() {
   const deviceId = await getDeviceId();
   const primaryUserAccountId = await getPrimaryUserAccountId();
-  return apiClient.post(
+  const response = await apiClient.post(
     "/auth/device/login",
     { userAccountIdToken: primaryUserAccountId, deviceToken: deviceId },
     { auth: "none" },
   );
+  console.log("[Auth] Login response:", response); // ADD THIS
+  console.log("[Auth] token value:", response?.token); // ADD THIS
+  await saveAccessToken(response.token);
+  await saveRefreshToken(response.refreshToken);
+  return response;
 }
 
 /** Login with email + password. No auth header. */
