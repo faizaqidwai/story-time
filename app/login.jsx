@@ -22,25 +22,18 @@ import {
   loginWithEmail,
   fetchUserAccount,
 } from "./services/authService";
-import { saveAccessToken } from "./services/tokenStorage";
 import { useTheme } from "./_contexts/ThemeContext";
 
 const Login = () => {
   const router = useRouter();
   const { execute } = useApiCall();
   const { setLoginUserAccount } = useUser();
-  const { clearAllData } = useUser();
   const { sizes } = useTheme();
   const sz = sizes.login;
 
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [isLoading, setIsLoading] = useState(false);
-
-  // ── All logic untouched ───────────────────────────────────
-  useEffect(() => {
-    clearAllData();
-  }, []);
 
   const handlePrimaryLogin = async () => {
     setIsLoading(true);

@@ -8,6 +8,8 @@
 //   • Real horizontal FlatList swipe — physically drag between words
 //   • Per-phonics-chip animation: the chip being spoken scales up + bounces
 //   • activePhonicsIndex tracks which phonics part Speech is on
+//   • AUTO-PLAY: word audio plays automatically on first load and on each navigation
+//     (fixed: no double-fire / repeat loop)
 //
 // Props:
 //   visible  — boolean
@@ -97,7 +99,6 @@ const dotS = StyleSheet.create({
 
 // ─────────────────────────────────────────────────────────────────────────────
 // ANIMATED PHONICS CHIP
-// isActive => scale up + bounce loop + glow halo
 // ─────────────────────────────────────────────────────────────────────────────
 function PhonicsChip({ label, isFullWord, isActive }) {
   const scale = useRef(new Animated.Value(1)).current;
@@ -106,19 +107,12 @@ function PhonicsChip({ label, isFullWord, isActive }) {
 
   useEffect(() => {
     if (isActive) {
-      // Immediate pop
       Animated.spring(scale, {
         toValue: 1.55,
         friction: 4,
         tension: 90,
         useNativeDriver: true,
       }).start();
-      //   Animated.timing(glowOp, {
-      //     toValue: 1,
-      //     duration: 150,
-      //     useNativeDriver: true,
-      //   }).start();
-      // Gentle breathing while speaking
       bounceLoop.current = Animated.loop(
         Animated.sequence([
           Animated.timing(scale, {
@@ -135,7 +129,6 @@ function PhonicsChip({ label, isFullWord, isActive }) {
           }),
         ]),
       );
-      // bounceLoop.current.start();
     } else {
       bounceLoop.current?.stop();
       bounceLoop.current = null;
@@ -167,7 +160,6 @@ function PhonicsChip({ label, isFullWord, isActive }) {
     <Animated.View
       style={[chipStyle, { transform: [{ scale }], zIndex: isActive ? 10 : 1 }]}
     >
-      {/* Glow halo */}
       <Animated.View
         style={[wS.chipGlow, { opacity: glowOp, backgroundColor: glowColor }]}
         pointerEvents="none"
@@ -178,7 +170,7 @@ function PhonicsChip({ label, isFullWord, isActive }) {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// SINGLE WORD CARD  (one page in the outer FlatList)
+// SINGLE WORD CARD
 // ─────────────────────────────────────────────────────────────────────────────
 function WordCard({ word, isPlaying, onAudio, activePhonicsIndex }) {
   const slideY = useRef(new Animated.Value(30)).current;
@@ -187,7 +179,6 @@ function WordCard({ word, isPlaying, onAudio, activePhonicsIndex }) {
   const emojiBounce = useRef(new Animated.Value(1)).current;
   const emojiBounceLoop = useRef(null);
 
-  // Entrance animation keyed to word name
   useEffect(() => {
     slideY.setValue(30);
     opacity.setValue(0);
@@ -213,7 +204,6 @@ function WordCard({ word, isPlaying, onAudio, activePhonicsIndex }) {
     ]).start();
   }, [word.name]);
 
-  // Emoji bounces while audio plays
   useEffect(() => {
     if (isPlaying) {
       emojiBounceLoop.current = Animated.loop(
@@ -266,24 +256,25 @@ function WordCard({ word, isPlaying, onAudio, activePhonicsIndex }) {
       {/* Word name */}
       <Text style={wS.wordName}>{word.name}</Text>
 
-      {/* Phonics row: m + a + n = man */}
+      {/* Phonics row */}
       {word.phonics && word.phonics.length > 0 && (
         <View style={wS.phonicsRow}>
-          {word.phonics.map((p, i) => {
-            const isFullWord = i === word.phonics.length - 1;
-            return (
-              <React.Fragment key={i}>
-                {i > 0 && (
-                  <Text style={wS.phonicsSep}>{isFullWord ? "=" : "+"}</Text>
-                )}
-                <PhonicsChip
-                  label={p}
-                  isFullWord={isFullWord}
-                  isActive={activePhonicsIndex === i}
-                />
-              </React.Fragment>
-            );
-          })}
+          {word.phonics.map((p, i) => (
+            <React.Fragment key={i}>
+              {i > 0 && <Text style={wS.phonicsSep}>+</Text>}
+              <PhonicsChip
+                label={p}
+                isFullWord={false}
+                isActive={activePhonicsIndex === i}
+              />
+            </React.Fragment>
+          ))}
+          <Text style={wS.phonicsSep}>=</Text>
+          <PhonicsChip
+            label={word.name}
+            isFullWord={true}
+            isActive={activePhonicsIndex === word.phonics.length}
+          />
         </View>
       )}
 
@@ -381,7 +372,6 @@ const wS = StyleSheet.create({
     flexWrap: "wrap",
     justifyContent: "center",
     alignItems: "center",
-    // Extra vertical padding so scaled chips (1.6×) don't clip
     paddingVertical: pad.lg,
     marginBottom: pad.md,
     overflow: "visible",
@@ -401,9 +391,7 @@ const wS = StyleSheet.create({
     color: C.teal,
     letterSpacing: 1.5,
   },
-  phonicsTextActive: {
-    //color: "#fff",
-  },
+  phonicsTextActive: {},
   phonicsSep: {
     fontFamily: FONTS.bold,
     fontSize: font.lg,
@@ -419,6 +407,7 @@ const wS = StyleSheet.create({
     paddingHorizontal: pad.sm,
     paddingVertical: pad.xs,
     overflow: "visible",
+    marginTop: 15,
   },
   phonicsTextWord: {
     fontFamily: FONTS.bold,
@@ -528,15 +517,24 @@ const wS = StyleSheet.create({
 // ─────────────────────────────────────────────────────────────────────────────
 export default function NewWordsOverlay({ visible, words = [], onDone }) {
   const [index, setIndex] = useState(0);
-  // Which phonics chip index is currently being spoken (-1 = none)
   const [activePhonicsIndex, setActivePhonicsIndex] = useState(-1);
-  // Which word name is playing audio
   const [playingWord, setPlayingWord] = useState(null);
 
   const flatRef = useRef(null);
   const sheetY = useRef(new Animated.Value(SH)).current;
   const scrOp = useRef(new Animated.Value(0)).current;
   const mountedRef = useRef(true);
+
+  // ── Refs to break stale closure issues ─────────────────────────────────
+  // hasOpenedRef: prevents onViewableItemsChanged from auto-playing on
+  // the initial mount trigger (which fires at the same time as the
+  // visible-effect auto-play, causing a double/repeat loop).
+  const hasOpenedRef = useRef(false);
+  // Always points to the latest handleAudio so the frozen onViewableItemsChanged
+  // ref can still call the current version.
+  const handleAudioRef = useRef(null);
+  // Always points to the latest words array for the same reason.
+  const wordsRef = useRef(words);
 
   useEffect(() => {
     mountedRef.current = true;
@@ -545,53 +543,10 @@ export default function NewWordsOverlay({ visible, words = [], onDone }) {
     };
   }, []);
 
-  // ── Sheet open / close ──────────────────────────────────────────────────
+  // Keep wordsRef in sync
   useEffect(() => {
-    if (visible) {
-      setIndex(0);
-      setActivePhonicsIndex(-1);
-      setPlayingWord(null);
-      Speech.stop();
-      // Reset FlatList to first page
-      setTimeout(
-        () => flatRef.current?.scrollToOffset({ offset: 0, animated: false }),
-        50,
-      );
-
-      Animated.parallel([
-        Animated.timing(scrOp, {
-          toValue: 1,
-          duration: 320,
-          useNativeDriver: true,
-        }),
-        Animated.spring(sheetY, {
-          toValue: 0,
-          friction: 9,
-          tension: 65,
-          useNativeDriver: true,
-        }),
-      ]).start();
-    } else {
-      doSlideOut();
-    }
-  }, [visible]);
-
-  const doSlideOut = () => {
-    Speech.stop();
-    Animated.parallel([
-      Animated.timing(scrOp, {
-        toValue: 0,
-        duration: 280,
-        useNativeDriver: true,
-      }),
-      Animated.timing(sheetY, {
-        toValue: SH,
-        duration: 320,
-        easing: Easing.in(Easing.quad),
-        useNativeDriver: true,
-      }),
-    ]).start();
-  };
+    wordsRef.current = words;
+  }, [words]);
 
   // ── Audio ───────────────────────────────────────────────────────────────
   const stopAudio = useCallback(() => {
@@ -612,7 +567,10 @@ export default function NewWordsOverlay({ visible, words = [], onDone }) {
       if (!mountedRef.current) return;
 
       setPlayingWord(word.name);
-      const parts = word.phonics?.length ? word.phonics : [word.name];
+      // Speak each phonics part then the full word at the end
+      const parts = word.phonics?.length
+        ? [...word.phonics, word.name]
+        : [word.name];
       let i = 0;
 
       const speakNext = () => {
@@ -652,12 +610,85 @@ export default function NewWordsOverlay({ visible, words = [], onDone }) {
     [playingWord, stopAudio],
   );
 
-  // ── Navigation ──────────────────────────────────────────────────────────
+  // Keep handleAudioRef in sync with the latest handleAudio
+  handleAudioRef.current = handleAudio;
+
+  // ── Sheet open / close ──────────────────────────────────────────────────
+  useEffect(() => {
+    if (visible) {
+      hasOpenedRef.current = false; // reset so the swipe guard works correctly
+      setIndex(0);
+      setActivePhonicsIndex(-1);
+      setPlayingWord(null);
+      Speech.stop();
+
+      setTimeout(
+        () => flatRef.current?.scrollToOffset({ offset: 0, animated: false }),
+        50,
+      );
+
+      Animated.parallel([
+        Animated.timing(scrOp, {
+          toValue: 1,
+          duration: 320,
+          useNativeDriver: true,
+        }),
+        Animated.spring(sheetY, {
+          toValue: 0,
+          friction: 9,
+          tension: 65,
+          useNativeDriver: true,
+        }),
+      ]).start(() => {
+        // Mark as open BEFORE auto-playing so the viewability callback
+        // knows the sheet is settled and won't double-fire.
+        hasOpenedRef.current = true;
+        if (mountedRef.current && wordsRef.current.length > 0) {
+          setTimeout(() => {
+            if (mountedRef.current) {
+              handleAudioRef.current(wordsRef.current[0]);
+            }
+          }, 300);
+        }
+      });
+    } else {
+      doSlideOut();
+    }
+  }, [visible]);
+
+  const doSlideOut = () => {
+    hasOpenedRef.current = false;
+    Speech.stop();
+    Animated.parallel([
+      Animated.timing(scrOp, {
+        toValue: 0,
+        duration: 280,
+        useNativeDriver: true,
+      }),
+      Animated.timing(sheetY, {
+        toValue: SH,
+        duration: 320,
+        easing: Easing.in(Easing.quad),
+        useNativeDriver: true,
+      }),
+    ]).start();
+  };
+
+  // ── Navigation (buttons) ────────────────────────────────────────────────
+  // goTo is the single source of truth for programmatic navigation.
+  // It stops audio, scrolls, updates index, then auto-plays the new word.
+  // onViewableItemsChanged does NOT trigger goTo — it only syncs the index
+  // so dots/counter stay correct when the user swipes manually.
   const goTo = useCallback(
     (nextIndex) => {
       stopAudio();
       flatRef.current?.scrollToIndex({ index: nextIndex, animated: true });
       setIndex(nextIndex);
+      setTimeout(() => {
+        if (mountedRef.current && wordsRef.current[nextIndex]) {
+          handleAudioRef.current(wordsRef.current[nextIndex]);
+        }
+      }, 420);
     },
     [stopAudio],
   );
@@ -675,12 +706,21 @@ export default function NewWordsOverlay({ visible, words = [], onDone }) {
     if (index > 0) goTo(index - 1);
   }, [index, goTo]);
 
-  // Sync index when user swipes manually with finger
+  // ── Sync index on manual swipe ──────────────────────────────────────────
+  // hasOpenedRef gates this so it doesn't fire during the initial mount
+  // viewability event (which would race with the visible-effect auto-play).
   const onViewableItemsChanged = useRef(({ viewableItems }) => {
+    if (!hasOpenedRef.current) return; // ignore mount-time trigger
     if (viewableItems.length > 0) {
       const newIdx = viewableItems[0].index ?? 0;
       setIndex(newIdx);
-      stopAudio();
+      // Auto-play on manual swipe via fresh refs (no stale closure)
+      Speech.stop();
+      setTimeout(() => {
+        if (mountedRef.current && wordsRef.current[newIdx]) {
+          handleAudioRef.current(wordsRef.current[newIdx]);
+        }
+      }, 320);
     }
   }).current;
 
@@ -695,12 +735,10 @@ export default function NewWordsOverlay({ visible, words = [], onDone }) {
       const phonicsIndexForThis = isThisWordPlaying ? activePhonicsIndex : -1;
 
       return (
-        // Each page is a vertical ScrollView so long cards don't get clipped
         <ScrollView
           style={{ width: SW }}
           showsVerticalScrollIndicator={false}
           contentContainerStyle={{ paddingBottom: pad.xl }}
-          // Lock vertical scrolling so it doesn't fight horizontal swipe
           directionalLockEnabled
         >
           <WordCard
@@ -752,7 +790,7 @@ export default function NewWordsOverlay({ visible, words = [], onDone }) {
         {/* Dots */}
         {words.length > 1 && <Dots total={words.length} current={index} />}
 
-        {/* ── Swipable word pages ── */}
+        {/* Swipable word pages */}
         <FlatList
           ref={flatRef}
           data={words}
@@ -765,7 +803,6 @@ export default function NewWordsOverlay({ visible, words = [], onDone }) {
           viewabilityConfig={viewabilityConfig}
           scrollEnabled={words.length > 1}
           style={s.flatList}
-          // Prevent Android flicker on re-render
           removeClippedSubviews={false}
         />
 

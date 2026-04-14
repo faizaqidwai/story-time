@@ -23,7 +23,12 @@ import AppBackground from "../components/AppBackground";
 import { FONTS } from "../theme";
 import { font, pad, radius, size } from "../theme/tokens"; // ← REPLACES hardcoded numbers
 
-const { height: SH } = Dimensions.get("window");
+const { height: SH, width: SW } = Dimensions.get("window");
+const isTablet = SW >= 768;
+
+const IMAGE_HEIGHT = isTablet
+  ? Math.min(SH * 0.45, 420)
+  : Math.min(SH * 0.35, 280);
 
 const C = {
   bg: "#08081a",
@@ -298,27 +303,36 @@ export default function StoryHome() {
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
       >
+        {/* <TouchableOpacity
+        style={styles.backBtn}
+        onPress={() => router.back()}
+        hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
+      >
+        <Text style={styles.backBtnText}>← Back</Text>
+      </TouchableOpacity> */}
         {/* Cover image */}
         <Animated.View
-          style={[styles.imageContainer, { height: "80%", opacity: headerOp }]}
+          style={[
+            styles.imageContainer,
+            { height: IMAGE_HEIGHT, opacity: headerOp },
+          ]}
         >
           <ExpoImage
             source={{ uri: currentStory.cover }}
             style={styles.coverImage}
-            contentFit="cover"
+            contentFit="fill"
             cachePolicy="disk"
           />
-          <View style={styles.imageGradient} pointerEvents="none" />
+
           <View style={styles.textOverlay} pointerEvents="none">
             <Text style={styles.storyTitle} numberOfLines={2}>
               {currentStory.title}
             </Text>
-            <Text style={styles.storyIntro} numberOfLines={3}>
-              {currentStory.introduction}
-            </Text>
           </View>
         </Animated.View>
-
+        <Text style={styles.storyIntro} numberOfLines={3}>
+          {currentStory.introduction}
+        </Text>
         {/* Activities */}
         <View style={styles.section}>
           <Text style={styles.sectionHeading}>Activities</Text>
@@ -333,7 +347,6 @@ export default function StoryHome() {
             />
           ))}
         </View>
-
         <View style={{ height: 32 }} />
       </ScrollView>
     </View>
@@ -344,6 +357,21 @@ export default function StoryHome() {
 // STYLES
 // ─────────────────────────────────────────────────────────────────────────────
 const styles = StyleSheet.create({
+  backBtn: {
+    position: "absolute",
+    top: pad.lg,
+    left: pad.md,
+    zIndex: 10,
+    backgroundColor: "rgba(8,8,26,0.6)",
+    borderRadius: radius.sm,
+    paddingHorizontal: pad.sm,
+    paddingVertical: pad.xs,
+  },
+  backBtnText: {
+    fontFamily: FONTS.bold,
+    fontSize: font.md,
+    color: C.teal,
+  },
   root: { flex: 1, backgroundColor: C.bg },
   scroll: { flex: 1 },
   scrollContent: { paddingBottom: 20 },
@@ -378,8 +406,8 @@ const styles = StyleSheet.create({
     bottom: 0,
     left: 0,
     right: 0,
-    height: "25%",
-    backgroundColor: "rgba(8,8,26,0.84)",
+    height: "20%",
+    //   backgroundColor: "rgba(8,8,26,0.84)",
   },
   textOverlay: {
     position: "absolute",
@@ -389,6 +417,8 @@ const styles = StyleSheet.create({
     paddingHorizontal: pad.md,
     paddingBottom: pad.sm,
     paddingTop: pad.s,
+    height: "20%",
+    backgroundColor: "rgba(8,8,26,0.84)",
   },
   storyTitle: {
     fontFamily: FONTS.bold,
@@ -401,8 +431,11 @@ const styles = StyleSheet.create({
     marginBottom: 3,
   },
   storyIntro: {
+    paddingHorizontal: pad.md,
+    paddingBottom: pad.sm,
+    paddingTop: pad.sm,
     fontFamily: FONTS.light,
-    fontSize: font.sm, // was: 13
+    fontSize: font.md, // was: 13
     color: "rgba(224,247,250,0.7)",
     lineHeight: font.sm * 1.3,
     fontStyle: "italic",

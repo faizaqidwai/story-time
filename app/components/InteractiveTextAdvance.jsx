@@ -7,12 +7,21 @@ import {
   ImageBackground,
 } from "react-native";
 import * as Speech from "expo-speech";
+import { FONTS } from "../theme";
+import { font, pad, radius, size } from "../theme/tokens";
 
 const InteractiveTextAdvance = ({ text, onWordTap, image }) => {
   const [activeWordIndex, setActiveWordIndex] = useState(null);
 
-  const paragraphs = text
-    .split(/\\n|\n/)
+  const sanitizedText = text
+    .replace(/\\\\n/g, "\n") // \\n (literal 4 chars) → newline
+    .replace(/\\n/g, "\n") // \n  (literal 2 chars) → newline
+    .replace(/\\"/g, '"')
+    .replace(/\\'/g, "'")
+    .replace(/\\\\/g, "\\");
+
+  const paragraphs = sanitizedText
+    .split(/\n/)
     .map((p) => p.trim())
     .filter(Boolean);
 
@@ -77,11 +86,13 @@ export default InteractiveTextAdvance;
 const styles = StyleSheet.create({
   bubble: {
     backgroundColor: "#dfd3bd",
-    padding: 10,
+    padding: pad.sm,
     //   borderRadius: 25,
     //   borderWidth: 3,
-
+    marginBottom: 30,
+    paddingBottom: pad.xxl,
     elevation: 5,
+    // height: "100%",
   },
   imageStyle: {
     borderRadius: 25,
@@ -98,7 +109,7 @@ const styles = StyleSheet.create({
     marginBottom: 20,
   },
   word: {
-    fontSize: 19,
+    fontSize: font.xl,
     lineHeight: 40,
     letterSpacing: 1.2,
     color: "#333",

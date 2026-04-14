@@ -1,13 +1,20 @@
 import React, { useState } from "react";
 import { View, Text, Pressable, StyleSheet } from "react-native";
 import * as Speech from "expo-speech";
-
+import { FONTS } from "../theme";
+import { font, pad, radius, size } from "../theme/tokens";
 const InteractiveText = ({ text, onWordTap }) => {
   const [activeWordIndex, setActiveWordIndex] = useState(null);
 
   // Split into paragraphs first, then words
-  const paragraphs = text
-    .split(/\\n|\n/)
+  const sanitizedText = text
+    .replace(/\\n/g, "\n") // fix escaped newlines
+    .replace(/\\"/g, '"') // fix escaped quotes
+    .replace(/\\'/g, "'") // fix escaped apostrophes
+    .replace(/\\\\/g, "\\"); // fix double backslashes
+
+  const paragraphs = sanitizedText
+    .split(/\n/)
     .map((p) => p.trim())
     .filter(Boolean);
 
@@ -58,7 +65,7 @@ export default InteractiveText;
 const styles = StyleSheet.create({
   bubble: {
     backgroundColor: "#ffffffee",
-    padding: 10,
+    padding: pad.sm,
     borderRadius: 25,
     borderWidth: 3,
     borderColor: "#FFD93D",
@@ -67,6 +74,7 @@ const styles = StyleSheet.create({
     shadowRadius: 8,
     elevation: 5,
     marginTop: 20,
+    //  height: "100%",
   },
   paragraph: {
     flexDirection: "row",
@@ -75,7 +83,7 @@ const styles = StyleSheet.create({
     marginBottom: 10,
   },
   word: {
-    fontSize: 26,
+    fontSize: font.xl,
     lineHeight: 40,
     letterSpacing: 1.2,
     color: "#333",

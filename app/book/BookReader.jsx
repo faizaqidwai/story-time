@@ -20,7 +20,7 @@ import { Ionicons } from "@expo/vector-icons";
 import InteractiveText from "../components/InteractiveText";
 import ScreenWrapper from "../components/ScreenWrapper";
 import AppBackground from "../components/AppBackground";
-import NewWordsOverlay from "../components/NewWordsOverlay"; // ← ADD
+import NewWordsOverlay from "../components/NewWordsOverlay";
 import { useUser } from "../_contexts/UserContext";
 import {
   useStoryActivity,
@@ -47,13 +47,16 @@ export default function BookReader() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [wordTaps, setWordTaps] = useState([]);
-
-  // ── New: controls the words overlay ──────────────────────────────────────
   const [showWordsOverlay, setShowWordsOverlay] = useState(false);
-  const pendingFinishRef = useRef(null); // stores the action to run after overlay
 
+  // Cache challenge words the moment the session loads so they survive
+  // completeActivity clearing/mutating the session (also works on replay).
+  const [cachedChallengeWords, setCachedChallengeWords] = useState([]);
+
+  const pendingFinishRef = useRef(null);
   const flatListRef = useRef(null);
 
+  // Load book
   useEffect(() => {
     if (currentStory) {
       const enriched = currentStory.activityData
@@ -66,6 +69,13 @@ export default function BookReader() {
       setLoading(false);
     }
   }, [currentStory]);
+
+  // Cache challenge words whenever the session provides them
+  useEffect(() => {
+    if (storySession?.challengeWords?.length > 0) {
+      setCachedChallengeWords(storySession.challengeWords);
+    }
+  }, [storySession]);
 
   const goToPage = (index) => {
     flatListRef.current?.scrollToIndex({ index, animated: true });
@@ -97,49 +107,65 @@ export default function BookReader() {
     };
   };
 
-  // ── Step 1: user taps Finish → show words overlay (if words exist) ────────
-  const handleFinishStory = async () => {
-    const report = generateReadingReport();
-    const tappedWords = Object.keys(report.wordFrequency);
-
-    if (isReplay || storySession?.isReadOnly) {
-      router.back();
-      return;
-    }
-
-    // Complete the reading activity first so rewards are queued
-    await completeActivity(
-      ACTIVITY.STORY_READING,
-      { report },
-      { coins: READING_COINS, words: tappedWords },
-    );
-
-    const challengeWords = storySession?.challengeWords ?? [];
-
-    if (challengeWords.length > 0) {
-      // Store what to do after overlay closes
-      pendingFinishRef.current = () => navigateToNextActivity();
-      setShowWordsOverlay(true);
-    } else {
-      navigateToNextActivity();
-    }
-  };
-
-  // ── Step 2: called once the overlay is dismissed ─────────────────────────
-  const handleOverlayDone = () => {
-    setShowWordsOverlay(false);
-    if (pendingFinishRef.current) {
-      pendingFinishRef.current();
-      pendingFinishRef.current = null;
-    }
-  };
-
   const navigateToNextActivity = () => {
     const nextRoute = ACTIVITY_ROUTES[ACTIVITY.WORD_STORY_CHALLENGE];
     router.replace({
       pathname: `/components/${nextRoute}`,
       params: { storyId: book.id, title: book.title },
     });
+  };
+
+  const handleFinishStory = async () => {
+    const report = generateReadingReport();
+    const tappedWords = Object.keys(report.wordFrequency);
+
+    // Use cached words so they're available on replay and after completeActivity
+    const challengeWords =
+      cachedChallengeWords.length > 0
+        ? cachedChallengeWords
+        : (storySession?.challengeWords ?? []);
+
+    if (challengeWords.length > 0) {
+      // Set what happens after the overlay closes
+      pendingFinishRef.current = () => {
+        if (isReplay || storySession?.isReadOnly) {
+          router.back();
+        } else {
+          navigateToNextActivity();
+        }
+      };
+
+      // Only award coins/complete on a real (non-replay) read
+      if (!isReplay && !storySession?.isReadOnly) {
+        await completeActivity(
+          ACTIVITY.STORY_READING,
+          { report },
+          { coins: READING_COINS, words: tappedWords },
+        );
+      }
+
+      setShowWordsOverlay(true);
+    } else {
+      // No challenge words — skip overlay
+      if (isReplay || storySession?.isReadOnly) {
+        router.back();
+      } else {
+        await completeActivity(
+          ACTIVITY.STORY_READING,
+          { report },
+          { coins: READING_COINS, words: tappedWords },
+        );
+        navigateToNextActivity();
+      }
+    }
+  };
+
+  const handleOverlayDone = () => {
+    setShowWordsOverlay(false);
+    if (pendingFinishRef.current) {
+      pendingFinishRef.current();
+      pendingFinishRef.current = null;
+    }
   };
 
   if (loading)
@@ -216,10 +242,14 @@ export default function BookReader() {
         </View>
       </AppBackground>
 
-      {/* ── New Words Overlay — rendered outside AppBackground so it covers everything ── */}
+      {/* New Words Overlay — outside AppBackground so it covers everything */}
       <NewWordsOverlay
         visible={showWordsOverlay}
-        words={storySession?.challengeWords ?? []}
+        words={
+          cachedChallengeWords.length > 0
+            ? cachedChallengeWords
+            : (storySession?.challengeWords ?? [])
+        }
         onDone={handleOverlayDone}
       />
     </ScreenWrapper>
@@ -251,7 +281,13 @@ const styles = StyleSheet.create({
   page: { flex: 1 },
   imageSection: { flex: 4, alignItems: "center" },
   image: { width: "100%", height: "100%", resizeMode: "cover" },
-  textSection: { flex: 2.5, paddingHorizontal: pad.sm, paddingBottom: pad.sm },
+  textSection: {
+    flex: 2.5,
+    paddingHorizontal: pad.sm,
+    paddingBottom: pad.xl,
+    height: "100%",
+    backgroundColor: "#dfd3bd",
+  },
   textScrollContent: { paddingBottom: 40 },
 
   buttons: {

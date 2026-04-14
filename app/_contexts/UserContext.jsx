@@ -309,7 +309,6 @@ export const UserProvider = ({ children }) => {
         STORAGE_KEYS.FIRST_TIME,
         STORAGE_KEYS.USER_ACCOUNT,
       ]);
-      await AsyncStorage.clear();
       setProfiles([]);
       setCurrentProfile(null);
       setUserAccount(null);
