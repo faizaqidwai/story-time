@@ -15,13 +15,16 @@ import {
 } from "react-native";
 import { Image as ExpoImage } from "expo-image";
 import { useRouter } from "expo-router";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { Ionicons } from "@expo/vector-icons";
+import { Stack } from "expo-router";
 import {
   useStoryActivity,
   ACTIVITY_ROUTES,
 } from "../_contexts/StoryActivityContext";
 import AppBackground from "../components/AppBackground";
 import { FONTS } from "../theme";
-import { font, pad, radius, size } from "../theme/tokens"; // ← REPLACES hardcoded numbers
+import { font, pad, radius, size } from "../theme/tokens";
 
 const { height: SH, width: SW } = Dimensions.get("window");
 const isTablet = SW >= 768;
@@ -235,21 +238,26 @@ function ActivityCard({ activity, status, isEnabled, onPress, delay }) {
 // ─────────────────────────────────────────────────────────────────────────────
 export default function StoryHome() {
   const router = useRouter();
+  const insets = useSafeAreaInsets();
   const { currentStory, storySession } = useStoryActivity();
 
   if (!currentStory) {
     return (
-      <View style={styles.center}>
-        <Text style={{ color: C.textMuted, fontSize: font.md }}>
-          Story not available. Please go back.
-        </Text>
-        <TouchableOpacity
-          style={styles.fallbackBtn}
-          onPress={() => router.replace("/home")}
-        >
-          <Text style={styles.fallbackBtnText}>← Back to Home</Text>
-        </TouchableOpacity>
-      </View>
+      <>
+        {/* Hide the default navigator header */}
+        <Stack.Screen options={{ headerShown: false }} />
+        <View style={[styles.center, { paddingTop: insets.top }]}>
+          <Text style={{ color: C.textMuted, fontSize: font.md }}>
+            Story not available. Please go back.
+          </Text>
+          <TouchableOpacity
+            style={styles.fallbackBtn}
+            onPress={() => router.replace("/home")}
+          >
+            <Text style={styles.fallbackBtnText}>← Back to Home</Text>
+          </TouchableOpacity>
+        </View>
+      </>
     );
   }
 
@@ -294,22 +302,38 @@ export default function StoryHome() {
     }).start();
   }, []);
 
-  // const IMAGE_HEIGHT = Math.min(SH * 0.38, 300);
+  // Top padding for the custom header — clears the status bar on both
+  // iPhone (insets.top ≈ 44–59) and iPad (insets.top ≈ 24).
+  const headerPaddingTop = Math.max(insets.top, 8);
 
   return (
     <View style={styles.root}>
+      {/* Tell Expo Router to hide its default header */}
+      <Stack.Screen options={{ headerShown: false }} />
+
+      {/* ── Custom Header ─────────────────────────────────────────────── */}
+      <View style={[styles.customHeader, { paddingTop: headerPaddingTop }]}>
+        <TouchableOpacity
+          style={styles.backButton}
+          onPress={() => router.back()}
+          hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+        >
+          <Ionicons name="chevron-back" size={20} color={C.teal} />
+        </TouchableOpacity>
+
+        <Text style={styles.headerTitle} numberOfLines={1}>
+          {currentStory.title}
+        </Text>
+
+        {/* Spacer keeps title centered */}
+        <View style={styles.headerSpacer} />
+      </View>
+
       <ScrollView
         style={styles.scroll}
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
       >
-        {/* <TouchableOpacity
-        style={styles.backBtn}
-        onPress={() => router.back()}
-        hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
-      >
-        <Text style={styles.backBtnText}>← Back</Text>
-      </TouchableOpacity> */}
         {/* Cover image */}
         <Animated.View
           style={[
@@ -330,9 +354,11 @@ export default function StoryHome() {
             </Text>
           </View>
         </Animated.View>
+
         <Text style={styles.storyIntro} numberOfLines={3}>
           {currentStory.introduction}
         </Text>
+
         {/* Activities */}
         <View style={styles.section}>
           <Text style={styles.sectionHeading}>Activities</Text>
@@ -347,6 +373,7 @@ export default function StoryHome() {
             />
           ))}
         </View>
+
         <View style={{ height: 32 }} />
       </ScrollView>
     </View>
@@ -357,58 +384,72 @@ export default function StoryHome() {
 // STYLES
 // ─────────────────────────────────────────────────────────────────────────────
 const styles = StyleSheet.create({
-  backBtn: {
-    position: "absolute",
-    top: pad.lg,
-    left: pad.md,
-    zIndex: 10,
-    backgroundColor: "rgba(8,8,26,0.6)",
-    borderRadius: radius.sm,
-    paddingHorizontal: pad.sm,
-    paddingVertical: pad.xs,
-  },
-  backBtnText: {
-    fontFamily: FONTS.bold,
-    fontSize: font.md,
-    color: C.teal,
-  },
   root: { flex: 1, backgroundColor: C.bg },
   scroll: { flex: 1 },
   scrollContent: { paddingBottom: 20 },
+
+  // ── Custom header ────────────────────────────────────────────────────────
+  customHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    paddingHorizontal: pad.sm,
+    paddingBottom: pad.sm,
+    backgroundColor: C.bg,
+    borderBottomWidth: 1,
+    borderBottomColor: "rgba(0,188,212,0.12)",
+  },
+  backButton: {
+    width: size.hitSm,
+    height: size.hitSm,
+    borderRadius: size.hitSm / 2,
+    backgroundColor: "rgba(0,188,212,0.08)",
+    borderWidth: 1,
+    borderColor: C.tealBorder,
+    alignItems: "center",
+    justifyContent: "center",
+    flexShrink: 0,
+  },
+  headerTitle: {
+    flex: 1,
+    textAlign: "center",
+    fontFamily: FONTS.bold,
+    fontSize: font.md,
+    color: C.teal,
+    letterSpacing: 0.5,
+    textTransform: "uppercase",
+    marginHorizontal: pad.s,
+    textShadowColor: "rgba(0,188,212,0.4)",
+    textShadowOffset: { width: 0, height: 0 },
+    textShadowRadius: 8,
+  },
+  // Matches backButton width so title stays visually centered
+  headerSpacer: { width: size.hitSm, flexShrink: 0 },
 
   center: {
     flex: 1,
     backgroundColor: C.bg,
     alignItems: "center",
     justifyContent: "center",
-    gap: pad.md, // was: 16
-    padding: pad.xxl, // was: 32
+    gap: pad.md,
+    padding: pad.xxl,
   },
   fallbackBtn: {
     backgroundColor: C.tealDim,
-    borderRadius: radius.lg, // was: 16
+    borderRadius: radius.lg,
     borderWidth: 1,
     borderColor: C.tealBorder,
-    paddingHorizontal: pad.lg, // was: 20
-    paddingVertical: pad.sm, // was: 10
+    paddingHorizontal: pad.lg,
+    paddingVertical: pad.sm,
   },
   fallbackBtnText: {
     fontFamily: FONTS.bold,
-    fontSize: font.md, // was: 14
+    fontSize: font.md,
     color: C.teal,
   },
 
   // Cover image
   imageContainer: { width: "100%", position: "relative", overflow: "hidden" },
   coverImage: { width: "100%", height: "100%" },
-  imageGradient: {
-    position: "absolute",
-    bottom: 0,
-    left: 0,
-    right: 0,
-    height: "20%",
-    //   backgroundColor: "rgba(8,8,26,0.84)",
-  },
   textOverlay: {
     position: "absolute",
     bottom: 0,
@@ -419,10 +460,11 @@ const styles = StyleSheet.create({
     paddingTop: pad.s,
     height: "20%",
     backgroundColor: "rgba(8,8,26,0.84)",
+    justifyContent: "flex-end",
   },
   storyTitle: {
     fontFamily: FONTS.bold,
-    fontSize: font.xl, // was: 22
+    fontSize: font.xl,
     color: "#E0F7FA",
     lineHeight: font.xl * 1.2,
     textShadowColor: "rgba(0,0,0,0.7)",
@@ -435,7 +477,7 @@ const styles = StyleSheet.create({
     paddingBottom: pad.sm,
     paddingTop: pad.sm,
     fontFamily: FONTS.light,
-    fontSize: font.md, // was: 13
+    fontSize: font.md,
     color: "rgba(224,247,250,0.7)",
     lineHeight: font.sm * 1.3,
     fontStyle: "italic",
@@ -445,26 +487,26 @@ const styles = StyleSheet.create({
   },
 
   // Activities section
-  section: { paddingHorizontal: pad.md, paddingTop: pad.lg }, // was: 16, 22
+  section: { paddingHorizontal: pad.md, paddingTop: pad.lg },
   sectionHeading: {
     fontFamily: FONTS.bold,
-    fontSize: font.s, // was: 11
+    fontSize: font.s,
     color: C.textMuted,
     letterSpacing: 2.5,
     textTransform: "uppercase",
-    marginBottom: pad.sm, // was: 14
+    marginBottom: pad.sm,
   },
 
   // Activity card
   activityCard: {
     flexDirection: "row",
     alignItems: "center",
-    borderRadius: radius.lg, // was: 16
+    borderRadius: radius.lg,
     borderWidth: 1.5,
-    paddingVertical: pad.sm, // was: 13
-    paddingHorizontal: pad.sm, // was: 13
-    marginBottom: pad.sm, // was: 11
-    gap: pad.sm, // was: 13
+    paddingVertical: pad.sm,
+    paddingHorizontal: pad.sm,
+    marginBottom: pad.sm,
+    gap: pad.sm,
     elevation: 2,
     shadowColor: "#00BCD4",
     shadowOffset: { width: 0, height: 0 },
@@ -474,16 +516,16 @@ const styles = StyleSheet.create({
 
   // Icon box
   iconBox: {
-    width: size.avatarMd, // was: 60
+    width: size.avatarMd,
     height: size.avatarMd,
-    borderRadius: radius.lg, // was: 16
+    borderRadius: radius.lg,
     borderWidth: 1.5,
     alignItems: "center",
     justifyContent: "center",
     flexShrink: 0,
   },
   icon: {
-    width: size.iconMd, // was: 36
+    width: size.iconMd,
     height: size.iconMd,
   },
 
@@ -491,19 +533,19 @@ const styles = StyleSheet.create({
   textCol: { flex: 1, gap: pad.xs / 2 },
   activityTitle: {
     fontFamily: FONTS.bold,
-    fontSize: font.lg, // was: 16
+    fontSize: font.lg,
     letterSpacing: 0.15,
     lineHeight: font.lg * 1.15,
   },
   activitySubtitle: {
     fontFamily: FONTS.light,
-    fontSize: font.sm, // was: 13
+    fontSize: font.sm,
     lineHeight: font.sm * 1.2,
   },
 
   // Right column
   rightCol: {
-    width: (isTablet) => 90,
+    width: isTablet ? 110 : 90,
     alignItems: "flex-end",
     gap: pad.s,
     flexShrink: 0,
@@ -511,17 +553,16 @@ const styles = StyleSheet.create({
 
   // Status badge
   statusBadge: {
-    borderRadius: radius.sm, // was: 10
+    borderRadius: radius.sm,
     borderWidth: 1,
-    paddingHorizontal: pad.sm, // was: 7
+    paddingHorizontal: pad.sm,
     paddingVertical: pad.s,
     alignItems: "center",
     minWidth: 80,
   },
   statusText: {
     fontFamily: FONTS.bold,
-    fontSize: font.md, // was: 14
+    fontSize: font.md,
     letterSpacing: 0.2,
-    // padding: 5,
   },
 });

@@ -89,7 +89,7 @@ const Login = () => {
       <View style={styles.glowBR} pointerEvents="none" />
 
       {/* Back button — same style as AccountChoice */}
-      <TouchableOpacity
+      {/* <TouchableOpacity
         style={[
           styles.backBtn,
           {
@@ -106,7 +106,7 @@ const Login = () => {
         <Text style={[styles.backIcon, { fontSize: sz.backIconFontSize }]}>
           ‹
         </Text>
-      </TouchableOpacity>
+      </TouchableOpacity> */}
 
       <SafeAreaView style={styles.safeArea} edges={["top", "bottom"]}>
         <KeyboardAvoidingView

@@ -22,7 +22,7 @@
     "ios": {
       "bundleIdentifier": "com.codeklusters.storytime",
       "buildNumber": "1",
-      "supportsTablet": false,
+      "supportsTablet": true,
       "infoPlist": {
         "UIBackgroundModes": [
           "audio",
