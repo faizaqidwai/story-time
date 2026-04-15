@@ -207,8 +207,9 @@ const Account = () => {
   };
 
   const handleProfilePress = (profile) => {
+    console.log("=================== PROFILE SWITECHED ================");
     selectProfile(profile);
-    router.push("/home");
+    router.replace("/home");
   };
   const handleAddNew = () => {
     setEditingProfile(null);

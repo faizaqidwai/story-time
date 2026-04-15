@@ -41,7 +41,7 @@ import {
 
 import { SafeAreaView } from "react-native-safe-area-context";
 import { FONTS } from "./theme";
-import { font, pad, radius, size, isTablet } from "./theme/tokens"; // ← REPLACES useTheme
+import { font, pad, radius, size, isTablet } from "./theme/tokens";
 
 // ── Module-level guards ───────────────────────────────────────────────────────
 let _finishHandled = false;
@@ -55,7 +55,7 @@ const YELLOW = "#FFD54F";
 const CORAL = "#FF7043";
 
 // Header height — how far the main content sits below the side UI
-const HEADER_HEIGHT = isTablet ? 260 : 190; // was: s.headerHeight
+const HEADER_HEIGHT = isTablet ? 260 : 190;
 
 const _tutorialCheckedAccounts = new Set();
 const storyCacheKey = (levelNumber) => `@stories_cache_v2_level_${levelNumber}`;
@@ -219,17 +219,17 @@ function AccessModeBanner({
 
 const bannerS = StyleSheet.create({
   container: {
-    marginHorizontal: pad.sm, // was: s.bannerMarginH → 15/22
-    marginBottom: pad.s, // was: s.bannerMarginBottom → 8/12
-    borderRadius: radius.md, // was: s.bannerBorderRadius → 14/18
+    marginHorizontal: pad.sm,
+    marginBottom: pad.s,
+    borderRadius: radius.md,
     borderWidth: 1.5,
-    paddingHorizontal: pad.sm, // was: s.bannerPaddingH → 14/20
-    paddingVertical: pad.sm / 1.4, // was: s.bannerPaddingV → 10/14
+    paddingHorizontal: pad.sm,
+    paddingVertical: pad.sm / 1.4,
     flexDirection: "row",
     alignItems: "center",
     gap: 8,
   },
-  emoji: { fontSize: font.lg }, // was: s.bannerEmojiFontSize → 16/22
+  emoji: { fontSize: font.lg },
   text: {
     fontFamily: FONTS.light,
     flex: 1,
@@ -524,11 +524,11 @@ const tutS = StyleSheet.create({
     left: 20,
     right: 20,
     backgroundColor: "rgba(10,18,36,0.97)",
-    borderRadius: radius.xl, // was: s.tutorialTooltipBorderRadius → 18/24
+    borderRadius: radius.xl,
     borderWidth: 1.5,
     borderColor: "rgba(0,188,212,0.55)",
-    paddingVertical: pad.md, // was: s.tutorialTooltipPaddingV → 16/22
-    paddingHorizontal: pad.md, // was: s.tutorialTooltipPaddingH → 18/26
+    paddingVertical: pad.md,
+    paddingHorizontal: pad.md,
     shadowColor: "#000",
     shadowOffset: { width: 0, height: 6 },
     shadowOpacity: 0.5,
@@ -551,7 +551,7 @@ const tutS = StyleSheet.create({
   },
   topBar: {
     position: "absolute",
-    top: Platform.OS === "ios" ? (isTablet ? 68 : 56) : isTablet ? 44 : 32, // was: s.tutorialTopBarTop_ios/android
+    top: Platform.OS === "ios" ? (isTablet ? 68 : 56) : isTablet ? 44 : 32,
     left: 20,
     right: 20,
     flexDirection: "row",
@@ -591,7 +591,7 @@ const tutS = StyleSheet.create({
   dotActive: { width: isTablet ? 26 : 18, backgroundColor: TEAL },
   navBar: {
     position: "absolute",
-    bottom: Platform.OS === "ios" ? (isTablet ? 56 : 44) : isTablet ? 36 : 24, // was: s.tutorialNavBottom_ios/android
+    bottom: Platform.OS === "ios" ? (isTablet ? 56 : 44) : isTablet ? 36 : 24,
     left: 20,
     right: 20,
     flexDirection: "row",
@@ -672,7 +672,6 @@ function MiniBird() {
     outputRange: [0, -6],
   });
 
-  // Container and body scale up on tablet
   const containerH = isTablet ? 100 : 72;
   const bodyW = isTablet ? 94 : 68;
   const bodyH = isTablet ? 70 : 50;
@@ -1060,9 +1059,9 @@ function MiniCat() {
 // ─────────────────────────────────────────────────────────────────────────────
 function ProfileIcon({ name }) {
   const initial = name ? name.charAt(0).toUpperCase() : "?";
-  const outerSize = isTablet ? 80 : 60; // was: s.profileIconOuterSize
+  const outerSize = isTablet ? 80 : 60;
   const halfOuter = outerSize / 2;
-  const letterSize = isTablet ? 14 : 10; // was: s.profileIconLetterFontSize
+  const letterSize = isTablet ? 14 : 10;
 
   return (
     <View
@@ -1182,8 +1181,8 @@ function ProfileIcon({ name }) {
 // GAME CARD
 // ─────────────────────────────────────────────────────────────────────────────
 function GameCard({ game, onPress }) {
-  const cardW = isTablet ? 220 : 160; // was: s.gameCardWidth
-  const cardH = isTablet ? 270 : 200; // was: s.gameCardHeight
+  const cardW = isTablet ? 220 : 160;
+  const cardH = isTablet ? 270 : 200;
   const scaleA = useRef(new Animated.Value(1)).current;
   const pressIn = () =>
     Animated.spring(scaleA, {
@@ -1343,7 +1342,6 @@ function LevelBadge({
   progress = 0.62,
   onPress,
 }) {
-  // was: s.levelBadgeRingSize / innerSize / etc.
   const ringSize = isTablet ? 110 : 82;
   const innerSize = isTablet ? 92 : 68;
   const barW = isTablet ? 102 : 76;
@@ -1612,35 +1610,6 @@ const Home = () => {
   const [showTutorial, setShowTutorial] = useState(false);
   const handleTutorialDone = useCallback(() => setShowTutorial(false), []);
 
-  const bgPulse = useRef(new Animated.Value(1)).current;
-  const bgPulse2 = useRef(new Animated.Value(1)).current;
-  const bgPulse3 = useRef(new Animated.Value(1)).current;
-
-  useEffect(() => {
-    const loop = (val, dur, delay = 0) =>
-      setTimeout(
-        () =>
-          Animated.loop(
-            Animated.sequence([
-              Animated.timing(val, {
-                toValue: 1.1,
-                duration: dur,
-                useNativeDriver: true,
-              }),
-              Animated.timing(val, {
-                toValue: 0.92,
-                duration: dur,
-                useNativeDriver: true,
-              }),
-            ]),
-          ).start(),
-        delay,
-      );
-    loop(bgPulse, 2500, 0);
-    loop(bgPulse2, 2000, 700);
-    loop(bgPulse3, 1700, 1300);
-  }, []);
-
   useEffect(() => {
     return () => {
       sound?.stopAsync();
@@ -1704,13 +1673,7 @@ const Home = () => {
     setStoryProgressMap({});
     setLocalCompletedIds(new Set());
     setBooks([]);
-    initForProfile(currentProfile).then(() => {
-      loadBooksForLevel(
-        currentProfile.playLevel ?? 1,
-        currentProfile.id,
-        currentProfile.playLevel ?? 1,
-      );
-    });
+    initForProfile(currentProfile);
     loadAllStoryProgress(currentProfile.id);
     getPendingProgression(currentProfile.id).then(setPendingProgression);
     if (!userAccount?.id || _tutorialCheckedAccounts.has(userAccount.id)) {
@@ -1741,12 +1704,15 @@ const Home = () => {
     }
     if (prevLoadedLevelRef.current === loadedLevel) return;
     prevLoadedLevelRef.current = loadedLevel;
+    console.log(
+      "[API BOOKS - LOADED LEVEL] :" + currentProfile.name + "Fetch Books",
+    );
     loadBooksForLevel(
       loadedLevel,
       currentProfile.id,
       currentProfile.playLevel ?? 1,
     );
-  }, [loadedLevel, currentProfile?.id]);
+  }, [loadedLevel]);
 
   useEffect(() => {
     if (currentProfile) loadAllStoryProgress(currentProfile.id);
@@ -1909,41 +1875,22 @@ const Home = () => {
         books.length
       : 0;
 
-  // Badge / side icon sizing — from tokens
-  const SIDE_ICON = isTablet ? 80 : 60; // was: s.sideIconSize
-  const BADGE_SIZE = isTablet ? 34 : 26; // was: s.badgeMinWidth / badgeHeight
-  const BADGE_FONT = isTablet ? 14 : 11; // was: s.badgeFontSize
-  const SIDE_LEFT = isTablet ? 28 : 20; // was: s.sideLayerLeft
-  const SIDE_TOP = isTablet ? 12 : 8; // was: s.sideLayerTop
-  const BADGE_ANCHOR_TOP = isTablet ? 52 : 40; // was: s.levelBadgeAnchorTop
-  const ROW_MB = isTablet ? 32 : 25; // was: s.sideRowMarginBottom
+  const SIDE_ICON = isTablet ? 80 : 60;
+  const BADGE_SIZE = isTablet ? 34 : 26;
+  const BADGE_FONT = isTablet ? 14 : 11;
+  const SIDE_LEFT = isTablet ? 28 : 20;
+  const SIDE_TOP = isTablet ? 12 : 8;
+  const BADGE_ANCHOR_TOP = isTablet ? 52 : 40;
+  const ROW_MB = isTablet ? 32 : 25;
 
   return (
     <>
       <ScreenWrapper>
+        {/* ── Static background — no animation loops ── */}
         <View style={styles.background}>
-          {/* Background circles */}
-          <Animated.View
-            style={[
-              styles.bgCircle,
-              styles.bgCircle1,
-              { transform: [{ scale: bgPulse }] },
-            ]}
-          />
-          <Animated.View
-            style={[
-              styles.bgCircle,
-              styles.bgCircle2,
-              { transform: [{ scale: bgPulse2 }] },
-            ]}
-          />
-          <Animated.View
-            style={[
-              styles.bgCircle,
-              styles.bgCircle3,
-              { transform: [{ scale: bgPulse3 }] },
-            ]}
-          />
+          <View style={[styles.bgCircle, styles.bgCircle1]} />
+          <View style={[styles.bgCircle, styles.bgCircle2]} />
+          <View style={[styles.bgCircle, styles.bgCircle3]} />
 
           <SafeAreaView style={styles.safeTop} edges={["top"]}>
             <ScrollView showsVerticalScrollIndicator={false}>
@@ -2000,7 +1947,7 @@ const Home = () => {
                         alignItems: "center",
                       }}
                       activeOpacity={0.8}
-                      onPress={() => router.push("/account")}
+                      onPress={() => router.replace("/account")}
                     >
                       <ProfileIcon name={currentProfile?.name} />
                     </TouchableOpacity>
@@ -2349,6 +2296,8 @@ const BG_CIRCLE3_SIZE = isTablet ? 220 : 150;
 
 const styles = StyleSheet.create({
   background: { flex: 1, backgroundColor: DARK_BG },
+
+  // Static circles — same positions/sizes as before, no animation
   bgCircle: { position: "absolute", borderRadius: 999, opacity: 0.18 },
   bgCircle1: {
     width: BG_CIRCLE1_SIZE,
@@ -2371,6 +2320,7 @@ const styles = StyleSheet.create({
     bottom: isTablet ? 280 : 200,
     right: isTablet ? -60 : -40,
   },
+
   center: {
     flex: 1,
     justifyContent: "center",
@@ -2385,13 +2335,13 @@ const styles = StyleSheet.create({
     fontSize: font.xl,
     color: "#fff",
     marginBottom: pad.xs,
-  }, // was: s.sectionTitleFontSize → 20/28
+  },
   sectionTagline: {
     fontFamily: FONTS.light,
     fontSize: font.sm,
     color: "rgba(255,255,255,0.45)",
     marginBottom: pad.sm,
-  }, // was: s.sectionTaglineFontSize
+  },
 
   viewOnlyContainer: {
     alignItems: "center",

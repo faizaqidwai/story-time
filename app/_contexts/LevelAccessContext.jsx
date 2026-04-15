@@ -67,23 +67,22 @@ export const LevelAccessProvider = ({ children }) => {
   const currentProfileIdRef = useRef(null);
 
   // ── Build context object for any given level number ─────────────────────
-  const buildContext = useCallback(
-    (levelNumber, map) => {
-      const entry = map[levelNumber];
-      if (entry) {
-        return { levelNumber, mode: entry.mode, accessScope: entry.accessScope };
-      }
-      // Level not in map → view only (locked)
-      return { levelNumber, mode: "VIEW_ONLY", accessScope: "NONE" };
-    },
-    [],
-  );
+  const buildContext = useCallback((levelNumber, map) => {
+    const entry = map[levelNumber];
+    if (entry) {
+      return { levelNumber, mode: entry.mode, accessScope: entry.accessScope };
+    }
+    // Level not in map → view only (locked)
+    return { levelNumber, mode: "VIEW_ONLY", accessScope: "NONE" };
+  }, []);
 
   // ── Fetch level map from backend ─────────────────────────────────────────
   const fetchLevelMap = useCallback(async (profileId, currentPlayLevel) => {
     try {
       setLevelMapLoading(true);
-      const response = await apiClient.get(`/user/levels?profileId=${profileId}`);
+      const response = await apiClient.get(
+        `/user/levels?profileId=${profileId}`,
+      );
 
       // response shape: { currentLevel, subscription, levels: [{level, mode, accessScope}] }
       const map = {};
@@ -94,10 +93,7 @@ export const LevelAccessProvider = ({ children }) => {
       setLevelMap(map);
 
       // Persist for offline use
-      await AsyncStorage.setItem(
-        LEVEL_MAP_KEY(profileId),
-        JSON.stringify(map),
-      );
+      await AsyncStorage.setItem(LEVEL_MAP_KEY(profileId), JSON.stringify(map));
 
       return map;
     } catch (err) {
@@ -243,9 +239,7 @@ export const LevelAccessProvider = ({ children }) => {
 export const useLevelAccess = () => {
   const ctx = useContext(LevelAccessContext);
   if (!ctx) {
-    throw new Error(
-      "useLevelAccess must be used within LevelAccessProvider",
-    );
+    throw new Error("useLevelAccess must be used within LevelAccessProvider");
   }
   return ctx;
 };
