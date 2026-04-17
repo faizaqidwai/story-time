@@ -14,7 +14,7 @@ export const DEVICE_SIZES = {
 
   // ── IntroCarousel ───────────────────────────────────────────
   carousel: {
-    topHeightRatio: 0.3, // fraction of screen height
+    topHeightRatio: 0.28, // fraction of screen height
     botHeightRatio: 0.7,
     titleFontSize: 32,
     titleLineHeight: 39,
@@ -82,7 +82,7 @@ export const DEVICE_SIZES = {
     cardSubLineHeight: 17,
     cardArrowFontSize: 26,
     cardIconSize: 24,
-    cardIconBoxSize: 54,
+    cardIconBoxSize: 61,
     cardPadding: 18,
     cardBorderRadius: 20,
     dividerTextFontSize: 16,

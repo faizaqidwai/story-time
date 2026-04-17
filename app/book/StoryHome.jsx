@@ -166,10 +166,10 @@ function ActivityCard({ activity, status, isEnabled, onPress, delay }) {
             },
           ]}
         >
-          <Image
+          <ExpoImage
             source={activity.image}
             style={[styles.icon, { opacity: isInactive ? 0.25 : 1 }]}
-            resizeMode="contain"
+            contentFit="contain"
           />
         </View>
 
@@ -240,7 +240,14 @@ export default function StoryHome() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const { currentStory, storySession } = useStoryActivity();
-
+  const headerOp = useRef(new Animated.Value(0)).current;
+  useEffect(() => {
+    Animated.timing(headerOp, {
+      toValue: 1,
+      duration: 480,
+      useNativeDriver: true,
+    }).start();
+  }, []);
   if (!currentStory) {
     return (
       <>
@@ -292,15 +299,6 @@ export default function StoryHome() {
         });
     }
   };
-
-  const headerOp = useRef(new Animated.Value(0)).current;
-  useEffect(() => {
-    Animated.timing(headerOp, {
-      toValue: 1,
-      duration: 480,
-      useNativeDriver: true,
-    }).start();
-  }, []);
 
   // Top padding for the custom header — clears the status bar on both
   // iPhone (insets.top ≈ 44–59) and iPad (insets.top ≈ 24).

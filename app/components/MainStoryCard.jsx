@@ -10,9 +10,9 @@ import {
   Easing,
   Dimensions,
 } from "react-native";
-import { Image as ExpoImage } from "expo-image";
 import { FONTS } from "../../app/theme";
 import { useTheme } from "../../app/_contexts/ThemeContext";
+import { Image as ExpoImage } from "expo-image";
 
 const { width: SW } = Dimensions.get("window");
 const T = {
@@ -400,10 +400,10 @@ export default function MainStoryCard({
                   { transform: [{ scale: pulseAnims[i] }] },
                 ]}
               >
-                <Image
+                <ExpoImage
                   source={step.image}
                   style={[s.stepImage, isCompleted && s.stepImageDone]}
-                  resizeMode="contain"
+                  contentFit="contain"
                 />
                 <Text style={[s.stepLabel, isActive && s.stepLabelActive]}>
                   {step.label}

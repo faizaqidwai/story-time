@@ -334,10 +334,10 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
   },
-  backIcon: { fontFamily: FONTS.bold, fontSize: font.lg, color: C.teal },
+  backIcon: { fontFamily: FONTS.bold, fontSize: font.xl, color: C.teal },
   title: {
     fontFamily: FONTS.bold,
-    fontSize: font.xl,
+    fontSize: font.xxl,
     color: C.textPri,
     letterSpacing: 0.3,
   },
@@ -361,7 +361,7 @@ const styles = StyleSheet.create({
   },
   planLabel: {
     fontFamily: FONTS.bold,
-    fontSize: font.xs, // was: sz.planLabelFontSize
+    fontSize: font.sm, // was: sz.planLabelFontSize
     color: C.textMuted,
     letterSpacing: 1,
     textTransform: "uppercase",
@@ -369,7 +369,7 @@ const styles = StyleSheet.create({
   },
   planName: {
     fontFamily: FONTS.bold,
-    fontSize: font.h3,
+    fontSize: font.h2,
     color: C.teal,
     letterSpacing: 0.2,
   },
@@ -385,10 +385,10 @@ const styles = StyleSheet.create({
     paddingHorizontal: pad.sm, // was: sz.statusBadgePaddingH
     paddingVertical: pad.xs / 2, // was: sz.statusBadgePaddingV
   },
-  statusText: { fontFamily: FONTS.bold, fontSize: font.s, letterSpacing: 0.3 },
+  statusText: { fontFamily: FONTS.bold, fontSize: font.sm, letterSpacing: 0.3 },
   billingNote: {
     fontFamily: FONTS.light,
-    fontSize: font.sm, // was: sz.nextBillingFontSize
+    fontSize: font.md, // was: sz.nextBillingFontSize
     color: C.textMuted,
     marginBottom: pad.xs,
   },
@@ -401,7 +401,7 @@ const styles = StyleSheet.create({
   },
   upgradeBtnText: {
     fontFamily: FONTS.bold,
-    fontSize: font.md,
+    fontSize: font.lg,
     color: "#08081a",
   },
 
@@ -422,11 +422,11 @@ const styles = StyleSheet.create({
   },
   sectionTitle: {
     fontFamily: FONTS.bold,
-    fontSize: font.sm,
+    fontSize: font.md,
     color: C.textPri,
     letterSpacing: 0.3,
   },
-  sectionLink: { fontFamily: FONTS.bold, fontSize: font.sm, color: C.teal },
+  sectionLink: { fontFamily: FONTS.bold, fontSize: font.md, color: C.teal },
 
   // Card row (payment method preview)
   cardRow: { flexDirection: "row", alignItems: "center" },
@@ -439,14 +439,14 @@ const styles = StyleSheet.create({
   },
   cardChipText: {
     fontFamily: FONTS.bold,
-    fontSize: font.xs,
+    fontSize: font.sm,
     color: "#fff",
     letterSpacing: 0.5,
   },
   cardNum: { fontFamily: FONTS.bold, fontSize: font.md, color: C.textPri },
   cardExp: {
     fontFamily: FONTS.light,
-    fontSize: font.s,
+    fontSize: font.sm,
     color: C.textMuted,
     marginTop: 2,
   },
@@ -458,7 +458,11 @@ const styles = StyleSheet.create({
     paddingHorizontal: pad.s,
     paddingVertical: 3,
   },
-  defaultBadgeText: { fontFamily: FONTS.bold, fontSize: font.s, color: C.teal },
+  defaultBadgeText: {
+    fontFamily: FONTS.bold,
+    fontSize: font.sm,
+    color: C.teal,
+  },
 
   // Add card CTA (dashed)
   addCardBtn: {
@@ -469,7 +473,7 @@ const styles = StyleSheet.create({
     paddingVertical: pad.sm,
     alignItems: "center",
   },
-  addCardText: { fontFamily: FONTS.bold, fontSize: font.sm, color: C.teal },
+  addCardText: { fontFamily: FONTS.bold, fontSize: font.md, color: C.teal },
 
   // History hint
   historyHint: {

@@ -376,7 +376,7 @@ const DescribeObjectGame = ({ onExit }) => {
   const doExit = () => {
     Speech.stop();
     if (typeof onExit === "function") onExit();
-    else router.replace("/home");
+    else router.dismiss(2);
   };
 
   const [queue, setQueue] = useState(() => shuffle(objectPool).slice(0, 3));
@@ -714,7 +714,7 @@ const DescribeObjectGame = ({ onExit }) => {
           finishMode={true}
           onClose={() => {
             setBadgeVisible(false);
-            router.replace("/home");
+            router.dismiss(2);
           }}
           onPlay={() => {
             setBadgeVisible(false);

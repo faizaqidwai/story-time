@@ -15,6 +15,7 @@ import {
   Platform,
 } from "react-native";
 import React, { useEffect, useState, useRef, useCallback } from "react";
+import { Image as ExpoImage } from "expo-image";
 import { Audio } from "expo-av";
 import { useRouter } from "expo-router";
 import AsyncStorage from "@react-native-async-storage/async-storage";
@@ -538,14 +539,14 @@ const tutS = StyleSheet.create({
   },
   tooltipTitle: {
     fontFamily: FONTS.bold,
-    fontSize: font.lg,
+    fontSize: font.xl,
     color: TEAL,
     marginBottom: pad.s,
     letterSpacing: 0.3,
   },
   tooltipDesc: {
     fontFamily: FONTS.light,
-    fontSize: font.sm,
+    fontSize: font.md,
     color: "#B2EBF2",
     lineHeight: font.sm * 1.5,
   },
@@ -569,7 +570,7 @@ const tutS = StyleSheet.create({
   },
   skipText: {
     fontFamily: FONTS.bold,
-    fontSize: font.sm,
+    fontSize: font.md,
     color: "rgba(255,255,255,0.8)",
   },
   dotsRow: {
@@ -620,7 +621,7 @@ const tutS = StyleSheet.create({
   },
   navBtnText: {
     fontFamily: FONTS.bold,
-    fontSize: font.lg,
+    fontSize: font.xl,
     color: TEAL,
     letterSpacing: 0.3,
   },
@@ -629,7 +630,7 @@ const tutS = StyleSheet.create({
   navBtnTextDisabled: { color: "rgba(255,255,255,0.2)" },
   stepCounter: {
     fontFamily: FONTS.regular,
-    fontSize: font.sm,
+    fontSize: font.md,
     color: "rgba(255,255,255,0.45)",
     letterSpacing: 0.5,
   },
@@ -1420,10 +1421,10 @@ function LevelBadge({
           <Text
             style={{
               fontFamily: FONTS.bold,
-              fontSize: isTablet ? 11 : 8,
+              fontSize: font.xs,
               color: TEAL,
               letterSpacing: isTablet ? 2.5 : 2,
-              marginBottom: 1,
+              marginBottom: 3,
               opacity: 0.9,
             }}
           >
@@ -1432,9 +1433,9 @@ function LevelBadge({
           <Text
             style={{
               fontFamily: FONTS.bold,
-              fontSize: isTablet ? 36 : 26,
+              fontSize: font.h2,
               color: "#E0F7FA",
-              lineHeight: isTablet ? 38 : 28,
+              // lineHeight: isTablet ? 38 : 28,
               textShadowColor: TEAL,
               textShadowOffset: { width: 0, height: 0 },
               textShadowRadius: 8,
@@ -1537,6 +1538,7 @@ const Home = () => {
   } = useLevelAccess();
 
   const pendingSessionRef = useRef(null);
+  const lastInitializedProfileIdRef = useRef(null);
   const [localCompletedIds, setLocalCompletedIds] = useState(new Set());
   const [sound, setSound] = useState(null);
   const [books, setBooks] = useState([]);
@@ -1610,12 +1612,32 @@ const Home = () => {
   const [showTutorial, setShowTutorial] = useState(false);
   const handleTutorialDone = useCallback(() => setShowTutorial(false), []);
 
+  // ADD THIS anywhere among your useEffects
   useEffect(() => {
+    console.log("[HOME LIFECYCLE] Home MOUNTED");
     return () => {
-      sound?.stopAsync();
-      sound?.unloadAsync();
+      console.log("[HOME LIFECYCLE] Home UNMOUNTED");
     };
   }, []);
+
+  useEffect(() => {
+    if (!books?.length) return;
+
+    const allImages = [
+      ...books
+        .filter(
+          (book) => typeof book.cover === "string" && book.cover.length > 0,
+        )
+        .map((book) => book.cover),
+      ...books.flatMap((book) =>
+        book.pages
+          .filter((p) => typeof p.image === "string" && p.image.length > 0)
+          .map((p) => p.image),
+      ),
+    ];
+
+    allImages.forEach((uri) => ExpoImage.prefetch(uri));
+  }, [books]);
 
   const loadStoriesFromCache = async (levelNumber) => {
     try {
@@ -1669,11 +1691,23 @@ const Home = () => {
 
   useEffect(() => {
     if (!currentProfile) return;
+    // Guard: don't re-initialize if this profile was already initialized
+    if (lastInitializedProfileIdRef.current === currentProfile.id) {
+      return;
+    }
+    lastInitializedProfileIdRef.current = currentProfile.id;
     resetSessionForProfileSwitch();
     setStoryProgressMap({});
     setLocalCompletedIds(new Set());
     setBooks([]);
-    initForProfile(currentProfile);
+    initForProfile(currentProfile).then(() => {
+      loadBooksForLevel(
+        currentProfile.playLevel ?? 1,
+        currentProfile.id,
+        currentProfile.playLevel ?? 1,
+      );
+    });
+
     loadAllStoryProgress(currentProfile.id);
     getPendingProgression(currentProfile.id).then(setPendingProgression);
     if (!userAccount?.id || _tutorialCheckedAccounts.has(userAccount.id)) {
@@ -1702,11 +1736,10 @@ const Home = () => {
       prevLoadedLevelRef.current = loadedLevel;
       return;
     }
-    if (prevLoadedLevelRef.current === loadedLevel) return;
+    if (prevLoadedLevelRef.current === loadedLevel) {
+      return;
+    }
     prevLoadedLevelRef.current = loadedLevel;
-    console.log(
-      "[API BOOKS - LOADED LEVEL] :" + currentProfile.name + "Fetch Books",
-    );
     loadBooksForLevel(
       loadedLevel,
       currentProfile.id,
@@ -1832,6 +1865,7 @@ const Home = () => {
         <ActivityIndicator size="large" color="#9652D9" />
       </View>
     );
+
   if (!currentProfile)
     return (
       <View style={styles.center}>
@@ -1958,13 +1992,14 @@ const Home = () => {
                       collapsable={false}
                       style={{ alignItems: "center" }}
                     >
-                      <Image
+                      <ExpoImage
                         source={require("../assets/img/diamond.png")}
                         style={{
                           width: SIDE_ICON,
                           height: SIDE_ICON,
                           resizeMode: "contain",
                         }}
+                        cachePolicy="memory-disk"
                       />
                       <View
                         style={{
@@ -2014,13 +2049,14 @@ const Home = () => {
                       onPress={() => router.push("/components/WordBag")}
                       activeOpacity={0.8}
                     >
-                      <Image
+                      <ExpoImage
                         source={require("../assets/img/bag.png")}
                         style={{
                           width: SIDE_ICON,
                           height: SIDE_ICON,
                           resizeMode: "contain",
                         }}
+                        cachePolicy="memory-disk"
                       />
                       <View
                         style={{
@@ -2059,13 +2095,14 @@ const Home = () => {
                       collapsable={false}
                       style={{ alignItems: "center" }}
                     >
-                      <Image
+                      <ExpoImage
                         source={require("../assets/img/coin.png")}
                         style={{
                           width: SIDE_ICON,
                           height: SIDE_ICON,
                           resizeMode: "contain",
                         }}
+                        cachePolicy="memory-disk"
                       />
                       <View
                         style={{
@@ -2278,7 +2315,7 @@ const Home = () => {
         onClose={() => setShowPremiumModal(false)}
         onUpgrade={() => {
           setShowPremiumModal(false);
-          router.push("/subscription");
+          router.push("/components/billing/PlanBillingScreen");
         }}
       />
     </>
@@ -2338,7 +2375,7 @@ const styles = StyleSheet.create({
   },
   sectionTagline: {
     fontFamily: FONTS.light,
-    fontSize: font.sm,
+    fontSize: font.md,
     color: "rgba(255,255,255,0.45)",
     marginBottom: pad.sm,
   },

@@ -15,7 +15,7 @@ import {
 } from "react-native";
 import { FONTS } from "../theme";
 import { font, pad, radius, size } from "../theme/tokens"; // ← ADD
-
+import { Image as ExpoImage } from "expo-image";
 const { width: SW, height: SH } = Dimensions.get("window");
 
 const C = {
@@ -69,7 +69,7 @@ function PileIcon({ source, size: iconSize = 72, glowColor }) {
       }}
     >
       {PILE_OFFSETS.map((o, i) => (
-        <Image
+        <ExpoImage
           key={i}
           source={source}
           style={{
@@ -87,7 +87,7 @@ function PileIcon({ source, size: iconSize = 72, glowColor }) {
             shadowOpacity: 0.7,
             shadowRadius: 10,
           }}
-          resizeMode="contain"
+          contentFit="contain"
         />
       ))}
     </View>

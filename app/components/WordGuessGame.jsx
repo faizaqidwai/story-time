@@ -21,6 +21,7 @@ import { useRouter, useLocalSearchParams } from "expo-router";
 import WORDS from "../data/words.json";
 import GameEnd from "./GameEnd";
 import BadgePopup from "./BadgePopup";
+import { Image as ExpoImage } from "expo-image";
 import {
   useStoryActivity,
   ACTIVITY,
@@ -682,13 +683,13 @@ const WordGuessGame = ({ onExit }) => {
             visible={cloudVisible}
             onMergeComplete={handleCloudMerge}
           />
-          <Image
+          <ExpoImage
             source={require("../../assets/img/owl.png")}
             style={[
               styles.birdImg,
               { width: isTablet ? 150 : 100, height: isTablet ? 150 : 100 },
             ]}
-            resizeMode="contain"
+            contentFit="contain"
           />
           <View
             style={[styles.flowerCard, { width: isTablet ? "78%" : "92%" }]}

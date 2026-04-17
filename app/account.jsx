@@ -32,6 +32,9 @@ import { useSubscription } from "./_contexts/SubscriptionContext";
 import PlanBadge from "./components/PlanBadge";
 import { useTheme } from "./_contexts/ThemeContext";
 import { logoutLocally } from "./services/apiClient";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { Ionicons } from "@expo/vector-icons";
+import { font, pad, radius, size } from "./theme/tokens";
 
 const AGE_OPTIONS = [
   { label: "-5", value: 5 },
@@ -42,7 +45,22 @@ const AGE_OPTIONS = [
   { label: "10", value: 10 },
   { label: "10+", value: 11 },
 ];
-
+const C = {
+  bg: "#08081a",
+  teal: "#00BCD4",
+  tealDim: "rgba(0,188,212,0.13)",
+  tealBorder: "rgba(0,188,212,0.35)",
+  green: "#4CAF50",
+  greenDim: "rgba(76,175,80,0.22)",
+  greenBorder: "rgba(76,175,80,0.55)",
+  textPri: "#E0F7FA",
+  textMuted: "#7a9aaa",
+  lockedBg: "rgba(255,255,255,0.03)",
+  lockedBorder: "rgba(255,255,255,0.07)",
+  lockedText: "rgba(255,255,255,0.18)",
+  lockedIconBg: "rgba(255,255,255,0.04)",
+  lockedIconBorder: "rgba(255,255,255,0.08)",
+};
 const START_LEVEL = [
   { label: "1", value: 1 },
   { label: "2", value: 2 },
@@ -111,7 +129,7 @@ function AccountOptionCard({ image, label, onPress, sz }) {
         <Text
           style={{
             fontFamily: FONTS.bold,
-            fontSize: sz.optionCardLabelFontSize,
+            fontSize: font.md,
             letterSpacing: 0.2,
             textAlign: "center",
             color: COLORS.teal,
@@ -132,6 +150,7 @@ const Account = () => {
   const { execute } = useApiCall();
   const { sizes } = useTheme();
   const sz = sizes.account;
+  const insets = useSafeAreaInsets();
 
   const {
     profiles,
@@ -208,6 +227,7 @@ const Account = () => {
 
   const handleProfilePress = (profile) => {
     console.log("=================== PROFILE SWITECHED ================");
+
     selectProfile(profile);
     router.replace("/home");
   };
@@ -339,6 +359,7 @@ const Account = () => {
     ]);
   };
 
+  const headerPaddingTop = Math.max(insets.top, 8);
   // Build styles from tokens
   const styles = StyleSheet.create({
     safeArea: { flex: 1, paddingTop: 0 },
@@ -378,7 +399,7 @@ const Account = () => {
     currentProfileText: {
       fontFamily: FONTS.regular,
       color: COLORS.purpleLight,
-      fontSize: sz.bannerTextFontSize,
+      fontSize: font.lg,
       textAlign: "center",
     },
     listContent: {
@@ -650,7 +671,34 @@ const Account = () => {
     planBadgeRow: {
       flexDirection: "row",
       justifyContent: "flex-end",
-      marginBottom: 10,
+      //  marginBottom: 10,
+      // right: 20,
+      //backgroundColor: "pink",
+      // position: "absolute",
+      width: "90%",
+    },
+    customHeader: {
+      flexDirection: "row",
+      alignItems: "center",
+      paddingHorizontal: pad.sm,
+      paddingBottom: pad.sm,
+      backgroundColor: C.bg,
+      borderBottomWidth: 1,
+      borderBottomColor: "rgba(0,188,212,0.12)",
+    },
+    backButton: {
+      width: size.hitSm,
+      height: size.hitSm,
+      borderRadius: size.hitSm / 2,
+      backgroundColor: "rgba(0,188,212,0.08)",
+      borderWidth: 1,
+      borderColor: C.tealBorder,
+      alignItems: "center",
+      justifyContent: "center",
+      flexShrink: 0,
+    },
+    headerSpacer: {
+      flex: 1,
     },
   });
 
@@ -658,6 +706,20 @@ const Account = () => {
     <ScreenWrapper>
       <AppBackground>
         <SafeAreaView style={styles.safeArea} edges={[]}>
+          <View style={[styles.customHeader, { paddingTop: headerPaddingTop }]}>
+            <TouchableOpacity
+              style={styles.backButton}
+              onPress={() => router.replace("/home")}
+              hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+            >
+              <Ionicons name="chevron-back" size={20} color={C.teal} />
+            </TouchableOpacity>
+            <View style={styles.headerSpacer} />
+            <View style={styles.planBadgeRow}>
+              <PlanBadge planName={planName} isFree={isFree} />
+            </View>
+            <View style={styles.headerSpacer} />
+          </View>
           <KeyboardAvoidingView
             style={{ flex: 1 }}
             behavior={Platform.OS === "ios" ? "padding" : "height"}

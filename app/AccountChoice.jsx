@@ -22,7 +22,7 @@ import { LinearGradient } from "expo-linear-gradient";
 import { FONTS } from "./theme";
 import { Audio } from "expo-av";
 import { useTheme } from "./_contexts/ThemeContext";
-
+import { font, pad, radius, size } from "./theme/tokens"; // ← ADD
 const { width: SW, height: SH } = Dimensions.get("window");
 
 const C = {
@@ -169,10 +169,10 @@ export default function AccountChoice() {
         style={[
           styles.inner,
           {
-            paddingTop:
-              Platform.OS === "ios"
-                ? sz.innerPaddingTop_ios
-                : sz.innerPaddingTop_android,
+            // paddingTop:
+            //   Platform.OS === "ios"
+            //     ? sz.innerPaddingTop_ios
+            //     : sz.innerPaddingTop_android,
             paddingBottom:
               Platform.OS === "ios"
                 ? sz.innerPaddingBottom_ios
@@ -236,22 +236,21 @@ export default function AccountChoice() {
                   { width: sz.cardIconBoxSize, height: sz.cardIconBoxSize },
                 ]}
               >
-                <Text style={[styles.cardIcon, { fontSize: sz.cardIconSize }]}>
+                <Text style={[styles.cardIcon, { fontSize: font.xxl }]}>
                   ✨
                 </Text>
               </View>
               <View style={styles.cardText}>
-                <Text
-                  style={[styles.cardTitle, { fontSize: sz.cardTitleFontSize }]}
-                >
+                <Text style={[styles.cardTitle, { fontSize: font.xl }]}>
                   Create New Account
                 </Text>
                 <Text
                   style={[
                     styles.cardSub,
                     {
-                      fontSize: sz.cardSubFontSize,
+                      fontSize: font.md,
                       lineHeight: sz.cardSubLineHeight,
+                      marginTop: 3,
                     },
                   ]}
                 >
@@ -314,17 +313,18 @@ export default function AccountChoice() {
                 <Text
                   style={[
                     styles.cardTitle,
-                    { color: C.textSec, fontSize: sz.cardTitleFontSize },
+                    { color: C.textSec, fontSize: font.lg + 1 },
                   ]}
                 >
-                  I Already Have an Account
+                  Already Have an Account
                 </Text>
                 <Text
                   style={[
                     styles.cardSub,
                     {
-                      fontSize: sz.cardSubFontSize,
+                      fontSize: font.md,
                       lineHeight: sz.cardSubLineHeight,
+                      marginTop: 3,
                     },
                   ]}
                 >
@@ -349,7 +349,7 @@ export default function AccountChoice() {
             styles.footerNote,
             {
               opacity: card2Op,
-              fontSize: sz.footerFontSize,
+              fontSize: font.md,
               lineHeight: sz.footerLineHeight,
               marginTop: sz.footerMarginTop,
             },
@@ -449,9 +449,10 @@ const styles = StyleSheet.create({
     backgroundColor: "rgba(255,255,255,0.07)",
     alignItems: "center",
     justifyContent: "center",
+    //  height: "20%",
     flexShrink: 0,
   },
-  cardIcon: {},
+  // cardIcon: { width: "100%" },
   cardText: { flex: 1, gap: 3 },
 
   cardTitle: {

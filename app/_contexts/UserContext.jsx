@@ -371,7 +371,6 @@ export const UserProvider = ({ children }) => {
     }),
     [currentProfile, profiles, isLoading, isFirstTime, isLogout, userAccount],
   );
-
   return (
     <UserContext.Provider value={contextValue}>{children}</UserContext.Provider>
   );

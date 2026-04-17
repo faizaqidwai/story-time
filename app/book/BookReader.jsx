@@ -286,7 +286,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: pad.sm,
     paddingBottom: pad.xl,
     height: "100%",
-    backgroundColor: "#dfd3bd",
+    //  backgroundColor: "#dfd3bd",
   },
   textScrollContent: { paddingBottom: 40 },
 
@@ -338,7 +338,7 @@ const styles = StyleSheet.create({
   headerTitle: {
     flex: 1,
     textAlign: "center",
-    fontSize: font.md,
+    fontSize: font.xxl,
     fontFamily: FONTS.bold,
     color: "#00BCD4",
     letterSpacing: 0.3,

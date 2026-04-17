@@ -99,11 +99,20 @@ const RootLayout = () => {
               }}
             />
 
+            <Stack.Screen
+              name="home"
+              options={{
+                headerShown: false,
+                animation: "slide_from_right",
+                contentStyle: { backgroundColor: "#1a1a2e" },
+              }}
+            />
+
             {/* 👤 Account — dynamic plan badge replaces old hardcoded FREE badge */}
             <Stack.Screen
               name="account"
               options={{
-                headerShown: true,
+                headerShown: false,
                 title: "",
                 headerBackTitle: "",
                 animation: "slide_from_left",

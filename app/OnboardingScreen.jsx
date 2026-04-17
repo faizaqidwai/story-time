@@ -18,6 +18,7 @@ import { useUser } from "./_contexts/UserContext";
 import { registerUser } from "./services/authService";
 import { FONTS } from "./theme";
 import { useTheme } from "./_contexts/ThemeContext";
+import { font, pad, radius, size } from "./theme/tokens"; // ← ADD
 
 const { width, height } = Dimensions.get("window");
 
@@ -336,7 +337,7 @@ export default function OnboardingScreen() {
               style={[
                 styles.stepTag,
                 {
-                  fontSize: sz.stepTagFontSize,
+                  fontSize: font.sm,
                   letterSpacing: sz.stepTagLetterSpacing,
                   marginBottom: sz.stepTagMarginBottom,
                 },
@@ -348,7 +349,7 @@ export default function OnboardingScreen() {
               style={[
                 styles.stepHeading,
                 {
-                  fontSize: sz.stepHeadingFontSize,
+                  fontSize: font.xxl,
                   lineHeight: sz.stepHeadingLineHeight,
                   marginBottom: sz.stepHeadingMarginBottom,
                 },
@@ -360,7 +361,7 @@ export default function OnboardingScreen() {
               style={[
                 styles.stepHint,
                 {
-                  fontSize: sz.stepHintFontSize,
+                  fontSize: font.md,
                   marginBottom: sz.stepHintMarginBottom,
                 },
               ]}
@@ -394,7 +395,7 @@ export default function OnboardingScreen() {
                   style={[
                     styles.dialogueText,
                     {
-                      fontSize: sz.dialogueFontSize,
+                      fontSize: font.xl + 1,
                       lineHeight: sz.dialogueLineHeight,
                     },
                   ]}
@@ -443,12 +444,9 @@ export default function OnboardingScreen() {
                       disabled={!userName.trim()}
                     >
                       <Text
-                        style={[
-                          styles.continueBtnText,
-                          { fontSize: sz.continueFontSize },
-                        ]}
+                        style={[styles.continueBtnText, { fontSize: font.xl }]}
                       >
-                        Continue ➜
+                        Continue
                       </Text>
                     </TouchableOpacity>
                   </View>
@@ -471,10 +469,7 @@ export default function OnboardingScreen() {
                         activeOpacity={0.8}
                       >
                         <Text
-                          style={[
-                            styles.ageBtnText,
-                            { fontSize: sz.ageFontSize },
-                          ]}
+                          style={[styles.ageBtnText, { fontSize: font.h3 }]}
                         >
                           {opt.label}
                         </Text>
@@ -505,12 +500,7 @@ export default function OnboardingScreen() {
                       >
                         🧒
                       </Text>
-                      <Text
-                        style={[
-                          styles.genderLabel,
-                          { fontSize: sz.genderLabelFontSize },
-                        ]}
-                      >
+                      <Text style={[styles.genderLabel, { fontSize: font.h3 }]}>
                         Boy
                       </Text>
                     </TouchableOpacity>
@@ -534,12 +524,7 @@ export default function OnboardingScreen() {
                       >
                         👧
                       </Text>
-                      <Text
-                        style={[
-                          styles.genderLabel,
-                          { fontSize: sz.genderLabelFontSize },
-                        ]}
-                      >
+                      <Text style={[styles.genderLabel, { fontSize: font.h3 }]}>
                         Girl
                       </Text>
                     </TouchableOpacity>

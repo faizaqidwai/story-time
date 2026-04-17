@@ -42,7 +42,7 @@ import { Audio } from "expo-av";
 import { Video, ResizeMode } from "expo-av";
 import { FONTS, COLORS } from "./theme";
 import { useTheme } from "./_contexts/ThemeContext";
-
+import { font, pad, radius, size } from "./theme/tokens"; // ← ADD
 // ── Timing (ms) ────────────────────────────────────────────────────────────
 const LINE_DUR = 480;
 const LINE_STAGGER = 550;
@@ -264,7 +264,7 @@ const ACTIVITY_STEPS = [
 const SLIDES = [
   {
     id: "3",
-    accentColor: "#31ad79",
+    accentColor: "#00BCD4",
     title: "Get Ready to Explore Story Time",
     subtitle: "With Your Child!",
     descSide: "left",
@@ -548,7 +548,7 @@ function StoryCardMini({ story }) {
           <Text
             style={{
               fontFamily: FONTS.bold,
-              fontSize: 8,
+              fontSize: font.xs,
               color: "#08081a",
               letterSpacing: 1.2,
             }}
@@ -562,7 +562,7 @@ function StoryCardMini({ story }) {
             bottom: 0,
             left: 0,
             right: 0,
-            height: "30%",
+            height: "25%",
             backgroundColor: "rgba(13,13,36,0.78)",
           }}
         />
@@ -576,12 +576,15 @@ function StoryCardMini({ story }) {
             paddingBottom: 9,
             paddingTop: 6,
             zIndex: 1,
+            justifyContent: "center",
+            height: "25%",
+            // alignItems: "center",
           }}
         >
           <Text
             style={{
               fontFamily: FONTS.bold,
-              fontSize: sz.storyCardTitleFontSize,
+              fontSize: font.lg,
               color: "#E0F7FA",
               lineHeight: sz.storyCardTitleLineHeight,
               textShadowColor: "rgba(0,0,0,0.7)",
@@ -596,7 +599,7 @@ function StoryCardMini({ story }) {
       <Text
         style={{
           fontFamily: FONTS.light,
-          fontSize: sz.storyCardIntroFontSize,
+          fontSize: font.s,
           color: "#7a9aaa",
           fontStyle: "italic",
           lineHeight: sz.storyCardIntroLineHeight,
@@ -1252,19 +1255,19 @@ export default function IntroCarousel() {
           },
         ]}
       >
-        <Dots
+        {/* <Dots
           total={SLIDES.length}
           current={currentIndex}
           accentColor={accent}
-        />
+        /> */}
 
         {isLast ? (
           <TouchableOpacity
             style={[
               styles.getStartedBtn,
               {
-                backgroundColor: accent,
-                shadowColor: accent,
+                backgroundColor: "#00BCD4",
+                shadowColor: "#00BCD4",
                 paddingHorizontal: sz.getStartedPaddingH,
                 paddingVertical: sz.getStartedPaddingV,
               },
@@ -1351,10 +1354,10 @@ const styles = StyleSheet.create({
     zIndex: 30,
     paddingHorizontal: 14,
     paddingVertical: 7,
-    backgroundColor: "rgba(255,255,255,0.06)",
+    backgroundColor: "pink",
     borderRadius: 20,
     borderWidth: 1.5,
-    borderColor: "rgba(255,255,255,0.12)",
+    borderColor: "pink",
   },
   skipText: {
     fontFamily: FONTS.regular,

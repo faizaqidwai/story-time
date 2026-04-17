@@ -19,6 +19,7 @@ import React from "react";
 import { View, Text, StyleSheet, TouchableOpacity } from "react-native";
 import { useRouter } from "expo-router";
 import { FONTS } from "../theme";
+import { font, pad, radius, size } from "../theme/tokens";
 
 const C = {
   teal: "#00BCD4",
@@ -29,8 +30,8 @@ const C = {
 
 export default function PlanBadge({ planName, isFree }) {
   const router = useRouter();
-  const color  = isFree ? C.textMuted : C.yellow;
-  const bg     = isFree ? "rgba(255,255,255,0.05)" : "rgba(255,213,79,0.10)";
+  const color = isFree ? C.textMuted : C.yellow;
+  const bg = isFree ? "rgba(255,255,255,0.05)" : "rgba(255,213,79,0.10)";
   const border = isFree ? "rgba(255,255,255,0.10)" : "rgba(255,213,79,0.35)";
 
   return (
@@ -61,7 +62,7 @@ const s = StyleSheet.create({
   dot: { fontSize: 8 },
   label: {
     fontFamily: FONTS.bold,
-    fontSize: 11,
+    fontSize: font.md,
     letterSpacing: 0.3,
   },
 });

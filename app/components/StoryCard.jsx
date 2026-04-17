@@ -362,10 +362,10 @@ function StoryCard({
                       },
                     ]}
                   >
-                    <Image
+                    <ExpoImage
                       source={step.image}
                       style={[styles.stepImage, isDone && styles.stepImageDone]}
-                      resizeMode="contain"
+                      contentFit="contain"
                     />
                   </View>
                   {i < ACTIVITY_STEPS.length - 1 && (

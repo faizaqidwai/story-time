@@ -83,7 +83,7 @@ const styles = StyleSheet.create({
     marginBottom: 10,
   },
   word: {
-    fontSize: font.xl,
+    fontSize: font.h3,
     lineHeight: 40,
     letterSpacing: 1.2,
     color: "#333",
