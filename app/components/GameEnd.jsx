@@ -457,10 +457,10 @@ const GameEnd = ({
           ))}
         {badge === "won" && (
           <Image
-            source={require("../../assets/img/bird_happy.png")}
+            source={require("../../assets/img/minion.png")}
             style={[
               styles.bird,
-              { width: isTablet ? 200 : 140, height: isTablet ? 200 : 140 },
+              { width: isTablet ? 300 : 270, height: isTablet ? 300 : 280 },
             ]}
             resizeMode="contain"
           />

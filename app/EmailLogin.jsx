@@ -23,6 +23,7 @@ import { useApiCall } from "./_hooks/useApiCall";
 import { COLORS, SHADOWS, FONTS } from "./theme";
 import { loginWithEmail, fetchUserAccount } from "./services/authService";
 import { useTheme } from "./_contexts/ThemeContext";
+import { useLocalSearchParams } from "expo-router";
 
 const TEAL = "#00BCD4";
 
@@ -36,6 +37,9 @@ const EmailLogin = () => {
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+
+  const { from } = useLocalSearchParams();
+  const showCreateAccount = from === "accountChoice";
 
   const handleEmailLogin = async () => {
     if (!email.trim() || !password.trim()) {
@@ -70,16 +74,18 @@ const EmailLogin = () => {
       <View style={styles.glowBR} pointerEvents="none" />
 
       {/* Custom header — back button */}
-      <View style={[styles.header, { paddingTop: headerPaddingTop }]}>
-        <TouchableOpacity
-          style={styles.backButton}
-          onPress={() => router.back()}
-          hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-        >
-          <Ionicons name="chevron-back" size={20} color={TEAL} />
-        </TouchableOpacity>
-        <View style={styles.headerSpacer} />
-      </View>
+      {!showCreateAccount && (
+        <View style={[styles.header, { paddingTop: headerPaddingTop }]}>
+          <TouchableOpacity
+            style={styles.backButton}
+            onPress={() => router.back()}
+            hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+          >
+            <Ionicons name="chevron-back" size={20} color={TEAL} />
+          </TouchableOpacity>
+          <View style={styles.headerSpacer} />
+        </View>
+      )}
 
       <KeyboardAvoidingView
         style={{ flex: 1 }}
@@ -179,15 +185,15 @@ const EmailLogin = () => {
           </View>
 
           {/* Back to options */}
-          <TouchableOpacity
-            style={styles.backToOptions}
-            onPress={() => router.back()}
-            activeOpacity={0.7}
-          >
-            <Text style={styles.backToOptionsText}>
-              ← Other sign in options
-            </Text>
-          </TouchableOpacity>
+          {showCreateAccount && (
+            <TouchableOpacity
+              style={styles.backToOptions}
+              onPress={() => router.replace("/AccountChoice")}
+              activeOpacity={0.7}
+            >
+              <Text style={styles.backToOptionsText}>← Create new account</Text>
+            </TouchableOpacity>
+          )}
         </ScrollView>
       </KeyboardAvoidingView>
     </View>

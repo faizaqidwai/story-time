@@ -225,11 +225,10 @@ const Account = () => {
     setIsSavingEmail(false);
   };
 
-  const handleProfilePress = (profile) => {
-    console.log("=================== PROFILE SWITECHED ================");
-
-    selectProfile(profile);
-    router.replace("/home");
+  const handleProfilePress = async (profile) => {
+    console.log("=============== PROFILE SWITCHED ================");
+    await selectProfile(profile);
+    router.back();
   };
   const handleAddNew = () => {
     setEditingProfile(null);
@@ -709,7 +708,7 @@ const Account = () => {
           <View style={[styles.customHeader, { paddingTop: headerPaddingTop }]}>
             <TouchableOpacity
               style={styles.backButton}
-              onPress={() => router.replace("/home")}
+              onPress={() => router.back()}
               hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
             >
               <Ionicons name="chevron-back" size={20} color={C.teal} />

@@ -236,6 +236,19 @@ const DUMMY_STORIES = [
   },
 ];
 
+const C = {
+  bg: "#0d0f22",
+  card: "#111830",
+  teal: "#00BCD4",
+  tealDim: "rgba(0,188,212,0.15)",
+  tealGlow: "rgba(0,188,212,0.35)",
+  yellow: "#FFD54F",
+  yellowDim: "rgba(255,213,79,0.12)",
+  coral: "#FF6B6B",
+  textPri: "#E0F7FA",
+  textMuted: "#7a9aaa",
+  border: "rgba(0,188,212,0.2)",
+};
 // ── Activity icons (same as MainStoryCard) ────────────────────────────────
 const ACTIVITY_STEPS = [
   {
@@ -1262,27 +1275,39 @@ export default function IntroCarousel() {
         /> */}
 
         {isLast ? (
+          // <TouchableOpacity
+          //   style={[
+          //     styles.getStartedBtn,
+          //     {
+          //       backgroundColor: "#00BCD4",
+          //       shadowColor: "#00BCD4",
+          //       paddingHorizontal: sz.getStartedPaddingH,
+          //       paddingVertical: sz.getStartedPaddingV,
+          //     },
+          //   ]}
+          //   onPress={goNext}
+          //   activeOpacity={0.85}
+          // >
+          //   <Text
+          //     style={[
+          //       styles.getStartedText,
+          //       { fontSize: sz.getStartedFontSize },
+          //     ]}
+          //   >
+          //     Get Started ✦
+          //   </Text>
+          // </TouchableOpacity>
+
           <TouchableOpacity
-            style={[
-              styles.getStartedBtn,
-              {
-                backgroundColor: "#00BCD4",
-                shadowColor: "#00BCD4",
-                paddingHorizontal: sz.getStartedPaddingH,
-                paddingVertical: sz.getStartedPaddingV,
-              },
-            ]}
+            style={styles.ctaBtn}
             onPress={goNext}
-            activeOpacity={0.85}
+            activeOpacity={0.88}
           >
-            <Text
-              style={[
-                styles.getStartedText,
-                { fontSize: sz.getStartedFontSize },
-              ]}
-            >
-              Get Started ✦
-            </Text>
+            <View style={styles.ctaBtnInner}>
+              <Text style={styles.ctaEmoji}>✦</Text>
+              <Text style={styles.ctaTxt}>Get Started</Text>
+            </View>
+            <View style={styles.ctaShine} />
           </TouchableOpacity>
         ) : (
           <TouchableOpacity
@@ -1397,5 +1422,42 @@ const styles = StyleSheet.create({
     fontFamily: FONTS.bold,
     color: "#08081a",
     letterSpacing: 0.5,
+  },
+  ctaBtn: {
+    width: "100%",
+    height: 54,
+    borderRadius: 27,
+    backgroundColor: C.teal,
+    alignItems: "center",
+    justifyContent: "center",
+    marginBottom: 12,
+    overflow: "hidden",
+    shadowColor: C.teal,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.5,
+    shadowRadius: 14,
+    elevation: 10,
+  },
+  ctaBtnInner: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+  },
+  ctaEmoji: { fontSize: 18 },
+  ctaTxt: {
+    fontFamily: FONTS.bold,
+    fontSize: 16,
+    color: "#08081a",
+    letterSpacing: 0.3,
+  },
+  ctaShine: {
+    position: "absolute",
+    top: 0,
+    left: "15%",
+    width: "40%",
+    height: "50%",
+    backgroundColor: "rgba(255,255,255,0.18)",
+    borderRadius: 20,
+    transform: [{ rotate: "-15deg" }],
   },
 });

@@ -33,8 +33,6 @@ const Login = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [primaryName, setPrimaryName] = useState("");
 
-  const canGoBack = router.canGoBack();
-
   const handlePrimaryLogin = async () => {
     setIsLoading(true);
     await execute(
@@ -51,7 +49,9 @@ const Login = () => {
         successDisplay: "toast",
         successMessage: "Login Successful",
         errorDisplay: "toast",
-        onSuccess: () => router.replace("/home"),
+        onSuccess: () => {
+          router.back();
+        },
         onError: () => setIsLoading(false),
       },
     );
@@ -73,26 +73,6 @@ const Login = () => {
       <View style={styles.glowBR} pointerEvents="none" />
 
       <SafeAreaView style={styles.safeArea} edges={["top", "bottom"]}>
-        {canGoBack && (
-          <TouchableOpacity
-            onPress={() => router.back()}
-            style={[
-              styles.backBtn,
-              {
-                width: sz.backBtnSize,
-                height: sz.backBtnSize,
-                borderRadius: sz.backBtnSize / 2,
-                top: Platform.OS === "ios" ? 54 : 20,
-              },
-            ]}
-            activeOpacity={0.8}
-            hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-          >
-            <Text style={[styles.backIcon, { fontSize: sz.backIconFontSize }]}>
-              ‹
-            </Text>
-          </TouchableOpacity>
-        )}
         <ScrollView
           contentContainerStyle={styles.scrollContent}
           keyboardShouldPersistTaps="handled"
@@ -160,12 +140,12 @@ const Login = () => {
           {/* Divider */}
           <View style={[styles.dividerRow, {}]}>
             <View style={styles.dividerLine} />
-            {/* <Text
+            <Text
               style={[styles.dividerText, { fontSize: sz.dividerFontSize }]}
             >
               OR
-            </Text> */}
-            {/* <View style={styles.dividerLine} /> */}
+            </Text>
+            <View style={styles.dividerLine} />
           </View>
 
           {/* Email Login Button */}
@@ -181,7 +161,7 @@ const Login = () => {
             <View style={styles.emailLoginTextCol}>
               {/* <Text style={styles.emailLoginTitle}>Continue with Email</Text> */}
               <Text style={styles.emailLoginSubtitle}>
-                Click to Login with different account
+                Login with different account
               </Text>
             </View>
             <Text style={styles.emailLoginArrow}>›</Text>

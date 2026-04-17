@@ -17,7 +17,7 @@ import {
 import React, { useEffect, useState, useRef, useCallback } from "react";
 import { Image as ExpoImage } from "expo-image";
 import { Audio } from "expo-av";
-import { useRouter } from "expo-router";
+import { useRouter, useFocusEffect } from "expo-router";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 
 import StoryCard from "./components/StoryCard";
@@ -1538,7 +1538,9 @@ const Home = () => {
   } = useLevelAccess();
 
   const pendingSessionRef = useRef(null);
+  const prevLoadedLevelRef = useRef(null);
   const lastInitializedProfileIdRef = useRef(null);
+  const profileSwitchInProgressRef = useRef(false);
   const [localCompletedIds, setLocalCompletedIds] = useState(new Set());
   const [sound, setSound] = useState(null);
   const [books, setBooks] = useState([]);
@@ -1661,6 +1663,12 @@ const Home = () => {
 
   const loadBooksForLevel = useCallback(
     async (levelNumber, profileId, playLevel) => {
+      console.log(
+        "[LOAD LEVEL BOOKS] level:",
+        levelNumber,
+        "profileId:",
+        profileId,
+      );
       setLoading(true);
       const cached = await loadStoriesFromCache(levelNumber);
       if (cached) {
@@ -1675,6 +1683,12 @@ const Home = () => {
   );
 
   const _fetchBooksFromApi = async (levelNumber, profileId, playLevel) => {
+    console.log(
+      "[FETCH BOOKS FROM API] level:",
+      levelNumber,
+      "profileId:",
+      profileId,
+    );
     try {
       const data =
         levelNumber === playLevel
@@ -1690,24 +1704,38 @@ const Home = () => {
   };
 
   useEffect(() => {
+    console.log(
+      "[PROFILE EFFECT] fired — current:",
+      currentProfile?.name,
+      "ref:",
+      lastInitializedProfileIdRef.current,
+    );
     if (!currentProfile) return;
     // Guard: don't re-initialize if this profile was already initialized
-    if (lastInitializedProfileIdRef.current === currentProfile.id) {
-      return;
-    }
+    if (lastInitializedProfileIdRef.current === currentProfile.id) return;
+
     lastInitializedProfileIdRef.current = currentProfile.id;
+    profileSwitchInProgressRef.current = true;
+
     resetSessionForProfileSwitch();
     setStoryProgressMap({});
     setLocalCompletedIds(new Set());
     setBooks([]);
+    console.log(
+      "[PROFILE EFFECT] about to init — name:",
+      currentProfile.name,
+      "id:",
+      currentProfile.id,
+    );
     initForProfile(currentProfile).then(() => {
+      profileSwitchInProgressRef.current = false; // ← clear flag
+      prevLoadedLevelRef.current = currentProfile.playLevel ?? 1;
       loadBooksForLevel(
         currentProfile.playLevel ?? 1,
         currentProfile.id,
         currentProfile.playLevel ?? 1,
       );
     });
-
     loadAllStoryProgress(currentProfile.id);
     getPendingProgression(currentProfile.id).then(setPendingProgression);
     if (!userAccount?.id || _tutorialCheckedAccounts.has(userAccount.id)) {
@@ -1729,16 +1757,10 @@ const Home = () => {
     }
   }, [currentProfile?.id]);
 
-  const prevLoadedLevelRef = useRef(null);
   useEffect(() => {
     if (!currentProfile) return;
-    if (prevLoadedLevelRef.current === null) {
-      prevLoadedLevelRef.current = loadedLevel;
-      return;
-    }
-    if (prevLoadedLevelRef.current === loadedLevel) {
-      return;
-    }
+    if (profileSwitchInProgressRef.current) return; // ← skip during profile switch
+    if (prevLoadedLevelRef.current === loadedLevel) return;
     prevLoadedLevelRef.current = loadedLevel;
     loadBooksForLevel(
       loadedLevel,
@@ -1751,20 +1773,24 @@ const Home = () => {
     if (currentProfile) loadAllStoryProgress(currentProfile.id);
   }, [storySession?.nextActivityIndex, storySession?.storyId]);
 
-  useEffect(() => {
-    if (!storySession || storySession.nextActivityIndex < 4 || showFinish)
-      return;
-    pendingSessionRef.current = storySession;
-    const challengeWords = storySession.challengeWords || [];
-    const rewards = storySession.totalRewards;
-    setFinishData({
-      coins: rewards.coins || 0,
-      diamonds: DIAMONDS_PER_FINISH,
-      words: challengeWords.length,
-      sampleWords: challengeWords.slice(0, 8).map((w) => w.name || w),
-    });
-    setShowFinish(true);
-  }, [storySession?.nextActivityIndex, storySession?.storyId]);
+  useFocusEffect(
+    useCallback(() => {
+      if (_finishHandled) return; // ← add this guard
+      if (!storySession || storySession.nextActivityIndex < 4 || showFinish)
+        return;
+      _finishHandled = false; // reset for fresh journey
+      pendingSessionRef.current = storySession;
+      const challengeWords = storySession.challengeWords || [];
+      const rewards = storySession.totalRewards;
+      setFinishData({
+        coins: rewards.coins || 0,
+        diamonds: DIAMONDS_PER_FINISH,
+        words: challengeWords.length,
+        sampleWords: challengeWords.slice(0, 8).map((w) => w.name || w),
+      });
+      setShowFinish(true);
+    }, [storySession?.nextActivityIndex, storySession?.storyId, showFinish]),
+  );
 
   const handleStoryPress = async (story, storyIndex) => {
     _finishHandled = false;
@@ -1981,7 +2007,7 @@ const Home = () => {
                         alignItems: "center",
                       }}
                       activeOpacity={0.8}
-                      onPress={() => router.replace("/account")}
+                      onPress={() => router.push("/account")}
                     >
                       <ProfileIcon name={currentProfile?.name} />
                     </TouchableOpacity>

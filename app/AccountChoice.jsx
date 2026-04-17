@@ -220,7 +220,7 @@ export default function AccountChoice() {
               ]}
               onPress={() => {
                 playSound(require("../assets/sounds/sparkle.mp3"));
-                setTimeout(() => router.push("/OnboardingScreen"), 1000);
+                setTimeout(() => router.replace("/OnboardingScreen"), 1000);
               }}
               activeOpacity={0.88}
             >
@@ -295,7 +295,10 @@ export default function AccountChoice() {
               ]}
               onPress={() => {
                 playSound(require("../assets/sounds/sparkle.mp3"));
-                setTimeout(() => router.push("/login"), 1000);
+                setTimeout(
+                  () => router.replace("/EmailLogin?from=accountChoice"),
+                  1000,
+                );
               }}
               activeOpacity={0.88}
             >

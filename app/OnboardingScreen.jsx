@@ -244,7 +244,9 @@ export default function OnboardingScreen() {
       useNativeDriver: true,
     }).start();
     setTimeout(() => {
-      if (defaultProfile) router.replace("/home");
+      if (defaultProfile) {
+        router.replace("/home");
+      }
     }, 700);
   };
 

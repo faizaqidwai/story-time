@@ -804,7 +804,7 @@ const BadgePopup = ({
         </Animated.View>
 
         <Animated.Image
-          source={require("../../assets/img/bird_happy.png")}
+          source={require("../../assets/img/minion.png")}
           style={[
             styles.bird,
             { transform: [{ translateY: slideAnim }, { scale: birdBounce }] },
@@ -1035,7 +1035,7 @@ const styles = StyleSheet.create({
     position: "absolute",
     bottom: 62,
     alignSelf: "center",
-    width: 190,
-    height: 190,
+    width: 250,
+    height: 250,
   },
 });

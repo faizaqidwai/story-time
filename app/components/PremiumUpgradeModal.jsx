@@ -201,13 +201,29 @@ const PremiumUpgradeModal = ({ visible, onClose, onUpgrade }) => {
       backdropOp.setValue(0);
       cardY.setValue(60);
       cardOp.setValue(0);
-      vpAnims.forEach((a) => { a.slide.setValue(30); a.op.setValue(0); });
+      vpAnims.forEach((a) => {
+        a.slide.setValue(30);
+        a.op.setValue(0);
+      });
 
       // Backdrop + card entrance
       Animated.parallel([
-        Animated.timing(backdropOp, { toValue: 1, duration: 300, useNativeDriver: true }),
-        Animated.spring(cardY, { toValue: 0, friction: 7, tension: 60, useNativeDriver: true }),
-        Animated.timing(cardOp, { toValue: 1, duration: 280, useNativeDriver: true }),
+        Animated.timing(backdropOp, {
+          toValue: 1,
+          duration: 300,
+          useNativeDriver: true,
+        }),
+        Animated.spring(cardY, {
+          toValue: 0,
+          friction: 7,
+          tension: 60,
+          useNativeDriver: true,
+        }),
+        Animated.timing(cardOp, {
+          toValue: 1,
+          duration: 280,
+          useNativeDriver: true,
+        }),
       ]).start();
 
       // Value props stagger
@@ -215,8 +231,17 @@ const PremiumUpgradeModal = ({ visible, onClose, onUpgrade }) => {
         Animated.sequence([
           Animated.delay(300 + i * 80),
           Animated.parallel([
-            Animated.timing(a.op, { toValue: 1, duration: 250, useNativeDriver: true }),
-            Animated.spring(a.slide, { toValue: 0, friction: 6, tension: 80, useNativeDriver: true }),
+            Animated.timing(a.op, {
+              toValue: 1,
+              duration: 250,
+              useNativeDriver: true,
+            }),
+            Animated.spring(a.slide, {
+              toValue: 0,
+              friction: 6,
+              tension: 80,
+              useNativeDriver: true,
+            }),
           ]),
         ]).start();
       });
@@ -224,16 +249,36 @@ const PremiumUpgradeModal = ({ visible, onClose, onUpgrade }) => {
       // Pulse loop on crown
       Animated.loop(
         Animated.sequence([
-          Animated.timing(pulseAnim, { toValue: 1.08, duration: 900, easing: Easing.inOut(Easing.sin), useNativeDriver: true }),
-          Animated.timing(pulseAnim, { toValue: 0.94, duration: 900, easing: Easing.inOut(Easing.sin), useNativeDriver: true }),
+          Animated.timing(pulseAnim, {
+            toValue: 1.08,
+            duration: 900,
+            easing: Easing.inOut(Easing.sin),
+            useNativeDriver: true,
+          }),
+          Animated.timing(pulseAnim, {
+            toValue: 0.94,
+            duration: 900,
+            easing: Easing.inOut(Easing.sin),
+            useNativeDriver: true,
+          }),
         ]),
       ).start();
 
       // Glow loop
       Animated.loop(
         Animated.sequence([
-          Animated.timing(glowAnim, { toValue: 1, duration: 1200, easing: Easing.inOut(Easing.sin), useNativeDriver: true }),
-          Animated.timing(glowAnim, { toValue: 0, duration: 1200, easing: Easing.inOut(Easing.sin), useNativeDriver: true }),
+          Animated.timing(glowAnim, {
+            toValue: 1,
+            duration: 1200,
+            easing: Easing.inOut(Easing.sin),
+            useNativeDriver: true,
+          }),
+          Animated.timing(glowAnim, {
+            toValue: 0,
+            duration: 1200,
+            easing: Easing.inOut(Easing.sin),
+            useNativeDriver: true,
+          }),
         ]),
       ).start();
     }
@@ -241,36 +286,72 @@ const PremiumUpgradeModal = ({ visible, onClose, onUpgrade }) => {
 
   const handleClose = () => {
     Animated.parallel([
-      Animated.timing(backdropOp, { toValue: 0, duration: 220, useNativeDriver: true }),
-      Animated.timing(cardOp, { toValue: 0, duration: 200, useNativeDriver: true }),
-      Animated.timing(cardY, { toValue: 60, duration: 220, useNativeDriver: true }),
+      Animated.timing(backdropOp, {
+        toValue: 0,
+        duration: 220,
+        useNativeDriver: true,
+      }),
+      Animated.timing(cardOp, {
+        toValue: 0,
+        duration: 200,
+        useNativeDriver: true,
+      }),
+      Animated.timing(cardY, {
+        toValue: 60,
+        duration: 220,
+        useNativeDriver: true,
+      }),
     ]).start(() => onClose?.());
   };
 
   const handleUpgrade = () => {
     Animated.parallel([
-      Animated.timing(backdropOp, { toValue: 0, duration: 200, useNativeDriver: true }),
-      Animated.timing(cardOp, { toValue: 0, duration: 180, useNativeDriver: true }),
+      Animated.timing(backdropOp, {
+        toValue: 0,
+        duration: 200,
+        useNativeDriver: true,
+      }),
+      Animated.timing(cardOp, {
+        toValue: 0,
+        duration: 180,
+        useNativeDriver: true,
+      }),
     ]).start(() => onUpgrade?.());
   };
 
   if (!visible) return null;
 
   return (
-    <Modal transparent visible={visible} animationType="none" onRequestClose={handleClose}>
+    <Modal
+      transparent
+      visible={visible}
+      animationType="none"
+      onRequestClose={handleClose}
+    >
       <View style={s.shell}>
         {/* Backdrop */}
         <Animated.View style={[s.backdrop, { opacity: backdropOp }]} />
 
         {/* Tap backdrop to close */}
-        <TouchableOpacity style={s.backdropTap} activeOpacity={1} onPress={handleClose} />
+        <TouchableOpacity
+          style={s.backdropTap}
+          activeOpacity={1}
+          onPress={handleClose}
+        />
 
         {/* Card */}
         <Animated.View
-          style={[s.card, { opacity: cardOp, transform: [{ translateY: cardY }] }]}
+          style={[
+            s.card,
+            { opacity: cardOp, transform: [{ translateY: cardY }] },
+          ]}
         >
           {/* Close button */}
-          <TouchableOpacity style={s.closeBtn} onPress={handleClose} activeOpacity={0.7}>
+          <TouchableOpacity
+            style={s.closeBtn}
+            onPress={handleClose}
+            activeOpacity={0.7}
+          >
             <Text style={s.closeTxt}>✕</Text>
           </TouchableOpacity>
 
@@ -280,7 +361,8 @@ const PremiumUpgradeModal = ({ visible, onClose, onUpgrade }) => {
           {/* Headline */}
           <Text style={s.headline}>Unlock Every Story</Text>
           <Text style={s.subline}>
-            Your child is ready to go further.{"\n"}Premium opens the full world of learning.
+            Your child is ready to go further.{"\n"}Premium opens the full world
+            of learning.
           </Text>
 
           {/* Value props */}
@@ -298,7 +380,11 @@ const PremiumUpgradeModal = ({ visible, onClose, onUpgrade }) => {
           </View>
 
           {/* CTA Button */}
-          <TouchableOpacity style={s.ctaBtn} onPress={handleUpgrade} activeOpacity={0.88}>
+          <TouchableOpacity
+            style={s.ctaBtn}
+            onPress={handleUpgrade}
+            activeOpacity={0.88}
+          >
             <View style={s.ctaBtnInner}>
               <Text style={s.ctaEmoji}>⚡</Text>
               <Text style={s.ctaTxt}>Upgrade to Premium</Text>
@@ -307,7 +393,11 @@ const PremiumUpgradeModal = ({ visible, onClose, onUpgrade }) => {
           </TouchableOpacity>
 
           {/* Dismiss link */}
-          <TouchableOpacity onPress={handleClose} activeOpacity={0.6} style={s.dismissWrap}>
+          <TouchableOpacity
+            onPress={handleClose}
+            activeOpacity={0.6}
+            style={s.dismissWrap}
+          >
             <Text style={s.dismissTxt}>Maybe later</Text>
           </TouchableOpacity>
         </Animated.View>
