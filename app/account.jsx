@@ -13,10 +13,13 @@ import {
   KeyboardAvoidingView,
   Platform,
   Animated,
+  Easing,
+  Dimensions,
   Image,
 } from "react-native";
-import React, { useState, useRef } from "react";
+import React, { useState, useRef, useEffect } from "react";
 import { useRouter } from "expo-router";
+import { Image as ExpoImage } from "expo-image";
 import { SafeAreaView } from "react-native-safe-area-context";
 import ScreenWrapper from "./components/ScreenWrapper";
 import AppBackground from "./components/AppBackground";
@@ -36,6 +39,8 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import { font, pad, radius, size } from "./theme/tokens";
 
+const { width: SW } = Dimensions.get("window");
+
 const AGE_OPTIONS = [
   { label: "-5", value: 5 },
   { label: "6", value: 6 },
@@ -45,15 +50,20 @@ const AGE_OPTIONS = [
   { label: "10", value: 10 },
   { label: "10+", value: 11 },
 ];
+
 const C = {
   bg: "#08081a",
+  card: "#111830",
   teal: "#00BCD4",
   tealDim: "rgba(0,188,212,0.13)",
   tealBorder: "rgba(0,188,212,0.35)",
+  yellow: "#FFD54F",
+  border: "rgba(0,188,212,0.2)",
   green: "#4CAF50",
   greenDim: "rgba(76,175,80,0.22)",
   greenBorder: "rgba(76,175,80,0.55)",
   textPri: "#E0F7FA",
+  textSec: "#B0BEC5",
   textMuted: "#7a9aaa",
   lockedBg: "rgba(255,255,255,0.03)",
   lockedBorder: "rgba(255,255,255,0.07)",
@@ -61,6 +71,7 @@ const C = {
   lockedIconBg: "rgba(255,255,255,0.04)",
   lockedIconBorder: "rgba(255,255,255,0.08)",
 };
+
 const START_LEVEL = [
   { label: "1", value: 1 },
   { label: "2", value: 2 },
@@ -74,9 +85,448 @@ const START_LEVEL = [
 ];
 
 const TEAL = "#00BCD4";
-const CORAL = "#FF7043";
 const YELLOW = "#FFD54F";
 const PINK = "#EC407A";
+
+// ─────────────────────────────────────────────────────────────────────────────
+// PROFILE LIMIT MODAL
+// mode: "upgrade" — free/basic plan, needs premium to add multiple profiles
+//       "limit"   — already paid but hit the plan's profile cap
+// ─────────────────────────────────────────────────────────────────────────────
+const UPGRADE_PROPS = [
+  { emoji: "👨‍👩‍👧‍👦", text: "Create a profile for every child" },
+  { emoji: "📊", text: "Separate progress tracking per child" },
+  { emoji: "🎯", text: "Individual reading levels & word bags" },
+  { emoji: "✨", text: "Full access to all stories & activities" },
+];
+
+const LIMIT_PROPS = [
+  { emoji: "👤", text: "You've used all available profile slots" },
+  { emoji: "⬆️", text: "Upgrade to unlock more profiles" },
+  { emoji: "📊", text: "Keep each child's progress separate" },
+  { emoji: "🎯", text: "Individual reading levels per profile" },
+];
+
+function ProfileLimitModal({ visible, mode, onClose, onUpgrade }) {
+  const backdropOp = useRef(new Animated.Value(0)).current;
+  const cardY = useRef(new Animated.Value(60)).current;
+  const cardOp = useRef(new Animated.Value(0)).current;
+  const pulseAnim = useRef(new Animated.Value(1)).current;
+  const glowAnim = useRef(new Animated.Value(0)).current;
+
+  const isUpgrade = mode === "upgrade";
+  const propList = isUpgrade ? UPGRADE_PROPS : LIMIT_PROPS;
+
+  const vpAnims = useRef(
+    Array.from({ length: 4 }, () => ({
+      slide: new Animated.Value(30),
+      op: new Animated.Value(0),
+    })),
+  ).current;
+
+  useEffect(() => {
+    if (visible) {
+      // Reset all values
+      backdropOp.setValue(0);
+      cardY.setValue(60);
+      cardOp.setValue(0);
+      vpAnims.forEach((a) => {
+        a.slide.setValue(30);
+        a.op.setValue(0);
+      });
+
+      // Backdrop + card entrance
+      Animated.parallel([
+        Animated.timing(backdropOp, {
+          toValue: 1,
+          duration: 300,
+          useNativeDriver: true,
+        }),
+        Animated.spring(cardY, {
+          toValue: 0,
+          friction: 7,
+          tension: 60,
+          useNativeDriver: true,
+        }),
+        Animated.timing(cardOp, {
+          toValue: 1,
+          duration: 280,
+          useNativeDriver: true,
+        }),
+      ]).start();
+
+      // Value props stagger
+      vpAnims.forEach((a, i) => {
+        Animated.sequence([
+          Animated.delay(300 + i * 80),
+          Animated.parallel([
+            Animated.timing(a.op, {
+              toValue: 1,
+              duration: 250,
+              useNativeDriver: true,
+            }),
+            Animated.spring(a.slide, {
+              toValue: 0,
+              friction: 6,
+              tension: 80,
+              useNativeDriver: true,
+            }),
+          ]),
+        ]).start();
+      });
+
+      // Pulse loop on icon
+      Animated.loop(
+        Animated.sequence([
+          Animated.timing(pulseAnim, {
+            toValue: 1.08,
+            duration: 900,
+            easing: Easing.inOut(Easing.sin),
+            useNativeDriver: true,
+          }),
+          Animated.timing(pulseAnim, {
+            toValue: 0.94,
+            duration: 900,
+            easing: Easing.inOut(Easing.sin),
+            useNativeDriver: true,
+          }),
+        ]),
+      ).start();
+
+      // Glow loop
+      Animated.loop(
+        Animated.sequence([
+          Animated.timing(glowAnim, {
+            toValue: 1,
+            duration: 1200,
+            easing: Easing.inOut(Easing.sin),
+            useNativeDriver: true,
+          }),
+          Animated.timing(glowAnim, {
+            toValue: 0,
+            duration: 1200,
+            easing: Easing.inOut(Easing.sin),
+            useNativeDriver: true,
+          }),
+        ]),
+      ).start();
+    }
+  }, [visible]);
+
+  const animateOut = (cb) => {
+    Animated.parallel([
+      Animated.timing(backdropOp, {
+        toValue: 0,
+        duration: 220,
+        useNativeDriver: true,
+      }),
+      Animated.timing(cardOp, {
+        toValue: 0,
+        duration: 200,
+        useNativeDriver: true,
+      }),
+      Animated.timing(cardY, {
+        toValue: 60,
+        duration: 220,
+        useNativeDriver: true,
+      }),
+    ]).start(() => cb?.());
+  };
+
+  const handleClose = () => animateOut(onClose);
+  const handleUpgrade = () => animateOut(onUpgrade);
+
+  const glowOpacity = glowAnim.interpolate({
+    inputRange: [0, 1],
+    outputRange: [0.3, 0.8],
+  });
+  const glowScale = glowAnim.interpolate({
+    inputRange: [0, 1],
+    outputRange: [0.85, 1.15],
+  });
+
+  if (!visible) return null;
+
+  return (
+    <Modal
+      transparent
+      visible={visible}
+      animationType="none"
+      onRequestClose={handleClose}
+    >
+      <View style={plm.shell}>
+        {/* Backdrop */}
+        <Animated.View style={[plm.backdrop, { opacity: backdropOp }]} />
+        <TouchableOpacity
+          style={plm.backdropTap}
+          activeOpacity={1}
+          onPress={handleClose}
+        />
+
+        {/* Card */}
+        <Animated.View
+          style={[
+            plm.card,
+            { opacity: cardOp, transform: [{ translateY: cardY }] },
+          ]}
+        >
+          {/* Close button */}
+          <TouchableOpacity
+            style={plm.closeBtn}
+            onPress={handleClose}
+            activeOpacity={0.7}
+          >
+            <Text style={plm.closeTxt}>✕</Text>
+          </TouchableOpacity>
+
+          {/* Animated icon */}
+          <View style={plm.iconWrapper}>
+            <Animated.View
+              style={[
+                plm.glowRingOuter,
+                { opacity: glowOpacity, transform: [{ scale: glowScale }] },
+              ]}
+            />
+            <Animated.View
+              style={[
+                plm.glowRingInner,
+                { opacity: glowOpacity, transform: [{ scale: pulseAnim }] },
+              ]}
+            />
+            <Animated.View
+              style={[plm.iconCircle, { transform: [{ scale: pulseAnim }] }]}
+            >
+              <Text style={plm.iconEmoji}>{isUpgrade ? "👑" : "🚫"}</Text>
+            </Animated.View>
+          </View>
+
+          {/* Headline */}
+          <Text style={plm.headline}>
+            {isUpgrade ? "Upgrade to Add Profiles" : "Profile Limit Reached"}
+          </Text>
+          <Text style={plm.subline}>
+            {isUpgrade
+              ? "Multiple child profiles are a premium feature. Upgrade your plan to create a profile for each child."
+              : "You've reached the maximum number of profiles on your current plan. Upgrade to add more."}
+          </Text>
+
+          {/* Value props */}
+          <View style={plm.propsContainer}>
+            {propList.map((p, i) => (
+              <Animated.View
+                key={i}
+                style={[
+                  plm.propRow,
+                  {
+                    opacity: vpAnims[i].op,
+                    transform: [{ translateX: vpAnims[i].slide }],
+                  },
+                ]}
+              >
+                <View style={plm.propEmojiWrap}>
+                  <Text style={plm.propEmoji}>{p.emoji}</Text>
+                </View>
+                <Text style={plm.propText}>{p.text}</Text>
+              </Animated.View>
+            ))}
+          </View>
+
+          {/* CTA */}
+          <TouchableOpacity
+            style={plm.ctaBtn}
+            onPress={handleUpgrade}
+            activeOpacity={0.88}
+          >
+            <View style={plm.ctaBtnInner}>
+              <Text style={plm.ctaEmoji}>⚡</Text>
+              <Text style={plm.ctaTxt}>Upgrade Plan</Text>
+            </View>
+            <View style={plm.ctaShine} />
+          </TouchableOpacity>
+
+          {/* Dismiss */}
+          <TouchableOpacity
+            onPress={handleClose}
+            activeOpacity={0.6}
+            style={plm.dismissWrap}
+          >
+            <Text style={plm.dismissTxt}>Maybe later</Text>
+          </TouchableOpacity>
+        </Animated.View>
+      </View>
+    </Modal>
+  );
+}
+
+const plm = StyleSheet.create({
+  shell: { flex: 1, alignItems: "center", justifyContent: "center" },
+  backdrop: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: "rgba(0,0,0,0.75)",
+  },
+  backdropTap: { ...StyleSheet.absoluteFillObject },
+  card: {
+    width: SW - 40,
+    maxWidth: 400,
+    backgroundColor: C.card,
+    borderRadius: 28,
+    borderWidth: 1.5,
+    borderColor: C.border,
+    borderTopColor: "rgba(0,188,212,0.4)",
+    borderTopWidth: 1.5,
+    paddingTop: 32,
+    paddingBottom: 24,
+    paddingHorizontal: 20,
+    alignItems: "center",
+    shadowColor: TEAL,
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.2,
+    shadowRadius: 24,
+    elevation: 20,
+  },
+  closeBtn: {
+    position: "absolute",
+    top: 14,
+    right: 16,
+    width: 30,
+    height: 30,
+    borderRadius: 15,
+    backgroundColor: "rgba(255,255,255,0.07)",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  closeTxt: { fontFamily: FONTS.bold, fontSize: 13, color: C.textMuted },
+  iconWrapper: {
+    width: 120,
+    height: 120,
+    alignItems: "center",
+    justifyContent: "center",
+    marginBottom: 8,
+  },
+  glowRingOuter: {
+    position: "absolute",
+    width: 120,
+    height: 120,
+    borderRadius: 60,
+    backgroundColor: "rgba(255,213,79,0.08)",
+    borderWidth: 1.5,
+    borderColor: "rgba(255,213,79,0.2)",
+  },
+  glowRingInner: {
+    position: "absolute",
+    width: 90,
+    height: 90,
+    borderRadius: 45,
+    backgroundColor: "rgba(255,213,79,0.1)",
+    borderWidth: 1.5,
+    borderColor: "rgba(255,213,79,0.35)",
+  },
+  iconCircle: {
+    width: 68,
+    height: 68,
+    borderRadius: 34,
+    backgroundColor: "#1a1f3a",
+    borderWidth: 2,
+    borderColor: YELLOW,
+    alignItems: "center",
+    justifyContent: "center",
+    shadowColor: YELLOW,
+    shadowOffset: { width: 0, height: 0 },
+    shadowOpacity: 0.7,
+    shadowRadius: 16,
+    elevation: 12,
+  },
+  iconEmoji: { fontSize: 32 },
+  headline: {
+    fontFamily: FONTS.bold,
+    fontSize: 22,
+    color: C.textPri,
+    letterSpacing: 0.3,
+    textAlign: "center",
+    marginBottom: 8,
+    textShadowColor: "rgba(0,188,212,0.3)",
+    textShadowOffset: { width: 0, height: 0 },
+    textShadowRadius: 8,
+  },
+  subline: {
+    fontFamily: FONTS.light,
+    fontSize: 14,
+    color: C.textMuted,
+    textAlign: "center",
+    lineHeight: 21,
+    marginBottom: 20,
+    paddingHorizontal: 8,
+  },
+  propsContainer: { width: "100%", marginBottom: 22, gap: 4 },
+  propRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    paddingVertical: 9,
+    paddingHorizontal: 16,
+    marginVertical: 3,
+    backgroundColor: "rgba(0,188,212,0.08)",
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: C.border,
+    width: "100%",
+  },
+  propEmojiWrap: {
+    width: 32,
+    height: 32,
+    borderRadius: 10,
+    backgroundColor: "rgba(255,255,255,0.05)",
+    alignItems: "center",
+    justifyContent: "center",
+    marginRight: 12,
+  },
+  propEmoji: { fontSize: 16 },
+  propText: {
+    fontFamily: FONTS.regular,
+    fontSize: 14,
+    color: C.textPri,
+    flex: 1,
+  },
+  ctaBtn: {
+    width: "100%",
+    height: 54,
+    borderRadius: 27,
+    backgroundColor: YELLOW,
+    alignItems: "center",
+    justifyContent: "center",
+    marginBottom: 12,
+    overflow: "hidden",
+    shadowColor: YELLOW,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.5,
+    shadowRadius: 14,
+    elevation: 10,
+  },
+  ctaBtnInner: { flexDirection: "row", alignItems: "center", gap: 8 },
+  ctaEmoji: { fontSize: 18 },
+  ctaTxt: {
+    fontFamily: FONTS.bold,
+    fontSize: 16,
+    color: "#08081a",
+    letterSpacing: 0.3,
+  },
+  ctaShine: {
+    position: "absolute",
+    top: 0,
+    left: "15%",
+    width: "40%",
+    height: "50%",
+    backgroundColor: "rgba(255,255,255,0.18)",
+    borderRadius: 20,
+    transform: [{ rotate: "-15deg" }],
+  },
+  dismissWrap: { paddingVertical: 4 },
+  dismissTxt: {
+    fontFamily: FONTS.regular,
+    fontSize: 13,
+    color: C.textMuted,
+    textDecorationLine: "underline",
+  },
+});
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Account Option Card
@@ -166,7 +616,7 @@ const Account = () => {
   const [emailInput, setEmailInput] = useState("");
   const [passwordInput, setPasswordInput] = useState("");
   const [isSavingEmail, setIsSavingEmail] = useState(false);
-  const { planName, isFree } = useSubscription();
+  const { planName, isFree, subscription } = useSubscription();
 
   const hasEmail = userAccount?.email && userAccount.email.trim().length > 0;
 
@@ -182,7 +632,12 @@ const Account = () => {
     gender: "",
   });
   const [isSaving, setIsSaving] = useState(false);
-  const readingLevels = ["Early", "Middle", "Advance"];
+
+  // Profile limit modal state
+  const [profileLimitModal, setProfileLimitModal] = useState({
+    visible: false,
+    mode: "upgrade", // "upgrade" | "limit"
+  });
 
   const handleSaveCredentials = async () => {
     const trimmedEmail = emailInput.trim();
@@ -226,15 +681,27 @@ const Account = () => {
   };
 
   const handleProfilePress = async (profile) => {
-    console.log("=============== PROFILE SWITCHED ================");
     await selectProfile(profile);
     router.back();
   };
+
   const handleAddNew = () => {
+    const features = subscription?.subscribedPackage?.features;
+    const maxProfiles = features?.maxProfiles;
+
+    if (!maxProfiles || maxProfiles < 2) {
+      setProfileLimitModal({ visible: true, mode: "upgrade" });
+      return;
+    }
+    if (profiles.length >= maxProfiles) {
+      setProfileLimitModal({ visible: true, mode: "limit" });
+      return;
+    }
     setEditingProfile(null);
     setFormData({ id: "", name: "", age: "", gender: "" });
     setModalVisible(true);
   };
+
   const handleEdit = (profile) => {
     setEditingProfile(profile);
     setFormData({
@@ -246,6 +713,7 @@ const Account = () => {
     });
     setModalVisible(true);
   };
+
   const handleDelete = (profile) => {
     if (userAccount?.defaultProfileId === profile.id) {
       Alert.alert(
@@ -342,16 +810,7 @@ const Account = () => {
         text: "Log Out",
         style: "destructive",
         onPress: async () => {
-          // Tell the backend to mark the session INACTIVE.
-          // logoutUser() never throws — it swallows network and auth errors,
-          // so the user is never stuck on this screen without internet.
           await logoutUser();
-
-          // Always clear local state and navigate to login, regardless of
-          // whether the backend call succeeded or failed.
-          // This also handles the offline logout problem: even if the session
-          // wasn't marked INACTIVE on the backend right now, the cron job will
-          // expire it within 5 minutes once its expiryDateTime passes.
           await logoutLocally();
         },
       },
@@ -359,7 +818,7 @@ const Account = () => {
   };
 
   const headerPaddingTop = Math.max(insets.top, 8);
-  // Build styles from tokens
+
   const styles = StyleSheet.create({
     safeArea: { flex: 1, paddingTop: 0 },
     optionCardsSection: {
@@ -670,10 +1129,6 @@ const Account = () => {
     planBadgeRow: {
       flexDirection: "row",
       justifyContent: "flex-end",
-      //  marginBottom: 10,
-      // right: 20,
-      //backgroundColor: "pink",
-      // position: "absolute",
       width: "90%",
     },
     customHeader: {
@@ -696,9 +1151,7 @@ const Account = () => {
       justifyContent: "center",
       flexShrink: 0,
     },
-    headerSpacer: {
-      flex: 1,
-    },
+    headerSpacer: { flex: 1 },
   });
 
   return (
@@ -896,6 +1349,7 @@ const Account = () => {
             </ScrollView>
           </KeyboardAvoidingView>
 
+          {/* Profile create / edit modal */}
           <Modal
             animationType="slide"
             transparent={true}
@@ -994,7 +1448,16 @@ const Account = () => {
                       }
                       activeOpacity={0.85}
                     >
-                      <Text style={styles.genderEmoji}>🧒</Text>
+                      <ExpoImage
+                        source={require("../assets/img/boy-icon.png")}
+                        style={{
+                          width: 50,
+                          height: 50,
+                          marginBottom: 5,
+                        }}
+                        contentFit="cover"
+                        cachePolicy="memory-disk"
+                      />
                       <Text style={styles.genderLabel}>Boy</Text>
                     </TouchableOpacity>
                     <TouchableOpacity
@@ -1008,7 +1471,16 @@ const Account = () => {
                       }
                       activeOpacity={0.85}
                     >
-                      <Text style={styles.genderEmoji}>👧</Text>
+                      <ExpoImage
+                        source={require("../assets/img/girl-icon.png")}
+                        style={{
+                          width: 50,
+                          height: 50,
+                          marginBottom: 5,
+                        }}
+                        contentFit="cover"
+                        cachePolicy="memory-disk"
+                      />
                       <Text style={styles.genderLabel}>Girl</Text>
                     </TouchableOpacity>
                   </View>
@@ -1041,6 +1513,19 @@ const Account = () => {
           </Modal>
         </SafeAreaView>
       </AppBackground>
+
+      {/* Profile limit / upgrade modal — outside SafeAreaView so it covers everything */}
+      <ProfileLimitModal
+        visible={profileLimitModal.visible}
+        mode={profileLimitModal.mode}
+        onClose={() =>
+          setProfileLimitModal((prev) => ({ ...prev, visible: false }))
+        }
+        onUpgrade={() => {
+          setProfileLimitModal((prev) => ({ ...prev, visible: false }));
+          router.push("/components/billing/PlanBillingScreen");
+        }}
+      />
     </ScreenWrapper>
   );
 };

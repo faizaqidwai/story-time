@@ -471,6 +471,13 @@ export default function PaymentMethodScreen() {
     loadMethods();
   }, []);
 
+  useEffect(() => {
+    console.log("[PAYMENT METHOD LIFECYCLE] PAYMENT METHOD MOUNTED");
+    return () => {
+      console.log("[PAYMENT METHOD LIFECYCLE] PAYMENT METHOD UNMOUNTED");
+    };
+  }, []);
+
   const handleSetDefault = async (id) => {
     await execute(() => setDefaultPaymentMethod(id), {
       errorDisplay: "toast",

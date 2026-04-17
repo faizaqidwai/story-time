@@ -27,6 +27,8 @@ import {
 } from "../../services/subscriptionService";
 import { useSubscription } from "../../_contexts/SubscriptionContext";
 import { useTheme } from "../../_contexts/ThemeContext";
+import { useUser } from "../../_contexts/UserContext";
+import { useLevelAccess } from "../../_contexts/LevelAccessContext";
 
 const { width: SW } = Dimensions.get("window");
 const STATUS_BAR_HEIGHT =
@@ -382,6 +384,8 @@ export default function PurchaseScreen() {
   const [showAddCard, setShowAddCard] = useState(false);
   const [purchasing, setPurchasing] = useState(false);
   const fadeAnim = useRef(new Animated.Value(0)).current;
+  const { initForProfile } = useLevelAccess();
+  const { currentProfile } = useUser();
 
   const loadMethods = useCallback(async () => {
     setLoadingMethods(true);
@@ -405,6 +409,13 @@ export default function PurchaseScreen() {
 
   useEffect(() => {
     loadMethods();
+  }, []);
+
+  useEffect(() => {
+    console.log("[CHECKOUT LIFECYCLE] CHECKOUT MOUNTED");
+    return () => {
+      console.log("[CHECKOUT LIFECYCLE] CHECKOUT UNMOUNTED");
+    };
   }, []);
 
   const handleAddCard = async (cardData) => {
@@ -474,8 +485,13 @@ export default function PurchaseScreen() {
       successIcon: pkg.icon ?? "🎉",
       successAutoDismissMs: 0,
       successOnDismiss: () => {
+        console.log("[DOPUCHASE SUCCESS] Success callback");
         refreshSubscription();
-        router.replace("/home");
+        initForProfile(currentProfile).then(() => {
+          console.log("[DOPUCHASE SUCCESS] InitforProfile then callback");
+          router.dismiss(3);
+        });
+        //router.dismiss(3);
       },
     });
     setPurchasing(false);

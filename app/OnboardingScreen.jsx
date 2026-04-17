@@ -14,6 +14,7 @@ import {
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { Audio } from "expo-av";
 import { useRouter } from "expo-router";
+import { Image as ExpoImage } from "expo-image";
 import { useUser } from "./_contexts/UserContext";
 import { registerUser } from "./services/authService";
 import { FONTS } from "./theme";
@@ -159,7 +160,7 @@ export default function OnboardingScreen() {
       1300,
     );
 
-    playAudio(require("../assets/audio/step-1.mp3"));
+    playAudio(require("../assets/sounds/onboarding/step-1.mp3"));
   }, []);
 
   const slideCard = (onSwapped) => {
@@ -209,7 +210,7 @@ export default function OnboardingScreen() {
     slideCard(() => {
       setStep(STEP.AGE);
       setDialogueText("How old is your child?");
-      playAudio(require("../assets/audio/step-2.mp3"));
+      playAudio(require("../assets/sounds/onboarding/step-2.mp3"));
     });
   };
 
@@ -219,7 +220,7 @@ export default function OnboardingScreen() {
     slideCard(() => {
       setStep(STEP.GENDER);
       setDialogueText("Your child is a Boy or a Girl?");
-      playAudio(require("../assets/audio/step-3.mp3"));
+      playAudio(require("../assets/sounds/onboarding/step-3.mp3"));
     });
   };
 
@@ -494,14 +495,16 @@ export default function OnboardingScreen() {
                       }}
                       activeOpacity={0.85}
                     >
-                      <Text
-                        style={[
-                          styles.genderEmoji,
-                          { fontSize: sz.genderEmojiFontSize },
-                        ]}
-                      >
-                        🧒
-                      </Text>
+                      <ExpoImage
+                        source={require("../assets/img/boy-icon.png")}
+                        style={{
+                          width: 100,
+                          height: 100,
+                          marginBottom: 10,
+                        }}
+                        contentFit="cover"
+                        cachePolicy="memory-disk"
+                      />
                       <Text style={[styles.genderLabel, { fontSize: font.h3 }]}>
                         Boy
                       </Text>
@@ -518,14 +521,16 @@ export default function OnboardingScreen() {
                       }}
                       activeOpacity={0.85}
                     >
-                      <Text
-                        style={[
-                          styles.genderEmoji,
-                          { fontSize: sz.genderEmojiFontSize },
-                        ]}
-                      >
-                        👧
-                      </Text>
+                      <ExpoImage
+                        source={require("../assets/img/girl-icon.png")}
+                        style={{
+                          width: 100,
+                          height: 100,
+                          marginBottom: 10,
+                        }}
+                        contentFit="cover"
+                        cachePolicy="memory-disk"
+                      />
                       <Text style={[styles.genderLabel, { fontSize: font.h3 }]}>
                         Girl
                       </Text>

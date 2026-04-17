@@ -133,6 +133,10 @@ export default function PlanBillingScreen() {
 
   useEffect(() => {
     loadData();
+    console.log("[PLAN LIFECYCLE] PLAN MOUNTED");
+    return () => {
+      console.log("[PLAN LIFECYCLE] PLAN UNMOUNTED");
+    };
   }, []);
 
   const isFree = !subscription || subscription.billingCycle === "NONE";

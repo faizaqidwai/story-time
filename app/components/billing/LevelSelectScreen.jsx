@@ -1,6 +1,6 @@
 // app/components/billing/LevelSelectScreen.jsx
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import {
   View,
   Text,
@@ -58,6 +58,13 @@ export default function LevelSelectScreen() {
   );
   const [saving, setSaving] = useState(false);
   const profileName = currentProfile?.name ?? "your child";
+
+  useEffect(() => {
+    console.log("[LEVEL SELECT LIFECYCLE] LEVEL SELECT MOUNTED");
+    return () => {
+      console.log("[LEVEL LIFECYCLE] LEVEL UNMOUNTED");
+    };
+  }, []);
 
   const handleConfirm = async () => {
     if (!currentProfile) return;

@@ -940,11 +940,7 @@ const Article = () => {
 
       <View style={styles.coverWrap}>
         <Image //source={{ uri: currentStory.cover }}
-          source={
-            typeof cover === "string" && cover.startsWith("http")
-              ? { uri: cover }
-              : require("../../assets/img/article/1.jpg")
-          }
+          source={{ uri: currentStory.cover }}
           style={styles.coverImage}
           resizeMode="cover"
         />

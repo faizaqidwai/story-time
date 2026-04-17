@@ -254,10 +254,11 @@ function WordCard({ word, isPlaying, onAudio, activePhonicsIndex }) {
       </Animated.View>
 
       {/* Word name */}
-      <Text style={wS.wordName}>{word.name}</Text>
-
+      <View style={wS.wordBox}>
+        <Text style={wS.wordName}>{word.name}</Text>
+      </View>
       {/* Phonics row */}
-      {word.phonics && word.phonics.length > 0 && (
+      {/* {word.phonics && word.phonics.length > 0 && (
         <View style={wS.phonicsRow}>
           {word.phonics.map((p, i) => (
             <React.Fragment key={i}>
@@ -358,15 +359,38 @@ const wS = StyleSheet.create({
   emoji: { fontSize: 64 },
   wordName: {
     fontFamily: FONTS.bold,
-    fontSize: font.h2,
-    color: C.textPri,
-    letterSpacing: 0.5,
-    marginBottom: pad.sm,
-    textShadowColor: "rgba(0,188,212,0.5)",
+    fontSize: font.h3,
+    color: C.yellow, // was: 26
+    letterSpacing: 1.5,
+    textTransform: "uppercase",
+    textShadowColor: "rgba(255,213,79,0.4)",
     textShadowOffset: { width: 0, height: 0 },
-    textShadowRadius: 14,
-    textAlign: "center",
+    textShadowRadius: 10,
   },
+  wordBox: {
+    backgroundColor: C.yellowDim,
+    borderRadius: radius.md,
+    borderWidth: 1.5,
+    borderColor: C.yellowBorder,
+    paddingHorizontal: pad.xxl,
+    paddingVertical: pad.xl,
+    alignItems: "center",
+    marginBottom: pad.md,
+    // width: "100%",
+    //  height: "15%",
+    justifyContent: "center",
+  },
+  // wordName: {
+  //   fontFamily: FONTS.bold,
+  //   fontSize: font.h2,
+  //   color: C.textPri,
+  //   letterSpacing: 0.5,
+  //   marginBottom: pad.sm,
+  //   textShadowColor: "rgba(0,188,212,0.5)",
+  //   textShadowOffset: { width: 0, height: 0 },
+  //   textShadowRadius: 14,
+  //   textAlign: "center",
+  // },
   phonicsRow: {
     flexDirection: "row",
     flexWrap: "wrap",
@@ -484,7 +508,7 @@ const wS = StyleSheet.create({
   },
   explanationLabel: {
     fontFamily: FONTS.bold,
-    fontSize: font.xs,
+    fontSize: font.md,
     color: C.teal,
     letterSpacing: 2,
     marginBottom: pad.s,
@@ -524,7 +548,7 @@ export default function NewWordsOverlay({ visible, words = [], onDone }) {
   const sheetY = useRef(new Animated.Value(SH)).current;
   const scrOp = useRef(new Animated.Value(0)).current;
   const mountedRef = useRef(true);
-
+  const speakCancelRef = useRef(false);
   // ── Refs to break stale closure issues ─────────────────────────────────
   // hasOpenedRef: prevents onViewableItemsChanged from auto-playing on
   // the initial mount trigger (which fires at the same time as the
@@ -550,6 +574,7 @@ export default function NewWordsOverlay({ visible, words = [], onDone }) {
 
   // ── Audio ───────────────────────────────────────────────────────────────
   const stopAudio = useCallback(() => {
+    speakCancelRef.current = true; // ← cancel any chain
     Speech.stop();
     if (mountedRef.current) {
       setPlayingWord(null);
@@ -563,49 +588,37 @@ export default function NewWordsOverlay({ visible, words = [], onDone }) {
         stopAudio();
         return;
       }
+      speakCancelRef.current = true;
       stopAudio();
       if (!mountedRef.current) return;
 
+      speakCancelRef.current = false;
       setPlayingWord(word.name);
-      // Speak each phonics part then the full word at the end
-      const parts = word.phonics?.length
-        ? [...word.phonics, word.name]
-        : [word.name];
-      let i = 0;
 
-      const speakNext = () => {
-        if (!mountedRef.current) return;
-        if (i >= parts.length) {
+      Speech.speak(word.name, {
+        // ← just the word, no phonics parts
+        language: "en",
+        pitch: 1.15,
+        rate: 0.72,
+        onDone: () => {
+          if (!mountedRef.current) return;
+          if (speakCancelRef.current) return;
           setPlayingWord(null);
           setActivePhonicsIndex(-1);
-          return;
-        }
-        const chipIndex = i;
-        setActivePhonicsIndex(chipIndex);
-        Speech.speak(parts[i++], {
-          language: "en",
-          pitch: 1.15,
-          rate: 0.72,
-          onDone: () => {
-            if (!mountedRef.current) return;
-            setTimeout(speakNext, 220);
-          },
-          onStopped: () => {
-            if (mountedRef.current) {
-              setPlayingWord(null);
-              setActivePhonicsIndex(-1);
-            }
-          },
-          onError: () => {
-            if (mountedRef.current) {
-              setPlayingWord(null);
-              setActivePhonicsIndex(-1);
-            }
-          },
-        });
-      };
-
-      speakNext();
+        },
+        onStopped: () => {
+          if (mountedRef.current) {
+            setPlayingWord(null);
+            setActivePhonicsIndex(-1);
+          }
+        },
+        onError: () => {
+          if (mountedRef.current) {
+            setPlayingWord(null);
+            setActivePhonicsIndex(-1);
+          }
+        },
+      });
     },
     [playingWord, stopAudio],
   );
@@ -840,19 +853,21 @@ const s = StyleSheet.create({
     right: 0,
     bottom: 0,
     backgroundColor: "rgba(0,0,0,0.65)",
+    //  padding: 2,
   },
   sheet: {
     position: "absolute",
     bottom: 0,
     left: 0,
     right: 0,
-    height: SH * 0.9,
-    backgroundColor: "#080917",
+    height: SH * 0.89,
+    backgroundColor: "#0f0f2a",
     borderTopLeftRadius: radius.xxl,
     borderTopRightRadius: radius.xxl,
     borderTopWidth: 1.5,
     borderLeftWidth: 1,
     borderRightWidth: 1,
+    // borderBottomWidth: 1,
     borderColor: C.tealBorder,
     paddingTop: pad.s,
     shadowColor: "#000",

@@ -835,6 +835,13 @@ export default function SubscriptionPlansScreen() {
     loadSubscription();
   }, []);
 
+  useEffect(() => {
+    console.log("[PACKAGES LIFECYCLE] PACKAGES MOUNTED");
+    return () => {
+      console.log("[PACKAGES LIFECYCLE] PACKAGES UNMOUNTED");
+    };
+  }, []);
+
   const filteredPackages = filterByTab(packages, cycle);
   const currentPackageId = activeSubscription?.packageId ?? null;
   const isOnFreePlan =

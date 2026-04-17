@@ -381,12 +381,12 @@ export default function FlappyWordGame({ onExit }) {
     (async () => {
       await Audio.setAudioModeAsync({ playsInSilentModeIOS: true });
       const map = [
-        [sndButton, require("../assets/audio/button.mp3")],
-        [sndPop, require("../assets/audio/pop.mp3")],
-        [sndCorrect, require("../assets/audio/correct-hit.mp3")],
-        [sndWrong, require("../assets/audio/wrong-hit.mp3")],
-        [sndWin, require("../assets/audio/win.mp3")],
-        [sndLose, require("../assets/audio/lose.mp3")],
+        [sndButton, require("../assets/sounds/button.mp3")],
+        [sndPop, require("../assets/sounds/pop.mp3")],
+        [sndCorrect, require("../assets/sounds/game/correct-hit.mp3")],
+        [sndWrong, require("../assets/sounds/game/wrong-hit.mp3")],
+        [sndWin, require("../assets/sounds/game/win.mp3")],
+        [sndLose, require("../assets/sounds/game/lose.mp3")],
       ];
       for (const [ref, asset] of map) {
         try {
