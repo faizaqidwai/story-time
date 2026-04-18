@@ -16,7 +16,7 @@ import {
 import { Audio } from "expo-av";
 import { FONTS } from "../theme";
 import { font, pad, radius, size } from "../theme/tokens"; // ← ADD
-
+import { Image as ExpoImage } from "expo-image";
 const { width: SW, height: SH } = Dimensions.get("window");
 
 const C = {
@@ -456,13 +456,13 @@ const GameEnd = ({
             <Particle key={`${particleKey}-${p.id}`} {...p} />
           ))}
         {badge === "won" && (
-          <Image
+          <ExpoImage
             source={require("../../assets/img/minion.png")}
             style={[
               styles.bird,
               { width: isTablet ? 300 : 270, height: isTablet ? 300 : 280 },
             ]}
-            resizeMode="contain"
+            contentFit="contain"
           />
         )}
         {badge === "won" ? (

@@ -22,6 +22,7 @@ import { useTheme } from "./_contexts/ThemeContext";
 import { font, pad, radius, size } from "./theme/tokens";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useEffect } from "react";
+import { Image as ExpoImage } from "expo-image";
 
 const Login = () => {
   const router = useRouter();
@@ -50,7 +51,8 @@ const Login = () => {
         successMessage: "Login Successful",
         errorDisplay: "toast",
         onSuccess: () => {
-          router.back();
+          router.dismissAll();
+          setTimeout(() => router.replace("/home"), 0);
         },
         onError: () => setIsLoading(false),
       },
@@ -79,7 +81,7 @@ const Login = () => {
           showsVerticalScrollIndicator={false}
         >
           {/* Logo */}
-          <Image
+          <ExpoImage
             source={require("../assets/img/story-time-logo-4.png")}
             style={[
               styles.bird,
@@ -89,7 +91,7 @@ const Login = () => {
                 marginBottom: sz.birdMarginBottom,
               },
             ]}
-            resizeMode="contain"
+            contentFit="contain"
           />
 
           {/* Title */}

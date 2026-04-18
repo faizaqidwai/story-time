@@ -21,6 +21,7 @@ import { useApiCall } from "../_hooks/useApiCall";
 import { useNotify } from "../_contexts/NotificationContext";
 import { FONTS } from "../theme";
 import { useTheme } from "../_contexts/ThemeContext";
+import { Image as ExpoImage } from "expo-image";
 
 const { width: SW } = Dimensions.get("window");
 const STATUS_H = Platform.OS === "android" ? 24 : 50;
@@ -366,14 +367,14 @@ function SkillBar({ label, icon, percent, color, delay = 0, sz }) {
         marginBottom: sz.skillRowMarginBottom,
       }}
     >
-      <Image
+      <ExpoImage
         source={icon}
         style={{
           width: sz.skillIconSize,
           height: sz.skillIconSize,
           flexShrink: 0,
         }}
-        resizeMode="contain"
+        contentFit="contain"
       />
       <View style={{ flex: 1, gap: 5 }}>
         <View style={{ flexDirection: "row", justifyContent: "space-between" }}>

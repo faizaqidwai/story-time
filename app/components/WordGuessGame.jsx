@@ -657,10 +657,10 @@ const WordGuessGame = ({ onExit }) => {
               { transform: [{ translateX: coinShakeAnim }] },
             ]}
           >
-            <Image
+            <ExpoImage
               source={require("../../assets/img/coin.png")}
               style={styles.coinIcon}
-              resizeMode="contain"
+              contentFit="contain"
             />
             <Animated.Text
               style={[

@@ -2,7 +2,7 @@ import { StyleSheet, Text, View, Image, TouchableOpacity } from "react-native";
 import React from "react";
 import { COLORS, SHADOWS, FONTS } from "../theme";
 import { font, pad, radius, size } from "../theme/tokens";
-
+import { Image as ExpoImage } from "expo-image";
 const ProfileCard = ({
   name,
   age,

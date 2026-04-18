@@ -246,7 +246,8 @@ export default function OnboardingScreen() {
     }).start();
     setTimeout(() => {
       if (defaultProfile) {
-        router.replace("/home");
+        router.dismissAll();
+        setTimeout(() => router.replace("/home"), 0);
       }
     }, 700);
   };

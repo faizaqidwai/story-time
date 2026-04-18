@@ -354,11 +354,20 @@ export default function AccountChoice() {
               opacity: card2Op,
               fontSize: font.md,
               lineHeight: sz.footerLineHeight,
-              marginTop: sz.footerMarginTop,
+              marginTop: pad.sm,
             },
           ]}
         >
-          By continuing you agree to our Terms of Service and Privacy Policy
+          <Text>By continuing you agree to our </Text>
+          <Text
+            style={{ color: C.teal, fontSize: font.md }}
+            onPress={() => {
+              playSound(require("../assets/sounds/button.mp3"));
+              setTimeout(() => router.push("/components/TermsAndPrivacy"), 0);
+            }}
+          >
+            Terms of Service and Privacy Policy
+          </Text>
         </Animated.Text>
       </View>
     </View>

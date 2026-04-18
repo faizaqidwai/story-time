@@ -568,13 +568,13 @@ function AccountOptionCard({ image, label, onPress, sz }) {
         onPressOut={pressOut}
         activeOpacity={1}
       >
-        <Image
+        <ExpoImage
           source={image}
           style={{
             width: sz.optionCardIconSize,
             height: sz.optionCardIconSize,
           }}
-          resizeMode="contain"
+          contentFit="contain"
         />
         <Text
           style={{

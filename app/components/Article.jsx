@@ -27,6 +27,7 @@ import {
 } from "../_contexts/StoryActivityContext";
 import { FONTS } from "../theme";
 import { font, pad, radius, size } from "../theme/tokens"; // ← ADD
+import { Image as ExpoImage } from "expo-image";
 
 const { width: SW } = Dimensions.get("window");
 const STATUS_H =
@@ -922,10 +923,10 @@ const Article = () => {
             { transform: [{ translateX: coinShakeAnim }] },
           ]}
         >
-          <Image
+          <ExpoImage
             source={require("../../assets/img/coin.png")}
             style={styles.coinIcon}
-            resizeMode="contain"
+            contentFit="contain"
           />
           <Animated.Text
             style={[
@@ -939,10 +940,10 @@ const Article = () => {
       </View>
 
       <View style={styles.coverWrap}>
-        <Image //source={{ uri: currentStory.cover }}
+        <ExpoImage //source={{ uri: currentStory.cover }}
           source={{ uri: currentStory.cover }}
           style={styles.coverImage}
-          resizeMode="cover"
+          contentFit="cover"
         />
         <View style={styles.coverGradient} />
         <View style={styles.coverTags}>

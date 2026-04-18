@@ -15,6 +15,7 @@ import {
 import { Audio } from "expo-av";
 import { COLORS, FONTS } from "../theme";
 import { font, pad, radius, size } from "../theme/tokens"; // ← ADD
+import { Image as ExpoImage } from "expo-image";
 
 const { width: SW, height: SH } = Dimensions.get("window");
 
@@ -635,10 +636,10 @@ const BadgePopup = ({
                     ]}
                   >
                     {cfg.sourceImage ? (
-                      <Image
+                      <ExpoImage
                         source={cfg.sourceImage}
                         style={styles.bigIconImg}
-                        resizeMode="contain"
+                        contentFit="contain"
                       />
                     ) : (
                       <Text style={styles.bigIcon}>{cfg.sourceIcon}</Text>
@@ -673,10 +674,10 @@ const BadgePopup = ({
                         },
                       ]}
                     >
-                      <Image
+                      <ExpoImage
                         source={require("../../assets/img/bag.png")}
                         style={{ width: 70, height: 70 }}
-                        resizeMode="contain"
+                        contentFit="contain"
                       />
                     </Animated.View>
                     {rewardCount > 0 && (
@@ -752,14 +753,14 @@ const BadgePopup = ({
                   </Text>
                   <View style={styles.gameThumb}>
                     {cfg.nextImage ? (
-                      <Image
+                      <ExpoImage
                         source={cfg.nextImage}
                         style={{
                           width: 60,
                           height: 60,
                           borderRadius: radius.md,
                         }}
-                        resizeMode="cover"
+                        contentFit="cover"
                       />
                     ) : (
                       <View style={styles.gameThumbEmojiBg}>

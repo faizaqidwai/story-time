@@ -43,6 +43,7 @@ import { Video, ResizeMode } from "expo-av";
 import { FONTS, COLORS } from "./theme";
 import { useTheme } from "./_contexts/ThemeContext";
 import { font, pad, radius, size } from "./theme/tokens"; // ← ADD
+import { Image as ExpoImage } from "expo-image";
 // ── Timing (ms) ────────────────────────────────────────────────────────────
 const LINE_DUR = 480;
 const LINE_STAGGER = 550;
@@ -454,10 +455,10 @@ function ActivityBadgeMini({ step, anim, halfW }) {
             backgroundColor: step.color + "20",
           }}
         >
-          <Image
+          <ExpoImage
             source={step.image}
             style={{ width: sz.activityIconSize, height: sz.activityIconSize }}
-            resizeMode="contain"
+            contentFit="contain"
           />
         </View>
         <View style={{ flex: 1, gap: 7 }}>
@@ -528,10 +529,10 @@ function StoryCardMini({ story }) {
         }}
       >
         {story.image ? (
-          <Image
+          <ExpoImage
             source={story.image}
             style={{ width: "100%", height: "100%" }}
-            resizeMode="cover"
+            contentFit="cover"
           />
         ) : (
           <View

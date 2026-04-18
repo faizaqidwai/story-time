@@ -1,11 +1,11 @@
 import React from "react";
 import { View, Text, Image, StyleSheet } from "react-native";
 import { FONTS } from "../theme";
-
+import { Image as ExpoImage } from "expo-image";
 const StoryPage = ({ text, imageUrl }) => {
   return (
     <View style={styles.container}>
-      <Image source={imageUrl} style={styles.image} />
+      <ExpoImage source={imageUrl} style={styles.image} />
       <Text style={styles.text}>{text}</Text>
     </View>
   );

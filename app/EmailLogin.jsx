@@ -24,7 +24,7 @@ import { COLORS, SHADOWS, FONTS } from "./theme";
 import { loginWithEmail, fetchUserAccount } from "./services/authService";
 import { useTheme } from "./_contexts/ThemeContext";
 import { useLocalSearchParams } from "expo-router";
-
+import { Image as ExpoImage } from "expo-image";
 const TEAL = "#00BCD4";
 
 const EmailLogin = () => {
@@ -58,7 +58,10 @@ const EmailLogin = () => {
         successDisplay: "toast",
         successMessage: "Login Successful",
         errorDisplay: "toast",
-        onSuccess: () => router.replace("/home"),
+        onSuccess: () => {
+          router.dismissAll();
+          setTimeout(() => router.replace("/home"), 0);
+        },
         onError: () => setIsLoading(false),
       },
     );
@@ -98,10 +101,10 @@ const EmailLogin = () => {
           showsVerticalScrollIndicator={false}
         >
           {/* Logo */}
-          <Image
+          <ExpoImage
             source={require("../assets/img/story-time-logo-4.png")}
             style={styles.logo}
-            resizeMode="contain"
+            contentFit="contain"
           />
 
           {/* Title */}

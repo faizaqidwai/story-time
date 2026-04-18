@@ -1,13 +1,13 @@
 import React from "react";
 import { View, Text, TouchableOpacity, StyleSheet, Image } from "react-native";
 import { FONTS } from "../theme";
-
+import { Image as ExpoImage } from "expo-image";
 const GameCard = ({ title, description, onPress, image }) => {
   return (
     <TouchableOpacity style={styles.card} onPress={onPress}>
       {/* Show Image ONLY if exists */}
       {image && (
-        <Image source={image} style={styles.image} resizeMode="contain" />
+        <ExpoImage source={image} style={styles.image} contentFit="contain" />
       )}
 
       {/* Show Title ONLY if exists */}

@@ -1788,7 +1788,7 @@ const Home = () => {
         words: challengeWords.length,
         sampleWords: challengeWords.slice(0, 8).map((w) => w.name || w),
       });
-      setShowFinish(true);
+      setTimeout(() => setShowFinish(true), 1000);
     }, [storySession?.nextActivityIndex, storySession?.storyId, showFinish]),
   );
 
