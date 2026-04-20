@@ -241,6 +241,7 @@ export default function StoryHome() {
   const insets = useSafeAreaInsets();
   const { currentStory, storySession } = useStoryActivity();
   const headerOp = useRef(new Animated.Value(0)).current;
+
   useEffect(() => {
     Animated.timing(headerOp, {
       toValue: 1,
@@ -248,6 +249,23 @@ export default function StoryHome() {
       useNativeDriver: true,
     }).start();
   }, []);
+
+  // ── CHANGED: Step 1.3 — Prefetch pages 3+ when user opens story home screen ──
+  useEffect(() => {
+    if (!currentStory?.pages?.length) return;
+
+    const remainingPageImages = currentStory.pages
+      .slice(2)
+      .filter((p) => typeof p.image === "string" && p.image.length > 0)
+      .map((p) => p.image);
+
+    if (remainingPageImages.length === 0) return;
+
+    Promise.allSettled(
+      remainingPageImages.map((uri) => ExpoImage.prefetch(uri)),
+    );
+  }, [currentStory?.id]);
+
   if (!currentStory) {
     return (
       <>

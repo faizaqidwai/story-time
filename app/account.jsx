@@ -820,7 +820,7 @@ const Account = () => {
   const headerPaddingTop = Math.max(insets.top, 8);
 
   const styles = StyleSheet.create({
-    safeArea: { flex: 1, paddingTop: 0 },
+    safeArea: { flex: 1, paddingTop: 0, backgroundColor: C.bg },
     optionCardsSection: {
       paddingHorizontal: sz.optionSectionPaddingH,
       paddingTop: sz.optionSectionPaddingTop,
@@ -1156,363 +1156,350 @@ const Account = () => {
 
   return (
     <ScreenWrapper>
-      <AppBackground>
-        <SafeAreaView style={styles.safeArea} edges={[]}>
-          <View style={[styles.customHeader, { paddingTop: headerPaddingTop }]}>
-            <TouchableOpacity
-              style={styles.backButton}
-              onPress={() => router.back()}
-              hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-            >
-              <Ionicons name="chevron-back" size={20} color={C.teal} />
-            </TouchableOpacity>
-            <View style={styles.headerSpacer} />
-            <View style={styles.planBadgeRow}>
-              <PlanBadge planName={planName} isFree={isFree} />
-            </View>
-            <View style={styles.headerSpacer} />
+      <SafeAreaView style={styles.safeArea} edges={[]}>
+        <View style={[styles.customHeader, { paddingTop: headerPaddingTop }]}>
+          <TouchableOpacity
+            style={styles.backButton}
+            onPress={() => router.back()}
+            hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+          >
+            <Ionicons name="chevron-back" size={20} color={C.teal} />
+          </TouchableOpacity>
+          <View style={styles.headerSpacer} />
+          <View style={styles.planBadgeRow}>
+            <PlanBadge planName={planName} isFree={isFree} />
           </View>
-          <KeyboardAvoidingView
-            style={{ flex: 1 }}
-            behavior={Platform.OS === "ios" ? "padding" : "height"}
-            keyboardVerticalOffset={Platform.OS === "ios" ? 90 : 60}
+          <View style={styles.headerSpacer} />
+        </View>
+        <KeyboardAvoidingView
+          style={{ flex: 1 }}
+          behavior={Platform.OS === "ios" ? "padding" : "height"}
+          keyboardVerticalOffset={Platform.OS === "ios" ? 90 : 60}
+        >
+          <ScrollView
+            ref={scrollRef}
+            showsVerticalScrollIndicator={false}
+            keyboardShouldPersistTaps="handled"
           >
-            <ScrollView
-              ref={scrollRef}
-              showsVerticalScrollIndicator={false}
-              keyboardShouldPersistTaps="handled"
-            >
-              <View style={styles.optionCardsSection}>
-                <View style={styles.optionCardsRow}>
-                  <AccountOptionCard
-                    image={require("../assets/img/card-icon.png")}
-                    label="Plan and Billing"
-                    onPress={() =>
-                      router.push("/components/billing/PlanBillingScreen")
-                    }
-                    sz={sz}
-                  />
-                  <AccountOptionCard
-                    image={require("../assets/img/learning-path-icon-3.png")}
-                    label="Learning Path Levels"
-                    onPress={() => router.push("/components/LearningPath")}
-                    sz={sz}
-                  />
-                  <AccountOptionCard
-                    image={require("../assets/img/progress-report-icon.png")}
-                    label="Progress Reports"
-                    onPress={() => router.push("/components/Reports")}
-                    sz={sz}
-                  />
-                </View>
+            <View style={styles.optionCardsSection}>
+              <View style={styles.optionCardsRow}>
+                <AccountOptionCard
+                  image={require("../assets/img/card-icon.png")}
+                  label="Plan and Billing"
+                  onPress={() =>
+                    router.push("/components/billing/PlanBillingScreen")
+                  }
+                  sz={sz}
+                />
+                <AccountOptionCard
+                  image={require("../assets/img/learning-path-icon-3.png")}
+                  label="Learning Path Levels"
+                  onPress={() => router.push("/components/LearningPath")}
+                  sz={sz}
+                />
+                <AccountOptionCard
+                  image={require("../assets/img/progress-report-icon.png")}
+                  label="Progress Reports"
+                  onPress={() => router.push("/components/Reports")}
+                  sz={sz}
+                />
               </View>
+            </View>
 
-              <View style={styles.divider} />
+            <View style={styles.divider} />
 
-              <Text style={styles.title}>Who's Reading?</Text>
+            <Text style={styles.title}>Who's Reading?</Text>
 
-              {currentProfile && (
-                <View style={styles.currentProfileBanner}>
-                  <Text style={styles.currentProfileText}>
-                    Currently: {currentProfile.name} (
-                    {currentProfile.level.charAt(0) +
-                      currentProfile.level.slice(1).toLowerCase()}
-                    )
-                  </Text>
-                </View>
-              )}
-
-              <View style={styles.listContent}>
-                {profiles.map((item) => (
-                  <ProfileCard
-                    key={item.id}
-                    name={item.name}
-                    age={item.age}
-                    readingLevel={
-                      item.level.charAt(0) + item.level.slice(1).toLowerCase()
-                    }
-                    avatar={item.avatar || null}
-                    isCurrentProfile={currentProfile?.id === item.id}
-                    onPress={() => handleProfilePress(item)}
-                    onEdit={() => handleEdit(item)}
-                    onDelete={() => handleDelete(item)}
-                  />
-                ))}
-                <TouchableOpacity
-                  style={styles.addButton}
-                  onPress={handleAddNew}
-                >
-                  <Text style={styles.addButtonText}>+ Add New Profile</Text>
-                </TouchableOpacity>
-              </View>
-
-              <View style={styles.accountSection}>
-                <View style={styles.accountSectionHeader}>
-                  <Text style={styles.accountSectionIcon}>🔐</Text>
-                  <Text style={styles.accountSectionTitle}>Account</Text>
-                </View>
-
-                {!hasEmail ? (
-                  <View style={styles.credentialsForm}>
-                    <Text style={styles.credentialsHint}>
-                      Link an email and password to secure your account and
-                      recover it on any device.
-                    </Text>
-                    <TextInput
-                      style={styles.credentialsInput}
-                      placeholder="Email address"
-                      placeholderTextColor={COLORS.textMuted}
-                      value={emailInput}
-                      onChangeText={setEmailInput}
-                      keyboardType="email-address"
-                      autoCapitalize="none"
-                      autoCorrect={false}
-                      onFocus={() => {
-                        setTimeout(() => {
-                          emailSectionRef.current?.measureLayout(
-                            scrollRef.current?.getScrollableNode?.() ??
-                              scrollRef.current,
-                            (_x, y) =>
-                              scrollRef.current?.scrollTo({
-                                y: y - 16,
-                                animated: true,
-                              }),
-                            () =>
-                              scrollRef.current?.scrollToEnd({
-                                animated: true,
-                              }),
-                          );
-                        }, 150);
-                      }}
-                    />
-                    <TextInput
-                      style={styles.credentialsInput}
-                      placeholder="Password (min. 6 characters)"
-                      placeholderTextColor={COLORS.textMuted}
-                      value={passwordInput}
-                      onChangeText={setPasswordInput}
-                      secureTextEntry
-                      autoCapitalize="none"
-                      autoCorrect={false}
-                    />
-                    <TouchableOpacity
-                      style={[
-                        styles.credentialsSaveBtn,
-                        (!emailInput.trim() ||
-                          !passwordInput.trim() ||
-                          isSavingEmail) &&
-                          styles.credentialsSaveBtnDisabled,
-                      ]}
-                      onPress={handleSaveCredentials}
-                      disabled={
-                        !emailInput.trim() ||
-                        !passwordInput.trim() ||
-                        isSavingEmail
-                      }
-                    >
-                      {isSavingEmail ? (
-                        <ActivityIndicator color="#fff" size="small" />
-                      ) : (
-                        <Text style={styles.credentialsSaveBtnText}>
-                          Link Account ➜
-                        </Text>
-                      )}
-                    </TouchableOpacity>
-                  </View>
-                ) : (
-                  <View style={styles.emailLinkedRow}>
-                    <View style={styles.emailLinkedBadge}>
-                      <Text style={styles.emailLinkedIcon}>✓</Text>
-                    </View>
-                    <View style={{ flex: 1 }}>
-                      <Text style={styles.emailLinkedLabel}>
-                        Linked account
-                      </Text>
-                      <Text style={styles.emailLinkedValue}>
-                        {userAccount.email}
-                      </Text>
-                    </View>
-                  </View>
-                )}
-              </View>
-
-              <TouchableOpacity
-                style={styles.logoutBtn}
-                onPress={handleLogout}
-                activeOpacity={0.8}
-              >
-                <Text style={styles.logoutIcon}>⏻</Text>
-                <Text style={styles.logoutText}>Log Out</Text>
-              </TouchableOpacity>
-
-              <View style={{ height: 32 }} />
-            </ScrollView>
-          </KeyboardAvoidingView>
-
-          {/* Profile create / edit modal */}
-          <Modal
-            animationType="slide"
-            transparent={true}
-            visible={modalVisible}
-            onRequestClose={handleCancel}
-          >
-            <View style={styles.modalOverlay}>
-              <View style={styles.modalContent}>
-                <Text style={styles.modalTitle}>
-                  {editingProfile ? "Edit Profile" : "Create New Profile"}
+            {currentProfile && (
+              <View style={styles.currentProfileBanner}>
+                <Text style={styles.currentProfileText}>
+                  Currently: {currentProfile.name} (
+                  {currentProfile.level.charAt(0) +
+                    currentProfile.level.slice(1).toLowerCase()}
+                  )
                 </Text>
+              </View>
+            )}
 
-                <ScrollView showsVerticalScrollIndicator={false}>
-                  <View style={styles.inputGroup}>
-                    <Text style={styles.label}>Name</Text>
-                    <TextInput
-                      style={styles.input}
-                      placeholder="Enter name"
-                      placeholderTextColor={COLORS.textMuted}
-                      value={formData.name}
-                      onChangeText={(text) =>
-                        setFormData({ ...formData, name: text })
-                      }
-                    />
-                  </View>
-                  {!editingProfile && (
-                    <View>
-                      <View style={styles.inputGroup}>
-                        <Text style={styles.label}>Age</Text>
-                        <View style={styles.ageSection}>
-                          {AGE_OPTIONS.map((opt) => {
-                            const isSelected =
-                              parseInt(formData.age) === opt.value;
-                            return (
-                              <TouchableOpacity
-                                key={opt.value}
-                                style={[
-                                  styles.ageBtn,
-                                  isSelected && styles.ageBtnActive,
-                                ]}
-                                onPress={() =>
-                                  setFormData({
-                                    ...formData,
-                                    age: opt.value.toString(),
-                                  })
-                                }
-                              >
-                                <Text style={styles.ageBtnText}>
-                                  {opt.label}
-                                </Text>
-                              </TouchableOpacity>
-                            );
-                          })}
-                        </View>
-                      </View>
-                      <View style={styles.inputGroup}>
-                        <Text style={styles.label}>Level</Text>
-                        <View style={styles.ageSection}>
-                          {START_LEVEL.map((opt) => {
-                            const isSelected =
-                              parseInt(formData.playLevel) === opt.value;
-                            return (
-                              <TouchableOpacity
-                                key={opt.value}
-                                style={[
-                                  styles.ageBtn,
-                                  isSelected && styles.ageBtnActive,
-                                ]}
-                                onPress={() =>
-                                  setFormData({
-                                    ...formData,
-                                    playLevel: opt.value.toString(),
-                                  })
-                                }
-                              >
-                                <Text style={styles.ageBtnText}>
-                                  {opt.label}
-                                </Text>
-                              </TouchableOpacity>
-                            );
-                          })}
-                        </View>
-                      </View>
-                    </View>
-                  )}
-                  <Text style={styles.label}>Gender</Text>
-                  <View style={styles.genderSection}>
-                    <TouchableOpacity
-                      style={[
-                        styles.genderBtn,
-                        styles.genderBtnBoy,
-                        formData.gender === "MALE" && styles.genderBtnActive,
-                      ]}
-                      onPress={() =>
-                        setFormData({ ...formData, gender: "MALE" })
-                      }
-                      activeOpacity={0.85}
-                    >
-                      <ExpoImage
-                        source={require("../assets/img/boy-icon.png")}
-                        style={{
-                          width: 50,
-                          height: 50,
-                          marginBottom: 5,
-                        }}
-                        contentFit="cover"
-                        cachePolicy="memory-disk"
-                      />
-                      <Text style={styles.genderLabel}>Boy</Text>
-                    </TouchableOpacity>
-                    <TouchableOpacity
-                      style={[
-                        styles.genderBtn,
-                        styles.genderBtnGirl,
-                        formData.gender === "FEMALE" && styles.genderBtnActive,
-                      ]}
-                      onPress={() =>
-                        setFormData({ ...formData, gender: "FEMALE" })
-                      }
-                      activeOpacity={0.85}
-                    >
-                      <ExpoImage
-                        source={require("../assets/img/girl-icon.png")}
-                        style={{
-                          width: 50,
-                          height: 50,
-                          marginBottom: 5,
-                        }}
-                        contentFit="cover"
-                        cachePolicy="memory-disk"
-                      />
-                      <Text style={styles.genderLabel}>Girl</Text>
-                    </TouchableOpacity>
-                  </View>
-                </ScrollView>
+            <View style={styles.listContent}>
+              {profiles.map((item) => (
+                <ProfileCard
+                  key={item.id}
+                  name={item.name}
+                  age={item.age}
+                  readingLevel={
+                    item.level.charAt(0) + item.level.slice(1).toLowerCase()
+                  }
+                  avatar={item.avatar || null}
+                  isCurrentProfile={currentProfile?.id === item.id}
+                  onPress={() => handleProfilePress(item)}
+                  onEdit={() => handleEdit(item)}
+                  onDelete={() => handleDelete(item)}
+                />
+              ))}
+              <TouchableOpacity style={styles.addButton} onPress={handleAddNew}>
+                <Text style={styles.addButtonText}>+ Add New Profile</Text>
+              </TouchableOpacity>
+            </View>
 
-                <View style={styles.modalActions}>
+            <View style={styles.accountSection}>
+              <View style={styles.accountSectionHeader}>
+                <Text style={styles.accountSectionIcon}>🔐</Text>
+                <Text style={styles.accountSectionTitle}>Account</Text>
+              </View>
+
+              {!hasEmail ? (
+                <View style={styles.credentialsForm}>
+                  <Text style={styles.credentialsHint}>
+                    Link an email and password to secure your account and
+                    recover it on any device.
+                  </Text>
+                  <TextInput
+                    style={styles.credentialsInput}
+                    placeholder="Email address"
+                    placeholderTextColor={COLORS.textMuted}
+                    value={emailInput}
+                    onChangeText={setEmailInput}
+                    keyboardType="email-address"
+                    autoCapitalize="none"
+                    autoCorrect={false}
+                    onFocus={() => {
+                      setTimeout(() => {
+                        emailSectionRef.current?.measureLayout(
+                          scrollRef.current?.getScrollableNode?.() ??
+                            scrollRef.current,
+                          (_x, y) =>
+                            scrollRef.current?.scrollTo({
+                              y: y - 16,
+                              animated: true,
+                            }),
+                          () =>
+                            scrollRef.current?.scrollToEnd({
+                              animated: true,
+                            }),
+                        );
+                      }, 150);
+                    }}
+                  />
+                  <TextInput
+                    style={styles.credentialsInput}
+                    placeholder="Password (min. 6 characters)"
+                    placeholderTextColor={COLORS.textMuted}
+                    value={passwordInput}
+                    onChangeText={setPasswordInput}
+                    secureTextEntry
+                    autoCapitalize="none"
+                    autoCorrect={false}
+                  />
                   <TouchableOpacity
-                    style={[styles.actionButton, styles.cancelButton]}
-                    onPress={handleCancel}
-                    disabled={isSaving}
+                    style={[
+                      styles.credentialsSaveBtn,
+                      (!emailInput.trim() ||
+                        !passwordInput.trim() ||
+                        isSavingEmail) &&
+                        styles.credentialsSaveBtnDisabled,
+                    ]}
+                    onPress={handleSaveCredentials}
+                    disabled={
+                      !emailInput.trim() ||
+                      !passwordInput.trim() ||
+                      isSavingEmail
+                    }
                   >
-                    <Text style={styles.cancelButtonText}>Cancel</Text>
-                  </TouchableOpacity>
-                  <TouchableOpacity
-                    style={[styles.actionButton, styles.saveButton]}
-                    onPress={handleSave}
-                    disabled={isSaving}
-                  >
-                    {isSaving ? (
-                      <ActivityIndicator color="#fff" />
+                    {isSavingEmail ? (
+                      <ActivityIndicator color="#fff" size="small" />
                     ) : (
-                      <Text style={styles.saveButtonText}>
-                        {editingProfile ? "Update" : "Save"}
+                      <Text style={styles.credentialsSaveBtnText}>
+                        Link Account ➜
                       </Text>
                     )}
                   </TouchableOpacity>
                 </View>
+              ) : (
+                <View style={styles.emailLinkedRow}>
+                  <View style={styles.emailLinkedBadge}>
+                    <Text style={styles.emailLinkedIcon}>✓</Text>
+                  </View>
+                  <View style={{ flex: 1 }}>
+                    <Text style={styles.emailLinkedLabel}>Linked account</Text>
+                    <Text style={styles.emailLinkedValue}>
+                      {userAccount.email}
+                    </Text>
+                  </View>
+                </View>
+              )}
+            </View>
+
+            <TouchableOpacity
+              style={styles.logoutBtn}
+              onPress={handleLogout}
+              activeOpacity={0.8}
+            >
+              <Text style={styles.logoutIcon}>⏻</Text>
+              <Text style={styles.logoutText}>Log Out</Text>
+            </TouchableOpacity>
+
+            <View style={{ height: 32 }} />
+          </ScrollView>
+        </KeyboardAvoidingView>
+
+        {/* Profile create / edit modal */}
+        <Modal
+          animationType="slide"
+          transparent={true}
+          visible={modalVisible}
+          onRequestClose={handleCancel}
+        >
+          <View style={styles.modalOverlay}>
+            <View style={styles.modalContent}>
+              <Text style={styles.modalTitle}>
+                {editingProfile ? "Edit Profile" : "Create New Profile"}
+              </Text>
+
+              <ScrollView showsVerticalScrollIndicator={false}>
+                <View style={styles.inputGroup}>
+                  <Text style={styles.label}>Name</Text>
+                  <TextInput
+                    style={styles.input}
+                    placeholder="Enter name"
+                    placeholderTextColor={COLORS.textMuted}
+                    value={formData.name}
+                    onChangeText={(text) =>
+                      setFormData({ ...formData, name: text })
+                    }
+                  />
+                </View>
+                {!editingProfile && (
+                  <View>
+                    <View style={styles.inputGroup}>
+                      <Text style={styles.label}>Age</Text>
+                      <View style={styles.ageSection}>
+                        {AGE_OPTIONS.map((opt) => {
+                          const isSelected =
+                            parseInt(formData.age) === opt.value;
+                          return (
+                            <TouchableOpacity
+                              key={opt.value}
+                              style={[
+                                styles.ageBtn,
+                                isSelected && styles.ageBtnActive,
+                              ]}
+                              onPress={() =>
+                                setFormData({
+                                  ...formData,
+                                  age: opt.value.toString(),
+                                })
+                              }
+                            >
+                              <Text style={styles.ageBtnText}>{opt.label}</Text>
+                            </TouchableOpacity>
+                          );
+                        })}
+                      </View>
+                    </View>
+                    <View style={styles.inputGroup}>
+                      <Text style={styles.label}>Level</Text>
+                      <View style={styles.ageSection}>
+                        {START_LEVEL.map((opt) => {
+                          const isSelected =
+                            parseInt(formData.playLevel) === opt.value;
+                          return (
+                            <TouchableOpacity
+                              key={opt.value}
+                              style={[
+                                styles.ageBtn,
+                                isSelected && styles.ageBtnActive,
+                              ]}
+                              onPress={() =>
+                                setFormData({
+                                  ...formData,
+                                  playLevel: opt.value.toString(),
+                                })
+                              }
+                            >
+                              <Text style={styles.ageBtnText}>{opt.label}</Text>
+                            </TouchableOpacity>
+                          );
+                        })}
+                      </View>
+                    </View>
+                  </View>
+                )}
+                <Text style={styles.label}>Gender</Text>
+                <View style={styles.genderSection}>
+                  <TouchableOpacity
+                    style={[
+                      styles.genderBtn,
+                      styles.genderBtnBoy,
+                      formData.gender === "MALE" && styles.genderBtnActive,
+                    ]}
+                    onPress={() => setFormData({ ...formData, gender: "MALE" })}
+                    activeOpacity={0.85}
+                  >
+                    <ExpoImage
+                      source={require("../assets/img/boy-icon.png")}
+                      style={{
+                        width: 50,
+                        height: 50,
+                        marginBottom: 5,
+                      }}
+                      contentFit="cover"
+                      cachePolicy="memory-disk"
+                    />
+                    <Text style={styles.genderLabel}>Boy</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    style={[
+                      styles.genderBtn,
+                      styles.genderBtnGirl,
+                      formData.gender === "FEMALE" && styles.genderBtnActive,
+                    ]}
+                    onPress={() =>
+                      setFormData({ ...formData, gender: "FEMALE" })
+                    }
+                    activeOpacity={0.85}
+                  >
+                    <ExpoImage
+                      source={require("../assets/img/girl-icon.png")}
+                      style={{
+                        width: 50,
+                        height: 50,
+                        marginBottom: 5,
+                      }}
+                      contentFit="cover"
+                      cachePolicy="memory-disk"
+                    />
+                    <Text style={styles.genderLabel}>Girl</Text>
+                  </TouchableOpacity>
+                </View>
+              </ScrollView>
+
+              <View style={styles.modalActions}>
+                <TouchableOpacity
+                  style={[styles.actionButton, styles.cancelButton]}
+                  onPress={handleCancel}
+                  disabled={isSaving}
+                >
+                  <Text style={styles.cancelButtonText}>Cancel</Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={[styles.actionButton, styles.saveButton]}
+                  onPress={handleSave}
+                  disabled={isSaving}
+                >
+                  {isSaving ? (
+                    <ActivityIndicator color="#fff" />
+                  ) : (
+                    <Text style={styles.saveButtonText}>
+                      {editingProfile ? "Update" : "Save"}
+                    </Text>
+                  )}
+                </TouchableOpacity>
               </View>
             </View>
-          </Modal>
-        </SafeAreaView>
-      </AppBackground>
+          </View>
+        </Modal>
+      </SafeAreaView>
 
       {/* Profile limit / upgrade modal — outside SafeAreaView so it covers everything */}
       <ProfileLimitModal

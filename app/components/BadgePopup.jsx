@@ -790,7 +790,6 @@ const BadgePopup = ({
                         style={[styles.playBtn, { backgroundColor: accent }]}
                         onPress={onPlay}
                       >
-                        <Text style={styles.playBtnIcon}>▶</Text>
                         <Text style={styles.playBtnText}>Play</Text>
                       </Pressable>
                     </Animated.View>

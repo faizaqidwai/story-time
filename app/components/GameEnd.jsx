@@ -433,8 +433,8 @@ const GameEnd = ({
       }
       const file =
         type === "won"
-          ? require("../../assets/sounds/win.mp3")
-          : require("../../assets/sounds/lose.mp3");
+          ? require("../../assets/sounds/game/win.mp3")
+          : require("../../assets/sounds/game/lose.mp3");
       const { sound } = await Audio.Sound.createAsync(file);
       soundRef.current = sound;
       await sound.playAsync();
@@ -457,10 +457,10 @@ const GameEnd = ({
           ))}
         {badge === "won" && (
           <ExpoImage
-            source={require("../../assets/img/minion.png")}
+            source={require("../../assets/img/owl.png")}
             style={[
               styles.bird,
-              { width: isTablet ? 300 : 270, height: isTablet ? 300 : 280 },
+              { width: isTablet ? 300 : 220, height: isTablet ? 300 : 220 },
             ]}
             contentFit="contain"
           />

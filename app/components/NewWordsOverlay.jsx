@@ -1,15 +1,8 @@
 // app/components/NewWordsOverlay.jsx
 //
 // Shown after a story is finished (before the next activity route).
-// Cycles through challengeWords one by one — emoji, name, phonics chips,
-// explanation, extras.
-//
-// Features:
-//   • Real horizontal FlatList swipe — physically drag between words
-//   • Per-phonics-chip animation: the chip being spoken scales up + bounces
-//   • activePhonicsIndex tracks which phonics part Speech is on
-//   • AUTO-PLAY: word audio plays automatically on first load and on each navigation
-//     (fixed: no double-fire / repeat loop)
+// Cycles through challengeWords one by one — emoji, name, explanation.
+// Rendered as a centered popup modal (not a bottom sheet).
 //
 // Props:
 //   visible  — boolean
@@ -34,6 +27,10 @@ import { FONTS } from "../theme";
 import { font, pad, radius, size } from "../theme/tokens";
 
 const { width: SW, height: SH } = Dimensions.get("window");
+
+// Popup dimensions
+const POPUP_W = Math.min(SW - 40, 420);
+const POPUP_H = SH * 0.72;
 
 const C = {
   bg: "rgba(6,7,20,0.98)",
@@ -98,100 +95,28 @@ const dotS = StyleSheet.create({
 });
 
 // ─────────────────────────────────────────────────────────────────────────────
-// ANIMATED PHONICS CHIP
-// ─────────────────────────────────────────────────────────────────────────────
-function PhonicsChip({ label, isFullWord, isActive }) {
-  const scale = useRef(new Animated.Value(1)).current;
-  const glowOp = useRef(new Animated.Value(0)).current;
-  const bounceLoop = useRef(null);
-
-  useEffect(() => {
-    if (isActive) {
-      Animated.spring(scale, {
-        toValue: 1.55,
-        friction: 4,
-        tension: 90,
-        useNativeDriver: true,
-      }).start();
-      bounceLoop.current = Animated.loop(
-        Animated.sequence([
-          Animated.timing(scale, {
-            toValue: 1.62,
-            duration: 260,
-            easing: Easing.inOut(Easing.sin),
-            useNativeDriver: true,
-          }),
-          Animated.timing(scale, {
-            toValue: 1.5,
-            duration: 260,
-            easing: Easing.inOut(Easing.sin),
-            useNativeDriver: true,
-          }),
-        ]),
-      );
-    } else {
-      bounceLoop.current?.stop();
-      bounceLoop.current = null;
-      Animated.parallel([
-        Animated.spring(scale, {
-          toValue: 1,
-          friction: 5,
-          tension: 80,
-          useNativeDriver: true,
-        }),
-        Animated.timing(glowOp, {
-          toValue: 0,
-          duration: 200,
-          useNativeDriver: true,
-        }),
-      ]).start();
-    }
-    return () => {
-      bounceLoop.current?.stop();
-      bounceLoop.current = null;
-    };
-  }, [isActive]);
-
-  const chipStyle = isFullWord ? wS.phonicsChipWord : wS.phonicsChip;
-  const textStyle = isFullWord ? wS.phonicsTextWord : wS.phonicsText;
-  const glowColor = isFullWord ? "rgba(255,213,79,0.5)" : "rgba(0,188,212,0.5)";
-
-  return (
-    <Animated.View
-      style={[chipStyle, { transform: [{ scale }], zIndex: isActive ? 10 : 1 }]}
-    >
-      <Animated.View
-        style={[wS.chipGlow, { opacity: glowOp, backgroundColor: glowColor }]}
-        pointerEvents="none"
-      />
-      <Text style={[textStyle, isActive && wS.phonicsTextActive]}>{label}</Text>
-    </Animated.View>
-  );
-}
-
-// ─────────────────────────────────────────────────────────────────────────────
 // SINGLE WORD CARD
 // ─────────────────────────────────────────────────────────────────────────────
-function WordCard({ word, isPlaying, onAudio, activePhonicsIndex }) {
-  const slideY = useRef(new Animated.Value(30)).current;
+function WordCard({ word, isPlaying, onAudio }) {
+  const slideY = useRef(new Animated.Value(20)).current;
   const opacity = useRef(new Animated.Value(0)).current;
-  const emojiScale = useRef(new Animated.Value(0.55)).current;
+  const emojiScale = useRef(new Animated.Value(0.6)).current;
   const emojiBounce = useRef(new Animated.Value(1)).current;
   const emojiBounceLoop = useRef(null);
 
   useEffect(() => {
-    slideY.setValue(30);
+    slideY.setValue(20);
     opacity.setValue(0);
-    emojiScale.setValue(0.55);
+    emojiScale.setValue(0.6);
     Animated.parallel([
       Animated.timing(opacity, {
         toValue: 1,
-        duration: 320,
+        duration: 300,
         useNativeDriver: true,
       }),
       Animated.timing(slideY, {
         toValue: 0,
-        duration: 320,
+        duration: 300,
         easing: Easing.out(Easing.cubic),
         useNativeDriver: true,
       }),
@@ -209,14 +134,14 @@ function WordCard({ word, isPlaying, onAudio, activePhonicsIndex }) {
       emojiBounceLoop.current = Animated.loop(
         Animated.sequence([
           Animated.timing(emojiBounce, {
-            toValue: 1.13,
-            duration: 290,
+            toValue: 1.1,
+            duration: 300,
             easing: Easing.inOut(Easing.sin),
             useNativeDriver: true,
           }),
           Animated.timing(emojiBounce, {
-            toValue: 0.94,
-            duration: 290,
+            toValue: 0.95,
+            duration: 300,
             easing: Easing.inOut(Easing.sin),
             useNativeDriver: true,
           }),
@@ -253,34 +178,13 @@ function WordCard({ word, isPlaying, onAudio, activePhonicsIndex }) {
         <Text style={wS.emoji}>{word.image || "📖"}</Text>
       </Animated.View>
 
-      {/* Word name */}
+      {/* Word name box */}
       <View style={wS.wordBox}>
         <Text style={wS.wordName}>{word.name}</Text>
       </View>
-      {/* Phonics row */}
-      {/* {word.phonics && word.phonics.length > 0 && (
-        <View style={wS.phonicsRow}>
-          {word.phonics.map((p, i) => (
-            <React.Fragment key={i}>
-              {i > 0 && <Text style={wS.phonicsSep}>+</Text>}
-              <PhonicsChip
-                label={p}
-                isFullWord={false}
-                isActive={activePhonicsIndex === i}
-              />
-            </React.Fragment>
-          ))}
-          <Text style={wS.phonicsSep}>=</Text>
-          <PhonicsChip
-            label={word.name}
-            isFullWord={true}
-            isActive={activePhonicsIndex === word.phonics.length}
-          />
-        </View>
-      )}
 
-      {/* Audio button */}
-      <TouchableOpacity
+      {/* Hear it button */}
+      {/* <TouchableOpacity
         style={[wS.audioBtn, isPlaying && wS.audioBtnActive]}
         onPress={onAudio}
         activeOpacity={0.8}
@@ -289,25 +193,27 @@ function WordCard({ word, isPlaying, onAudio, activePhonicsIndex }) {
         <Text style={[wS.audioBtnText, isPlaying && { color: C.teal }]}>
           {isPlaying ? "Stop" : "Hear it"}
         </Text>
-      </TouchableOpacity>
+      </TouchableOpacity> */}
 
       {/* Category badges */}
-      <View style={wS.badgeRow}>
-        {word.grammarCategory ? (
-          <View style={[wS.badge, wS.badgePurple]}>
-            <Text style={[wS.badgeText, { color: C.purple }]}>
-              {word.grammarCategory}
-            </Text>
-          </View>
-        ) : null}
-        {word.category ? (
-          <View style={[wS.badge, wS.badgeTeal]}>
-            <Text style={[wS.badgeText, { color: C.teal }]}>
-              {word.category}
-            </Text>
-          </View>
-        ) : null}
-      </View>
+      {word.grammarCategory || word.category ? (
+        <View style={wS.badgeRow}>
+          {word.grammarCategory ? (
+            <View style={[wS.badge, wS.badgePurple]}>
+              <Text style={[wS.badgeText, { color: C.purple }]}>
+                {word.grammarCategory}
+              </Text>
+            </View>
+          ) : null}
+          {word.category ? (
+            <View style={[wS.badge, wS.badgeTeal]}>
+              <Text style={[wS.badgeText, { color: C.teal }]}>
+                {word.category}
+              </Text>
+            </View>
+          ) : null}
+        </View>
+      ) : null}
 
       {/* Explanation */}
       {word.explanation ? (
@@ -316,34 +222,22 @@ function WordCard({ word, isPlaying, onAudio, activePhonicsIndex }) {
           <Text style={wS.explanationText}>{word.explanation}</Text>
         </View>
       ) : null}
-
-      {/* Extras */}
-      {word.extras && word.extras.length > 0 ? (
-        <View style={wS.extrasBox}>
-          <Text style={wS.explanationLabel}>DID YOU KNOW?</Text>
-          {word.extras.map((extra, i) => (
-            <View key={i} style={wS.extraRow}>
-              <Text style={wS.extraBullet}>✦</Text>
-              <Text style={wS.extraText}>{extra}</Text>
-            </View>
-          ))}
-        </View>
-      ) : null}
     </Animated.View>
   );
 }
 
 const wS = StyleSheet.create({
   card: {
+    width: POPUP_W,
     alignItems: "center",
-    paddingHorizontal: pad.xl,
-    paddingBottom: pad.xxxl,
-    paddingTop: pad.md,
+    paddingHorizontal: pad.lg,
+    paddingBottom: pad.lg,
+    paddingTop: pad.sm,
   },
   emojiRing: {
-    width: 130,
-    height: 130,
-    borderRadius: 65,
+    width: 110,
+    height: 110,
+    borderRadius: 55,
     backgroundColor: "rgba(0,188,212,0.1)",
     borderWidth: 2.5,
     borderColor: C.tealBorder,
@@ -353,99 +247,31 @@ const wS = StyleSheet.create({
     shadowColor: C.teal,
     shadowOffset: { width: 0, height: 0 },
     shadowOpacity: 0.45,
-    shadowRadius: 24,
+    shadowRadius: 20,
     elevation: 8,
   },
-  emoji: { fontSize: 64 },
-  wordName: {
-    fontFamily: FONTS.bold,
-    fontSize: font.h3,
-    color: C.yellow, // was: 26
-    letterSpacing: 1.5,
-    textTransform: "uppercase",
-    textShadowColor: "rgba(255,213,79,0.4)",
-    textShadowOffset: { width: 0, height: 0 },
-    textShadowRadius: 10,
-  },
+  emoji: { fontSize: 56 },
   wordBox: {
     backgroundColor: C.yellowDim,
     borderRadius: radius.md,
     borderWidth: 1.5,
     borderColor: C.yellowBorder,
-    paddingHorizontal: pad.xxl,
-    paddingVertical: pad.xl,
+    paddingHorizontal: pad.xl,
+    paddingVertical: pad.sm,
     alignItems: "center",
-    marginBottom: pad.md,
+    marginBottom: pad.sm,
     // width: "100%",
-    //  height: "15%",
-    justifyContent: "center",
   },
-  // wordName: {
-  //   fontFamily: FONTS.bold,
-  //   fontSize: font.h2,
-  //   color: C.textPri,
-  //   letterSpacing: 0.5,
-  //   marginBottom: pad.sm,
-  //   textShadowColor: "rgba(0,188,212,0.5)",
-  //   textShadowOffset: { width: 0, height: 0 },
-  //   textShadowRadius: 14,
-  //   textAlign: "center",
-  // },
-  phonicsRow: {
-    flexDirection: "row",
-    flexWrap: "wrap",
-    justifyContent: "center",
-    alignItems: "center",
-    paddingVertical: pad.lg,
-    marginBottom: pad.md,
-    overflow: "visible",
-  },
-  phonicsChip: {
-    backgroundColor: C.tealDim,
-    borderRadius: radius.sm,
-    borderWidth: 1,
-    borderColor: C.tealBorder,
-    paddingHorizontal: pad.sm,
-    paddingVertical: pad.xs,
-    overflow: "visible",
-  },
-  phonicsText: {
+  wordName: {
     fontFamily: FONTS.bold,
-    fontSize: font.lg,
-    color: C.teal,
-    letterSpacing: 1.5,
-  },
-  phonicsTextActive: {},
-  phonicsSep: {
-    fontFamily: FONTS.bold,
-    fontSize: font.lg,
-    color: "rgba(0,188,212,0.45)",
-    alignSelf: "center",
-    marginHorizontal: pad.xs,
-  },
-  phonicsChipWord: {
-    backgroundColor: "rgba(255,213,79,0.15)",
-    borderRadius: radius.sm,
-    borderWidth: 1,
-    borderColor: "rgba(255,213,79,0.55)",
-    paddingHorizontal: pad.sm,
-    paddingVertical: pad.xs,
-    overflow: "visible",
-    marginTop: 15,
-  },
-  phonicsTextWord: {
-    fontFamily: FONTS.bold,
-    fontSize: font.lg,
+    fontSize: font.h3,
     color: C.yellow,
-    letterSpacing: 0.5,
-  },
-  chipGlow: {
-    position: "absolute",
-    top: -10,
-    left: -10,
-    right: -10,
-    bottom: -10,
-    borderRadius: radius.md,
+    letterSpacing: 1.5,
+    textTransform: "uppercase",
+    textShadowColor: "rgba(255,213,79,0.4)",
+    textShadowOffset: { width: 0, height: 0 },
+    textShadowRadius: 10,
+    textAlign: "center",
   },
   audioBtn: {
     flexDirection: "row",
@@ -455,9 +281,9 @@ const wS = StyleSheet.create({
     borderRadius: radius.lg,
     borderWidth: 1.5,
     borderColor: "rgba(255,255,255,0.12)",
-    paddingHorizontal: pad.xl,
+    paddingHorizontal: pad.lg,
     paddingVertical: pad.sm,
-    marginBottom: pad.md,
+    marginBottom: pad.sm,
   },
   audioBtnActive: {
     backgroundColor: C.tealDim,
@@ -473,7 +299,9 @@ const wS = StyleSheet.create({
   badgeRow: {
     flexDirection: "row",
     gap: pad.s,
-    marginBottom: pad.md,
+    marginBottom: pad.sm,
+    flexWrap: "wrap",
+    justifyContent: "center",
   },
   badge: {
     borderRadius: radius.sm,
@@ -496,19 +324,10 @@ const wS = StyleSheet.create({
     borderWidth: 1,
     borderColor: "rgba(255,255,255,0.08)",
     padding: pad.md,
-    marginBottom: pad.sm,
-  },
-  extrasBox: {
-    width: "100%",
-    backgroundColor: C.surface,
-    borderRadius: radius.md,
-    borderWidth: 1,
-    borderColor: "rgba(255,255,255,0.08)",
-    padding: pad.md,
   },
   explanationLabel: {
     fontFamily: FONTS.bold,
-    fontSize: font.md,
+    fontSize: font.xs,
     color: C.teal,
     letterSpacing: 2,
     marginBottom: pad.s,
@@ -519,20 +338,6 @@ const wS = StyleSheet.create({
     fontSize: font.md,
     color: C.textSec,
     lineHeight: font.md + 8,
-  },
-  extraRow: {
-    flexDirection: "row",
-    alignItems: "flex-start",
-    gap: pad.s,
-    marginBottom: pad.xs,
-  },
-  extraBullet: { fontSize: font.xs, color: C.teal, marginTop: 4 },
-  extraText: {
-    fontFamily: FONTS.regular,
-    flex: 1,
-    fontSize: font.md - 1,
-    color: C.textSec,
-    lineHeight: font.md + 6,
   },
 });
 
@@ -545,20 +350,18 @@ export default function NewWordsOverlay({ visible, words = [], onDone }) {
   const [playingWord, setPlayingWord] = useState(null);
 
   const flatRef = useRef(null);
-  const sheetY = useRef(new Animated.Value(SH)).current;
-  const scrOp = useRef(new Animated.Value(0)).current;
+
+  // Popup entrance animations
+  const backdropOp = useRef(new Animated.Value(0)).current;
+  const popupScale = useRef(new Animated.Value(0.85)).current;
+  const popupOp = useRef(new Animated.Value(0)).current;
+
   const mountedRef = useRef(true);
-  const speakCancelRef = useRef(false);
-  // ── Refs to break stale closure issues ─────────────────────────────────
-  // hasOpenedRef: prevents onViewableItemsChanged from auto-playing on
-  // the initial mount trigger (which fires at the same time as the
-  // visible-effect auto-play, causing a double/repeat loop).
   const hasOpenedRef = useRef(false);
-  // Always points to the latest handleAudio so the frozen onViewableItemsChanged
-  // ref can still call the current version.
   const handleAudioRef = useRef(null);
-  // Always points to the latest words array for the same reason.
   const wordsRef = useRef(words);
+  const audioGenRef = useRef(0);
+  const isProgrammaticScrollRef = useRef(false);
 
   useEffect(() => {
     mountedRef.current = true;
@@ -567,14 +370,13 @@ export default function NewWordsOverlay({ visible, words = [], onDone }) {
     };
   }, []);
 
-  // Keep wordsRef in sync
   useEffect(() => {
     wordsRef.current = words;
   }, [words]);
 
   // ── Audio ───────────────────────────────────────────────────────────────
   const stopAudio = useCallback(() => {
-    speakCancelRef.current = true; // ← cancel any chain
+    audioGenRef.current += 1; // invalidate all in-flight callbacks
     Speech.stop();
     if (mountedRef.current) {
       setPlayingWord(null);
@@ -588,116 +390,125 @@ export default function NewWordsOverlay({ visible, words = [], onDone }) {
         stopAudio();
         return;
       }
-      speakCancelRef.current = true;
-      stopAudio();
+      stopAudio(); // increments audioGenRef, kills old callbacks
       if (!mountedRef.current) return;
 
-      speakCancelRef.current = false;
+      const myGen = audioGenRef.current; // capture this session's ID
+
       setPlayingWord(word.name);
 
       Speech.speak(word.name, {
-        // ← just the word, no phonics parts
         language: "en",
         pitch: 1.15,
         rate: 0.72,
         onDone: () => {
           if (!mountedRef.current) return;
-          if (speakCancelRef.current) return;
+          if (audioGenRef.current !== myGen) return; // stale, ignore
           setPlayingWord(null);
           setActivePhonicsIndex(-1);
         },
         onStopped: () => {
-          if (mountedRef.current) {
-            setPlayingWord(null);
-            setActivePhonicsIndex(-1);
-          }
+          if (!mountedRef.current) return;
+          if (audioGenRef.current !== myGen) return; // stale, ignore
+          setPlayingWord(null);
+          setActivePhonicsIndex(-1);
         },
         onError: () => {
-          if (mountedRef.current) {
-            setPlayingWord(null);
-            setActivePhonicsIndex(-1);
-          }
+          if (!mountedRef.current) return;
+          if (audioGenRef.current !== myGen) return;
+          setPlayingWord(null);
+          setActivePhonicsIndex(-1);
         },
       });
     },
     [playingWord, stopAudio],
   );
 
-  // Keep handleAudioRef in sync with the latest handleAudio
   handleAudioRef.current = handleAudio;
 
-  // ── Sheet open / close ──────────────────────────────────────────────────
+  // ── Popup open / close ──────────────────────────────────────────────────
+  const animateIn = () => {
+    hasOpenedRef.current = false;
+    backdropOp.setValue(0);
+    popupScale.setValue(0.85);
+    popupOp.setValue(0);
+
+    Animated.parallel([
+      Animated.timing(backdropOp, {
+        toValue: 1,
+        duration: 280,
+        useNativeDriver: true,
+      }),
+      Animated.spring(popupScale, {
+        toValue: 1,
+        friction: 7,
+        tension: 65,
+        useNativeDriver: true,
+      }),
+      Animated.timing(popupOp, {
+        toValue: 1,
+        duration: 260,
+        useNativeDriver: true,
+      }),
+    ]).start(() => {
+      hasOpenedRef.current = true;
+      if (mountedRef.current && wordsRef.current.length > 0) {
+        setTimeout(() => {
+          if (mountedRef.current) {
+            handleAudioRef.current(wordsRef.current[0]);
+          }
+        }, 300);
+      }
+    });
+  };
+
+  const animateOut = (cb) => {
+    hasOpenedRef.current = false;
+    Speech.stop();
+    Animated.parallel([
+      Animated.timing(backdropOp, {
+        toValue: 0,
+        duration: 220,
+        useNativeDriver: true,
+      }),
+      Animated.timing(popupOp, {
+        toValue: 0,
+        duration: 200,
+        useNativeDriver: true,
+      }),
+      Animated.timing(popupScale, {
+        toValue: 0.88,
+        duration: 220,
+        useNativeDriver: true,
+      }),
+    ]).start(() => cb?.());
+  };
+
   useEffect(() => {
     if (visible) {
-      hasOpenedRef.current = false; // reset so the swipe guard works correctly
       setIndex(0);
       setActivePhonicsIndex(-1);
       setPlayingWord(null);
       Speech.stop();
-
       setTimeout(
         () => flatRef.current?.scrollToOffset({ offset: 0, animated: false }),
         50,
       );
-
-      Animated.parallel([
-        Animated.timing(scrOp, {
-          toValue: 1,
-          duration: 320,
-          useNativeDriver: true,
-        }),
-        Animated.spring(sheetY, {
-          toValue: 0,
-          friction: 9,
-          tension: 65,
-          useNativeDriver: true,
-        }),
-      ]).start(() => {
-        // Mark as open BEFORE auto-playing so the viewability callback
-        // knows the sheet is settled and won't double-fire.
-        hasOpenedRef.current = true;
-        if (mountedRef.current && wordsRef.current.length > 0) {
-          setTimeout(() => {
-            if (mountedRef.current) {
-              handleAudioRef.current(wordsRef.current[0]);
-            }
-          }, 300);
-        }
-      });
+      animateIn();
     } else {
-      doSlideOut();
+      animateOut();
     }
   }, [visible]);
 
-  const doSlideOut = () => {
-    hasOpenedRef.current = false;
-    Speech.stop();
-    Animated.parallel([
-      Animated.timing(scrOp, {
-        toValue: 0,
-        duration: 280,
-        useNativeDriver: true,
-      }),
-      Animated.timing(sheetY, {
-        toValue: SH,
-        duration: 320,
-        easing: Easing.in(Easing.quad),
-        useNativeDriver: true,
-      }),
-    ]).start();
-  };
-
-  // ── Navigation (buttons) ────────────────────────────────────────────────
-  // goTo is the single source of truth for programmatic navigation.
-  // It stops audio, scrolls, updates index, then auto-plays the new word.
-  // onViewableItemsChanged does NOT trigger goTo — it only syncs the index
-  // so dots/counter stay correct when the user swipes manually.
+  // ── Navigation ──────────────────────────────────────────────────────────
   const goTo = useCallback(
     (nextIndex) => {
       stopAudio();
+      isProgrammaticScrollRef.current = true; // suppress viewability callback
       flatRef.current?.scrollToIndex({ index: nextIndex, animated: true });
       setIndex(nextIndex);
       setTimeout(() => {
+        isProgrammaticScrollRef.current = false;
         if (mountedRef.current && wordsRef.current[nextIndex]) {
           handleAudioRef.current(wordsRef.current[nextIndex]);
         }
@@ -710,8 +521,7 @@ export default function NewWordsOverlay({ visible, words = [], onDone }) {
     if (index < words.length - 1) {
       goTo(index + 1);
     } else {
-      doSlideOut();
-      setTimeout(onDone, 340);
+      animateOut(() => setTimeout(onDone, 50));
     }
   }, [index, words.length, onDone, goTo]);
 
@@ -720,14 +530,12 @@ export default function NewWordsOverlay({ visible, words = [], onDone }) {
   }, [index, goTo]);
 
   // ── Sync index on manual swipe ──────────────────────────────────────────
-  // hasOpenedRef gates this so it doesn't fire during the initial mount
-  // viewability event (which would race with the visible-effect auto-play).
   const onViewableItemsChanged = useRef(({ viewableItems }) => {
-    if (!hasOpenedRef.current) return; // ignore mount-time trigger
+    if (!hasOpenedRef.current) return;
+    if (isProgrammaticScrollRef.current) return; // ignore programmatic scrolls
     if (viewableItems.length > 0) {
       const newIdx = viewableItems[0].index ?? 0;
       setIndex(newIdx);
-      // Auto-play on manual swipe via fresh refs (no stale closure)
       Speech.stop();
       setTimeout(() => {
         if (mountedRef.current && wordsRef.current[newIdx]) {
@@ -741,24 +549,22 @@ export default function NewWordsOverlay({ visible, words = [], onDone }) {
     viewAreaCoveragePercentThreshold: 50,
   }).current;
 
-  // ── Render each word as a full-width scrollable page ────────────────────
+  // ── Render ──────────────────────────────────────────────────────────────
   const renderItem = useCallback(
     ({ item }) => {
       const isThisWordPlaying = playingWord === item.name;
-      const phonicsIndexForThis = isThisWordPlaying ? activePhonicsIndex : -1;
-
       return (
         <ScrollView
-          style={{ width: SW }}
+          style={{ width: POPUP_W }}
           showsVerticalScrollIndicator={false}
-          contentContainerStyle={{ paddingBottom: pad.xl }}
+          contentContainerStyle={{ paddingBottom: pad.sm }}
           directionalLockEnabled
         >
           <WordCard
             word={item}
             isPlaying={isThisWordPlaying}
             onAudio={() => handleAudio(item)}
-            activePhonicsIndex={phonicsIndexForThis}
+            activePhonicsIndex={isThisWordPlaying ? activePhonicsIndex : -1}
           />
         </ScrollView>
       );
@@ -777,120 +583,118 @@ export default function NewWordsOverlay({ visible, words = [], onDone }) {
       animationType="none"
       onRequestClose={() => {}}
     >
-      {/* Scrim */}
-      <Animated.View
-        style={[s.scrim, { opacity: scrOp }]}
-        pointerEvents="none"
-      />
+      {/* Backdrop */}
+      <Animated.View style={[s.backdrop, { opacity: backdropOp }]} />
 
-      {/* Sheet */}
-      <Animated.View style={[s.sheet, { transform: [{ translateY: sheetY }] }]}>
-        <View style={s.handle} />
-
-        {/* Header */}
-        <View style={s.header}>
-          <View style={s.headerLeft}>
-            <Text style={s.headerEmoji}>🌟</Text>
-            <Text style={s.headerTitle}>New Words!</Text>
+      {/* Centered popup */}
+      <View style={s.shell} pointerEvents="box-none">
+        <Animated.View
+          style={[
+            s.popup,
+            {
+              opacity: popupOp,
+              transform: [{ scale: popupScale }],
+            },
+          ]}
+        >
+          {/* Header */}
+          <View style={s.header}>
+            <View style={s.headerLeft}>
+              <Text style={s.headerEmoji}>🌟</Text>
+              <Text style={s.headerTitle}>New Words!</Text>
+            </View>
+            <View style={s.headerRight}>
+              <Text style={s.counterText}>
+                {index + 1} / {words.length}
+              </Text>
+            </View>
           </View>
-          <View style={s.headerRight}>
-            <Text style={s.counterText}>
-              {index + 1} / {words.length}
-            </Text>
+
+          {/* Dots */}
+          {words.length > 1 && <Dots total={words.length} current={index} />}
+
+          {/* Divider */}
+          <View style={s.divider} />
+
+          {/* Swipable word pages */}
+          <FlatList
+            ref={flatRef}
+            data={words}
+            horizontal
+            pagingEnabled
+            showsHorizontalScrollIndicator={false}
+            keyExtractor={(item) => item.name}
+            renderItem={renderItem}
+            onViewableItemsChanged={onViewableItemsChanged}
+            viewabilityConfig={viewabilityConfig}
+            scrollEnabled={words.length > 1}
+            style={s.flatList}
+            removeClippedSubviews={false}
+          />
+
+          {/* Nav buttons */}
+          <View style={s.divider} />
+          <View style={s.navRow}>
+            <TouchableOpacity
+              style={[s.navBtn, index === 0 && s.navBtnDisabled]}
+              onPress={goPrev}
+              activeOpacity={0.75}
+              disabled={index === 0}
+            >
+              <Text style={s.navBtnIcon}>‹</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={[s.navBtn, s.navBtnPrimary]}
+              onPress={goNext}
+              activeOpacity={0.85}
+            >
+              <Text style={s.navBtnPrimaryText}>
+                {isLast ? "Let's Go! 🚀" : "Next →"}
+              </Text>
+            </TouchableOpacity>
           </View>
-        </View>
-
-        {/* Dots */}
-        {words.length > 1 && <Dots total={words.length} current={index} />}
-
-        {/* Swipable word pages */}
-        <FlatList
-          ref={flatRef}
-          data={words}
-          horizontal
-          pagingEnabled
-          showsHorizontalScrollIndicator={false}
-          keyExtractor={(item) => item.name}
-          renderItem={renderItem}
-          onViewableItemsChanged={onViewableItemsChanged}
-          viewabilityConfig={viewabilityConfig}
-          scrollEnabled={words.length > 1}
-          style={s.flatList}
-          removeClippedSubviews={false}
-        />
-
-        {/* Nav buttons */}
-        <View style={s.navRow}>
-          <TouchableOpacity
-            style={[s.navBtn, index === 0 && s.navBtnDisabled]}
-            onPress={goPrev}
-            activeOpacity={0.75}
-            disabled={index === 0}
-          >
-            <Text style={s.navBtnIcon}>‹</Text>
-          </TouchableOpacity>
-
-          <TouchableOpacity
-            style={[s.navBtn, s.navBtnPrimary]}
-            onPress={goNext}
-            activeOpacity={0.85}
-          >
-            <Text style={s.navBtnPrimaryText}>
-              {isLast ? "Let's Go! 🚀" : "Next →"}
-            </Text>
-          </TouchableOpacity>
-        </View>
-      </Animated.View>
+        </Animated.View>
+      </View>
     </Modal>
   );
 }
 
+// ─────────────────────────────────────────────────────────────────────────────
+// STYLES
+// ─────────────────────────────────────────────────────────────────────────────
 const s = StyleSheet.create({
-  scrim: {
-    position: "absolute",
-    top: 0,
-    left: 0,
-    right: 0,
-    bottom: 0,
-    backgroundColor: "rgba(0,0,0,0.65)",
-    //  padding: 2,
+  backdrop: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: "rgba(0,0,0,0.75)",
   },
-  sheet: {
-    position: "absolute",
-    bottom: 0,
-    left: 0,
-    right: 0,
-    height: SH * 0.89,
+  shell: {
+    flex: 1,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  popup: {
+    width: POPUP_W,
+    maxHeight: POPUP_H,
     backgroundColor: "#0f0f2a",
-    borderTopLeftRadius: radius.xxl,
-    borderTopRightRadius: radius.xxl,
-    borderTopWidth: 1.5,
-    borderLeftWidth: 1,
-    borderRightWidth: 1,
-    // borderBottomWidth: 1,
+    borderRadius: radius.xxl,
+    borderWidth: 1.5,
     borderColor: C.tealBorder,
-    paddingTop: pad.s,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: -10 },
-    shadowOpacity: 0.7,
-    shadowRadius: 24,
-    elevation: 28,
+    borderTopColor: "rgba(0,188,212,0.5)",
     overflow: "hidden",
-  },
-  handle: {
-    width: 44,
-    height: 5,
-    borderRadius: radius.xs,
-    backgroundColor: "rgba(255,255,255,0.18)",
-    alignSelf: "center",
-    marginBottom: pad.md,
+    shadowColor: C.teal,
+    shadowOffset: { width: 0, height: 0 },
+    shadowOpacity: 0.25,
+    shadowRadius: 32,
+    elevation: 24,
   },
   header: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
-    paddingHorizontal: pad.xl,
-    marginBottom: pad.sm,
+    paddingHorizontal: pad.lg,
+    paddingTop: pad.md,
+    paddingBottom: pad.sm,
   },
   headerLeft: {
     flexDirection: "row",
@@ -900,7 +704,7 @@ const s = StyleSheet.create({
   headerEmoji: { fontSize: font.xl },
   headerTitle: {
     fontFamily: FONTS.bold,
-    fontSize: font.xxl,
+    fontSize: font.xl,
     color: C.textPri,
     letterSpacing: 0.3,
     textShadowColor: "rgba(0,188,212,0.4)",
@@ -921,17 +725,20 @@ const s = StyleSheet.create({
     color: C.teal,
     letterSpacing: 0.5,
   },
-  flatList: { flex: 1 },
+  divider: {
+    height: 1,
+    backgroundColor: "rgba(255,255,255,0.06)",
+    marginHorizontal: 0,
+  },
+  flatList: {
+    flexGrow: 0,
+  },
   navRow: {
     flexDirection: "row",
     alignItems: "center",
-    justifyContent: "space-between",
-    paddingHorizontal: pad.xl,
+    paddingHorizontal: pad.lg,
     paddingVertical: pad.md,
-    paddingBottom: pad.xxl,
     gap: pad.md,
-    borderTopWidth: 1,
-    borderTopColor: "rgba(255,255,255,0.06)",
   },
   navBtn: {
     width: size.hitLg,

@@ -1,11 +1,10 @@
 // components/Article.jsx
 
-import React, { useState, useRef, useEffect } from "react";
+import React, { useState, useRef, useEffect, useCallback } from "react";
 import {
   View,
   Text,
   StyleSheet,
-  Image,
   ScrollView,
   TouchableOpacity,
   Animated,
@@ -26,10 +25,11 @@ import {
   ACTIVITY_ROUTES,
 } from "../_contexts/StoryActivityContext";
 import { FONTS } from "../theme";
-import { font, pad, radius, size } from "../theme/tokens"; // ← ADD
+import { font, pad, radius, size } from "../theme/tokens";
 import { Image as ExpoImage } from "expo-image";
+import { resolveListeningAudio } from "../data/listeningAudioMap";
 
-const { width: SW } = Dimensions.get("window");
+const { width: SW, height: SH } = Dimensions.get("window");
 const STATUS_H =
   Platform.OS === "android" ? (StatusBar.currentHeight ?? 24) : 50;
 
@@ -132,14 +132,14 @@ function FlyingCoin({ fromX, fromY, toX, toY, delay, onLand }) {
 // ─────────────────────────────────────────────────────────────────────────────
 function Waveform({ isPlaying }) {
   const bars = useRef(
-    Array.from({ length: 22 }, () => new Animated.Value(0.2)),
+    Array.from({ length: 28 }, () => new Animated.Value(0.15)),
   ).current;
   const loops = useRef([]);
   useEffect(() => {
     if (isPlaying) {
       loops.current = bars.map((b, i) => {
-        const maxH = 0.5 + Math.random() * 0.5;
-        const dur = 270 + Math.random() * 320;
+        const maxH = 0.4 + Math.random() * 0.6;
+        const dur = 250 + Math.random() * 350;
         const loop = Animated.loop(
           Animated.sequence([
             Animated.timing(b, {
@@ -149,21 +149,21 @@ function Waveform({ isPlaying }) {
               useNativeDriver: true,
             }),
             Animated.timing(b, {
-              toValue: 0.15 + Math.random() * 0.1,
+              toValue: 0.1 + Math.random() * 0.15,
               duration: dur,
               easing: Easing.inOut(Easing.sin),
               useNativeDriver: true,
             }),
           ]),
         );
-        setTimeout(() => loop.start(), i * 22);
+        setTimeout(() => loop.start(), i * 18);
         return loop;
       });
     } else {
       loops.current.forEach((l) => l.stop());
       bars.forEach((b) =>
         Animated.timing(b, {
-          toValue: 0.2,
+          toValue: 0.15,
           duration: 200,
           useNativeDriver: true,
         }).start(),
@@ -185,8 +185,8 @@ function Waveform({ isPlaying }) {
                   ? C.teal
                   : i % 3 === 1
                     ? C.yellow
-                    : "rgba(0,188,212,0.5)"
-                : "rgba(255,255,255,0.12)",
+                    : "rgba(0,188,212,0.45)"
+                : "rgba(255,255,255,0.1)",
             },
           ]}
         />
@@ -198,87 +198,41 @@ const wS = StyleSheet.create({
   container: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 3,
-    height: 44,
+    gap: 2.5,
+    height: 52,
     paddingHorizontal: pad.xs,
   },
-  bar: { width: 4, height: 36, borderRadius: 2 },
+  bar: { width: 3.5, height: 40, borderRadius: 2 },
 });
 
 // ─────────────────────────────────────────────────────────────────────────────
-// PROGRESS RING
+// OPTION CARD — slides in from right with delay, speaks on appearance
 // ─────────────────────────────────────────────────────────────────────────────
-function ProgressRing({ progress }) {
-  return (
-    <View
-      style={{
-        width: 62,
-        height: 62,
-        alignItems: "center",
-        justifyContent: "center",
-      }}
-    >
-      <View
-        style={{
-          position: "absolute",
-          width: 62,
-          height: 62,
-          borderRadius: 31,
-          borderWidth: 5,
-          borderColor: "rgba(255,255,255,0.08)",
-        }}
-      />
-      <View
-        style={{
-          position: "absolute",
-          width: 62,
-          height: 62,
-          borderRadius: 31,
-          borderWidth: 5,
-          borderTopColor: progress > 0.25 ? C.teal : "transparent",
-          borderRightColor: progress > 0.5 ? C.teal : "transparent",
-          borderBottomColor: progress > 0.75 ? C.teal : "transparent",
-          borderLeftColor: progress > 0 ? C.teal : "transparent",
-          transform: [{ rotate: "-90deg" }],
-        }}
-      />
-      <Text
-        style={{
-          fontFamily: FONTS.bold,
-          fontSize: font.xs,
-          color: C.textMuted,
-        }}
-      >
-        {Math.round(progress * 100)}%
-      </Text>
-    </View>
-  );
-}
-
-// ─────────────────────────────────────────────────────────────────────────────
-// OPTION CARD
-// ─────────────────────────────────────────────────────────────────────────────
-function OptionCard({ label, text, state, onPress, index, disabled }) {
-  const scale = useRef(new Animated.Value(1)).current;
-  const slideIn = useRef(new Animated.Value(30)).current;
+function OptionCard({ label, text, state, onPress, visible, disabled }) {
+  const slideX = useRef(new Animated.Value(SW)).current;
   const fadeIn = useRef(new Animated.Value(0)).current;
+  const scale = useRef(new Animated.Value(1)).current;
+  const hasAnimated = useRef(false);
+
   useEffect(() => {
-    Animated.parallel([
-      Animated.timing(slideIn, {
-        toValue: 0,
-        duration: 320,
-        delay: index * 60,
-        easing: Easing.out(Easing.back(1.3)),
-        useNativeDriver: true,
-      }),
-      Animated.timing(fadeIn, {
-        toValue: 1,
-        duration: 280,
-        delay: index * 60,
-        useNativeDriver: true,
-      }),
-    ]).start();
-  }, []);
+    if (visible && !hasAnimated.current) {
+      hasAnimated.current = true;
+      Animated.parallel([
+        Animated.spring(slideX, {
+          toValue: 0,
+          friction: 7,
+          tension: 55,
+          useNativeDriver: true,
+        }),
+        Animated.timing(fadeIn, {
+          toValue: 1,
+          duration: 300,
+          useNativeDriver: true,
+        }),
+      ]).start();
+    }
+  }, [visible]);
+
   const handlePress = () => {
     if (disabled) return;
     Animated.sequence([
@@ -297,6 +251,9 @@ function OptionCard({ label, text, state, onPress, index, disabled }) {
     ]).start();
     onPress();
   };
+
+  if (!visible) return null;
+
   let bg = C.surfaceDim,
     border = C.border,
     txtCol = C.textSec,
@@ -319,11 +276,13 @@ function OptionCard({ label, text, state, onPress, index, disabled }) {
     txtCol = C.yellow;
     icon = "★";
   }
+
   return (
     <Animated.View
       style={{
         opacity: fadeIn,
-        transform: [{ translateX: slideIn }, { scale }],
+        transform: [{ translateX: slideX }, { scale }],
+        marginBottom: pad.s,
       }}
     >
       <TouchableOpacity
@@ -351,26 +310,68 @@ function OptionCard({ label, text, state, onPress, index, disabled }) {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// LISTENING CHALLENGE
+// LISTENING CHALLENGE — new sequential flow
+//
+// PHASE 1 — "listening": big audio player, nothing below
+// PHASE 2 — "quiz": player slides left, questions appear one by one
+//   Each question: hear question → option A appears + heard → B → C → user picks
 // ─────────────────────────────────────────────────────────────────────────────
 function ListeningChallenge({ article, onFinish }) {
-  const [audioPhase, setAudioPhase] = useState("idle");
+  // ── Phase ──────────────────────────────────────────────────────────────────
+  // "listening" | "transitioning" | "quiz"
+  const [phase, setPhase] = useState("listening");
+
+  // ── Audio player state ──────────────────────────────────────────────────────
+  const [audioPhase, setAudioPhase] = useState("idle"); // idle | playing | paused | done
   const [audioProgress, setAudioProgress] = useState(0);
-  const unlocked = audioPhase === "done";
+
+  // ── Quiz state ──────────────────────────────────────────────────────────────
   const [qIndex, setQIndex] = useState(0);
   const [answers, setAnswers] = useState({});
   const [revealed, setRevealed] = useState({});
+  // How many options are visible for current question (0,1,2,3)
+  const [visibleOptions, setVisibleOptions] = useState(0);
+  // Whether the question text has been spoken
+  const [questionSpoken, setQuestionSpoken] = useState(false);
 
+  // ── Animations ──────────────────────────────────────────────────────────────
+  // Player card slides left when transitioning to quiz
+  const playerSlideX = useRef(new Animated.Value(0)).current;
+  const playerOp = useRef(new Animated.Value(1)).current;
+  // Question page slide for next question
   const pageSlide = useRef(new Animated.Value(0)).current;
   const pageOp = useRef(new Animated.Value(1)).current;
-  const lockShake = useRef(new Animated.Value(0)).current;
-  const progressTimer = useRef(null);
-  const progressRef = useRef(0);
-  const estMsRef = useRef(0);
+  // Question text fade in
+  const questionFade = useRef(new Animated.Value(0)).current;
+  const questionSlide = useRef(new Animated.Value(20)).current;
 
+  // ── Sound refs ──────────────────────────────────────────────────────────────
   const sndButton = useRef(null);
   const sndCorrect = useRef(null);
   const sndIncorrect = useRef(null);
+
+  const progressTimer = useRef(null);
+  const progressRef = useRef(0);
+  const estMsRef = useRef(0);
+  const optionRefs = useRef({});
+  const isSpeakingRef = useRef(false);
+  const speakSessionRef = useRef(0); // incremented on every new question/cancel
+
+  // ── Audio file player ref (used when script is a file/URL) ─────────────────
+  const audioPlayerRef = useRef(null);
+
+  // Audio source is resolved programmatically from the database field.
+  // See app/data/listeningAudioMap.js for the asset map.
+
+  const cleanupAudioPlayer = async () => {
+    try {
+      if (audioPlayerRef.current) {
+        await audioPlayerRef.current.stopAsync().catch(() => {});
+        await audioPlayerRef.current.unloadAsync().catch(() => {});
+        audioPlayerRef.current = null;
+      }
+    } catch (_) {}
+  };
 
   useEffect(() => {
     let alive = true;
@@ -398,17 +399,82 @@ function ListeningChallenge({ article, onFinish }) {
     };
   }, []);
 
+  useEffect(
+    () => () => {
+      Speech.stop();
+      clearInterval(progressTimer.current);
+      cleanupAudioPlayer();
+    },
+    [],
+  );
+
   const playSound = (ref) => {
     try {
       ref.current?.setPositionAsync(0).then(() => ref.current?.playAsync());
     } catch (_) {}
   };
 
-  const startAudio = () => {
+  // ── Audio narration ─────────────────────────────────────────────────────────
+  // Starts a progress ticker that runs for `durationMs` milliseconds.
+  const startProgressTicker = (durationMs, baseProgress = 0) => {
+    clearInterval(progressTimer.current);
+    estMsRef.current = durationMs;
+    const start = Date.now();
+    const remaining = 1 - baseProgress;
+    progressTimer.current = setInterval(() => {
+      const p = Math.min(
+        baseProgress + ((Date.now() - start) / durationMs) * remaining,
+        0.98,
+      );
+      setAudioProgress(p);
+      progressRef.current = p;
+    }, 300);
+  };
+
+  const startAudio = async () => {
     playSound(sndButton);
     const script = article.audio_narration_script ?? article.content ?? "";
+    const source = resolveListeningAudio(script);
+
+    if (source) {
+      // ── Play from audio file or CDN URL ──────────────────────────────────
+      try {
+        await cleanupAudioPlayer();
+        await Audio.setAudioModeAsync({ playsInSilentModeIOS: true });
+        const { sound, status } = await Audio.Sound.createAsync(source, {
+          shouldPlay: true,
+        });
+        audioPlayerRef.current = sound;
+        const durationMs = status.durationMillis ?? 60000;
+        setAudioPhase("playing");
+        startProgressTicker(durationMs);
+        sound.setOnPlaybackStatusUpdate((s) => {
+          if (s.didJustFinish) {
+            clearInterval(progressTimer.current);
+            setAudioProgress(1);
+            setAudioPhase("done");
+            sound.unloadAsync().catch(() => {});
+            audioPlayerRef.current = null;
+          }
+          if (s.isLoaded && s.positionMillis && s.durationMillis) {
+            const p = s.positionMillis / s.durationMillis;
+            setAudioProgress(Math.min(p, 0.98));
+            progressRef.current = Math.min(p, 0.98);
+          }
+        });
+      } catch (e) {
+        console.warn("Audio file failed, falling back to TTS:", e);
+        startWithTTS(article.content ?? script);
+      }
+    } else {
+      // ── Plain text narration → TTS ────────────────────────────────────────
+      startWithTTS(script);
+    }
+  };
+
+  const startWithTTS = (script) => {
     const words = script.split(/\s+/).length;
-    estMsRef.current = ((words / 120) * 60000) / 0.85;
+    const durationMs = ((words / 120) * 60000) / 0.85;
     Speech.speak(script, {
       language: "en-US",
       rate: 0.85,
@@ -428,90 +494,180 @@ function ListeningChallenge({ article, onFinish }) {
       },
     });
     setAudioPhase("playing");
-    const start = Date.now();
-    clearInterval(progressTimer.current);
-    progressTimer.current = setInterval(() => {
-      const p = Math.min((Date.now() - start) / estMsRef.current, 0.98);
-      setAudioProgress(p);
-      progressRef.current = p;
-    }, 300);
+    startProgressTicker(durationMs);
   };
 
-  const pauseAudio = () => {
+  const pauseAudio = async () => {
     playSound(sndButton);
-    Speech.pause();
     clearInterval(progressTimer.current);
+    if (audioPlayerRef.current) {
+      try {
+        await audioPlayerRef.current.pauseAsync();
+      } catch (_) {}
+    } else {
+      Speech.pause();
+    }
     setAudioPhase("paused");
   };
-  const stopAudio = () => {
+
+  const stopAudio = async () => {
     playSound(sndButton);
-    Speech.stop();
     clearInterval(progressTimer.current);
-    setAudioPhase("idle");
-  };
-  const resumeAudio = () => {
-    playSound(sndButton);
-    Speech.resume();
-    setAudioPhase("playing");
-    const remaining = 1 - progressRef.current;
-    const remMs = estMsRef.current * remaining;
-    const start = Date.now();
-    const base = progressRef.current;
-    progressTimer.current = setInterval(() => {
-      const p = Math.min(
-        base + ((Date.now() - start) / remMs) * remaining,
-        0.98,
-      );
-      setAudioProgress(p);
-      progressRef.current = p;
-    }, 300);
-  };
-
-  useEffect(
-    () => () => {
+    if (audioPlayerRef.current) {
+      await cleanupAudioPlayer();
+    } else {
       Speech.stop();
-      clearInterval(progressTimer.current);
-    },
-    [],
-  );
-
-  const handleLockedTap = () => {
-    Animated.sequence([
-      Animated.timing(lockShake, {
-        toValue: 8,
-        duration: 55,
-        useNativeDriver: true,
-      }),
-      Animated.timing(lockShake, {
-        toValue: -8,
-        duration: 55,
-        useNativeDriver: true,
-      }),
-      Animated.timing(lockShake, {
-        toValue: 5,
-        duration: 55,
-        useNativeDriver: true,
-      }),
-      Animated.timing(lockShake, {
-        toValue: -5,
-        duration: 55,
-        useNativeDriver: true,
-      }),
-      Animated.timing(lockShake, {
-        toValue: 0,
-        duration: 55,
-        useNativeDriver: true,
-      }),
-    ]).start();
+    }
+    setAudioPhase("idle");
+    setAudioProgress(0);
+    progressRef.current = 0;
   };
 
+  const resumeAudio = async () => {
+    playSound(sndButton);
+    if (audioPlayerRef.current) {
+      try {
+        await audioPlayerRef.current.playAsync();
+        // Resume progress ticker for remaining duration
+        const status = await audioPlayerRef.current.getStatusAsync();
+        const remaining = status.durationMillis
+          ? status.durationMillis - status.positionMillis
+          : (1 - progressRef.current) * estMsRef.current;
+        startProgressTicker(remaining, progressRef.current);
+      } catch (_) {}
+    } else {
+      Speech.resume();
+      const remaining = 1 - progressRef.current;
+      const remMs = estMsRef.current * remaining;
+      startProgressTicker(remMs, progressRef.current);
+    }
+    setAudioPhase("playing");
+  };
+
+  // ── Transition: player slides left, quiz appears ────────────────────────────
+  const transitionToQuiz = () => {
+    if (phase !== "listening") return;
+    setPhase("transitioning");
+    Animated.parallel([
+      Animated.timing(playerSlideX, {
+        toValue: -SW * 1.1,
+        duration: 380,
+        easing: Easing.in(Easing.quad),
+        useNativeDriver: true,
+      }),
+      Animated.timing(playerOp, {
+        toValue: 0,
+        duration: 300,
+        useNativeDriver: true,
+      }),
+    ]).start(() => {
+      setPhase("quiz");
+      // Reset question animations for first question
+      pageSlide.setValue(SW);
+      pageOp.setValue(0);
+      questionFade.setValue(0);
+      questionSlide.setValue(20);
+      setVisibleOptions(0);
+      setQuestionSpoken(false);
+      // Slide in the first question page
+      Animated.parallel([
+        Animated.spring(pageSlide, {
+          toValue: 0,
+          friction: 7,
+          tension: 55,
+          useNativeDriver: true,
+        }),
+        Animated.timing(pageOp, {
+          toValue: 1,
+          duration: 260,
+          useNativeDriver: true,
+        }),
+      ]).start(() => {
+        // Reveal question text
+        Animated.parallel([
+          Animated.timing(questionFade, {
+            toValue: 1,
+            duration: 320,
+            useNativeDriver: true,
+          }),
+          Animated.timing(questionSlide, {
+            toValue: 0,
+            duration: 320,
+            easing: Easing.out(Easing.cubic),
+            useNativeDriver: true,
+          }),
+        ]).start(() => {
+          // Speak the question then reveal options one by one
+          speakQuestionThenOptions(0, article.questions[0]);
+        });
+      });
+    });
+  };
+
+  // ── Speak question, then options sequentially ───────────────────────────────
+  const speakQuestionThenOptions = useCallback((qIdx, q) => {
+    if (!q) return;
+    isSpeakingRef.current = true;
+    // Each call gets a unique session ID — any callback that sees a different
+    // ID knows it was cancelled and bails out immediately.
+    const mySession = ++speakSessionRef.current;
+    Speech.speak(q.question, {
+      language: "en-US",
+      rate: 0.88,
+      pitch: 1.05,
+      onDone: () => {
+        if (speakSessionRef.current !== mySession) return;
+        setQuestionSpoken(true);
+        revealOption(qIdx, q, 0, mySession);
+      },
+      onError: () => {
+        if (speakSessionRef.current !== mySession) return;
+        setQuestionSpoken(true);
+        revealOption(qIdx, q, 0, mySession);
+      },
+    });
+  }, []);
+
+  const revealOption = useCallback((qIdx, q, optIdx, mySession) => {
+    if (speakSessionRef.current !== mySession) return; // cancelled
+    if (optIdx >= q.options.length) return;
+    setVisibleOptions(optIdx + 1);
+    const textToSpeak = q.options[optIdx];
+    setTimeout(() => {
+      if (speakSessionRef.current !== mySession) return; // cancelled during delay
+      Speech.speak(textToSpeak, {
+        language: "en-US",
+        rate: 0.88,
+        pitch: 1.0,
+        onDone: () => {
+          if (speakSessionRef.current !== mySession) return;
+          setTimeout(() => revealOption(qIdx, q, optIdx + 1, mySession), 400);
+        },
+        onError: () => {
+          if (speakSessionRef.current !== mySession) return;
+          setTimeout(() => revealOption(qIdx, q, optIdx + 1, mySession), 400);
+        },
+      });
+    }, 350);
+  }, []);
+
+  // ── Handle answer ───────────────────────────────────────────────────────────
   const handleAnswer = (qIdx, optIdx, cardRef) => {
     if (revealed[qIdx]) return;
+    // Cancel any in-progress question/option speech immediately.
+    // Incrementing speakSessionRef invalidates all pending callbacks.
+    speakSessionRef.current++;
+    isSpeakingRef.current = false;
+    Speech.stop();
+
     const isCorrect = optIdx === article.questions[qIdx].correct_answer_index;
     setAnswers((prev) => ({ ...prev, [qIdx]: optIdx }));
     setRevealed((prev) => ({ ...prev, [qIdx]: true }));
+    // Make all options visible immediately after answer
+    setVisibleOptions(article.questions[qIdx].options.length);
     playSound(isCorrect ? sndCorrect : sndIncorrect);
     if (isCorrect) onFinish?.("coins", { cardRef, qIdx });
+
     setTimeout(() => {
       if (qIdx + 1 >= article.questions.length) {
         const finalAnswers = { ...answers, [qIdx]: optIdx };
@@ -520,122 +676,197 @@ function ListeningChallenge({ article, onFinish }) {
         ).length;
         onFinish?.("done", { correct, total: article.questions.length });
       } else {
+        // Slide current question out to the left
         Animated.parallel([
           Animated.timing(pageSlide, {
             toValue: -SW,
-            duration: 260,
+            duration: 300,
             easing: Easing.in(Easing.quad),
             useNativeDriver: true,
           }),
           Animated.timing(pageOp, {
             toValue: 0,
-            duration: 200,
+            duration: 240,
             useNativeDriver: true,
           }),
         ]).start(() => {
+          // Reset for next question
           pageSlide.setValue(SW);
-          pageOp.setValue(1);
-          setQIndex((i) => i + 1);
-          Animated.spring(pageSlide, {
-            toValue: 0,
-            friction: 7,
-            tension: 55,
-            useNativeDriver: true,
-          }).start();
+          pageOp.setValue(0);
+          questionFade.setValue(0);
+          questionSlide.setValue(20);
+          setQIndex(qIdx + 1);
+          setVisibleOptions(0);
+          setQuestionSpoken(false);
+          isSpeakingRef.current = true;
+          // Slide in next question
+          Animated.parallel([
+            Animated.spring(pageSlide, {
+              toValue: 0,
+              friction: 7,
+              tension: 55,
+              useNativeDriver: true,
+            }),
+            Animated.timing(pageOp, {
+              toValue: 1,
+              duration: 260,
+              useNativeDriver: true,
+            }),
+          ]).start(() => {
+            Animated.parallel([
+              Animated.timing(questionFade, {
+                toValue: 1,
+                duration: 320,
+                useNativeDriver: true,
+              }),
+              Animated.timing(questionSlide, {
+                toValue: 0,
+                duration: 320,
+                easing: Easing.out(Easing.cubic),
+                useNativeDriver: true,
+              }),
+            ]).start(() => {
+              speakQuestionThenOptions(qIdx + 1, article.questions[qIdx + 1]);
+            });
+          });
         });
       }
-    }, 1300);
+    }, 1400);
   };
 
-  const q = article.questions[qIndex];
-  const optionRefs = useRef({});
+  const q =
+    phase === "quiz" || phase === "transitioning"
+      ? article.questions[qIndex]
+      : null;
+  const isListeningDone = audioPhase === "done";
 
   return (
     <View style={styles.challengeWrap}>
-      {/* Audio player */}
-      <View style={styles.playerCard}>
-        <View style={styles.playerHeader}>
-          <View style={styles.playerHeaderLeft}>
+      {/* ── PHASE 1: Listening player ── */}
+      {(phase === "listening" || phase === "transitioning") && (
+        <Animated.View
+          style={[
+            styles.playerCard,
+            { transform: [{ translateX: playerSlideX }], opacity: playerOp },
+          ]}
+        >
+          {/* Header */}
+          <View style={styles.playerHeader}>
             <View style={styles.headphonesBadge}>
               <Text style={styles.headphonesIcon}>🎧</Text>
             </View>
-            <View style={{ flex: 1 }}>
+            <View style={{ flex: 1, marginLeft: pad.sm }}>
               <Text style={styles.playerTitle}>Listening Challenge</Text>
               <Text style={styles.playerSub} numberOfLines={1}>
-                {unlocked
-                  ? "✅ Audio complete — quiz unlocked!"
-                  : "Listen to unlock the quiz"}
+                {isListeningDone
+                  ? "✅ Complete — start the quiz!"
+                  : "Listen to the story, then answer questions"}
               </Text>
             </View>
           </View>
-          <ProgressRing progress={audioProgress} />
-        </View>
-        <View style={styles.waveformWrap}>
-          <Waveform isPlaying={audioPhase === "playing"} />
-        </View>
-        <View style={styles.playerControls}>
-          {audioPhase === "idle" && (
-            <TouchableOpacity
-              style={styles.playBtn}
-              onPress={startAudio}
-              activeOpacity={0.85}
-            >
-              <Text style={styles.playBtnText}>▶ Play Audio</Text>
-            </TouchableOpacity>
-          )}
-          {audioPhase === "playing" && (
-            <>
-              <TouchableOpacity
-                style={styles.pauseBtn}
-                onPress={pauseAudio}
-                activeOpacity={0.85}
-              >
-                <Text style={styles.pauseBtnText}>⏸ Pause</Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                style={styles.stopBtn}
-                onPress={stopAudio}
-                activeOpacity={0.8}
-              >
-                <Text style={styles.stopBtnText}>⏹</Text>
-              </TouchableOpacity>
-            </>
-          )}
-          {audioPhase === "paused" && (
-            <>
+
+          {/* Progress bar */}
+          <View style={styles.progressTrack}>
+            <Animated.View
+              style={[
+                styles.progressFill,
+                { width: `${audioProgress * 100}%` },
+              ]}
+            />
+          </View>
+          <Text style={styles.progressLabel}>
+            {isListeningDone ? "100%" : `${Math.round(audioProgress * 100)}%`}
+          </Text>
+
+          {/* Waveform */}
+          <View style={styles.waveformWrap}>
+            <Waveform isPlaying={audioPhase === "playing"} />
+          </View>
+
+          {/* Controls */}
+          <View style={styles.playerControls}>
+            {audioPhase === "idle" && (
               <TouchableOpacity
                 style={styles.playBtn}
-                onPress={resumeAudio}
+                onPress={startAudio}
                 activeOpacity={0.85}
               >
-                <Text style={styles.playBtnText}>▶ Resume</Text>
+                <Text style={styles.playBtnIcon}>▶</Text>
+                <Text style={styles.playBtnText}>Play Audio</Text>
               </TouchableOpacity>
+            )}
+            {audioPhase === "playing" && (
+              <>
+                <TouchableOpacity
+                  style={styles.pauseBtn}
+                  onPress={pauseAudio}
+                  activeOpacity={0.85}
+                >
+                  <Text style={styles.pauseBtnText}>⏸ Pause</Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={styles.stopBtn}
+                  onPress={stopAudio}
+                  activeOpacity={0.8}
+                >
+                  <Text style={styles.stopBtnText}>⏹</Text>
+                </TouchableOpacity>
+              </>
+            )}
+            {audioPhase === "paused" && (
+              <>
+                <TouchableOpacity
+                  style={styles.playBtn}
+                  onPress={resumeAudio}
+                  activeOpacity={0.85}
+                >
+                  <Text style={styles.playBtnIcon}>▶</Text>
+                  <Text style={styles.playBtnText}>Resume</Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={styles.stopBtn}
+                  onPress={stopAudio}
+                  activeOpacity={0.8}
+                >
+                  <Text style={styles.stopBtnText}>⏹</Text>
+                </TouchableOpacity>
+              </>
+            )}
+            {audioPhase === "done" && (
               <TouchableOpacity
-                style={styles.stopBtn}
-                onPress={stopAudio}
-                activeOpacity={0.8}
+                style={styles.startQuizBtn}
+                onPress={transitionToQuiz}
+                activeOpacity={0.85}
               >
-                <Text style={styles.stopBtnText}>⏹</Text>
+                <Text style={styles.startQuizText}>Start Quiz →</Text>
               </TouchableOpacity>
-            </>
-          )}
-          {audioPhase === "done" && (
-            <View style={styles.doneTag}>
-              <Text style={styles.doneTxt}>✅ Listening complete!</Text>
+            )}
+          </View>
+
+          {/* Bottom note when not done */}
+          {!isListeningDone && (
+            <View style={styles.listenNote}>
+              <Text style={styles.listenNoteText}>
+                🔒 Complete listening to unlock the quiz
+              </Text>
             </View>
           )}
-        </View>
-      </View>
+        </Animated.View>
+      )}
 
-      {/* Quiz */}
-      <View style={styles.quizSection}>
-        <View style={styles.quizHeader}>
-          <Text style={styles.quizHeaderTitle}>
-            {unlocked
-              ? `Question ${qIndex + 1} of ${article.questions.length}`
-              : "🔒  Quiz Locked"}
-          </Text>
-          {unlocked && (
+      {/* ── PHASE 2: Quiz ── */}
+      {phase === "quiz" && q && (
+        <Animated.View
+          style={[
+            styles.quizWrap,
+            { transform: [{ translateX: pageSlide }], opacity: pageOp },
+          ]}
+        >
+          {/* Progress header */}
+          <View style={styles.quizHeader}>
+            <Text style={styles.quizHeaderTitle}>
+              Question {qIndex + 1} of {article.questions.length}
+            </Text>
             <View style={styles.qProgressDots}>
               {article.questions.map((_, i) => (
                 <View
@@ -648,9 +879,7 @@ function ListeningChallenge({ article, onFinish }) {
                 />
               ))}
             </View>
-          )}
-        </View>
-        {unlocked && (
+          </View>
           <View style={styles.qProgressTrack}>
             <View
               style={[
@@ -661,73 +890,77 @@ function ListeningChallenge({ article, onFinish }) {
               ]}
             />
           </View>
-        )}
 
-        {!unlocked ? (
-          <TouchableOpacity onPress={handleLockedTap} activeOpacity={1}>
-            <Animated.View
-              style={[
-                styles.lockedCard,
-                { transform: [{ translateX: lockShake }] },
-              ]}
-            >
-              <Text style={styles.lockIcon}>🔒</Text>
-              <Text style={styles.lockTitle}>Quiz Locked</Text>
-              <Text style={styles.lockSub}>
-                Listen to the full audio above{"\n"}to unlock the questions
-              </Text>
-              <View style={styles.lockHint}>
-                <Text style={styles.lockHintText}>
-                  🎧 Complete listening first
+          {/* Question card */}
+          <Animated.View
+            style={[
+              styles.questionCard,
+              {
+                opacity: questionFade,
+                transform: [{ translateY: questionSlide }],
+              },
+            ]}
+          >
+            <View style={styles.questionNumBadge}>
+              <Text style={styles.questionNumText}>Q{qIndex + 1}</Text>
+            </View>
+            <Text style={styles.questionText}>{q.question}</Text>
+            {!questionSpoken && (
+              <View style={styles.questionSpeakingBadge}>
+                <Text style={styles.questionSpeakingText}>
+                  🔊 Reading question…
                 </Text>
               </View>
-            </Animated.View>
-          </TouchableOpacity>
-        ) : (
-          <Animated.View
-            style={{ transform: [{ translateX: pageSlide }], opacity: pageOp }}
-          >
-            <View style={styles.questionCard}>
-              <Text style={styles.questionText}>{q.question}</Text>
-            </View>
-            <View style={styles.optionsList}>
-              {q.options.map((opt, i) => {
-                if (!optionRefs.current[`${qIndex}-${i}`])
-                  optionRefs.current[`${qIndex}-${i}`] = React.createRef();
-                const chosen = answers[qIndex] === i;
-                const isRev = !!revealed[qIndex];
-                const correct = i === q.correct_answer_index;
-                let state = "idle";
-                if (isRev && correct) state = "correct";
-                else if (isRev && chosen) state = "wrong";
-                else if (isRev && !chosen && correct) state = "reveal";
-                return (
-                  <View
-                    key={i}
-                    ref={optionRefs.current[`${qIndex}-${i}`]}
-                    collapsable={false}
-                  >
-                    <OptionCard
-                      label={["A", "B", "C", "D"][i]}
-                      text={opt}
-                      state={state}
-                      onPress={() =>
-                        handleAnswer(
-                          qIndex,
-                          i,
-                          optionRefs.current[`${qIndex}-${i}`],
-                        )
-                      }
-                      index={i}
-                      disabled={isRev}
-                    />
-                  </View>
-                );
-              })}
-            </View>
+            )}
           </Animated.View>
-        )}
-      </View>
+
+          {/* Options — appear one by one */}
+          <View style={styles.optionsList}>
+            {q.options.map((opt, i) => {
+              if (!optionRefs.current[`${qIndex}-${i}`])
+                optionRefs.current[`${qIndex}-${i}`] = React.createRef();
+              const chosen = answers[qIndex] === i;
+              const isRev = !!revealed[qIndex];
+              const correct = i === q.correct_answer_index;
+              let state = "idle";
+              if (isRev && correct) state = "correct";
+              else if (isRev && chosen) state = "wrong";
+              else if (isRev && !chosen && correct) state = "reveal";
+              return (
+                <View
+                  key={i}
+                  ref={optionRefs.current[`${qIndex}-${i}`]}
+                  collapsable={false}
+                >
+                  <OptionCard
+                    label={["A", "B", "C", "D"][i]}
+                    text={opt}
+                    state={state}
+                    onPress={() =>
+                      handleAnswer(
+                        qIndex,
+                        i,
+                        optionRefs.current[`${qIndex}-${i}`],
+                      )
+                    }
+                    visible={i < visibleOptions}
+                    disabled={isRev || !questionSpoken}
+                  />
+                </View>
+              );
+            })}
+          </View>
+
+          {/* Speaking indicator for options */}
+          {questionSpoken && visibleOptions < q.options.length && (
+            <View style={styles.speakingIndicator}>
+              <Text style={styles.speakingIndicatorText}>
+                🔊 Presenting option {["A", "B", "C", "D"][visibleOptions]}…
+              </Text>
+            </View>
+          )}
+        </Animated.View>
+      )}
     </View>
   );
 }
@@ -746,7 +979,6 @@ const Article = () => {
     return data.articles.find((a) => a.id == id) ?? data.articles[0];
   })();
 
-  const cover = storySession.storyCover;
   const [coinCount, setCoinCount] = useState(0);
   const [flyingCoins, setFlyingCoins] = useState([]);
   const coinIdRef = useRef(0);
@@ -940,7 +1172,7 @@ const Article = () => {
       </View>
 
       <View style={styles.coverWrap}>
-        <ExpoImage //source={{ uri: currentStory.cover }}
+        <ExpoImage
           source={{ uri: currentStory.cover }}
           style={styles.coverImage}
           contentFit="cover"
@@ -1016,28 +1248,28 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
-    paddingHorizontal: pad.md, // was: 16
-    paddingTop: STATUS_H + pad.s, // was: + 8
-    paddingBottom: pad.sm, // was: 10
+    paddingHorizontal: pad.md,
+    paddingTop: STATUS_H + pad.s,
+    paddingBottom: pad.sm,
   },
   backBtn: {
     width: size.hitMd,
     height: size.hitMd,
-    borderRadius: size.hitMd / 2, // was: 44
+    borderRadius: size.hitMd / 2,
     backgroundColor: C.surfaceDim,
     borderWidth: 1,
     borderColor: C.border,
     alignItems: "center",
     justifyContent: "center",
   },
-  backIcon: { fontSize: font.xxl, color: C.textSec, marginTop: -2 }, // was: 28
+  backIcon: { fontSize: font.xxl, color: C.textSec, marginTop: -2 },
   topTitle: {
     fontFamily: FONTS.bold,
     flex: 1,
     textAlign: "center",
-    fontSize: font.md,
+    fontSize: font.xl,
     color: C.teal,
-    letterSpacing: 0.3, // was: 15
+    letterSpacing: 0.3,
     marginHorizontal: pad.s,
     textShadowColor: "rgba(0,188,212,0.5)",
     textShadowOffset: { width: 0, height: 0 },
@@ -1051,16 +1283,16 @@ const styles = StyleSheet.create({
     borderRadius: radius.pill,
     borderWidth: 1.5,
     borderColor: C.yellowBorder,
-    paddingHorizontal: pad.sm, // was: 11
-    paddingVertical: pad.xs, // was: 6
+    paddingHorizontal: pad.sm,
+    paddingVertical: pad.xs,
     shadowColor: C.yellow,
     shadowOffset: { width: 0, height: 0 },
     shadowOpacity: 0.45,
     shadowRadius: 8,
     elevation: 5,
   },
-  coinIcon: { width: size.iconSm, height: size.iconSm }, // was: 22
-  coinCount: { fontFamily: FONTS.bold, fontSize: font.md, color: C.yellow }, // was: 14
+  coinIcon: { width: size.iconSm, height: size.iconSm },
+  coinCount: { fontFamily: FONTS.bold, fontSize: font.md, color: C.yellow },
 
   coverWrap: { width: "100%", height: 190, position: "relative" },
   coverImage: { width: "100%", height: "100%" },
@@ -1083,61 +1315,83 @@ const styles = StyleSheet.create({
     paddingHorizontal: pad.sm,
     paddingVertical: pad.xs,
   },
-  coverTagText: { fontFamily: FONTS.bold, fontSize: font.sm, color: C.teal }, // was: 12
+  coverTagText: { fontFamily: FONTS.bold, fontSize: font.sm, color: C.teal },
 
   challengeWrap: { width: "100%", alignItems: "center", paddingTop: pad.md },
 
+  // ── Player card ──
   playerCard: {
     width: "92%",
     backgroundColor: C.surface,
-    borderRadius: radius.xl, // was: 22
+    borderRadius: radius.xl,
     borderWidth: 1.5,
     borderColor: C.tealBorder,
-    padding: pad.lg, // was: 20
+    padding: pad.lg,
     marginBottom: pad.lg,
     shadowColor: C.teal,
     shadowOffset: { width: 0, height: 0 },
-    shadowOpacity: 0.2,
-    shadowRadius: 20,
+    shadowOpacity: 0.22,
+    shadowRadius: 22,
     elevation: 8,
   },
   playerHeader: {
     flexDirection: "row",
     alignItems: "center",
-    justifyContent: "space-between",
     marginBottom: pad.md,
   },
-  playerHeaderLeft: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: pad.sm,
-    flex: 1,
-  },
   headphonesBadge: {
-    width: 46,
-    height: 46,
-    borderRadius: 23,
+    width: 50,
+    height: 50,
+    borderRadius: 25,
     backgroundColor: C.tealDim,
     borderWidth: 1.5,
     borderColor: C.tealBorder,
     alignItems: "center",
     justifyContent: "center",
   },
-  headphonesIcon: { fontSize: font.xl }, // was: 22
+  headphonesIcon: { fontSize: font.xxl },
   playerTitle: {
     fontFamily: FONTS.bold,
-    fontSize: font.md,
+    fontSize: font.xl,
     color: C.textPri,
     letterSpacing: 0.3,
-  }, // was: 15
+  },
   playerSub: {
     fontFamily: FONTS.light,
-    fontSize: font.s,
+    fontSize: font.sm,
     color: C.textMuted,
-    marginTop: 2,
-  }, // was: 11
+    marginTop: 3,
+  },
+
+  progressTrack: {
+    height: 6,
+    borderRadius: 3,
+    backgroundColor: "rgba(255,255,255,0.07)",
+    marginBottom: pad.xs,
+    overflow: "hidden",
+    borderWidth: 1,
+    borderColor: "rgba(0,188,212,0.15)",
+  },
+  progressFill: {
+    height: "100%",
+    borderRadius: 3,
+    backgroundColor: C.teal,
+    shadowColor: C.teal,
+    shadowOffset: { width: 0, height: 0 },
+    shadowOpacity: 0.9,
+    shadowRadius: 5,
+    elevation: 3,
+  },
+  progressLabel: {
+    fontFamily: FONTS.bold,
+    fontSize: font.xs,
+    color: C.textMuted,
+    textAlign: "right",
+    marginBottom: pad.sm,
+  },
+
   waveformWrap: {
-    backgroundColor: "rgba(0,0,0,0.25)",
+    backgroundColor: "rgba(0,0,0,0.22)",
     borderRadius: radius.md,
     overflow: "hidden",
     paddingHorizontal: pad.s,
@@ -1145,25 +1399,30 @@ const styles = StyleSheet.create({
     marginBottom: pad.md,
     alignItems: "center",
   },
+
   playerControls: { flexDirection: "row", gap: pad.sm, alignItems: "center" },
   playBtn: {
     flex: 1,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: pad.xs,
     backgroundColor: C.teal,
     borderRadius: radius.pill,
     paddingVertical: pad.sm,
-    alignItems: "center",
     shadowColor: C.teal,
     shadowOffset: { width: 0, height: 0 },
     shadowOpacity: 0.55,
     shadowRadius: 12,
     elevation: 8,
   },
+  playBtnIcon: { fontSize: font.md, color: C.bg },
   playBtnText: {
     fontFamily: FONTS.bold,
-    fontSize: font.md,
+    fontSize: font.lg,
     color: C.bg,
     letterSpacing: 0.4,
-  }, // was: 15
+  },
   pauseBtn: {
     flex: 1,
     backgroundColor: C.yellowDim,
@@ -1185,18 +1444,44 @@ const styles = StyleSheet.create({
     justifyContent: "center",
   },
   stopBtnText: { fontSize: font.lg },
-  doneTag: {
+  startQuizBtn: {
     flex: 1,
-    backgroundColor: C.greenDim,
+    backgroundColor: C.teal,
     borderRadius: radius.pill,
     paddingVertical: pad.sm,
     alignItems: "center",
-    borderWidth: 1.5,
-    borderColor: C.greenBorder,
+    shadowColor: C.teal,
+    shadowOffset: { width: 0, height: 0 },
+    shadowOpacity: 0.6,
+    shadowRadius: 14,
+    elevation: 8,
   },
-  doneTxt: { fontFamily: FONTS.bold, fontSize: font.md, color: C.green }, // was: 14
+  startQuizText: {
+    fontFamily: FONTS.bold,
+    fontSize: font.xl,
+    color: "#08081a",
+    letterSpacing: 0.4,
+  },
 
-  quizSection: { width: "92%", marginBottom: pad.md },
+  listenNote: {
+    marginTop: pad.md,
+    backgroundColor: "rgba(0,188,212,0.07)",
+    borderRadius: radius.md,
+    borderWidth: 1,
+    borderColor: "rgba(0,188,212,0.18)",
+    paddingHorizontal: pad.md,
+    paddingVertical: pad.sm,
+    alignItems: "center",
+  },
+  listenNoteText: {
+    fontFamily: FONTS.light,
+    fontSize: font.md,
+    color: C.textMuted,
+    textAlign: "center",
+  },
+
+  // ── Quiz ──
+  quizWrap: { width: "92%" },
   quizHeader: {
     flexDirection: "row",
     alignItems: "center",
@@ -1205,7 +1490,7 @@ const styles = StyleSheet.create({
   },
   quizHeaderTitle: {
     fontFamily: FONTS.bold,
-    fontSize: font.md,
+    fontSize: font.xl,
     color: C.textPri,
   },
   qProgressDots: { flexDirection: "row", gap: pad.xs },
@@ -1221,7 +1506,7 @@ const styles = StyleSheet.create({
     height: 4,
     borderRadius: 2,
     backgroundColor: "rgba(255,255,255,0.07)",
-    marginBottom: pad.sm,
+    marginBottom: pad.md,
     overflow: "hidden",
   },
   qProgressFill: {
@@ -1235,74 +1520,72 @@ const styles = StyleSheet.create({
     elevation: 3,
   },
 
-  lockedCard: {
-    backgroundColor: C.surface,
-    borderRadius: radius.xl,
-    borderWidth: 1.5, // was: 20
-    borderColor: "rgba(255,255,255,0.1)",
-    padding: pad.xxl,
-    alignItems: "center", // was: 32
-  },
-  lockIcon: { fontSize: size.iconXl, marginBottom: pad.sm }, // was: 48
-  lockTitle: {
-    fontFamily: FONTS.bold,
-    fontSize: font.xl,
-    color: C.textSec,
-    marginBottom: pad.xs,
-  }, // was: 20
-  lockSub: {
-    fontFamily: FONTS.light,
-    fontSize: font.sm,
-    color: C.textMuted,
-    textAlign: "center",
-    lineHeight: font.sm * 1.6,
-    marginBottom: pad.lg,
-  },
-  lockHint: {
-    backgroundColor: C.tealDim,
-    borderRadius: radius.md,
-    borderWidth: 1,
-    borderColor: C.tealBorder,
-    paddingHorizontal: pad.md,
-    paddingVertical: pad.s,
-  },
-  lockHintText: { fontFamily: FONTS.bold, fontSize: font.sm, color: C.teal },
-
   questionCard: {
     backgroundColor: C.surface,
     borderRadius: radius.lg,
     borderWidth: 1.5,
-    borderColor: C.tealBorder, // was: 18
+    borderColor: C.tealBorder,
     padding: pad.lg,
-    marginBottom: pad.sm,
+    marginBottom: pad.md,
     shadowColor: C.teal,
     shadowOffset: { width: 0, height: 0 },
     shadowOpacity: 0.15,
     shadowRadius: 16,
     elevation: 4,
   },
+  questionNumBadge: {
+    alignSelf: "flex-start",
+    backgroundColor: C.tealDim,
+    borderRadius: radius.sm,
+    borderWidth: 1,
+    borderColor: C.tealBorder,
+    paddingHorizontal: pad.sm,
+    paddingVertical: pad.xs,
+    marginBottom: pad.sm,
+  },
+  questionNumText: {
+    fontFamily: FONTS.bold,
+    fontSize: font.xs,
+    color: C.teal,
+    letterSpacing: 1,
+  },
   questionText: {
     fontFamily: FONTS.bold,
-    fontSize: font.lg,
+    fontSize: font.xl,
     color: C.textPri,
     lineHeight: font.lg * 1.5,
     letterSpacing: 0.2,
-  }, // was: 17
+  },
+  questionSpeakingBadge: {
+    marginTop: pad.sm,
+    backgroundColor: "rgba(0,188,212,0.08)",
+    borderRadius: radius.sm,
+    borderWidth: 1,
+    borderColor: "rgba(0,188,212,0.2)",
+    paddingHorizontal: pad.sm,
+    paddingVertical: pad.xs,
+    alignSelf: "flex-start",
+  },
+  questionSpeakingText: {
+    fontFamily: FONTS.light,
+    fontSize: font.xs,
+    color: C.textMuted,
+  },
 
-  optionsList: { gap: pad.s, marginBottom: pad.s },
+  optionsList: { marginBottom: pad.s },
   optionCard: {
     flexDirection: "row",
     alignItems: "center",
-    borderRadius: radius.md, // was: 14
+    borderRadius: radius.md,
     borderWidth: 1.5,
-    paddingHorizontal: pad.sm, // was: 14
+    paddingHorizontal: pad.sm,
     paddingVertical: pad.sm,
-    gap: pad.sm, // was: 12
+    gap: pad.sm,
   },
   optionBullet: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
+    width: 34,
+    height: 34,
+    borderRadius: 17,
     borderWidth: 1.5,
     alignItems: "center",
     justifyContent: "center",
@@ -1312,14 +1595,30 @@ const styles = StyleSheet.create({
   },
   optionBulletLetter: {
     fontFamily: FONTS.bold,
-    fontSize: font.sm,
+    fontSize: font.md,
     color: C.textMuted,
   },
   optionBulletIcon: { fontFamily: FONTS.bold, fontSize: font.md },
   optionText: {
     fontFamily: FONTS.regular,
     flex: 1,
-    fontSize: font.md,
+    fontSize: font.lg,
     lineHeight: font.md * 1.5,
+  },
+
+  speakingIndicator: {
+    backgroundColor: "rgba(0,188,212,0.07)",
+    borderRadius: radius.md,
+    borderWidth: 1,
+    borderColor: "rgba(0,188,212,0.18)",
+    paddingHorizontal: pad.md,
+    paddingVertical: pad.sm,
+    alignItems: "center",
+    marginBottom: pad.sm,
+  },
+  speakingIndicatorText: {
+    fontFamily: FONTS.light,
+    fontSize: font.sm,
+    color: C.textMuted,
   },
 });

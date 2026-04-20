@@ -363,8 +363,7 @@ function HomeTutorial({ visible, refs, onDone }) {
         <View style={tutS.tapZones} pointerEvents="box-none">
           <TouchableOpacity
             style={tutS.tapLeft}
-            onPress={handlePrev}
-            disabled={isFirst}
+            onPress={handleNext}
             activeOpacity={0}
           />
           <TouchableOpacity
@@ -475,7 +474,6 @@ function HomeTutorial({ visible, refs, onDone }) {
               isFirst && tutS.navBtnDisabled,
             ]}
             onPress={handlePrev}
-            disabled={isFirst}
             activeOpacity={0.8}
           >
             <Text
@@ -1622,23 +1620,34 @@ const Home = () => {
     };
   }, []);
 
+  // ── CHANGED: Step 1.1 — Prefetch cover images immediately when books load ──
   useEffect(() => {
     if (!books?.length) return;
 
-    const allImages = [
-      ...books
-        .filter(
-          (book) => typeof book.cover === "string" && book.cover.length > 0,
-        )
-        .map((book) => book.cover),
-      ...books.flatMap((book) =>
-        book.pages
-          .filter((p) => typeof p.image === "string" && p.image.length > 0)
-          .map((p) => p.image),
-      ),
-    ];
+    const coverImages = books
+      .filter((book) => typeof book.cover === "string" && book.cover.length > 0)
+      .map((book) => book.cover);
 
-    allImages.forEach((uri) => ExpoImage.prefetch(uri));
+    Promise.allSettled(coverImages.map((uri) => ExpoImage.prefetch(uri)));
+  }, [books]);
+
+  // ── CHANGED: Step 1.2 — Prefetch pages 1 & 2 of all stories after 1 second ──
+  useEffect(() => {
+    if (!books?.length) return;
+
+    const timer = setTimeout(() => {
+      const earlyPageImages = books.flatMap((book) => {
+        if (!Array.isArray(book.pages)) return [];
+        return book.pages
+          .slice(0, 2)
+          .filter((p) => typeof p.image === "string" && p.image.length > 0)
+          .map((p) => p.image);
+      });
+
+      Promise.allSettled(earlyPageImages.map((uri) => ExpoImage.prefetch(uri)));
+    }, 1000);
+
+    return () => clearTimeout(timer);
   }, [books]);
 
   const loadStoriesFromCache = async (levelNumber) => {

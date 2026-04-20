@@ -1046,7 +1046,7 @@ const styles = StyleSheet.create({
   objectEmoji: { fontSize: font.h1 }, // was: 62
   objectName: {
     fontFamily: FONTS.bold,
-    fontSize: font.h3,
+    fontSize: font.h2,
     color: C.white,
     letterSpacing: 0.5,
     textShadowColor: "rgba(0,188,212,0.4)",
@@ -1077,7 +1077,7 @@ const styles = StyleSheet.create({
   instructionText: {
     fontFamily: FONTS.regular,
     flex: 1,
-    fontSize: font.sm,
+    fontSize: font.md,
     color: C.textSec,
     lineHeight: font.sm * 1.5,
   }, // was: 13
@@ -1114,7 +1114,7 @@ const styles = StyleSheet.create({
   trackerCheck: { fontFamily: FONTS.bold, fontSize: font.md, color: C.green }, // was: 14
   trackerLabel: {
     fontFamily: FONTS.bold,
-    fontSize: font.sm,
+    fontSize: font.md,
     color: C.textMuted,
     marginLeft: pad.xs,
   }, // was: 12
@@ -1142,14 +1142,14 @@ const styles = StyleSheet.create({
   },
   optionBulletLetter: {
     fontFamily: FONTS.bold,
-    fontSize: font.sm,
+    fontSize: font.md,
     color: C.textMuted,
   }, // was: 13
   optionBulletIcon: { fontFamily: FONTS.bold, fontSize: font.md }, // was: 14
   optionText: {
     fontFamily: FONTS.regular,
     flex: 1,
-    fontSize: font.md,
+    fontSize: font.md + 1,
     lineHeight: font.md * 1.5,
   }, // was: 14
 
@@ -1273,7 +1273,7 @@ const styles = StyleSheet.create({
   },
   exitResultBtnText: {
     fontFamily: FONTS.bold,
-    fontSize: font.md,
+    fontSize: font.lg,
     color: C.textSec,
   }, // was: 14
 });

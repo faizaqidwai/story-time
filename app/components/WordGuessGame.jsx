@@ -6,7 +6,6 @@ import {
   Text,
   TouchableOpacity,
   StyleSheet,
-  Image,
   ScrollView,
   useWindowDimensions,
   Animated,
@@ -45,6 +44,8 @@ const COLORS = {
   purpleLight: "#BA86FF",
   yellow: "#FFD54F",
   yellowLight: "#FFE082",
+  yellowDim: "rgba(255,213,79,0.15)",
+  yellowBorder: "rgba(255,213,79,0.6)",
   pink: "#FF6B9D",
   textPrimary: "#FFFFFF",
   textSecondary: "#B0BEC5",
@@ -57,9 +58,50 @@ const COLORS = {
 
 const COINS_PER_CORRECT = 10;
 
-// ─────────────────────────────────────────────────────────────────────────────
+// QWERTY keyboard rows
+const KEYBOARD_ROWS = [
+  ["Q", "W", "E", "R", "T", "Y", "U", "I", "O", "P"],
+  ["A", "S", "D", "F", "G", "H", "J", "K", "L"],
+  ["Z", "X", "C", "V", "B", "N", "M"],
+];
+
+// -----------------------------------------------------------------------------
+// HELPER — get initial guessed letters
+// Always reveals index 0. For words > 5 letters, reveals one additional
+// letter that is NOT index 1 (picks randomly from indices 2+).
+// -----------------------------------------------------------------------------
+const getInitialGuessedLetters = (wordStr) => {
+  const upper = wordStr.toUpperCase();
+  const letters = upper.split("").filter((l) => l !== " ");
+  const uniqueLetters = [...new Set(letters)];
+
+  // Always reveal the first letter
+  const revealed = [letters[0]];
+
+  if (letters.length > 5) {
+    // Candidates: unique letters that are NOT at index 0 and NOT index 1
+    const candidateLetters = uniqueLetters.filter(
+      (l) => l !== letters[0] && l !== letters[1],
+    );
+
+    if (candidateLetters.length > 0) {
+      // Pick a random one from the non-index-1 candidates
+      const pick =
+        candidateLetters[Math.floor(Math.random() * candidateLetters.length)];
+      revealed.push(pick);
+    } else {
+      // Fallback: all unique letters are index 0 or 1, just reveal index 1
+      const remaining = uniqueLetters.filter((l) => !revealed.includes(l));
+      if (remaining.length > 0) revealed.push(remaining[0]);
+    }
+  }
+
+  return revealed;
+};
+
+// -----------------------------------------------------------------------------
 // FLYING COIN
-// ─────────────────────────────────────────────────────────────────────────────
+// -----------------------------------------------------------------------------
 function FlyingCoin({ fromX, fromY, toX, toY, delay, onLand }) {
   const animX = useRef(new Animated.Value(fromX - 13)).current;
   const animY = useRef(new Animated.Value(fromY - 13)).current;
@@ -128,14 +170,140 @@ function FlyingCoin({ fromX, fromY, toX, toY, delay, onLand }) {
   );
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
+// -----------------------------------------------------------------------------
+// LETTER CARD — flips from blank to golden revealed letter
+// -----------------------------------------------------------------------------
+function LetterCard({
+  letter,
+  isGuessed,
+  isSpace,
+  cardRef,
+  isTablet,
+  onFlipComplete,
+}) {
+  const flipAnim = useRef(new Animated.Value(isGuessed ? 1 : 0)).current;
+  const hasFlipped = useRef(isGuessed);
+
+  useEffect(() => {
+    if (isGuessed && !hasFlipped.current) {
+      hasFlipped.current = true;
+      Animated.spring(flipAnim, {
+        toValue: 1,
+        friction: 8,
+        tension: 30,
+        useNativeDriver: true,
+      }).start(() => {
+        onFlipComplete?.();
+      });
+    }
+  }, [isGuessed]);
+
+  if (isSpace) return <View style={{ width: isTablet ? 20 : 12 }} />;
+
+  const cardW = isTablet ? 58 : 38;
+  const cardH = isTablet ? 68 : 52;
+
+  const frontRotateY = flipAnim.interpolate({
+    inputRange: [0, 0.5, 1],
+    outputRange: ["0deg", "90deg", "90deg"],
+  });
+  const backRotateY = flipAnim.interpolate({
+    inputRange: [0, 0.5, 1],
+    outputRange: ["-90deg", "-90deg", "0deg"],
+  });
+  const frontOpacity = flipAnim.interpolate({
+    inputRange: [0, 0.45, 0.5],
+    outputRange: [1, 1, 0],
+  });
+  const backOpacity = flipAnim.interpolate({
+    inputRange: [0, 0.45, 0.5],
+    outputRange: [0, 0, 1],
+  });
+  const scaleAnim = flipAnim.interpolate({
+    inputRange: [0, 0.5, 0.8, 1],
+    outputRange: [1, 0.8, 1.15, 1],
+  });
+
+  return (
+    <View
+      ref={cardRef}
+      collapsable={false}
+      style={{
+        width: cardW,
+        height: cardH,
+        marginHorizontal: isTablet ? 4 : 2,
+        marginVertical: 4,
+      }}
+    >
+      <Animated.View
+        style={[
+          cardS.face,
+          cardS.frontFace,
+          { width: cardW, height: cardH, borderRadius: isTablet ? 10 : 7 },
+          { opacity: frontOpacity, transform: [{ rotateY: frontRotateY }] },
+        ]}
+      />
+      <Animated.View
+        style={[
+          cardS.face,
+          cardS.backFace,
+          { width: cardW, height: cardH, borderRadius: isTablet ? 10 : 7 },
+          {
+            opacity: backOpacity,
+            transform: [{ rotateY: backRotateY }, { scale: scaleAnim }],
+          },
+        ]}
+      >
+        <Text
+          style={[cardS.letterText, { fontSize: isTablet ? font.h3 : font.xl }]}
+        >
+          {letter}
+        </Text>
+      </Animated.View>
+    </View>
+  );
+}
+
+const cardS = StyleSheet.create({
+  face: {
+    position: "absolute",
+    alignItems: "center",
+    justifyContent: "center",
+    backfaceVisibility: "hidden",
+  },
+  frontFace: {
+    backgroundColor: "rgba(255,255,255,0.07)",
+    borderWidth: 2,
+    borderColor: "rgba(0,188,212,0.35)",
+    shadowColor: "#00BCD4",
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.2,
+    shadowRadius: 6,
+    elevation: 3,
+  },
+  backFace: {
+    backgroundColor: "rgba(255,213,79,0.18)",
+    borderWidth: 2.5,
+    borderColor: "rgba(255,213,79,0.8)",
+    shadowColor: "#FFD54F",
+    shadowOffset: { width: 0, height: 0 },
+    shadowOpacity: 1,
+    shadowRadius: 14,
+    elevation: 10,
+  },
+  letterText: {
+    fontFamily: FONTS.bold,
+    color: "#FFD54F",
+    textShadowColor: "rgba(255,213,79,1)",
+    textShadowOffset: { width: 0, height: 0 },
+    textShadowRadius: 14,
+    letterSpacing: 1,
+  },
+});
+
+// -----------------------------------------------------------------------------
 // DIALOGUE CLOUD
-//
-// CHANGED: removed slideY / translateY entirely.
-// The cloud now pops in → holds → fades out in place.
-// onMergeComplete fires after the fade, adding the hint to hintsInBox
-// with no visible "flying into the box" motion.
-// ─────────────────────────────────────────────────────────────────────────────
+// -----------------------------------------------------------------------------
 function DialogueCloud({ text, visible, onMergeComplete }) {
   const fadeAnim = useRef(new Animated.Value(0)).current;
   const textFade = useRef(new Animated.Value(0)).current;
@@ -143,12 +311,9 @@ function DialogueCloud({ text, visible, onMergeComplete }) {
 
   useEffect(() => {
     if (!visible || !text) return;
-
     fadeAnim.setValue(0);
     textFade.setValue(0);
     scaleAnim.setValue(0.75);
-
-    // 1. Pop in
     Animated.parallel([
       Animated.timing(fadeAnim, {
         toValue: 1,
@@ -162,13 +327,11 @@ function DialogueCloud({ text, visible, onMergeComplete }) {
         useNativeDriver: true,
       }),
     ]).start(() => {
-      // 2. Reveal text
       Animated.timing(textFade, {
         toValue: 1,
         duration: 280,
         useNativeDriver: true,
       }).start(() => {
-        // 3. Hold 2 s, then fade out in place — no slide, no translateY
         setTimeout(() => {
           Animated.timing(fadeAnim, {
             toValue: 0,
@@ -199,10 +362,17 @@ function DialogueCloud({ text, visible, onMergeComplete }) {
               width: bSize,
               height: bSize,
               borderRadius: bSize / 2,
-              backgroundColor: "#FFFFFF",
+              backgroundColor: "rgba(255,213,79,0.85)",
+              borderWidth: 1.5,
+              borderColor: "rgba(255,213,79,0.85)",
               marginHorizontal: -2,
               alignSelf: i % 2 === 0 ? "flex-end" : "flex-start",
               marginTop: i % 2 === 0 ? 0 : 4,
+              shadowColor: "#FFD54F",
+              shadowOffset: { width: 0, height: 0 },
+              shadowOpacity: 0.8,
+              shadowRadius: 6,
+              elevation: 4,
             }}
           />
         ))}
@@ -219,9 +389,9 @@ function DialogueCloud({ text, visible, onMergeComplete }) {
   );
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
+// -----------------------------------------------------------------------------
 // PULSING TITLE
-// ─────────────────────────────────────────────────────────────────────────────
+// -----------------------------------------------------------------------------
 function PulsingTitle() {
   const pulse = useRef(new Animated.Value(0)).current;
   const sc = useRef(new Animated.Value(1)).current;
@@ -272,9 +442,9 @@ function PulsingTitle() {
   );
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
-// HINT ROW  — tap the row or the 🔊 button to hear the hint read aloud
-// ─────────────────────────────────────────────────────────────────────────────
+// -----------------------------------------------------------------------------
+// HINT ROW
+// -----------------------------------------------------------------------------
 function HintRow({ index, text, isPlaying, isTablet, onSpeak }) {
   const speakerScale = useRef(new Animated.Value(1)).current;
   const speakerLoop = useRef(null);
@@ -349,9 +519,9 @@ function HintRow({ index, text, isPlaying, isTablet, onSpeak }) {
   );
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
+// -----------------------------------------------------------------------------
 // MAIN COMPONENT
-// ─────────────────────────────────────────────────────────────────────────────
+// -----------------------------------------------------------------------------
 const WordGuessGame = ({ onExit }) => {
   const router = useRouter();
   const params = useLocalSearchParams();
@@ -376,7 +546,9 @@ const WordGuessGame = ({ onExit }) => {
   const [showBadgePopup, setShowBadgePopup] = useState(false);
   const [word, setWord] = useState(initialData.word.toUpperCase());
   const [hints, setHints] = useState(initialData.hints);
-  const [guessedLetters, setGuessedLetters] = useState([]);
+  const [guessedLetters, setGuessedLetters] = useState(
+    getInitialGuessedLetters(initialData.word),
+  );
   const [wrongLetters, setWrongLetters] = useState([]);
   const [remainingChances, setRemainingChances] = useState(5);
   const [gameStatus, setGameStatus] = useState("playing");
@@ -387,20 +559,47 @@ const WordGuessGame = ({ onExit }) => {
   const [coinCount, setCoinCount] = useState(0);
   const [playingHint, setPlayingHint] = useState(null);
 
+  // ── CHANGED: resetKey increments on every reset, used as key on the word
+  // row so React fully unmounts + remounts all LetterCard instances,
+  // clearing their internal flipAnim and hasFlipped refs cleanly.
+  const [resetKey, setResetKey] = useState(0);
+
+  // ── CHANGED: resetting ref — when true the win/loss useEffect skips its
+  // check so the pre-revealed initial letters on a new word never trigger
+  // a false game-over during the state-batch that follows resetGame().
+  const isResettingRef = useRef(false);
+
+  const hintsScrollRef = useRef(null);
+  const pendingCoinSpawn = useRef({});
   const coinScaleAnim = useRef(new Animated.Value(1)).current;
   const coinShakeAnim = useRef(new Animated.Value(0)).current;
+  const owlBounceAnim = useRef(new Animated.Value(0)).current;
+  const owlShakeAnim = useRef(new Animated.Value(0)).current;
   const coinBadgeRef = useRef(null);
-  const letterBoxRefs = useRef({});
+  const letterCardRefs = useRef({});
   const coinIdRef = useRef(0);
   const soundRef = useRef(null);
 
-  const alphabet = "ABCDEFGHIJKLMNOPQRSTUVWXYZ".split("");
+  // Auto-scroll hints to bottom when new hint added
+  useEffect(() => {
+    if (hintsInBox.length > 0) {
+      setTimeout(() => {
+        hintsScrollRef.current?.scrollToEnd({ animated: true });
+      }, 100);
+    }
+  }, [hintsInBox]);
 
+  // Show and speak the first hint on mount
   useEffect(() => {
     if (hints?.length > 0)
       setTimeout(() => {
         setCloudText(hints[0]);
         setCloudVisible(true);
+        Speech.speak(hints[0], {
+          language: "en",
+          pitch: 1.1,
+          rate: 0.78,
+        });
       }, 900);
   }, []);
 
@@ -411,7 +610,10 @@ const WordGuessGame = ({ onExit }) => {
     );
   };
 
+  // ── CHANGED: Guard with isResettingRef so pre-revealed letters on a fresh
+  // word never cause a false win/loss during the reset state batch.
   useEffect(() => {
+    if (isResettingRef.current) return;
     if (gameStatus !== "playing") return;
     const allGuessed = word
       .split("")
@@ -429,6 +631,59 @@ const WordGuessGame = ({ onExit }) => {
     }
   }, [guessedLetters, remainingChances]);
 
+  const animateOwlJump = () => {
+    owlBounceAnim.setValue(0);
+    Animated.sequence([
+      Animated.timing(owlBounceAnim, {
+        toValue: -26,
+        duration: 160,
+        easing: Easing.out(Easing.quad),
+        useNativeDriver: true,
+      }),
+      Animated.timing(owlBounceAnim, {
+        toValue: 0,
+        duration: 280,
+        easing: Easing.bounce,
+        useNativeDriver: true,
+      }),
+    ]).start();
+  };
+
+  const animateOwlShake = () => {
+    Animated.sequence([
+      Animated.timing(owlShakeAnim, {
+        toValue: 10,
+        duration: 60,
+        useNativeDriver: true,
+      }),
+      Animated.timing(owlShakeAnim, {
+        toValue: -10,
+        duration: 60,
+        useNativeDriver: true,
+      }),
+      Animated.timing(owlShakeAnim, {
+        toValue: 8,
+        duration: 60,
+        useNativeDriver: true,
+      }),
+      Animated.timing(owlShakeAnim, {
+        toValue: -8,
+        duration: 60,
+        useNativeDriver: true,
+      }),
+      Animated.timing(owlShakeAnim, {
+        toValue: 5,
+        duration: 60,
+        useNativeDriver: true,
+      }),
+      Animated.timing(owlShakeAnim, {
+        toValue: 0,
+        duration: 60,
+        useNativeDriver: true,
+      }),
+    ]).start();
+  };
+
   const handleLetterPress = (letter) => {
     if (gameStatus !== "playing") return;
     if (guessedLetters.includes(letter) || wrongLetters.includes(letter))
@@ -436,19 +691,33 @@ const WordGuessGame = ({ onExit }) => {
     if (word.includes(letter)) {
       setGuessedLetters((prev) => [...prev, letter]);
       playSound(require("../../assets/sounds/correct.mp3"));
-      spawnCoins(letter);
+      pendingCoinSpawn.current[letter] = true;
+      animateOwlJump();
     } else {
       const newChances = remainingChances - 1;
       setWrongLetters((prev) => [...prev, letter]);
       setRemainingChances(newChances);
       playSound(require("../../assets/sounds/incorrect.mp3"));
+      animateOwlShake();
       const nextIdx = hintsInBox.length;
       if (newChances > 0 && nextIdx < hints.length && hints[nextIdx]) {
         setTimeout(() => {
           setCloudText(hints[nextIdx]);
           setCloudVisible(true);
+          Speech.speak(hints[nextIdx], {
+            language: "en",
+            pitch: 1.1,
+            rate: 0.78,
+          });
         }, 400);
       }
+    }
+  };
+
+  const handleFlipComplete = (letter) => {
+    if (pendingCoinSpawn.current[letter]) {
+      delete pendingCoinSpawn.current[letter];
+      spawnCoins(letter);
     }
   };
 
@@ -467,13 +736,13 @@ const WordGuessGame = ({ onExit }) => {
         }));
         setFlyingCoins((prev) => [...prev, ...newCoins]);
       };
-      const ref = letterBoxRefs.current[letter];
+      const ref = letterCardRefs.current[letter]?.[0];
       if (ref) {
         ref.measureInWindow((lx, ly, lw, lh) =>
           doSpawn(lx + lw / 2, ly + lh / 2),
         );
       } else {
-        doSpawn(SW / 2, SH * 0.55);
+        doSpawn(SW / 2, SH * 0.45);
       }
     });
   };
@@ -544,38 +813,40 @@ const WordGuessGame = ({ onExit }) => {
     });
   };
 
-  const renderWord = () =>
-    word.split("").map((letter, index) => {
-      if (letter === " ")
-        return <View key={index} style={{ width: isTablet ? 22 : 13 }} />;
-      const isGuessed = guessedLetters.includes(letter);
-      return (
-        <View
-          key={index}
-          ref={(r) => {
-            if (r && !letterBoxRefs.current[letter])
-              letterBoxRefs.current[letter] = r;
-          }}
-          style={[styles.letterBox, { marginHorizontal: isTablet ? 6 : 3 }]}
-        >
-          <Text
-            style={[
-              styles.letterText,
-              { fontSize: isTablet ? font.h3 : font.xl },
-            ]}
-          >
-            {isGuessed ? letter : ""}
-          </Text>
-          <View
-            style={[
-              styles.underline,
-              isGuessed && styles.underlineGuessed,
-              { width: isTablet ? 38 : 24, height: isTablet ? 4 : 2 },
-            ]}
+  const renderWord = () => {
+    const usedLetterCount = {};
+    return word.split("").map((letter, index) => {
+      if (letter === " ") {
+        return (
+          <LetterCard
+            key={`space-${index}`}
+            letter=" "
+            isGuessed={false}
+            isSpace={true}
+            isTablet={isTablet}
           />
-        </View>
+        );
+      }
+      const isGuessed = guessedLetters.includes(letter);
+      const occurrenceIndex = usedLetterCount[letter] ?? 0;
+      usedLetterCount[letter] = occurrenceIndex + 1;
+      return (
+        <LetterCard
+          key={`${letter}-${index}`}
+          letter={letter}
+          isGuessed={isGuessed}
+          isSpace={false}
+          isTablet={isTablet}
+          cardRef={(r) => {
+            if (!letterCardRefs.current[letter])
+              letterCardRefs.current[letter] = [];
+            letterCardRefs.current[letter][occurrenceIndex] = r;
+          }}
+          onFlipComplete={() => handleFlipComplete(letter)}
+        />
       );
     });
+  };
 
   const proceedToNextActivity = async () => {
     if (!storySession) {
@@ -600,25 +871,47 @@ const WordGuessGame = ({ onExit }) => {
     });
   };
 
+  // ── CHANGED: resetGame now sets isResettingRef=true before touching any
+  // state, then clears it in a setTimeout(0) so the win/loss useEffect
+  // skips the render cycle where new initial letters land on the new word.
   const resetGame = () => {
+    isResettingRef.current = true;
+
     const data = getNewWord();
-    letterBoxRefs.current = {};
+    const newInitialLetters = getInitialGuessedLetters(data.word);
+
+    letterCardRefs.current = {};
+    pendingCoinSpawn.current = {};
+
+    setShowGameEnd(false);
+    setEndType(null);
+    setEndWord(null);
+    setGameStatus("playing");
     setWord(data.word.toUpperCase());
     setHints(data.hints);
-    setGuessedLetters([]);
+    setGuessedLetters(newInitialLetters);
     setWrongLetters([]);
     setRemainingChances(5);
-    setGameStatus("playing");
     setHintsInBox([]);
     setCloudVisible(false);
     setCloudText("");
     setFlyingCoins([]);
-    setEndWord(null);
     setPlayingHint(null);
+
+    // ── CHANGED: increment resetKey so the word row remounts all LetterCards
+    // with fresh animation state — no stale hasFlipped or flipAnim values.
+    setResetKey((k) => k + 1);
+
+    // Clear the reset guard after React has processed the state batch above
+    setTimeout(() => {
+      isResettingRef.current = false;
+    }, 0);
+
     Speech.stop();
     setTimeout(() => {
       setCloudText(data.hints[0]);
       setCloudVisible(true);
+      Speech.speak(data.hints[0], { language: "en", pitch: 1.1, rate: 0.78 });
     }, 900);
   };
 
@@ -628,6 +921,13 @@ const WordGuessGame = ({ onExit }) => {
       Speech.stop();
     };
   }, []);
+
+  // Approximate height for ~2 hint rows visible
+  const hintRowH = isTablet ? 64 : 52;
+  const hintsBoxH = hintRowH * 2 + 48; // 48 for header + padding
+
+  const keyW = isTablet ? 52 : 34;
+  const keyH = isTablet ? 52 : 38;
 
   return (
     <View style={styles.root}>
@@ -683,14 +983,26 @@ const WordGuessGame = ({ onExit }) => {
             visible={cloudVisible}
             onMergeComplete={handleCloudMerge}
           />
-          <ExpoImage
-            source={require("../../assets/img/owl.png")}
+          <Animated.View
             style={[
               styles.birdImg,
-              { width: isTablet ? 150 : 100, height: isTablet ? 150 : 100 },
+              {
+                transform: [
+                  { translateY: owlBounceAnim },
+                  { translateX: owlShakeAnim },
+                ],
+              },
             ]}
-            contentFit="contain"
-          />
+          >
+            <ExpoImage
+              source={require("../../assets/img/owl.png")}
+              style={{
+                width: isTablet ? 150 : 100,
+                height: isTablet ? 150 : 100,
+              }}
+              contentFit="contain"
+            />
+          </Animated.View>
           <View
             style={[styles.flowerCard, { width: isTablet ? "78%" : "92%" }]}
           >
@@ -714,11 +1026,20 @@ const WordGuessGame = ({ onExit }) => {
           </View>
         </View>
 
-        {/* Hints box */}
+        {/* ── CHANGED: resetKey as key forces full remount of word row and all
+            LetterCard children on every reset, clearing stale animation state */}
+        <View key={resetKey} style={styles.wordRow}>
+          {renderWord()}
+        </View>
+
+        {/* Hints box — fixed height, scrollable inside */}
         <View
           style={[
             styles.hintsBox,
-            { width: isTablet ? "78%" : "92%", height: isTablet ? 300 : 260 },
+            {
+              width: isTablet ? "78%" : "92%",
+              height: hintsBoxH,
+            },
           ]}
         >
           <View style={styles.hintsTitleRow}>
@@ -731,53 +1052,64 @@ const WordGuessGame = ({ onExit }) => {
           {hintsInBox.length === 0 ? (
             <Text style={styles.hintsEmpty}>Hints will merge here…</Text>
           ) : (
-            hintsInBox.map((h, i) => (
-              <HintRow
-                key={i}
-                index={i}
-                text={h}
-                isPlaying={playingHint === i}
-                isTablet={isTablet}
-                onSpeak={() => handleHintSpeak(h, i)}
-              />
-            ))
+            <ScrollView
+              ref={hintsScrollRef}
+              showsVerticalScrollIndicator={false}
+              style={{ flex: 1 }}
+              contentContainerStyle={{ paddingBottom: 4 }}
+            >
+              {hintsInBox.map((h, i) => (
+                <HintRow
+                  key={i}
+                  index={i}
+                  text={h}
+                  isPlaying={playingHint === i}
+                  isTablet={isTablet}
+                  onSpeak={() => handleHintSpeak(h, i)}
+                />
+              ))}
+            </ScrollView>
           )}
         </View>
 
-        <View style={styles.wordRow}>{renderWord()}</View>
-
+        {/* QWERTY Keyboard */}
         <View style={styles.keyboard}>
-          {alphabet.map((letter) => {
-            const isGuessed = guessedLetters.includes(letter);
-            const isWrong = wrongLetters.includes(letter);
-            const disabled = isGuessed || isWrong || gameStatus !== "playing";
-            return (
-              <TouchableOpacity
-                key={letter}
-                style={[
-                  styles.key,
-                  { width: isTablet ? 52 : 35, height: isTablet ? 52 : 35 },
-                  isGuessed && styles.keyCorrect,
-                  isWrong && styles.keyWrong,
-                ]}
-                onPress={() => handleLetterPress(letter)}
-                disabled={disabled}
-                activeOpacity={0.7}
-              >
-                <Text
-                  style={[
-                    styles.keyText,
-                    { fontSize: isTablet ? font.xl : font.lg },
-                    isGuessed && styles.keyTextCorrect,
-                    isWrong && styles.keyTextWrong,
-                    disabled && !isGuessed && !isWrong && { opacity: 0.32 },
-                  ]}
-                >
-                  {letter}
-                </Text>
-              </TouchableOpacity>
-            );
-          })}
+          {KEYBOARD_ROWS.map((row, rowIndex) => (
+            <View key={rowIndex} style={styles.keyboardRow}>
+              {row.map((letter) => {
+                const isGuessed = guessedLetters.includes(letter);
+                const isWrong = wrongLetters.includes(letter);
+                const disabled =
+                  isGuessed || isWrong || gameStatus !== "playing";
+                return (
+                  <TouchableOpacity
+                    key={letter}
+                    style={[
+                      styles.key,
+                      { width: keyW, height: keyH },
+                      isGuessed && styles.keyCorrect,
+                      isWrong && styles.keyWrong,
+                    ]}
+                    onPress={() => handleLetterPress(letter)}
+                    disabled={disabled}
+                    activeOpacity={0.7}
+                  >
+                    <Text
+                      style={[
+                        styles.keyText,
+                        { fontSize: isTablet ? font.xxl : font.lg },
+                        isGuessed && styles.keyTextCorrect,
+                        isWrong && styles.keyTextWrong,
+                        disabled && !isGuessed && !isWrong && { opacity: 0.32 },
+                      ]}
+                    >
+                      {letter}
+                    </Text>
+                  </TouchableOpacity>
+                );
+              })}
+            </View>
+          ))}
         </View>
 
         {gameStatus !== "playing" && (
@@ -835,9 +1167,9 @@ const WordGuessGame = ({ onExit }) => {
 
 export default WordGuessGame;
 
-// ─────────────────────────────────────────────────────────────────────────────
+// -----------------------------------------------------------------------------
 // STYLES
-// ─────────────────────────────────────────────────────────────────────────────
+// -----------------------------------------------------------------------------
 const styles = StyleSheet.create({
   root: { flex: 1, backgroundColor: COLORS.darkBg },
   scroll: { flex: 1 },
@@ -913,21 +1245,9 @@ const styles = StyleSheet.create({
     textAlign: "center",
   },
 
-  birdSection: {
-    // alignItems: "center",
-    width: "100%",
-    paddingVertical: pad.xs,
-    minHeight: "15%",
-    //  backgroundColor: "pink",
-  },
-  birdImg: {
-    zIndex: 1,
-    bottom: 5,
-    position: "absolute",
-    left: 25,
-  },
+  birdSection: { width: "100%", paddingVertical: pad.xs, minHeight: "15%" },
+  birdImg: { zIndex: 1, bottom: 5, position: "absolute", left: 25 },
 
-  // Dialogue cloud — stays in place, no translateY
   cloudWrapper: {
     alignSelf: "center",
     alignItems: "center",
@@ -943,7 +1263,7 @@ const styles = StyleSheet.create({
     zIndex: 2,
   },
   cloudBody: {
-    backgroundColor: COLORS.teal,
+    backgroundColor: "rgba(255,213,79,0.14)",
     borderRadius: radius.lg,
     paddingTop: 20,
     paddingBottom: pad.sm,
@@ -951,18 +1271,23 @@ const styles = StyleSheet.create({
     maxWidth: 260,
     minWidth: 150,
     zIndex: 1,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 3 },
-    shadowOpacity: 0.18,
-    shadowRadius: 9,
-    elevation: 7,
+    borderWidth: 2,
+    borderColor: "rgba(255,213,79,0.75)",
+    shadowColor: "#FFD54F",
+    shadowOffset: { width: 0, height: 0 },
+    shadowOpacity: 0.9,
+    shadowRadius: 14,
+    elevation: 10,
   },
   cloudText: {
     fontFamily: FONTS.bold,
     fontSize: font.ml,
-    color: "#1a1a2e",
+    color: "#FFD54F",
     textAlign: "center",
     lineHeight: font.sm * 1.5,
+    textShadowColor: "rgba(255,213,79,0.9)",
+    textShadowOffset: { width: 0, height: 0 },
+    textShadowRadius: 10,
   },
   cloudTailRow: { alignItems: "center", marginTop: -1, zIndex: 0 },
   cloudTailTriangle: {
@@ -973,10 +1298,9 @@ const styles = StyleSheet.create({
     borderTopWidth: 13,
     borderLeftColor: "transparent",
     borderRightColor: "transparent",
-    borderTopColor: COLORS.teal,
+    borderTopColor: "rgba(255,213,79,0.75)",
   },
 
-  // Hints box
   hintsBox: {
     backgroundColor: COLORS.surface,
     borderRadius: radius.lg,
@@ -989,8 +1313,7 @@ const styles = StyleSheet.create({
     shadowRadius: 9,
     elevation: 3,
     marginBottom: pad.s,
-    height: 300,
-    // // overflow: "hidden",
+    overflow: "hidden",
   },
   hintsTitleRow: {
     flexDirection: "row",
@@ -1030,7 +1353,6 @@ const styles = StyleSheet.create({
     paddingVertical: pad.xs,
     paddingHorizontal: pad.xs,
     borderRadius: radius.sm,
-    //  backgroundColor: "pink",
   },
   hintRowActive: {
     backgroundColor: "rgba(0,188,212,0.08)",
@@ -1075,10 +1397,7 @@ const styles = StyleSheet.create({
   },
   speakerIcon: { fontSize: 15 },
 
-  // Flower card
   flowerCard: {
-    // padding: pad.sm,
-    //  alignItems: "left",
     position: "absolute",
     bottom: 0,
     borderColor: "rgba(150,82,217,0.26)",
@@ -1088,7 +1407,6 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.16,
     shadowRadius: 9,
     elevation: 3,
-    // backgroundColor: "pink",
     height: "40%",
   },
   dotsRow: {
@@ -1097,9 +1415,7 @@ const styles = StyleSheet.create({
     right: 14,
     marginTop: pad.lg,
     marginBottom: pad.xs,
-    // backgroundColor: "red",
     position: "absolute",
-    //  bottom: 10,
     alignItems: "right",
   },
   heart: { fontSize: font.xl, alignItems: "left" },
@@ -1124,55 +1440,54 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     flexWrap: "wrap",
     justifyContent: "center",
-    alignItems: "flex-end",
-    gap: 2,
+    alignItems: "center",
     paddingHorizontal: pad.sm,
-    marginBottom: pad.s,
-  },
-  letterBox: { alignItems: "center", marginVertical: 3, minWidth: 24 },
-  letterText: {
-    fontFamily: FONTS.bold,
-    color: COLORS.teal,
-    minHeight: 30,
-    textShadowColor: "rgba(0,188,212,0.5)",
-    textShadowOffset: { width: 0, height: 0 },
-    textShadowRadius: 18,
-  },
-  underline: {
-    backgroundColor: COLORS.teal,
-    marginTop: 4,
-    borderRadius: 2,
-    marginBottom: 10,
-  },
-  underlineGuessed: {
-    backgroundColor: COLORS.teal,
-    shadowColor: COLORS.teal,
+    paddingVertical: pad.sm,
+    marginBottom: pad.md,
+    marginTop: pad.sm,
+    marginHorizontal: pad.sm,
+    backgroundColor: "rgba(0,188,212,0.05)",
+    borderRadius: radius.xl,
+    borderWidth: 1.5,
+    borderColor: "rgba(0,188,212,0.18)",
+    shadowColor: "#00BCD4",
     shadowOffset: { width: 0, height: 0 },
-    shadowOpacity: 0.65,
-    shadowRadius: 4,
-    elevation: 2,
+    shadowOpacity: 0.12,
+    shadowRadius: 20,
+    elevation: 4,
   },
 
   keyboard: {
-    flexDirection: "row",
-    flexWrap: "wrap",
-    justifyContent: "center",
+    width: "100%",
+    alignItems: "center",
     paddingHorizontal: pad.xs,
     marginTop: pad.sm,
-    gap: pad.xs,
+    gap: 7,
   },
+  keyboardRow: { flexDirection: "row", justifyContent: "center", gap: 6 },
   key: {
     backgroundColor: COLORS.surfaceDim,
     borderRadius: radius.sm,
     justifyContent: "center",
     alignItems: "center",
     borderWidth: 1,
-    borderColor: "rgba(255,255,255,0.07)",
+    borderColor: "rgba(255,255,255,0.1)",
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.3,
+    shadowRadius: 2,
+    elevation: 3,
   },
-  keyText: { fontFamily: FONTS.bold, color: COLORS.textPrimary },
+  keyText: {
+    fontFamily: FONTS.bold,
+    color: COLORS.textPrimary,
+    letterSpacing: 0.5,
+  },
   keyCorrect: {
     backgroundColor: "rgba(76,175,80,0.2)",
     borderColor: COLORS.correct,
+    shadowColor: COLORS.correct,
+    shadowOpacity: 0.4,
   },
   keyTextCorrect: { color: COLORS.correct },
   keyWrong: {
