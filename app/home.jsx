@@ -80,68 +80,52 @@ const GAMES = [
   },
 ];
 
+// ── Tutorial steps (removed: diamond, coins, storyCard) ──────────────────────
+// Activities (readIcon/guessIcon/listenIcon/describeIcon) are merged into one
+// step that auto-cycles through each sub-icon every 2 seconds.
 const TUTORIAL_STEPS = [
   {
     key: "account",
     title: "Your Account",
     description:
       "Use this to see your account details and switch between profiles.",
+    sound: require("../assets/sounds/tutorial/s1.mp3"),
   },
   {
     key: "levelBadge",
     title: "Level Badge",
     description:
       "This shows your current level. Tap it to switch between levels.",
+    sound: require("../assets/sounds/tutorial/s2.mp3"),
   },
   {
     key: "wordbag",
     title: "Word Bag",
     description:
       "Upon completing stories, you collect important words and phrases here.",
-  },
-  {
-    key: "diamond",
-    title: "Diamonds",
-    description: "This shows the diamonds collected by your profile.",
-  },
-  {
-    key: "coins",
-    title: "Coins",
-    description: "This shows the coins collected by your profile.",
+    sound: require("../assets/sounds/tutorial/s3.mp3"),
   },
   {
     key: "storyImage",
     title: "Recommended Story",
     description:
       "This shows the recommended story to start with. Tap to begin!",
+    sound: require("../assets/sounds/tutorial/s4.mp3"),
   },
   {
-    key: "readIcon",
-    title: "Read Activity",
-    description: "This indicates the Read activity for this story.",
-  },
-  {
-    key: "guessIcon",
-    title: "Guess the Word",
-    description: "This indicates the 'Guess the Word' activity.",
-  },
-  {
-    key: "listenIcon",
-    title: "Listening Activity",
-    description: "This indicates the 'Listening' activity.",
-  },
-  {
-    key: "describeIcon",
-    title: "Describe the Word",
-    description: "This indicates the 'Describe the Word' activity.",
-  },
-  {
-    key: "storyCard",
-    title: "Story Cards",
-    description: "You can start any story by tapping on a story card.",
+    // Special merged step — highlight cycles through sub-keys automatically
+    key: "activities",
+    isActivitiesStep: true,
+    title: "Story Activities",
+    description:
+      "Each story has four activities: Read, Guess the Word, Listening, and Describe the Word. Complete them all to finish a story!",
+    sound: require("../assets/sounds/tutorial/s5.mp3"),
+    subKeys: ["readIcon", "guessIcon", "listenIcon", "describeIcon"],
+    subLabels: ["Read", "Guess the Word", "Listening", "Describe the Word"],
   },
 ];
 
+// Generic one-shot sound (for tick etc.)
 async function playSound(file, { volume = 1.0 } = {}) {
   try {
     await Audio.setAudioModeAsync({ playsInSilentModeIOS: true });
@@ -152,6 +136,42 @@ async function playSound(file, { volume = 1.0 } = {}) {
     });
     await sound.playAsync();
   } catch (_) {}
+}
+
+// Step-voice player — returns a cancel function.
+// onFinished is called when the audio naturally ends.
+// If cancel() is called before it ends, onFinished is never called.
+function playStepVoice(file, { volume = 1.0, onFinished } = {}) {
+  let cancelled = false;
+  let soundObj = null;
+
+  (async () => {
+    try {
+      await Audio.setAudioModeAsync({ playsInSilentModeIOS: true });
+      const { sound } = await Audio.Sound.createAsync(file);
+      soundObj = sound;
+      await sound.setVolumeAsync(volume);
+      sound.setOnPlaybackStatusUpdate((status) => {
+        if (status.didJustFinish) {
+          sound.unloadAsync();
+          if (!cancelled && onFinished) onFinished();
+        }
+      });
+      if (!cancelled) {
+        await sound.playAsync();
+      } else {
+        sound.unloadAsync();
+      }
+    } catch (_) {}
+  })();
+
+  return () => {
+    cancelled = true;
+    if (soundObj) {
+      soundObj.stopAsync().catch(() => {});
+      soundObj.unloadAsync().catch(() => {});
+    }
+  };
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -262,66 +282,170 @@ function HomeTutorial({ visible, refs, onDone }) {
   const pulseAnim = useRef(new Animated.Value(1)).current;
   const pulseLoop = useRef(null);
 
+  // For the merged activities step: which sub-icon is currently highlighted
+  const [activeSubIndex, setActiveSubIndex] = useState(0);
+  const subCycleTimer = useRef(null);
+
+  // Ref to cancel the currently playing step voice
+  const cancelVoiceRef = useRef(null);
+  // Ref to the latest step so the voice-finish callback always sees current value
+  const stepRef = useRef(step);
+
   const stepData = TUTORIAL_STEPS[step];
   const isLast = step === TUTORIAL_STEPS.length - 1;
   const isFirst = step === 0;
 
+  // ── Cancel any playing voice ───────────────────────────────────────────────
+  const cancelVoice = useCallback(() => {
+    if (cancelVoiceRef.current) {
+      cancelVoiceRef.current();
+      cancelVoiceRef.current = null;
+    }
+  }, []);
+
+  // ── Animate highlight to a measured rect ──────────────────────────────────
+  const animateToRect = useCallback(
+    (newRect) => {
+      setRect(newRect);
+      tooltipAnim.setValue(0);
+      Animated.timing(tooltipAnim, {
+        toValue: 1,
+        duration: 300,
+        useNativeDriver: true,
+      }).start();
+      if (pulseLoop.current) pulseLoop.current.stop();
+      pulseAnim.setValue(1);
+      pulseLoop.current = Animated.loop(
+        Animated.sequence([
+          Animated.timing(pulseAnim, {
+            toValue: 1.04,
+            duration: 700,
+            useNativeDriver: true,
+          }),
+          Animated.timing(pulseAnim, {
+            toValue: 0.97,
+            duration: 700,
+            useNativeDriver: true,
+          }),
+        ]),
+      );
+      pulseLoop.current.start();
+    },
+    [tooltipAnim, pulseAnim],
+  );
+
+  // ── Measure a step ref and update highlight ────────────────────────────────
   const measureStep = useCallback(
-    (stepIndex) => {
-      const key = TUTORIAL_STEPS[stepIndex].key;
-      const ref = refs[key];
+    (stepIndex, subIndex = 0) => {
+      const sd = TUTORIAL_STEPS[stepIndex];
+      const refKey = sd.isActivitiesStep ? sd.subKeys[subIndex] : sd.key;
+      const ref = refs[refKey];
       if (!ref?.current) return;
       ref.current.measureInWindow((x, y, w, h) => {
         if (w === 0 && h === 0) return;
-        setRect({
+        animateToRect({
           x: x - PADDING,
           y: y - PADDING,
           width: w + PADDING * 2,
           height: h + PADDING * 2,
         });
-        tooltipAnim.setValue(0);
-        Animated.timing(tooltipAnim, {
-          toValue: 1,
-          duration: 300,
-          useNativeDriver: true,
-        }).start();
-        if (pulseLoop.current) pulseLoop.current.stop();
-        pulseAnim.setValue(1);
-        pulseLoop.current = Animated.loop(
-          Animated.sequence([
-            Animated.timing(pulseAnim, {
-              toValue: 1.04,
-              duration: 700,
-              useNativeDriver: true,
-            }),
-            Animated.timing(pulseAnim, {
-              toValue: 0.97,
-              duration: 700,
-              useNativeDriver: true,
-            }),
-          ]),
-        );
-        pulseLoop.current.start();
       });
     },
-    [refs, tooltipAnim, pulseAnim],
+    [refs, animateToRect],
   );
 
+  // ── Stop sub-icon cycling ──────────────────────────────────────────────────
+  const stopSubCycle = useCallback(() => {
+    if (subCycleTimer.current) {
+      clearInterval(subCycleTimer.current);
+      subCycleTimer.current = null;
+    }
+  }, []);
+
+  // ── Start sub-icon cycling for the activities step (4 s interval) ─────────
+  const startSubCycle = useCallback(
+    (stepIndex) => {
+      stopSubCycle();
+      const sd = TUTORIAL_STEPS[stepIndex];
+      if (!sd?.isActivitiesStep) return;
+      let idx = 0;
+      setActiveSubIndex(0);
+      measureStep(stepIndex, 0);
+      subCycleTimer.current = setInterval(() => {
+        idx = (idx + 1) % sd.subKeys.length;
+        setActiveSubIndex(idx);
+        measureStep(stepIndex, idx);
+      }, 6000); // ← 4 seconds between each activity icon
+    },
+    [stopSubCycle, measureStep],
+  );
+
+  // ── Advance to next step (or finish) ──────────────────────────────────────
+  const goNext = useCallback(
+    (currentStep) => {
+      // Only advance if we're still on the expected step
+      if (stepRef.current !== currentStep) return;
+      if (currentStep >= TUTORIAL_STEPS.length - 1) {
+        onDone();
+        return;
+      }
+      setRect(null);
+      setStep(currentStep + 1);
+    },
+    [onDone],
+  );
+
+  // ── Effect: fire whenever step or visibility changes ──────────────────────
   useEffect(() => {
     if (!visible) return;
-    const t = setTimeout(() => measureStep(step), 120);
-    return () => clearTimeout(t);
-  }, [visible, step, measureStep]);
 
+    stepRef.current = step;
+    cancelVoice();
+    stopSubCycle();
+    setActiveSubIndex(0);
+    setRect(null);
+
+    const capturedStep = step;
+    const sd = TUTORIAL_STEPS[capturedStep];
+
+    const t = setTimeout(() => {
+      // Measure / start cycling
+      if (sd.isActivitiesStep) {
+        startSubCycle(capturedStep);
+      } else {
+        measureStep(capturedStep, 0);
+      }
+
+      // Play voice and auto-advance when it finishes
+      if (sd?.sound) {
+        const cancel = playStepVoice(sd.sound, {
+          onFinished: () => goNext(capturedStep),
+        });
+        cancelVoiceRef.current = cancel;
+      }
+    }, 120);
+
+    return () => {
+      clearTimeout(t);
+      cancelVoice();
+    };
+  }, [visible, step]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // ── Cleanup when tutorial is hidden ───────────────────────────────────────
   useEffect(() => {
     if (!visible) {
+      cancelVoice();
+      stopSubCycle();
       if (pulseLoop.current) pulseLoop.current.stop();
       setStep(0);
       setRect(null);
+      setActiveSubIndex(0);
     }
-  }, [visible]);
+  }, [visible]); // eslint-disable-line react-hooks/exhaustive-deps
 
+  // ── Manual navigation — cancels voice then moves ──────────────────────────
   const handleNext = () => {
+    cancelVoice();
     playSound(require("../assets/sounds/tick1.mp3"));
     if (isLast) {
       onDone();
@@ -332,11 +456,15 @@ function HomeTutorial({ visible, refs, onDone }) {
   };
   const handlePrev = () => {
     if (isFirst) return;
+    cancelVoice();
     playSound(require("../assets/sounds/tick1.mp3"));
     setRect(null);
     setStep((p) => p - 1);
   };
-  const handleSkip = () => onDone();
+  const handleSkip = () => {
+    cancelVoice();
+    onDone();
+  };
 
   if (!visible) return null;
 
@@ -347,9 +475,13 @@ function HomeTutorial({ visible, refs, onDone }) {
   const tooltipTop = rect
     ? showTooltipBelow
       ? rect.y + rect.height + TOOLTIP_MARGIN
-      : rect.y - TOOLTIP_MARGIN - 130
+      : rect.y - TOOLTIP_MARGIN - 160
     : height * 0.5;
-  const clampedTooltipTop = Math.max(60, Math.min(tooltipTop, height - 200));
+  const clampedTooltipTop = Math.max(60, Math.min(tooltipTop, height - 220));
+
+  // Sub-label pill shown inside the tooltip for the activities step
+  const showSubLabel =
+    stepData.isActivitiesStep && stepData.subLabels?.[activeSubIndex] != null;
 
   return (
     <Modal
@@ -448,6 +580,30 @@ function HomeTutorial({ visible, refs, onDone }) {
           >
             <Text style={tutS.tooltipTitle}>{stepData.title}</Text>
             <Text style={tutS.tooltipDesc}>{stepData.description}</Text>
+
+            {/* Sub-label pill for the activities step */}
+            {showSubLabel && (
+              <View style={tutS.subLabelRow}>
+                {stepData.subKeys.map((_, i) => (
+                  <View
+                    key={i}
+                    style={[
+                      tutS.subLabelPill,
+                      i === activeSubIndex && tutS.subLabelPillActive,
+                    ]}
+                  >
+                    <Text
+                      style={[
+                        tutS.subLabelText,
+                        i === activeSubIndex && tutS.subLabelTextActive,
+                      ]}
+                    >
+                      {stepData.subLabels[i]}
+                    </Text>
+                  </View>
+                ))}
+              </View>
+            )}
           </Animated.View>
         )}
 
@@ -547,6 +703,34 @@ const tutS = StyleSheet.create({
     fontSize: font.md,
     color: "#B2EBF2",
     lineHeight: font.sm * 1.5,
+  },
+  // Activities step sub-label pills
+  subLabelRow: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: 6,
+    marginTop: pad.sm,
+  },
+  subLabelPill: {
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 20,
+    borderWidth: 1,
+    borderColor: "rgba(0,188,212,0.25)",
+    backgroundColor: "rgba(0,188,212,0.07)",
+  },
+  subLabelPillActive: {
+    borderColor: TEAL,
+    backgroundColor: "rgba(0,188,212,0.22)",
+  },
+  subLabelText: {
+    fontFamily: FONTS.regular,
+    fontSize: font.s,
+    color: "rgba(178,235,242,0.55)",
+  },
+  subLabelTextActive: {
+    fontFamily: FONTS.bold,
+    color: TEAL,
   },
   topBar: {
     position: "absolute",
@@ -1433,7 +1617,6 @@ function LevelBadge({
               fontFamily: FONTS.bold,
               fontSize: font.h2,
               color: "#E0F7FA",
-              // lineHeight: isTablet ? 38 : 28,
               textShadowColor: TEAL,
               textShadowOffset: { width: 0, height: 0 },
               textShadowRadius: 8,
@@ -1599,20 +1782,16 @@ const Home = () => {
     account: useRef(null),
     levelBadge: useRef(null),
     wordbag: useRef(null),
-    diamond: useRef(null),
-    coins: useRef(null),
     storyImage: useRef(null),
     readIcon: useRef(null),
     guessIcon: useRef(null),
     listenIcon: useRef(null),
     describeIcon: useRef(null),
-    storyCard: useRef(null),
   };
 
-  const [showTutorial, setShowTutorial] = useState(false);
+  const [showTutorial, setShowTutorial] = useState(true);
   const handleTutorialDone = useCallback(() => setShowTutorial(false), []);
 
-  // ADD THIS anywhere among your useEffects
   useEffect(() => {
     console.log("[HOME LIFECYCLE] Home MOUNTED");
     return () => {
@@ -1620,7 +1799,7 @@ const Home = () => {
     };
   }, []);
 
-  // ── CHANGED: Step 1.1 — Prefetch cover images immediately when books load ──
+  // ── Prefetch cover images immediately when books load ──
   useEffect(() => {
     if (!books?.length) return;
 
@@ -1631,7 +1810,7 @@ const Home = () => {
     Promise.allSettled(coverImages.map((uri) => ExpoImage.prefetch(uri)));
   }, [books]);
 
-  // ── CHANGED: Step 1.2 — Prefetch pages 1 & 2 of all stories after 1 second ──
+  // ── Prefetch pages 1 & 2 of all stories after 1 second ──
   useEffect(() => {
     if (!books?.length) return;
 
@@ -1720,7 +1899,6 @@ const Home = () => {
       lastInitializedProfileIdRef.current,
     );
     if (!currentProfile) return;
-    // Guard: don't re-initialize if this profile was already initialized
     if (lastInitializedProfileIdRef.current === currentProfile.id) return;
 
     lastInitializedProfileIdRef.current = currentProfile.id;
@@ -1737,7 +1915,7 @@ const Home = () => {
       currentProfile.id,
     );
     initForProfile(currentProfile).then(() => {
-      profileSwitchInProgressRef.current = false; // ← clear flag
+      profileSwitchInProgressRef.current = false;
       prevLoadedLevelRef.current = currentProfile.playLevel ?? 1;
       loadBooksForLevel(
         currentProfile.playLevel ?? 1,
@@ -1747,19 +1925,19 @@ const Home = () => {
     });
     loadAllStoryProgress(currentProfile.id);
     getPendingProgression(currentProfile.id).then(setPendingProgression);
-    if (!userAccount?.id || _tutorialCheckedAccounts.has(userAccount.id)) {
-      setShowTutorial(false);
-    } else {
-      AsyncStorage.getItem(`@show_tutorial_${userAccount.id}`).then((flag) => {
-        _tutorialCheckedAccounts.add(userAccount.id);
-        if (flag === "true") {
-          AsyncStorage.removeItem(`@show_tutorial_${userAccount.id}`);
-          setShowTutorial(true);
-        } else {
-          setShowTutorial(false);
-        }
-      });
-    }
+    // if (!userAccount?.id || _tutorialCheckedAccounts.has(userAccount.id)) {
+    //   setShowTutorial(false);
+    // } else {
+    //   AsyncStorage.getItem(`@show_tutorial_${userAccount.id}`).then((flag) => {
+    //     _tutorialCheckedAccounts.add(userAccount.id);
+    //     if (flag === "true") {
+    //       AsyncStorage.removeItem(`@show_tutorial_${userAccount.id}`);
+    //       setShowTutorial(true);
+    //     } else {
+    //       setShowTutorial(false);
+    //     }
+    //   });
+    // }
     if (!hasInitialSyncedRef.current) {
       hasInitialSyncedRef.current = true;
       syncNow().catch(() => {});
@@ -1768,7 +1946,7 @@ const Home = () => {
 
   useEffect(() => {
     if (!currentProfile) return;
-    if (profileSwitchInProgressRef.current) return; // ← skip during profile switch
+    if (profileSwitchInProgressRef.current) return;
     if (prevLoadedLevelRef.current === loadedLevel) return;
     prevLoadedLevelRef.current = loadedLevel;
     loadBooksForLevel(
@@ -1784,10 +1962,10 @@ const Home = () => {
 
   useFocusEffect(
     useCallback(() => {
-      if (_finishHandled) return; // ← add this guard
+      if (_finishHandled) return;
       if (!storySession || storySession.nextActivityIndex < 4 || showFinish)
         return;
-      _finishHandled = false; // reset for fresh journey
+      _finishHandled = false;
       pendingSessionRef.current = storySession;
       const challengeWords = storySession.challengeWords || [];
       const rewards = storySession.totalRewards;
@@ -1955,7 +2133,7 @@ const Home = () => {
   return (
     <>
       <ScreenWrapper>
-        {/* ── Static background — no animation loops ── */}
+        {/* ── Static background ── */}
         <View style={styles.background}>
           <View style={[styles.bgCircle, styles.bgCircle1]} />
           <View style={[styles.bgCircle, styles.bgCircle2]} />
@@ -2021,48 +2199,42 @@ const Home = () => {
                       <ProfileIcon name={currentProfile?.name} />
                     </TouchableOpacity>
                   </View>
-                  <View ref={tutorialRefs.diamond} collapsable={false}>
+                  <View ref={diamondIconRef} collapsable={false}>
+                    <ExpoImage
+                      source={require("../assets/img/diamond.png")}
+                      style={{
+                        width: SIDE_ICON,
+                        height: SIDE_ICON,
+                        resizeMode: "contain",
+                      }}
+                      cachePolicy="memory-disk"
+                    />
                     <View
-                      ref={diamondIconRef}
-                      collapsable={false}
-                      style={{ alignItems: "center" }}
+                      style={{
+                        position: "absolute",
+                        top: -6,
+                        right: -6,
+                        minWidth: BADGE_SIZE,
+                        height: BADGE_SIZE,
+                        paddingHorizontal: pad.s,
+                        borderRadius: BADGE_SIZE / 2,
+                        backgroundColor: "#FF3B30",
+                        justifyContent: "center",
+                        alignItems: "center",
+                        borderWidth: 2,
+                        borderColor: "#fff",
+                        elevation: 8,
+                      }}
                     >
-                      <ExpoImage
-                        source={require("../assets/img/diamond.png")}
+                      <Text
                         style={{
-                          width: SIDE_ICON,
-                          height: SIDE_ICON,
-                          resizeMode: "contain",
-                        }}
-                        cachePolicy="memory-disk"
-                      />
-                      <View
-                        style={{
-                          position: "absolute",
-                          top: -6,
-                          right: -6,
-                          minWidth: BADGE_SIZE,
-                          height: BADGE_SIZE,
-                          paddingHorizontal: pad.s,
-                          borderRadius: BADGE_SIZE / 2,
-                          backgroundColor: "#FF3B30",
-                          justifyContent: "center",
-                          alignItems: "center",
-                          borderWidth: 2,
-                          borderColor: "#fff",
-                          elevation: 8,
+                          fontFamily: FONTS.bold,
+                          color: "#fff",
+                          fontSize: BADGE_FONT,
                         }}
                       >
-                        <Text
-                          style={{
-                            fontFamily: FONTS.bold,
-                            color: "#fff",
-                            fontSize: BADGE_FONT,
-                          }}
-                        >
-                          {formatNumber(currentProfile?.diamonds ?? 0)}
-                        </Text>
-                      </View>
+                        {formatNumber(currentProfile?.diamonds ?? 0)}
+                      </Text>
                     </View>
                   </View>
                 </View>
@@ -2124,48 +2296,42 @@ const Home = () => {
                       </View>
                     </TouchableOpacity>
                   </View>
-                  <View ref={tutorialRefs.coins} collapsable={false}>
+                  <View ref={coinIconRef} collapsable={false}>
+                    <ExpoImage
+                      source={require("../assets/img/coin.png")}
+                      style={{
+                        width: SIDE_ICON,
+                        height: SIDE_ICON,
+                        resizeMode: "contain",
+                      }}
+                      cachePolicy="memory-disk"
+                    />
                     <View
-                      ref={coinIconRef}
-                      collapsable={false}
-                      style={{ alignItems: "center" }}
+                      style={{
+                        position: "absolute",
+                        top: -6,
+                        right: -6,
+                        minWidth: BADGE_SIZE,
+                        height: BADGE_SIZE,
+                        paddingHorizontal: pad.s,
+                        borderRadius: BADGE_SIZE / 2,
+                        backgroundColor: "#FFD700",
+                        justifyContent: "center",
+                        alignItems: "center",
+                        borderWidth: 2,
+                        borderColor: "#fff",
+                        elevation: 8,
+                      }}
                     >
-                      <ExpoImage
-                        source={require("../assets/img/coin.png")}
+                      <Text
                         style={{
-                          width: SIDE_ICON,
-                          height: SIDE_ICON,
-                          resizeMode: "contain",
-                        }}
-                        cachePolicy="memory-disk"
-                      />
-                      <View
-                        style={{
-                          position: "absolute",
-                          top: -6,
-                          right: -6,
-                          minWidth: BADGE_SIZE,
-                          height: BADGE_SIZE,
-                          paddingHorizontal: pad.s,
-                          borderRadius: BADGE_SIZE / 2,
-                          backgroundColor: "#FFD700",
-                          justifyContent: "center",
-                          alignItems: "center",
-                          borderWidth: 2,
-                          borderColor: "#fff",
-                          elevation: 8,
+                          fontFamily: FONTS.bold,
+                          color: "#fff",
+                          fontSize: BADGE_FONT,
                         }}
                       >
-                        <Text
-                          style={{
-                            fontFamily: FONTS.bold,
-                            color: "#fff",
-                            fontSize: BADGE_FONT,
-                          }}
-                        >
-                          {formatNumber(currentProfile?.coins ?? 0)}
-                        </Text>
-                      </View>
+                        {formatNumber(currentProfile?.coins ?? 0)}
+                      </Text>
                     </View>
                   </View>
                 </View>
@@ -2262,13 +2428,7 @@ const Home = () => {
                               loadedLevelContext,
                             );
                             return (
-                              <View
-                                key={item.id}
-                                ref={
-                                  index === 0 ? tutorialRefs.storyCard : null
-                                }
-                                collapsable={false}
-                              >
+                              <View key={item.id} collapsable={false}>
                                 <StoryCard
                                   title={item.title}
                                   image={{ uri: item.cover }}
@@ -2369,7 +2529,6 @@ const BG_CIRCLE3_SIZE = isTablet ? 220 : 150;
 const styles = StyleSheet.create({
   background: { flex: 1, backgroundColor: DARK_BG },
 
-  // Static circles — same positions/sizes as before, no animation
   bgCircle: { position: "absolute", borderRadius: 999, opacity: 0.18 },
   bgCircle1: {
     width: BG_CIRCLE1_SIZE,

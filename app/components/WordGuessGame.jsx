@@ -610,6 +610,9 @@ const WordGuessGame = ({ onExit }) => {
     );
   };
 
+  // Add this ref near your other refs
+  const hintsQueuedRef = useRef(0);
+
   // ── CHANGED: Guard with isResettingRef so pre-revealed letters on a fresh
   // word never cause a false win/loss during the reset state batch.
   useEffect(() => {
@@ -688,6 +691,7 @@ const WordGuessGame = ({ onExit }) => {
     if (gameStatus !== "playing") return;
     if (guessedLetters.includes(letter) || wrongLetters.includes(letter))
       return;
+
     if (word.includes(letter)) {
       setGuessedLetters((prev) => [...prev, letter]);
       playSound(require("../../assets/sounds/correct.mp3"));
@@ -699,8 +703,11 @@ const WordGuessGame = ({ onExit }) => {
       setRemainingChances(newChances);
       playSound(require("../../assets/sounds/incorrect.mp3"));
       animateOwlShake();
-      const nextIdx = hintsInBox.length;
+
+      // ✅ Use ref instead of hintsInBox.length (avoids stale closure)
+      const nextIdx = hintsQueuedRef.current;
       if (newChances > 0 && nextIdx < hints.length && hints[nextIdx]) {
+        hintsQueuedRef.current += 1; // Increment immediately (sync)
         setTimeout(() => {
           setCloudText(hints[nextIdx]);
           setCloudVisible(true);
@@ -877,6 +884,7 @@ const WordGuessGame = ({ onExit }) => {
   const resetGame = () => {
     isResettingRef.current = true;
 
+    hintsQueuedRef.current = 0; // ✅ Reset hint counter
     const data = getNewWord();
     const newInitialLetters = getInitialGuessedLetters(data.word);
 

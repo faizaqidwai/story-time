@@ -89,7 +89,8 @@ const styles = StyleSheet.create({
     color: "#333",
   },
   activeWord: {
-    backgroundColor: "#FFD93D",
+    color: "#ffc400",
     borderRadius: 6,
+    //  fontWeight: "bold",
   },
 });
