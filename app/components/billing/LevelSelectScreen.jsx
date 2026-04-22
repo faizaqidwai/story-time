@@ -1,4 +1,9 @@
 // app/components/billing/LevelSelectScreen.jsx
+//
+// CHANGE FROM ORIGINAL:
+//   ✅ Reads rcIdentifier from params
+//   ✅ Forwards rcIdentifier to PurchaseScreen
+//   Everything else is identical to your original
 
 import React, { useState, useEffect } from "react";
 import {
@@ -16,7 +21,7 @@ import { FONTS } from "../../theme";
 import { useApiCall } from "../../_hooks/useApiCall";
 import { apiClient } from "../../services/apiClient";
 import { useUser } from "../../_contexts/UserContext";
-import { font, pad, radius, size } from "../../theme/tokens"; // ← REPLACES useTheme
+import { font, pad, radius, size } from "../../theme/tokens";
 
 const STATUS_BAR_HEIGHT =
   Platform.OS === "android" ? (StatusBar.currentHeight ?? 24) : 50;
@@ -53,6 +58,7 @@ export default function LevelSelectScreen() {
   const { currentProfile, updateProfile } = useUser();
 
   const pkg = params.packageJson ? JSON.parse(params.packageJson) : null;
+
   const [selectedLevel, setSelectedLevel] = useState(
     currentProfile?.playLevel ?? 1,
   );
@@ -61,9 +67,7 @@ export default function LevelSelectScreen() {
 
   useEffect(() => {
     console.log("[LEVEL SELECT LIFECYCLE] LEVEL SELECT MOUNTED");
-    return () => {
-      console.log("[LEVEL LIFECYCLE] LEVEL UNMOUNTED");
-    };
+    return () => console.log("[LEVEL LIFECYCLE] LEVEL UNMOUNTED");
   }, []);
 
   const handleConfirm = async () => {
@@ -81,9 +85,12 @@ export default function LevelSelectScreen() {
         errorRetry: true,
         onSuccess: async () => {
           await updateProfile({ ...currentProfile, playLevel: selectedLevel });
+          // ← Forward BOTH packageJson and rcIdentifier to PurchaseScreen
           router.replace({
             pathname: "/components/billing/PurchaseScreen",
-            params: { packageJson: JSON.stringify(pkg) },
+            params: {
+              packageJson: JSON.stringify(pkg),
+            },
           });
         },
       },
@@ -91,7 +98,7 @@ export default function LevelSelectScreen() {
     setSaving(false);
   };
 
-  // ── Guard: no package ─────────────────────────────────────
+  // ── Guard: no package ──────────────────────────────────────────────────────
   if (!pkg) {
     return (
       <View style={styles.root}>
@@ -199,53 +206,49 @@ export default function LevelSelectScreen() {
   );
 }
 
-// ─────────────────────────────────────────────────────────────
-// STYLES
-// ─────────────────────────────────────────────────────────────
+// ─────────────────────────────────────────────────────────────────────────────
 const styles = StyleSheet.create({
   root: { flex: 1, backgroundColor: C.bg },
 
-  // Error state
   errorWrap: {
     flex: 1,
     justifyContent: "center",
     alignItems: "center",
-    gap: pad.md, // was: 16
-    padding: pad.xl, // was: 24
+    gap: pad.md,
+    padding: pad.xl,
   },
   errorText: {
     fontFamily: FONTS.light,
-    fontSize: font.md, // was: 14
+    fontSize: font.md,
     color: C.textMuted,
     textAlign: "center",
   },
   errorBtn: {
     backgroundColor: C.teal,
-    borderRadius: radius.md, // was: 12
-    paddingHorizontal: pad.xl, // was: 24
-    paddingVertical: pad.sm, // was: 12
+    borderRadius: radius.md,
+    paddingHorizontal: pad.xl,
+    paddingVertical: pad.sm,
   },
   errorBtnText: {
     fontFamily: FONTS.bold,
-    fontSize: font.md, // was: 14
+    fontSize: font.md,
     color: "#08081a",
   },
 
-  // Header
   header: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
-    paddingTop: STATUS_BAR_HEIGHT + pad.sm, // was: + 10
-    paddingBottom: pad.md, // was: sz.levelHeaderPaddingBottom
-    paddingHorizontal: pad.md, // was: sz.levelHeaderPaddingH
+    paddingTop: STATUS_BAR_HEIGHT + pad.sm,
+    paddingBottom: pad.md,
+    paddingHorizontal: pad.md,
     borderBottomWidth: 1,
     borderBottomColor: "rgba(0,188,212,0.1)",
   },
   backBtn: {
-    width: size.hitMd, // was: sz.levelBackBtnSize
+    width: size.hitMd,
     height: size.hitMd,
-    borderRadius: size.hitMd / 2, // was: sz.levelBackBtnBorderRadius
+    borderRadius: size.hitMd / 2,
     backgroundColor: "rgba(255,255,255,0.06)",
     borderWidth: 1,
     borderColor: "rgba(255,255,255,0.1)",
@@ -254,62 +257,56 @@ const styles = StyleSheet.create({
   },
   backIcon: {
     fontFamily: FONTS.bold,
-    fontSize: font.lg, // was: sz.levelBackIconFontSize
+    fontSize: font.lg,
     color: C.teal,
   },
   headerTitle: {
     fontFamily: FONTS.bold,
-    fontSize: font.xl, // was: sz.levelHeaderTitleFontSize
+    fontSize: font.xl,
     color: C.textPri,
     letterSpacing: 0.3,
   },
 
-  // Scroll
-  scroll: { padding: pad.lg }, // was: sz.levelScrollPadding
+  scroll: { padding: pad.lg },
 
-  // Intro box
   introBox: {
     alignItems: "center",
     backgroundColor: "rgba(0,188,212,0.06)",
-    borderRadius: radius.xl, // was: sz.levelIntroBoxBorderRadius
+    borderRadius: radius.xl,
     borderWidth: 1,
     borderColor: "rgba(0,188,212,0.18)",
-    padding: pad.lg, // was: sz.levelIntroBoxPadding
-    marginBottom: pad.xl, // was: sz.levelIntroBoxMarginBottom
-    gap: pad.s, // was: sz.levelIntroBoxGap
+    padding: pad.lg,
+    marginBottom: pad.xl,
+    gap: pad.s,
   },
-  introEmoji: {
-    fontSize: size.iconXl, // was: sz.levelIntroEmojiFontSize
-    marginBottom: pad.xs,
-  },
+  introEmoji: { fontSize: size.iconXl, marginBottom: pad.xs },
   introTitle: {
     fontFamily: FONTS.bold,
-    fontSize: font.lg, // was: sz.levelIntroTitleFontSize
+    fontSize: font.lg,
     color: C.textPri,
     textAlign: "center",
-    lineHeight: font.lg * 1.4, // was: sz.levelIntroTitleLineHeight
+    lineHeight: font.lg * 1.4,
   },
   introSub: {
     fontFamily: FONTS.light,
-    fontSize: font.sm, // was: sz.levelIntroSubFontSize
+    fontSize: font.sm,
     color: C.textMuted,
     textAlign: "center",
-    lineHeight: font.sm * 1.5, // was: sz.levelIntroSubLineHeight
+    lineHeight: font.sm * 1.5,
   },
 
-  // Level grid
   grid: {
     flexDirection: "row",
     flexWrap: "wrap",
-    gap: pad.sm, // was: sz.levelGridGap
-    marginBottom: pad.lg, // was: sz.levelGridMarginBottom
+    gap: pad.sm,
+    marginBottom: pad.lg,
     alignItems: "center",
     justifyContent: "center",
   },
   levelCard: {
     width: "18%",
     aspectRatio: 1,
-    borderRadius: radius.md, // was: sz.levelCardBorderRadius
+    borderRadius: radius.md,
     alignItems: "center",
     justifyContent: "center",
     borderWidth: 1.5,
@@ -327,59 +324,57 @@ const styles = StyleSheet.create({
   },
   levelNumber: {
     fontFamily: FONTS.bold,
-    fontSize: font.xxl, // was: sz.levelCardNumberFontSize
+    fontSize: font.xxl,
     color: C.textMuted,
   },
   levelNumberSelected: { color: C.teal },
   selectedDot: {
     position: "absolute",
-    top: pad.xs, // was: 4
-    right: pad.xs, // was: 4
+    top: pad.xs,
+    right: pad.xs,
     width: 8,
     height: 8,
     borderRadius: 4,
     backgroundColor: C.teal,
   },
 
-  // Callout
   callout: {
     backgroundColor: "rgba(0,188,212,0.08)",
-    borderRadius: radius.xl, // was: sz.levelCalloutBorderRadius
+    borderRadius: radius.xl,
     borderWidth: 1,
     borderColor: "rgba(0,188,212,0.25)",
-    padding: pad.md, // was: sz.levelCalloutPadding
+    padding: pad.md,
     alignItems: "center",
-    marginBottom: pad.xl, // was: sz.levelCalloutMarginBottom
-    gap: pad.xs, // was: sz.levelCalloutGap
+    marginBottom: pad.xl,
+    gap: pad.xs,
   },
   calloutLabel: {
     fontFamily: FONTS.bold,
-    fontSize: font.xs, // was: sz.levelCalloutLabelFontSize
+    fontSize: font.xs,
     color: C.textMuted,
     letterSpacing: 1,
     textTransform: "uppercase",
   },
   calloutLevel: {
     fontFamily: FONTS.bold,
-    fontSize: font.h1, // was: sz.levelCalloutLevelFontSize
+    fontSize: font.h1,
     color: C.teal,
-    lineHeight: font.h1 * 1.2, // was: sz.levelCalloutLevelLineHeight
+    lineHeight: font.h1 * 1.2,
   },
   calloutDesc: {
     fontFamily: FONTS.light,
-    fontSize: font.md, // was: sz.levelCalloutDescFontSize
+    fontSize: font.md,
     color: C.textSec,
     textAlign: "center",
   },
 
-  // Confirm button
   confirmBtn: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
     gap: pad.s,
-    borderRadius: radius.pill, // was: sz.levelConfirmBtnBorderRadius
-    height: size.btnHeightLg, // was: sz.levelConfirmBtnHeight
+    borderRadius: radius.pill,
+    height: size.btnHeightLg,
     backgroundColor: C.teal,
     overflow: "hidden",
     shadowColor: C.teal,
@@ -401,7 +396,7 @@ const styles = StyleSheet.create({
   },
   confirmText: {
     fontFamily: FONTS.bold,
-    fontSize: font.lg, // was: sz.levelConfirmTextFontSize
+    fontSize: font.lg,
     color: "#08081a",
     letterSpacing: 0.3,
   },

@@ -1,4 +1,16 @@
 // app/components/billing/PurchaseScreen.jsx
+//
+// CHANGES FROM ORIGINAL:
+//   ✅ AddCardSheet removed — Apple/Google handle card entry natively
+//   ✅ Payment methods list removed — store handles it
+//   ✅ purchasePackage() now calls RevenueCat SDK via RevenueCatContext
+//   ✅ rcPackage looked up from enrichedPackages using pkg.identifier
+//   ✅ Full edge case handling at every layer
+//   ✅ Post-purchase errors (refreshSubscription, initForProfile) don't
+//      block navigation — purchase already succeeded in RC
+//   ✅ userCancelled handled silently
+//   ✅ priceString preferred over price for display (store-localised)
+//   ✅ Restore purchases link added (App Store requirement)
 
 import React, { useEffect, useRef, useState, useCallback } from "react";
 import {
@@ -10,359 +22,137 @@ import {
   Animated,
   ActivityIndicator,
   Alert,
-  Modal,
-  KeyboardAvoidingView,
-  TextInput,
   Platform,
   StatusBar,
-  Dimensions,
 } from "react-native";
 import { useRouter, useLocalSearchParams } from "expo-router";
 import { FONTS } from "../../theme";
-import { useApiCall } from "../../_hooks/useApiCall";
-import {
-  fetchPaymentMethods,
-  purchasePackage,
-  addPaymentMethod,
-} from "../../services/subscriptionService";
+import { useRevenueCat } from "../../_contexts/RevenueCatContext";
 import { useSubscription } from "../../_contexts/SubscriptionContext";
-import { useTheme } from "../../_contexts/ThemeContext";
-import { useUser } from "../../_contexts/UserContext";
 import { useLevelAccess } from "../../_contexts/LevelAccessContext";
+import { useUser } from "../../_contexts/UserContext";
+import { font, pad, radius, size } from "../../theme/tokens";
+import { APP_CONFIG } from "../../config/appConfig";
+import { simulateWebhookPurchase } from "../../services/revenueCatService.mock";
 
-const { width: SW } = Dimensions.get("window");
 const STATUS_BAR_HEIGHT =
   Platform.OS === "android" ? (StatusBar.currentHeight ?? 24) : 50;
 
 const C = {
   bg: "#08081a",
-  card: "#0f1228",
   surface: "rgba(255,255,255,0.05)",
   teal: "#00BCD4",
   tealDim: "rgba(0,188,212,0.12)",
   tealBorder: "rgba(0,188,212,0.3)",
-  yellow: "#FFD54F",
-  coral: "#FF6B6B",
   green: "#4CAF50",
-  red: "#EF5350",
   textPri: "#E0F7FA",
   textSec: "#B0BEC5",
   textMuted: "#546E7A",
 };
 
-const BRAND_COLORS = {
-  visa: "#1A1F71",
-  mastercard: "#EB001B",
-  amex: "#007BC1",
-  discover: "#FF6600",
-};
+// ── Helpers ───────────────────────────────────────────────────────────────────
 
-function formatPrice(price, currency) {
-  if (!price || price === 0) return "Free";
-  const sym = currency === "USD" ? "$" : currency === "SAR" ? "﷼" : currency;
-  return `${sym}${Number(price).toFixed(2)}`;
-}
 function billingLabel(billingCycle) {
   switch (billingCycle) {
-    case "MONTHLY":
-      return "billed monthly";
-    case "YEARLY":
-      return "billed yearly";
-    case "LIFETIME":
-      return "one-time payment";
-    default:
-      return "";
+    case "MONTHLY":  return "billed monthly";
+    case "YEARLY":   return "billed yearly";
+    case "LIFETIME": return "one-time payment";
+    default:         return "";
   }
 }
 
-function CardChip({ brand, sz }) {
-  const color = BRAND_COLORS[brand?.toLowerCase()] ?? C.teal;
+/**
+ * Resolve display price string.
+ * Prefers RC's store-localised priceString (e.g. "$4.99") over backend price.
+ * Falls back to backend price if priceString is missing (mock mode).
+ */
+function resolvePrice(pkg) {
+  if (pkg?.priceString && pkg.priceString.trim()) return pkg.priceString;
+  if (!pkg?.price || Number(pkg.price) === 0) return "Free";
+  const sym = pkg.currency === "USD" ? "$" : pkg.currency === "SAR" ? "﷼" : (pkg.currency ?? "");
+  return `${sym}${Number(pkg.price).toFixed(2)}`;
+}
+
+// ── Feature row ───────────────────────────────────────────────────────────────
+function FeatureRow({ feature, accentColor }) {
+  if (!feature.enabled) return null;
   return (
-    <View
-      style={{
-        width: sz.purchaseChipWidth ?? 44,
-        height: sz.purchaseChipHeight ?? 30,
-        borderRadius: 6,
-        backgroundColor: color,
-        alignItems: "center",
-        justifyContent: "center",
-      }}
-    >
-      <Text
-        style={{
-          fontFamily: FONTS.bold,
-          fontSize: 8,
-          color: "#fff",
-          letterSpacing: 0.5,
-        }}
-      >
-        {(brand ?? "Card").slice(0, 4).toUpperCase()}
-      </Text>
+    <View style={styles.featureRow}>
+      <Text style={[styles.featureCheck, { color: accentColor }]}>✓</Text>
+      <Text style={styles.featureLabel}>{feature.label}</Text>
     </View>
   );
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
-// ADD CARD SHEET
-// ─────────────────────────────────────────────────────────────────────────────
-function AddCardSheet({ visible, onClose, onAdd, sz }) {
-  const [brand, setBrand] = useState("visa");
-  const [last4, setLast4] = useState("");
-  const [expMonth, setExpMonth] = useState("");
-  const [expYear, setExpYear] = useState("");
-  const [saving, setSaving] = useState(false);
-  const brands = ["visa", "mastercard", "amex", "discover"];
-
-  const reset = () => {
-    setBrand("visa");
-    setLast4("");
-    setExpMonth("");
-    setExpYear("");
-  };
-
-  const handleAdd = async () => {
-    if (!last4 || last4.length !== 4 || !expMonth || !expYear) {
-      Alert.alert("Invalid", "Please fill in all card details.");
-      return;
-    }
-    setSaving(true);
-    try {
-      const newCard = await onAdd({
-        brand,
-        last4,
-        expMonth: parseInt(expMonth),
-        expYear: parseInt(expYear),
-      });
-      if (newCard) {
-        reset();
-        onClose(newCard);
-      }
-    } finally {
-      setSaving(false);
-    }
-  };
-
-  const inputStyle = {
-    backgroundColor: "rgba(255,255,255,0.05)",
-    borderRadius: sz.purchaseSheetInputBorderRadius,
-    borderWidth: 1.5,
-    borderColor: "rgba(255,255,255,0.1)",
-    padding: sz.purchaseSheetInputPadding,
-    fontSize: sz.purchaseSheetInputFontSize,
-    color: C.textPri,
-    fontFamily: FONTS.regular,
-  };
-  const labelStyle = {
-    fontFamily: FONTS.bold,
-    fontSize: sz.purchaseSheetLabelFontSize,
-    color: C.textMuted,
-    letterSpacing: 0.8,
-    textTransform: "uppercase",
-    marginBottom: 8,
-    marginTop: 14,
-  };
-
+// ── Restore purchases link ────────────────────────────────────────────────────
+function RestoreLink({ onRestore, restoring }) {
   return (
-    <Modal
-      visible={visible}
-      animationType="slide"
-      transparent
-      onRequestClose={() => onClose(null)}
+    <TouchableOpacity
+      style={styles.restoreWrap}
+      onPress={onRestore}
+      disabled={restoring}
+      activeOpacity={0.7}
     >
-      <KeyboardAvoidingView
-        style={{ flex: 1 }}
-        behavior={Platform.OS === "ios" ? "padding" : "height"}
-      >
-        <View
-          style={{
-            flex: 1,
-            justifyContent: "flex-end",
-            backgroundColor: "rgba(0,0,0,0.65)",
-          }}
+      {restoring ? (
+        <ActivityIndicator color={C.textMuted} size="small" />
+      ) : (
+        <Text style={styles.restoreText}>Restore purchases</Text>
+      )}
+    </TouchableOpacity>
+  );
+}
+
+// ── No package guard screen ───────────────────────────────────────────────────
+function NoPackageScreen({ onBack }) {
+  return (
+    <View style={styles.root}>
+      <View style={styles.center}>
+        <Text style={styles.errorEmoji}>📦</Text>
+        <Text style={styles.errorTitle}>No Plan Selected</Text>
+        <Text style={styles.errorSubtitle}>
+          Please go back and choose a plan to continue.
+        </Text>
+        <TouchableOpacity style={styles.errorBtn} onPress={onBack}>
+          <Text style={styles.errorBtnText}>Go Back</Text>
+        </TouchableOpacity>
+      </View>
+    </View>
+  );
+}
+
+// ── RC package not found screen ───────────────────────────────────────────────
+// Shows when pkg.identifier exists but no matching rcPackage found in context.
+// This can happen if offerings reloaded between screens and the package disappeared.
+function PackageUnavailableScreen({ pkg, onBack, onRetry, retrying }) {
+  return (
+    <View style={styles.root}>
+      <View style={styles.center}>
+        <Text style={styles.errorEmoji}>⚠️</Text>
+        <Text style={styles.errorTitle}>Plan Temporarily Unavailable</Text>
+        <Text style={styles.errorSubtitle}>
+          {`The ${pkg?.name ?? "selected"} plan couldn't be loaded right now. Please try again or go back and select another plan.`}
+        </Text>
+        <TouchableOpacity
+          style={styles.errorBtn}
+          onPress={onRetry}
+          disabled={retrying}
+          activeOpacity={0.85}
         >
-          <View
-            style={{
-              backgroundColor: "#0d0f1e",
-              borderTopLeftRadius: sz.purchaseSheetBorderRadius,
-              borderTopRightRadius: sz.purchaseSheetBorderRadius,
-              borderTopWidth: 1.5,
-              borderLeftWidth: 1,
-              borderRightWidth: 1,
-              borderColor: C.tealBorder,
-              padding: sz.purchaseSheetPadding,
-              paddingTop: 14,
-              paddingBottom: Platform.OS === "ios" ? 36 : 24,
-            }}
-          >
-            <View
-              style={{
-                width: sz.purchaseSheetHandleWidth,
-                height: sz.purchaseSheetHandleHeight,
-                borderRadius: sz.purchaseSheetHandleHeight / 2,
-                backgroundColor: "rgba(255,255,255,0.2)",
-                alignSelf: "center",
-                marginBottom: 18,
-              }}
-            />
-            <Text
-              style={{
-                fontFamily: FONTS.bold,
-                fontSize: sz.purchaseSheetTitleFontSize,
-                color: C.textPri,
-                marginBottom: 4,
-              }}
-            >
-              Add Payment Card
-            </Text>
-            <Text
-              style={{
-                fontFamily: FONTS.light,
-                fontSize: sz.purchaseSheetSubFontSize,
-                color: C.textMuted,
-                marginBottom: 20,
-              }}
-            >
-              Your card details are entered securely.
-            </Text>
-
-            <Text style={labelStyle}>Card Brand</Text>
-            <View style={{ flexDirection: "row", gap: 8, flexWrap: "wrap" }}>
-              {brands.map((b) => (
-                <TouchableOpacity
-                  key={b}
-                  style={[
-                    {
-                      paddingHorizontal: sz.purchaseSheetBrandPaddingH,
-                      paddingVertical: sz.purchaseSheetBrandPaddingV,
-                      borderRadius: sz.purchaseSheetBrandBorderRadius,
-                      borderWidth: 1,
-                    },
-                    brand === b
-                      ? {
-                          backgroundColor: C.tealDim,
-                          borderColor: C.tealBorder,
-                        }
-                      : {
-                          borderColor: "rgba(255,255,255,0.1)",
-                          backgroundColor: "rgba(255,255,255,0.05)",
-                        },
-                  ]}
-                  onPress={() => setBrand(b)}
-                  activeOpacity={0.8}
-                >
-                  <Text
-                    style={{
-                      fontFamily: FONTS.bold,
-                      fontSize: sz.purchaseSheetBrandFontSize,
-                      color: brand === b ? C.teal : C.textMuted,
-                    }}
-                  >
-                    {b.charAt(0).toUpperCase() + b.slice(1)}
-                  </Text>
-                </TouchableOpacity>
-              ))}
-            </View>
-
-            <Text style={labelStyle}>Last 4 Digits</Text>
-            <TextInput
-              style={inputStyle}
-              placeholder="e.g. 4242"
-              placeholderTextColor={C.textMuted}
-              value={last4}
-              onChangeText={(t) => setLast4(t.replace(/\D/g, "").slice(0, 4))}
-              keyboardType="numeric"
-              maxLength={4}
-            />
-
-            <View style={{ flexDirection: "row", gap: 12 }}>
-              {[
-                {
-                  label: "Exp Month",
-                  ph: "MM",
-                  val: expMonth,
-                  set: setExpMonth,
-                  max: 2,
-                },
-                {
-                  label: "Exp Year",
-                  ph: "YYYY",
-                  val: expYear,
-                  set: setExpYear,
-                  max: 4,
-                },
-              ].map((f) => (
-                <View key={f.label} style={{ flex: 1 }}>
-                  <Text style={labelStyle}>{f.label}</Text>
-                  <TextInput
-                    style={inputStyle}
-                    placeholder={f.ph}
-                    placeholderTextColor={C.textMuted}
-                    value={f.val}
-                    onChangeText={(t) =>
-                      f.set(t.replace(/\D/g, "").slice(0, f.max))
-                    }
-                    keyboardType="numeric"
-                    maxLength={f.max}
-                  />
-                </View>
-              ))}
-            </View>
-
-            <View style={{ flexDirection: "row", gap: 12, marginTop: 16 }}>
-              <TouchableOpacity
-                style={{
-                  flex: 1,
-                  borderRadius: sz.purchaseSheetActionBorderRadius,
-                  paddingVertical: sz.purchaseSheetActionPaddingV,
-                  borderWidth: 1,
-                  borderColor: "rgba(255,255,255,0.12)",
-                  backgroundColor: "rgba(255,255,255,0.04)",
-                  alignItems: "center",
-                }}
-                onPress={() => onClose(null)}
-                activeOpacity={0.8}
-              >
-                <Text
-                  style={{
-                    fontFamily: FONTS.bold,
-                    fontSize: sz.purchaseSheetActionFontSize,
-                    color: C.textMuted,
-                  }}
-                >
-                  Cancel
-                </Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                style={{
-                  flex: 1,
-                  borderRadius: sz.purchaseSheetActionBorderRadius,
-                  paddingVertical: sz.purchaseSheetActionPaddingV,
-                  backgroundColor: C.teal,
-                  alignItems: "center",
-                }}
-                onPress={handleAdd}
-                disabled={saving}
-                activeOpacity={0.85}
-              >
-                {saving ? (
-                  <ActivityIndicator color="#08081a" size="small" />
-                ) : (
-                  <Text
-                    style={{
-                      fontFamily: FONTS.bold,
-                      fontSize: sz.purchaseSheetActionFontSize,
-                      color: "#08081a",
-                    }}
-                  >
-                    Add Card
-                  </Text>
-                )}
-              </TouchableOpacity>
-            </View>
-          </View>
-        </View>
-      </KeyboardAvoidingView>
-    </Modal>
+          {retrying ? (
+            <ActivityIndicator color="#08081a" size="small" />
+          ) : (
+            <Text style={styles.errorBtnText}>Try Again</Text>
+          )}
+        </TouchableOpacity>
+        <TouchableOpacity
+          style={styles.errorBtnSecondary}
+          onPress={onBack}
+          activeOpacity={0.75}
+        >
+          <Text style={styles.errorBtnSecondaryText}>Go Back</Text>
+        </TouchableOpacity>
+      </View>
+    </View>
   );
 }
 
@@ -372,757 +162,670 @@ function AddCardSheet({ visible, onClose, onAdd, sz }) {
 export default function PurchaseScreen() {
   const router = useRouter();
   const params = useLocalSearchParams();
-  const { execute, loading } = useApiCall();
+
+  // ── Parse package from params ─────────────────────────────────────────────
+  // packageJson contains the full enriched package (backend fields + RC fields)
+  // except rcPackage which is non-serialisable and looked up from context below
+  let pkg = null;
+  try {
+    pkg = params.packageJson ? JSON.parse(params.packageJson) : null;
+  } catch (err) {
+    console.error("[PurchaseScreen] Failed to parse packageJson param:", err);
+    pkg = null;
+  }
+
+  const {
+    purchase,
+    restorePurchases,
+    enrichedPackages,
+    reloadOfferings,
+    offeringsLoading,
+  } = useRevenueCat();
   const { refreshSubscription } = useSubscription();
-  const { sizes } = useTheme();
-  const sz = sizes.billing;
+  const { initForProfile }      = useLevelAccess();
+  const { currentProfile, userAccount } = useUser();
 
-  const pkg = params.packageJson ? JSON.parse(params.packageJson) : null;
-  const [paymentMethods, setPaymentMethods] = useState([]);
-  const [selectedCard, setSelectedCard] = useState(null);
-  const [loadingMethods, setLoadingMethods] = useState(true);
-  const [showAddCard, setShowAddCard] = useState(false);
-  const [purchasing, setPurchasing] = useState(false);
+  const [purchasing, setPurchasing]   = useState(false);
+  const [restoring, setRestoring]     = useState(false);
+  const [retrying, setRetrying]       = useState(false);
   const fadeAnim = useRef(new Animated.Value(0)).current;
-  const { initForProfile } = useLevelAccess();
-  const { currentProfile } = useUser();
-
-  const loadMethods = useCallback(async () => {
-    setLoadingMethods(true);
-    await execute(() => fetchPaymentMethods(), {
-      errorDisplay: "toast",
-      errorMessage: "Couldn't load payment methods.",
-      errorRetry: false,
-      onSuccess: (data) => {
-        const methods = Array.isArray(data) ? data : [];
-        setPaymentMethods(methods);
-        setSelectedCard(methods.find((m) => m.isDefault) ?? methods[0] ?? null);
-        Animated.timing(fadeAnim, {
-          toValue: 1,
-          duration: 380,
-          useNativeDriver: true,
-        }).start();
-      },
-    });
-    setLoadingMethods(false);
-  }, [execute]);
 
   useEffect(() => {
-    loadMethods();
+    Animated.timing(fadeAnim, {
+      toValue: 1,
+      duration: 380,
+      useNativeDriver: true,
+    }).start();
   }, []);
 
   useEffect(() => {
     console.log("[CHECKOUT LIFECYCLE] CHECKOUT MOUNTED");
-    return () => {
-      console.log("[CHECKOUT LIFECYCLE] CHECKOUT UNMOUNTED");
-    };
+    return () => console.log("[CHECKOUT LIFECYCLE] CHECKOUT UNMOUNTED");
   }, []);
 
-  const handleAddCard = async (cardData) => {
-    let newCard = null;
-    await execute(() => addPaymentMethod(cardData), {
-      errorDisplay: "sheet",
-      errorMessage: "Couldn't Add Card",
-      errorSubMessage: "Please check your card details and try again.",
-      errorRetry: false,
-      onSuccess: (saved) => {
-        newCard = saved;
-      },
-    });
-    return newCard;
-  };
-
-  const handleAddCardClose = (newCard) => {
-    setShowAddCard(false);
-    if (newCard) {
-      setTimeout(() => {
-        setPaymentMethods((prev) => [...prev, newCard]);
-        setSelectedCard(newCard);
-      }, 350);
-    }
-  };
-
-  const handleConfirm = () => {
-    if (!selectedCard) {
-      Alert.alert(
-        "No Payment Method",
-        "Please add a payment card to continue.",
-      );
-      return;
-    }
-    const priceLabel = formatPrice(pkg?.price, pkg?.currency);
-    const cycleLabel = billingLabel(pkg?.billingCycle);
-    Alert.alert(
-      "Confirm Purchase",
-      `You are about to subscribe to ${pkg?.name} for ${priceLabel}${cycleLabel ? ` (${cycleLabel})` : ""}.\n\nCard: ${selectedCard.brand?.toUpperCase()} •••• ${selectedCard.last4}\n\nYou can upgrade or cancel anytime.`,
-      [
-        { text: "Cancel", style: "cancel" },
-        { text: "Confirm & Pay", onPress: doPurchase },
-      ],
-    );
-  };
-
-  const doPurchase = async () => {
-    const cardId = selectedCard?.id;
-    if (!pkg?.id || !cardId) {
-      Alert.alert(
-        "Error",
-        "Missing package or payment method. Please try again.",
-      );
-      return;
-    }
-    setPurchasing(true);
-    await execute(() => purchasePackage(pkg.id, cardId), {
-      errorDisplay: "sheet",
-      errorMessage: "Payment Failed",
-      errorSubMessage:
-        "We couldn't process your payment. Please check your card details and try again.",
-      errorRetry: true,
-      successDisplay: "sheet",
-      successMessage: `Welcome to ${pkg.name}! 🎉`,
-      successSubMessage:
-        "Your subscription is now active. Enjoy unlimited reading!",
-      successIcon: pkg.icon ?? "🎉",
-      successAutoDismissMs: 0,
-      successOnDismiss: () => {
-        console.log("[DOPUCHASE SUCCESS] Success callback");
-        refreshSubscription();
-        initForProfile(currentProfile).then(() => {
-          console.log("[DOPUCHASE SUCCESS] InitforProfile then callback");
-          router.dismiss(3);
-        });
-        //router.dismiss(3);
-      },
-    });
-    setPurchasing(false);
-  };
-
+  // ── Guard 1: no package in params ────────────────────────────────────────
   if (!pkg) {
+    return <NoPackageScreen onBack={() => router.back()} />;
+  }
+
+  // ── Find the live RC package object from context ──────────────────────────
+  // We match on pkg.identifier (set in MongoDB + RC dashboard).
+  // This is done here rather than passed via params because rcPackage
+  // contains non-serialisable objects (functions, class instances).
+  const pkgIdentifier = pkg.identifier || pkg.rcIdentifier;
+  const enrichedPkg   = enrichedPackages.find(
+    (ep) =>
+      ep.rcIdentifier === pkgIdentifier ||
+      ep.identifier   === pkgIdentifier ||
+      ep.id           === pkg.id,
+  );
+  const rcPackage = enrichedPkg?.rcPackage ?? null;
+
+  // ── Guard 2: RC package not found ────────────────────────────────────────
+  // Offerings may have reloaded between screens, or identifier mismatch.
+  // Show a recoverable error screen with retry.
+  const handleRetry = async () => {
+    setRetrying(true);
+    await reloadOfferings();
+    setRetrying(false);
+  };
+
+  if (!offeringsLoading && !rcPackage && pkgIdentifier) {
     return (
-      <View style={{ flex: 1, backgroundColor: C.bg }}>
-        <View
-          style={{
-            flex: 1,
-            justifyContent: "center",
-            alignItems: "center",
-            gap: 14,
-            padding: 24,
-          }}
-        >
-          <Text
-            style={{
-              fontFamily: FONTS.regular,
-              fontSize: 14,
-              color: C.textMuted,
-              textAlign: "center",
-              lineHeight: 22,
-            }}
-          >
-            No plan selected. Please go back and choose a plan.
-          </Text>
-          <TouchableOpacity
-            style={{
-              marginTop: 16,
-              backgroundColor: C.teal,
-              borderRadius: 14,
-              paddingHorizontal: 28,
-              paddingVertical: 12,
-            }}
-            onPress={() => router.back()}
-            activeOpacity={0.8}
-          >
-            <Text
-              style={{ fontFamily: FONTS.bold, fontSize: 14, color: "#08081a" }}
-            >
-              Go Back
-            </Text>
-          </TouchableOpacity>
-        </View>
-      </View>
+      <PackageUnavailableScreen
+        pkg={pkg}
+        onBack={() => router.back()}
+        onRetry={handleRetry}
+        retrying={retrying}
+      />
     );
   }
 
+  // ── Resolve display values ────────────────────────────────────────────────
   const accentColor = pkg.accentColorRgb
     ? `rgb(${pkg.accentColorRgb})`
     : C.teal;
-  const priceLabel = formatPrice(pkg.price, pkg.currency);
-  const cycleLabel = billingLabel(pkg.billingCycle);
+  const priceString = resolvePrice(enrichedPkg ?? pkg);
+  const cycleLabel  = billingLabel(pkg.billingCycle);
+  const features    = (pkg.displayFeatures ?? []).filter((f) => f.enabled).slice(0, 5);
 
+  // ── Handle purchase ───────────────────────────────────────────────────────
+  const handleConfirm = useCallback(() => {
+    if (!rcPackage) {
+      Alert.alert(
+        "Not Available",
+        "This plan isn't available for purchase right now. Please try again later.",
+        [{ text: "OK" }],
+      );
+      return;
+    }
+
+    Alert.alert(
+      "Confirm Subscription",
+      `Subscribe to ${pkg.name} for ${priceString}${cycleLabel ? ` (${cycleLabel})` : ""}.\n\nYou can cancel anytime from your ${Platform.OS === "ios" ? "Apple ID" : "Google Play"} settings.`,
+      [
+        { text: "Cancel", style: "cancel" },
+        { text: "Subscribe", onPress: doPurchase },
+      ],
+    );
+  }, [rcPackage, pkg, priceString, cycleLabel]);
+
+  const doPurchase = useCallback(async () => {
+    setPurchasing(true);
+    try {
+      // ── Step 1: RC purchase — opens native Apple/Google sheet (real)
+      //            or waits 1.5s and returns fake success (mock)
+      await purchase(rcPackage);
+
+      // ── Step 2 (MOCK ONLY): Simulate the RC webhook call ─────────────────
+      // In real mode RC fires the webhook automatically before purchase()
+      // resolves. In mock mode nothing fires, so we call the webhook
+      // endpoint ourselves so the backend creates the real subscription record.
+      // This makes refreshSubscription() return the actual updated subscription.
+      if (APP_CONFIG.MOCK_IAP) {
+        // userAccount.id is the MongoDB _id of the UserAccount document
+        // This is what your backend stores as userAccountId on subscriptions
+        const rcProductId   = pkg.rcProductId ?? pkg.identifier;
+        const userAccountId = userAccount?.id ?? null;
+        await simulateWebhookPurchase(userAccountId, rcProductId);
+      }
+
+      // ── Purchase succeeded — navigate immediately ────────────────────────
+      // We navigate BEFORE refreshing backend state so the user
+      // isn't stuck on the checkout screen if the network is slow.
+      // Both refreshSubscription and initForProfile are best-effort —
+      // they will naturally sync on next app open if they fail here.
+      router.dismiss(3);
+
+      // ── Step 3: Refresh backend subscription state (best-effort) ────────
+      // Real mode: RC webhook already fired before we get here —
+      //   /subscriptions/my returns the new subscription immediately.
+      // Mock mode: webhook simulation ran in Step 2 —
+      //   /subscriptions/my also returns the new subscription.
+      try {
+        await refreshSubscription();
+      } catch (err) {
+        // Non-fatal — subscription will sync on next app open
+        console.warn("[PurchaseScreen] refreshSubscription failed post-purchase:", err?.message);
+      }
+
+      // ── Step 4: Refresh level access for current profile (best-effort) ──
+      if (currentProfile) {
+        try {
+          await initForProfile(currentProfile);
+        } catch (err) {
+          // Non-fatal — level access will refresh on next app open
+          console.warn("[PurchaseScreen] initForProfile failed post-purchase:", err?.message);
+        }
+      }
+
+    } catch (err) {
+      // ── User cancelled — silent dismiss ───────────────────────────────────
+      // userCancelled is set by RC when user taps Cancel on the native sheet
+      if (err?.userCancelled) {
+        console.log("[PurchaseScreen] User cancelled purchase");
+        return;
+      }
+
+      // ── Real payment error — show to user ─────────────────────────────────
+      console.error("[PurchaseScreen] Purchase failed:", err?.message);
+      Alert.alert(
+        "Purchase Failed",
+        err?.message ?? "Something went wrong. Please try again.",
+        [{ text: "OK" }],
+      );
+    } finally {
+      setPurchasing(false);
+    }
+  }, [rcPackage, purchase, refreshSubscription, initForProfile, currentProfile, router]);
+
+  // ── Handle restore ────────────────────────────────────────────────────────
+  const handleRestore = useCallback(async () => {
+    setRestoring(true);
+    try {
+      await restorePurchases();
+      await refreshSubscription();
+      Alert.alert(
+        "Restored",
+        "Your purchases have been restored successfully.",
+        [{ text: "OK", onPress: () => router.dismiss(3) }],
+      );
+    } catch (err) {
+      Alert.alert(
+        "Restore Failed",
+        err?.message ?? "Nothing to restore, or an error occurred.",
+        [{ text: "OK" }],
+      );
+    } finally {
+      setRestoring(false);
+    }
+  }, [restorePurchases, refreshSubscription, router]);
+
+  // ── Render ────────────────────────────────────────────────────────────────
   return (
-    <View style={{ flex: 1, backgroundColor: C.bg }}>
+    <View style={styles.root}>
       {/* Header */}
-      <View
-        style={{
-          flexDirection: "row",
-          alignItems: "center",
-          justifyContent: "space-between",
-          paddingTop: STATUS_BAR_HEIGHT + 10,
-          paddingBottom: sz.purchaseHeaderPaddingBottom,
-          paddingHorizontal: sz.purchaseHeaderPaddingH,
-          borderBottomWidth: 1,
-          borderBottomColor: "rgba(0,188,212,0.1)",
-        }}
-      >
+      <View style={styles.header}>
         <TouchableOpacity
-          style={{
-            width: sz.purchaseBackBtnSize,
-            height: sz.purchaseBackBtnSize,
-            borderRadius: sz.purchaseBackBtnBorderRadius,
-            backgroundColor: "rgba(255,255,255,0.06)",
-            borderWidth: 1,
-            borderColor: "rgba(255,255,255,0.1)",
-            alignItems: "center",
-            justifyContent: "center",
-          }}
+          style={styles.headerBack}
           onPress={() => router.back()}
           activeOpacity={0.75}
         >
-          <Text
-            style={{
-              fontFamily: FONTS.bold,
-              fontSize: sz.purchaseBackIconFontSize,
-              color: C.teal,
-            }}
-          >
-            ←
-          </Text>
+          <Text style={styles.headerBackIcon}>←</Text>
         </TouchableOpacity>
-        <Text
-          style={{
-            fontFamily: FONTS.bold,
-            fontSize: sz.purchaseHeaderTitleFontSize,
-            color: C.textPri,
-            letterSpacing: 0.3,
-          }}
-        >
-          Checkout
-        </Text>
-        <View style={{ width: sz.purchaseBackBtnSize }} />
+        <Text style={styles.headerTitle}>Checkout</Text>
+        <View style={{ width: size.hitMd }} />
       </View>
 
-      {loadingMethods ? (
-        <View
-          style={{
-            flex: 1,
-            justifyContent: "center",
-            alignItems: "center",
-            gap: 14,
-          }}
-        >
+      {/* Loading while offerings reload */}
+      {offeringsLoading ? (
+        <View style={styles.center}>
           <ActivityIndicator color={C.teal} size="large" />
-          <Text
-            style={{
-              fontFamily: FONTS.light,
-              fontSize: 14,
-              color: C.textMuted,
-            }}
-          >
-            Loading…
-          </Text>
+          <Text style={styles.loadingText}>Loading plan details…</Text>
         </View>
       ) : (
         <Animated.ScrollView
           style={{ opacity: fadeAnim }}
-          contentContainerStyle={{ padding: sz.purchaseScrollPadding }}
+          contentContainerStyle={styles.scroll}
           showsVerticalScrollIndicator={false}
         >
-          {/* Order summary */}
-          <Text
-            style={{
-              fontFamily: FONTS.bold,
-              fontSize: sz.purchaseSectionLabelFontSize,
-              color: C.textMuted,
-              letterSpacing: 1,
-              textTransform: "uppercase",
-              marginBottom: sz.purchaseSectionLabelMarginBottom,
-            }}
-          >
-            Order Summary
-          </Text>
+          {/* ── Order Summary ──────────────────────────────────────────── */}
+          <Text style={styles.sectionLabel}>Order Summary</Text>
           <View
-            style={{
-              borderRadius: sz.purchaseOrderCardBorderRadius,
-              borderWidth: 1.5,
-              borderTopWidth: 2,
-              padding: sz.purchaseOrderCardPadding,
-              marginBottom: sz.purchaseOrderCardMarginBottom,
-              overflow: "hidden",
-              borderColor: `rgba(${pkg.accentColorRgb ?? "0,188,212"},0.35)`,
-              borderTopColor: `rgba(${pkg.accentColorRgb ?? "0,188,212"},0.70)`,
-              backgroundColor: pkg.darkBg ?? "#03080a",
-            }}
+            style={[
+              styles.orderCard,
+              {
+                borderColor:    `rgba(${pkg.accentColorRgb ?? "0,188,212"},0.35)`,
+                borderTopColor: `rgba(${pkg.accentColorRgb ?? "0,188,212"},0.70)`,
+                backgroundColor: pkg.darkBg ?? "#03080a",
+              },
+            ]}
           >
-            <View
-              style={{
-                flexDirection: "row",
-                alignItems: "center",
-                gap: 14,
-                marginBottom: 12,
-              }}
-            >
+            {/* Plan header */}
+            <View style={styles.planHeader}>
               <View
-                style={{
-                  width: sz.purchasePlanIconSize,
-                  height: sz.purchasePlanIconSize,
-                  borderRadius: sz.purchasePlanIconBorderRadius,
-                  borderWidth: 2,
-                  alignItems: "center",
-                  justifyContent: "center",
-                  borderColor: accentColor,
-                  backgroundColor: `rgba(${pkg.accentColorRgb ?? "0,188,212"},0.12)`,
-                }}
+                style={[
+                  styles.planIcon,
+                  {
+                    borderColor:     accentColor,
+                    backgroundColor: `rgba(${pkg.accentColorRgb ?? "0,188,212"},0.12)`,
+                  },
+                ]}
               >
-                <Text style={{ fontSize: sz.purchasePlanIconEmojiFontSize }}>
-                  {pkg.icon ?? "📦"}
-                </Text>
+                <Text style={styles.planIconEmoji}>{pkg.icon ?? "📦"}</Text>
               </View>
               <View style={{ flex: 1 }}>
-                <Text
-                  style={{
-                    fontFamily: FONTS.bold,
-                    fontSize: sz.purchasePlanNameFontSize,
-                    letterSpacing: 0.2,
-                    color: accentColor,
-                  }}
-                >
+                <Text style={[styles.planName, { color: accentColor }]}>
                   {pkg.name}
                 </Text>
                 {!!pkg.tagLine && (
-                  <Text
-                    style={{
-                      fontFamily: FONTS.light,
-                      fontSize: sz.purchasePlanTaglineFontSize,
-                      color: C.textMuted,
-                      marginTop: 2,
-                    }}
-                  >
-                    {pkg.tagLine ?? pkg.tagline}
-                  </Text>
+                  <Text style={styles.planTagline}>{pkg.tagLine}</Text>
                 )}
               </View>
             </View>
+
+            {/* Description */}
             {!!pkg.description && (
-              <Text
-                style={{
-                  fontFamily: FONTS.regular,
-                  fontSize: sz.purchasePlanDescFontSize,
-                  color: C.textMuted,
-                  lineHeight: sz.purchasePlanDescLineHeight,
-                  marginBottom: 14,
-                }}
-              >
-                {pkg.description}
-              </Text>
+              <Text style={styles.planDesc}>{pkg.description}</Text>
             )}
-            <View style={{ marginBottom: 14 }}>
-              <View
-                style={{
-                  flexDirection: "row",
-                  alignItems: "baseline",
-                  gap: 6,
-                  alignSelf: "flex-start",
-                  borderRadius: sz.purchasePricePillBorderRadius,
-                  borderWidth: 1,
-                  paddingVertical: sz.purchasePricePillPaddingV,
-                  paddingHorizontal: sz.purchasePricePillPaddingH,
-                  borderColor: `rgba(${pkg.accentColorRgb ?? "0,188,212"},0.25)`,
+
+            {/* Price pill */}
+            <View
+              style={[
+                styles.pricePill,
+                {
+                  borderColor:     `rgba(${pkg.accentColorRgb ?? "0,188,212"},0.25)`,
                   backgroundColor: `rgba(${pkg.accentColorRgb ?? "0,188,212"},0.07)`,
-                }}
-              >
-                <Text
-                  style={{
-                    fontFamily: FONTS.bold,
-                    fontSize: sz.purchasePriceAmountFontSize,
-                    letterSpacing: -0.3,
-                    color: accentColor,
-                  }}
-                >
-                  {priceLabel}
-                </Text>
-                {!!cycleLabel && (
-                  <Text
-                    style={{
-                      fontFamily: FONTS.light,
-                      fontSize: sz.purchasePriceCycleFontSize,
-                      color: C.textMuted,
-                    }}
-                  >
-                    {cycleLabel}
-                  </Text>
-                )}
-              </View>
+                },
+              ]}
+            >
+              <Text style={[styles.priceAmount, { color: accentColor }]}>
+                {priceString}
+              </Text>
+              {!!cycleLabel && (
+                <Text style={styles.priceCycle}>{cycleLabel}</Text>
+              )}
             </View>
-            {(pkg.displayFeatures ?? [])
-              .filter((f) => f.enabled)
-              .slice(0, 4)
-              .map((f, i) => (
-                <View
-                  key={f.key ?? i}
-                  style={{
-                    flexDirection: "row",
-                    alignItems: "center",
-                    gap: sz.purchaseFeatureRowGap,
-                    marginBottom: sz.purchaseFeatureRowMarginBottom,
-                  }}
-                >
-                  <Text
-                    style={{
-                      fontFamily: FONTS.bold,
-                      fontSize: sz.purchaseFeatureCheckFontSize,
-                      width: 18,
-                      color: accentColor,
-                    }}
-                  >
-                    ✓
-                  </Text>
-                  <Text
-                    style={{
-                      fontFamily: FONTS.regular,
-                      fontSize: sz.purchaseFeatureLabelFontSize,
-                      color: C.textSec,
-                      flex: 1,
-                    }}
-                  >
-                    {f.label}
-                  </Text>
-                </View>
-              ))}
+
+            {/* Features */}
+            {features.map((f, i) => (
+              <FeatureRow key={f.key ?? i} feature={f} accentColor={accentColor} />
+            ))}
+
+            {/* Trial badge */}
+            {!!pkg.trialDays && pkg.trialDays > 0 && (
+              <View style={styles.trialBanner}>
+                <Text style={[styles.trialText, { color: accentColor }]}>
+                  🎁  {pkg.trialDays}-day free trial included
+                </Text>
+              </View>
+            )}
           </View>
 
-          {/* Payment method */}
-          <Text
-            style={{
-              fontFamily: FONTS.bold,
-              fontSize: sz.purchaseSectionLabelFontSize,
-              color: C.textMuted,
-              letterSpacing: 1,
-              textTransform: "uppercase",
-              marginBottom: sz.purchaseSectionLabelMarginBottom,
-            }}
-          >
-            Payment Method
-          </Text>
-          {paymentMethods.length === 0 ? (
-            <View
-              style={{
-                backgroundColor: C.surface,
-                borderRadius: sz.purchaseNoCardBorderRadius,
-                borderWidth: 1,
-                borderColor: "rgba(255,255,255,0.07)",
-                padding: sz.purchaseNoCardPadding,
-                alignItems: "center",
-                gap: sz.purchaseNoCardGap,
-                marginBottom: 20,
-              }}
-            >
-              <Text
-                style={{
-                  fontSize: sz.purchaseNoCardIconFontSize,
-                  marginBottom: 4,
-                }}
-              >
-                💳
-              </Text>
-              <Text
-                style={{
-                  fontFamily: FONTS.bold,
-                  fontSize: sz.purchaseNoCardTitleFontSize,
-                  color: C.textPri,
-                }}
-              >
-                No payment method
-              </Text>
-              <Text
-                style={{
-                  fontFamily: FONTS.light,
-                  fontSize: sz.purchaseNoCardSubFontSize,
-                  color: C.textMuted,
-                  textAlign: "center",
-                }}
-              >
-                Add a card to complete your purchase
-              </Text>
-              <TouchableOpacity
-                style={{
-                  marginTop: 8,
-                  backgroundColor: C.teal,
-                  borderRadius: sz.purchaseAddCardBtnBorderRadius,
-                  paddingHorizontal: sz.purchaseAddCardBtnPaddingH,
-                  paddingVertical: sz.purchaseAddCardBtnPaddingV,
-                }}
-                onPress={() => setShowAddCard(true)}
-                activeOpacity={0.85}
-              >
-                <Text
-                  style={{
-                    fontFamily: FONTS.bold,
-                    fontSize: sz.purchaseAddCardBtnFontSize,
-                    color: "#08081a",
-                  }}
-                >
-                  + Add Card
-                </Text>
-              </TouchableOpacity>
-            </View>
-          ) : (
-            <View
-              style={{
-                backgroundColor: C.surface,
-                borderRadius: sz.purchaseCardListBorderRadius,
-                borderWidth: 1,
-                borderColor: "rgba(255,255,255,0.07)",
-                overflow: "hidden",
-                marginBottom: 20,
-              }}
-            >
-              {paymentMethods.map((card) => {
-                const isSelected = selectedCard?.id === card.id;
-                return (
-                  <TouchableOpacity
-                    key={card.id}
-                    style={[
-                      {
-                        flexDirection: "row",
-                        alignItems: "center",
-                        gap: 12,
-                        padding: sz.purchaseCardRowPadding,
-                        borderBottomWidth: 1,
-                        borderBottomColor: "rgba(255,255,255,0.05)",
-                      },
-                      isSelected && { backgroundColor: C.tealDim },
-                    ]}
-                    onPress={() => setSelectedCard(card)}
-                    activeOpacity={0.85}
-                  >
-                    <View
-                      style={[
-                        {
-                          width: sz.purchaseRadioSize,
-                          height: sz.purchaseRadioSize,
-                          borderRadius: sz.purchaseRadioSize / 2,
-                          borderWidth: 2,
-                          alignItems: "center",
-                          justifyContent: "center",
-                        },
-                        isSelected
-                          ? { borderColor: C.teal }
-                          : { borderColor: C.textMuted },
-                      ]}
-                    >
-                      {isSelected && (
-                        <View
-                          style={{
-                            width: sz.purchaseRadioInnerSize,
-                            height: sz.purchaseRadioInnerSize,
-                            borderRadius: sz.purchaseRadioInnerSize / 2,
-                            backgroundColor: C.teal,
-                          }}
-                        />
-                      )}
-                    </View>
-                    <CardChip brand={card.brand} sz={sz} />
-                    <View style={{ flex: 1, marginLeft: 12 }}>
-                      <Text
-                        style={{
-                          fontFamily: FONTS.bold,
-                          fontSize: sz.purchaseCardNumFontSize,
-                          color: C.textPri,
-                        }}
-                      >
-                        {card.brand?.toUpperCase()} •••• {card.last4}
-                      </Text>
-                      <Text
-                        style={{
-                          fontFamily: FONTS.light,
-                          fontSize: sz.purchaseCardExpFontSize,
-                          color: C.textMuted,
-                          marginTop: 2,
-                        }}
-                      >
-                        Expires {card.expMonth}/{card.expYear}
-                      </Text>
-                    </View>
-                    {card.isDefault && (
-                      <View
-                        style={{
-                          backgroundColor: C.tealDim,
-                          borderRadius: sz.purchaseDefaultBadgeBorderRadius,
-                          borderWidth: 1,
-                          borderColor: C.tealBorder,
-                          paddingHorizontal: sz.purchaseDefaultBadgePaddingH,
-                          paddingVertical: sz.purchaseDefaultBadgePaddingV,
-                        }}
-                      >
-                        <Text
-                          style={{
-                            fontFamily: FONTS.bold,
-                            fontSize: sz.purchaseDefaultBadgeFontSize,
-                            color: C.teal,
-                          }}
-                        >
-                          Default
-                        </Text>
-                      </View>
-                    )}
-                  </TouchableOpacity>
-                );
-              })}
-              <TouchableOpacity
-                style={{
-                  paddingVertical: sz.purchaseAddAnotherPaddingV,
-                  alignItems: "center",
-                  borderTopWidth: 1,
-                  borderTopColor: "rgba(255,255,255,0.05)",
-                }}
-                onPress={() => setShowAddCard(true)}
-                activeOpacity={0.8}
-              >
-                <Text
-                  style={{
-                    fontFamily: FONTS.bold,
-                    fontSize: sz.purchaseAddAnotherFontSize,
-                    color: C.teal,
-                  }}
-                >
-                  + Add another card
-                </Text>
-              </TouchableOpacity>
-            </View>
-          )}
+          {/* ── How payment works ──────────────────────────────────────── */}
+          <View style={styles.howItWorksCard}>
+            <Text style={styles.howTitle}>How payment works</Text>
+            <Text style={styles.howBody}>
+              {Platform.OS === "ios"
+                ? "Payment is charged to your Apple ID. Your subscription renews automatically unless cancelled at least 24 hours before the end of the current period in your Apple ID settings."
+                : "Payment is charged to your Google account. You can manage or cancel your subscription in Google Play Store settings at any time."}
+            </Text>
+          </View>
 
-          {/* Total */}
-          <View
-            style={{
-              backgroundColor: C.surface,
-              borderRadius: sz.purchaseTotalCardBorderRadius,
-              borderWidth: 1,
-              borderColor: "rgba(255,255,255,0.07)",
-              padding: sz.purchaseTotalCardPadding,
-              marginBottom: sz.purchaseTotalCardMarginBottom,
-            }}
-          >
-            <View
-              style={{
-                flexDirection: "row",
-                alignItems: "baseline",
-                justifyContent: "space-between",
-              }}
-            >
-              <Text
-                style={{
-                  fontFamily: FONTS.bold,
-                  fontSize: sz.purchaseTotalLabelFontSize,
-                  color: C.textSec,
-                }}
-              >
-                Total
-              </Text>
-              <Text
-                style={{
-                  fontFamily: FONTS.bold,
-                  fontSize: sz.purchaseTotalAmountFontSize,
-                  letterSpacing: -0.3,
-                  color: accentColor,
-                }}
-              >
-                {priceLabel}
+          {/* ── Total ─────────────────────────────────────────────────── */}
+          <View style={styles.totalCard}>
+            <View style={styles.totalRow}>
+              <Text style={styles.totalLabel}>Total</Text>
+              <Text style={[styles.totalAmount, { color: accentColor }]}>
+                {priceString}
               </Text>
             </View>
             {!!cycleLabel && (
-              <Text
-                style={{
-                  fontFamily: FONTS.light,
-                  fontSize: sz.purchaseTotalCycleFontSize,
-                  color: C.textMuted,
-                  marginTop: 4,
-                }}
-              >
-                {cycleLabel}
-              </Text>
+              <Text style={styles.totalCycle}>{cycleLabel}</Text>
             )}
           </View>
 
-          <Text
-            style={{
-              fontFamily: FONTS.light,
-              fontSize: sz.purchasePolicyFontSize,
-              color: C.textMuted,
-              textAlign: "center",
-              lineHeight: sz.purchasePolicyLineHeight,
-              marginBottom: sz.purchasePolicyMarginBottom,
-              paddingHorizontal: 8,
-            }}
-          >
-            You can upgrade or cancel your plan anytime from your account
-            settings.{"\n"}No hidden fees.
+          {/* ── Policy ────────────────────────────────────────────────── */}
+          <Text style={styles.policyNote}>
+            You can manage or cancel your subscription anytime from your{" "}
+            {Platform.OS === "ios" ? "Apple ID" : "Google Play"} account settings.
+            No hidden fees.
           </Text>
 
-          {/* Checkout button */}
+          {/* ── Checkout button ───────────────────────────────────────── */}
           <TouchableOpacity
             style={[
-              {
-                flexDirection: "row",
-                alignItems: "center",
-                justifyContent: "center",
-                gap: 8,
-                borderRadius: sz.purchaseCheckoutBtnBorderRadius,
-                height: sz.purchaseCheckoutBtnHeight,
-                overflow: "hidden",
-                shadowOffset: { width: 0, height: 4 },
-                shadowOpacity: 0.55,
-                shadowRadius: 14,
-                elevation: 10,
-                backgroundColor: accentColor,
-              },
-              (!selectedCard || purchasing) && { opacity: 0.45 },
+              styles.checkoutBtn,
+              { backgroundColor: accentColor },
+              (!rcPackage || purchasing) && styles.checkoutBtnDisabled,
             ]}
             onPress={handleConfirm}
-            disabled={!selectedCard || purchasing}
+            disabled={!rcPackage || purchasing}
             activeOpacity={0.88}
           >
-            <View
-              style={{
-                position: "absolute",
-                top: 0,
-                left: "14%",
-                width: "38%",
-                height: "52%",
-                backgroundColor: "rgba(255,255,255,0.20)",
-                borderRadius: 20,
-                transform: [{ rotate: "-15deg" }],
-              }}
-            />
+            <View style={styles.btnShine} />
             {purchasing ? (
               <ActivityIndicator color="#08081a" size="small" />
             ) : (
               <>
-                <Text style={{ fontSize: sz.purchaseCheckoutEmojiFontSize }}>
-                  ⚡
-                </Text>
-                <Text
-                  style={{
-                    fontFamily: FONTS.bold,
-                    fontSize: sz.purchaseCheckoutTextFontSize,
-                    color: "#08081a",
-                    letterSpacing: 0.3,
-                  }}
-                >
+                <Text style={styles.btnEmoji}>⚡</Text>
+                <Text style={styles.btnText}>
                   {pkg.ctaLabel ?? `Subscribe to ${pkg.name}`}
                 </Text>
               </>
             )}
           </TouchableOpacity>
 
+          {/* ── Restore purchases (App Store requirement) ─────────────── */}
+          <RestoreLink onRestore={handleRestore} restoring={restoring} />
+
           <View style={{ height: 48 }} />
         </Animated.ScrollView>
       )}
-
-      <AddCardSheet
-        visible={showAddCard}
-        onClose={handleAddCardClose}
-        onAdd={handleAddCard}
-        sz={sz}
-      />
     </View>
   );
 }
+
+// ─────────────────────────────────────────────────────────────────────────────
+const styles = StyleSheet.create({
+  root: { flex: 1, backgroundColor: C.bg },
+
+  // ── Error / loading states ─────────────────────────────────────────────────
+  center: {
+    flex: 1,
+    justifyContent: "center",
+    alignItems: "center",
+    gap: pad.md,
+    padding: pad.xl,
+  },
+  loadingText: {
+    fontFamily: FONTS.light,
+    fontSize: font.md,
+    color: C.textMuted,
+  },
+  errorEmoji: { fontSize: size.iconXl },
+  errorTitle: {
+    fontFamily: FONTS.bold,
+    fontSize: font.xl,
+    color: C.textPri,
+    textAlign: "center",
+  },
+  errorSubtitle: {
+    fontFamily: FONTS.light,
+    fontSize: font.md,
+    color: C.textMuted,
+    textAlign: "center",
+    lineHeight: font.md * 1.5,
+  },
+  errorBtn: {
+    backgroundColor: C.teal,
+    borderRadius: radius.md,
+    paddingHorizontal: pad.xl,
+    paddingVertical: pad.sm,
+    marginTop: pad.sm,
+  },
+  errorBtnText: {
+    fontFamily: FONTS.bold,
+    fontSize: font.md,
+    color: "#08081a",
+  },
+  errorBtnSecondary: {
+    paddingHorizontal: pad.xl,
+    paddingVertical: pad.sm,
+  },
+  errorBtnSecondaryText: {
+    fontFamily: FONTS.regular,
+    fontSize: font.md,
+    color: C.textMuted,
+    textDecorationLine: "underline",
+  },
+
+  // ── Header ─────────────────────────────────────────────────────────────────
+  header: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    paddingTop: STATUS_BAR_HEIGHT + pad.sm,
+    paddingBottom: pad.md,
+    paddingHorizontal: pad.md,
+    borderBottomWidth: 1,
+    borderBottomColor: "rgba(0,188,212,0.1)",
+  },
+  headerBack: {
+    width: size.hitMd,
+    height: size.hitMd,
+    borderRadius: size.hitMd / 2,
+    backgroundColor: "rgba(255,255,255,0.06)",
+    borderWidth: 1,
+    borderColor: "rgba(255,255,255,0.1)",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  headerBackIcon: {
+    fontFamily: FONTS.bold,
+    fontSize: font.xl,
+    color: C.teal,
+  },
+  headerTitle: {
+    fontFamily: FONTS.bold,
+    fontSize: font.xxl,
+    color: C.textPri,
+    letterSpacing: 0.3,
+  },
+
+  scroll: { padding: pad.md, paddingTop: pad.lg },
+
+  sectionLabel: {
+    fontFamily: FONTS.bold,
+    fontSize: font.sm,
+    color: C.textMuted,
+    letterSpacing: 1,
+    textTransform: "uppercase",
+    marginBottom: pad.sm,
+  },
+
+  // ── Order card ─────────────────────────────────────────────────────────────
+  orderCard: {
+    borderRadius: radius.xl,
+    borderWidth: 1.5,
+    borderTopWidth: 2,
+    padding: pad.lg,
+    marginBottom: pad.lg,
+  },
+  planHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: pad.md,
+    marginBottom: pad.md,
+  },
+  planIcon: {
+    width: 52,
+    height: 52,
+    borderRadius: radius.md,
+    borderWidth: 2,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  planIconEmoji: { fontSize: font.xxl },
+  planName: {
+    fontFamily: FONTS.bold,
+    fontSize: font.xl,
+    letterSpacing: 0.2,
+  },
+  planTagline: {
+    fontFamily: FONTS.light,
+    fontSize: font.sm,
+    color: C.textMuted,
+    marginTop: 2,
+  },
+  planDesc: {
+    fontFamily: FONTS.regular,
+    fontSize: font.sm,
+    color: C.textMuted,
+    lineHeight: font.sm * 1.5,
+    marginBottom: pad.md,
+  },
+  pricePill: {
+    flexDirection: "row",
+    alignItems: "baseline",
+    gap: pad.xs,
+    alignSelf: "flex-start",
+    borderRadius: radius.lg,
+    borderWidth: 1,
+    paddingVertical: pad.sm,
+    paddingHorizontal: pad.lg,
+    marginBottom: pad.md,
+  },
+  priceAmount: {
+    fontFamily: FONTS.bold,
+    fontSize: font.h3,
+    letterSpacing: -0.3,
+  },
+  priceCycle: {
+    fontFamily: FONTS.light,
+    fontSize: font.md,
+    color: C.textMuted,
+  },
+
+  // ── Feature rows ───────────────────────────────────────────────────────────
+  featureRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: pad.sm,
+    marginBottom: pad.xs,
+  },
+  featureCheck: {
+    fontFamily: FONTS.bold,
+    fontSize: font.md,
+    width: 18,
+  },
+  featureLabel: {
+    fontFamily: FONTS.regular,
+    fontSize: font.sm,
+    color: C.textSec,
+    flex: 1,
+  },
+
+  // ── Trial banner ───────────────────────────────────────────────────────────
+  trialBanner: {
+    marginTop: pad.sm,
+    paddingVertical: pad.xs,
+    paddingHorizontal: pad.sm,
+    backgroundColor: "rgba(255,255,255,0.04)",
+    borderRadius: radius.sm,
+    borderWidth: 1,
+    borderColor: "rgba(255,255,255,0.08)",
+  },
+  trialText: {
+    fontFamily: FONTS.bold,
+    fontSize: font.sm,
+    textAlign: "center",
+  },
+
+  // ── How it works ───────────────────────────────────────────────────────────
+  howItWorksCard: {
+    backgroundColor: C.surface,
+    borderRadius: radius.lg,
+    borderWidth: 1,
+    borderColor: "rgba(255,255,255,0.07)",
+    padding: pad.md,
+    marginBottom: pad.lg,
+  },
+  howTitle: {
+    fontFamily: FONTS.bold,
+    fontSize: font.md,
+    color: C.textPri,
+    marginBottom: pad.xs,
+  },
+  howBody: {
+    fontFamily: FONTS.light,
+    fontSize: font.sm,
+    color: C.textMuted,
+    lineHeight: font.sm * 1.6,
+  },
+
+  // ── Total ──────────────────────────────────────────────────────────────────
+  totalCard: {
+    backgroundColor: C.surface,
+    borderRadius: radius.lg,
+    borderWidth: 1,
+    borderColor: "rgba(255,255,255,0.07)",
+    padding: pad.md,
+    marginBottom: pad.lg,
+  },
+  totalRow: {
+    flexDirection: "row",
+    alignItems: "baseline",
+    justifyContent: "space-between",
+  },
+  totalLabel: {
+    fontFamily: FONTS.bold,
+    fontSize: font.md,
+    color: C.textSec,
+  },
+  totalAmount: {
+    fontFamily: FONTS.bold,
+    fontSize: font.h3,
+    letterSpacing: -0.3,
+  },
+  totalCycle: {
+    fontFamily: FONTS.light,
+    fontSize: font.sm,
+    color: C.textMuted,
+    marginTop: 4,
+  },
+
+  // ── Policy ─────────────────────────────────────────────────────────────────
+  policyNote: {
+    fontFamily: FONTS.light,
+    fontSize: font.sm,
+    color: C.textMuted,
+    textAlign: "center",
+    lineHeight: font.sm * 1.6,
+    marginBottom: pad.lg,
+    paddingHorizontal: pad.sm,
+  },
+
+  // ── Checkout button ────────────────────────────────────────────────────────
+  checkoutBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: pad.s,
+    borderRadius: radius.pill,
+    height: size.btnHeightLg,
+    overflow: "hidden",
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.55,
+    shadowRadius: 14,
+    elevation: 10,
+    marginBottom: pad.sm,
+  },
+  checkoutBtnDisabled: { opacity: 0.45 },
+  btnShine: {
+    position: "absolute",
+    top: 0,
+    left: "14%",
+    width: "38%",
+    height: "52%",
+    backgroundColor: "rgba(255,255,255,0.20)",
+    borderRadius: 20,
+    transform: [{ rotate: "-15deg" }],
+  },
+  btnEmoji: { fontSize: font.lg },
+  btnText: {
+    fontFamily: FONTS.bold,
+    fontSize: font.lg,
+    color: "#08081a",
+    letterSpacing: 0.3,
+  },
+
+  // ── Restore ────────────────────────────────────────────────────────────────
+  restoreWrap: { alignSelf: "center", paddingVertical: pad.sm },
+  restoreText: {
+    fontFamily: FONTS.regular,
+    fontSize: font.sm,
+    color: C.textMuted,
+    textDecorationLine: "underline",
+  },
+});

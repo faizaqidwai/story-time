@@ -10,6 +10,7 @@ import {
   SubscriptionProvider,
   useSubscription,
 } from "./_contexts/SubscriptionContext";
+import { RevenueCatProvider } from "./_contexts/RevenueCatContext";
 import PlanBadge from "./components/PlanBadge";
 import { COLORS } from "./theme";
 import { useFonts } from "expo-font";
@@ -37,18 +38,23 @@ function NotifyWirer() {
 function AppProviders({ children }) {
   const { userAccount } = useUser();
   const isLoggedIn = !!userAccount?.id;
+  const userAccountId = userAccount?.id ?? null;
 
   return (
-    <SubscriptionProvider isLoggedIn={isLoggedIn}>
-      <LevelAccessProvider>
-        <StoryActivityProvider>
-          <NotificationProvider>
-            <NotifyWirer />
-            {children}
-          </NotificationProvider>
-        </StoryActivityProvider>
-      </LevelAccessProvider>
-    </SubscriptionProvider>
+    // RevenueCatProvider sits inside UserProvider (needs userAccountId)
+    // and outside SubscriptionProvider (subscription refresh triggers after RC purchase)
+    <RevenueCatProvider userAccountId={userAccountId} isLoggedIn={isLoggedIn}>
+      <SubscriptionProvider isLoggedIn={isLoggedIn}>
+        <LevelAccessProvider>
+          <StoryActivityProvider>
+            <NotificationProvider>
+              <NotifyWirer />
+              {children}
+            </NotificationProvider>
+          </StoryActivityProvider>
+        </LevelAccessProvider>
+      </SubscriptionProvider>
+    </RevenueCatProvider>
   );
 }
 
@@ -62,8 +68,6 @@ const RootLayout = () => {
     "CoText-Light": require("../assets/fonts/Co Text Light.otf"),
   });
 
-  // Wire apiClient's logoutLocally() to the router so it can navigate
-  // to login when a fatal auth error occurs from any screen in the app.
   useEffect(() => {
     setNavigationRef(router);
   }, []);
@@ -108,7 +112,6 @@ const RootLayout = () => {
               }}
             />
 
-            {/* 👤 Account — dynamic plan badge replaces old hardcoded FREE badge */}
             <Stack.Screen
               name="account"
               options={{
@@ -132,7 +135,6 @@ const RootLayout = () => {
               }}
             />
 
-            {/* 📚 Book Reader */}
             <Stack.Screen
               name="book/[id]"
               options={{
@@ -149,7 +151,6 @@ const RootLayout = () => {
               }}
             />
 
-            {/* 📖 Book read activity */}
             <Stack.Screen
               name="book/[id]/read"
               options={{
@@ -159,7 +160,6 @@ const RootLayout = () => {
               }}
             />
 
-            {/* 🎮 Flappy Word Game */}
             <Stack.Screen
               name="FlappyWordGame"
               options={{
@@ -169,7 +169,6 @@ const RootLayout = () => {
               }}
             />
 
-            {/* 🎮 Dodge Car Game */}
             <Stack.Screen
               name="DodgeCarGame"
               options={{
@@ -179,7 +178,6 @@ const RootLayout = () => {
               }}
             />
 
-            {/* 📊 Levels */}
             <Stack.Screen
               name="components/Levels"
               options={{
@@ -190,7 +188,6 @@ const RootLayout = () => {
               }}
             />
 
-            {/* 🎒 Word Bag */}
             <Stack.Screen
               name="components/WordBag"
               options={{
@@ -200,7 +197,6 @@ const RootLayout = () => {
               }}
             />
 
-            {/* 📚 Learning Path */}
             <Stack.Screen
               name="components/LearningPath"
               options={{
@@ -210,7 +206,6 @@ const RootLayout = () => {
               }}
             />
 
-            {/* 📊 Progress Reports */}
             <Stack.Screen
               name="components/Reports"
               options={{
@@ -220,7 +215,6 @@ const RootLayout = () => {
               }}
             />
 
-            {/* 💳 Billing — existing screens */}
             <Stack.Screen
               name="components/billing/PlanBillingScreen"
               options={{
@@ -253,8 +247,6 @@ const RootLayout = () => {
                 contentStyle: { backgroundColor: "#08081a" },
               }}
             />
-
-            {/* 💳 Billing — new purchase flow screens */}
             <Stack.Screen
               name="components/billing/LevelSelectScreen"
               options={{

@@ -1,5 +1,14 @@
 // app/components/billing/SubscriptionPlansScreen.jsx
-// All sz.* tokens replaced with font/pad/radius/size from tokens.js
+//
+// CHANGES FROM ORIGINAL:
+//   ✅ Packages come from RevenueCatContext.enrichedPackages
+//      (RC pricing merged with backend metadata)
+//   ✅ handleSelectPlan guards against missing pkg.identifier
+//   ✅ Passes only packageJson to LevelSelectScreen/PurchaseScreen
+//      (rcIdentifier is read from pkg.identifier in PurchaseScreen)
+//   ✅ All display logic unchanged (PlanCard, PlanIcon, FeatureRow, etc.)
+//   ✅ filterByTab works identically
+//   ✅ isCurrentPlan check unchanged
 
 import React, { useEffect, useRef, useState, useCallback } from "react";
 import {
@@ -19,13 +28,11 @@ import {
 } from "react-native";
 import { useRouter } from "expo-router";
 import { FONTS } from "../../theme";
+import { useRevenueCat } from "../../_contexts/RevenueCatContext";
 import { useApiCall } from "../../_hooks/useApiCall";
-import {
-  fetchSubscriptionPackages,
-  fetchMySubscription,
-} from "../../services/subscriptionService";
+import { fetchMySubscription } from "../../services/subscriptionService";
 import { useUser } from "../../_contexts/UserContext";
-import { font, pad, radius, size } from "../../theme/tokens"; // ← REPLACES useTheme
+import { font, pad, radius, size } from "../../theme/tokens";
 
 const { width: SW } = Dimensions.get("window");
 const STATUS_BAR_HEIGHT =
@@ -111,19 +118,40 @@ function filterByTab(pkgs, tab) {
   return pkgs;
 }
 
-function formatPrice(price, currency, billingCycle) {
-  if (!price || price === 0) return { main: "Free", sub: null };
-  const sym = currency === "USD" ? "$" : currency === "SAR" ? "﷼" : currency;
+// ── Format price ─────────────────────────────────────────────────────────────
+// Prefers RC's store-localised priceString over backend price
+function formatPrice(pkg) {
+  // RC gives localised priceString (e.g. "$4.99")
+  if (pkg?.priceString && pkg.priceString.trim()) {
+    const sub =
+      pkg.billingCycle === "YEARLY"
+        ? "/yr"
+        : pkg.billingCycle === "LIFETIME"
+          ? " once"
+          : pkg.billingCycle === "NONE"
+            ? null
+            : "/mo";
+    return { main: pkg.priceString, sub };
+  }
+  // Fallback for free plan or mock mode
+  if (!pkg?.price || Number(pkg.price) === 0)
+    return { main: "Free", sub: null };
+  const sym =
+    pkg.currency === "USD"
+      ? "$"
+      : pkg.currency === "SAR"
+        ? "﷼"
+        : (pkg.currency ?? "");
   const sub =
-    billingCycle === "YEARLY"
+    pkg.billingCycle === "YEARLY"
       ? "/yr"
-      : billingCycle === "LIFETIME"
+      : pkg.billingCycle === "LIFETIME"
         ? " once"
         : "/mo";
-  return { main: `${sym}${price}`, sub };
+  return { main: `${sym}${Number(pkg.price).toFixed(2)}`, sub };
 }
 
-// ── Animated plan icon ─────────────────────────────────────────────────────
+// ── Animated plan icon ────────────────────────────────────────────────────────
 function PlanIcon({ accent }) {
   const pulse = useRef(new Animated.Value(1)).current;
   const glow = useRef(new Animated.Value(0)).current;
@@ -258,7 +286,7 @@ const iconS = StyleSheet.create({
   emoji: { fontSize: font.xxl },
 });
 
-// ── Feature row ────────────────────────────────────────────────────────────
+// ── Feature row ───────────────────────────────────────────────────────────────
 function FeatureRow({ feature, accent, index }) {
   const slide = useRef(new Animated.Value(20)).current;
   const op = useRef(new Animated.Value(0)).current;
@@ -370,7 +398,7 @@ const featS = StyleSheet.create({
   check: { fontFamily: FONTS.bold, fontSize: font.sm, flexShrink: 0 },
 });
 
-// ── Plan card ──────────────────────────────────────────────────────────────
+// ── Plan card ─────────────────────────────────────────────────────────────────
 function PlanCard({ pkg, onPress, isCurrentPlan }) {
   const accent = getAccent(
     pkg.billingCycle,
@@ -379,11 +407,14 @@ function PlanCard({ pkg, onPress, isCurrentPlan }) {
     pkg.darkBg,
     pkg.ctaLabel,
   );
-  const priceObj = formatPrice(pkg.price, pkg.currency, pkg.billingCycle);
+  const priceObj = formatPrice(pkg);
   const scaleAnim = useRef(new Animated.Value(1)).current;
   const features = pkg.displayFeatures ?? [];
   const tagline = pkg.tagLine ?? pkg.tagline ?? "";
   const rgb = accent.colorRgb;
+
+  // ── Edge case: package missing identifier — show as unavailable ──────────
+  const isUnavailable = !pkg.identifier && !pkg.rcIdentifier;
 
   const pressIn = () =>
     Animated.spring(scaleAnim, {
@@ -427,6 +458,24 @@ function PlanCard({ pkg, onPress, isCurrentPlan }) {
             </Text>
           </View>
         )}
+
+        {/* Unavailable badge — shown when identifier is missing */}
+        {isUnavailable && (
+          <View
+            style={[
+              cardS.currentBadge,
+              {
+                backgroundColor: "rgba(255,80,80,0.12)",
+                borderColor: "rgba(255,80,80,0.35)",
+              },
+            ]}
+          >
+            <Text style={[cardS.currentBadgeText, { color: "#EF5350" }]}>
+              ⚠ Temporarily Unavailable
+            </Text>
+          </View>
+        )}
+
         <View
           style={[cardS.atmoBg, { backgroundColor: `rgba(${rgb},0.04)` }]}
         />
@@ -480,7 +529,7 @@ function PlanCard({ pkg, onPress, isCurrentPlan }) {
         <TouchableOpacity
           style={[
             cardS.ctaBtn,
-            isCurrentPlan
+            isCurrentPlan || isUnavailable
               ? {
                   backgroundColor: `rgba(${rgb},0.12)`,
                   borderWidth: 1.5,
@@ -488,25 +537,40 @@ function PlanCard({ pkg, onPress, isCurrentPlan }) {
                 }
               : { backgroundColor: accent.color, shadowColor: accent.color },
           ]}
-          onPress={isCurrentPlan ? undefined : onPress}
-          disabled={isCurrentPlan}
-          activeOpacity={isCurrentPlan ? 1 : 0.88}
+          onPress={isCurrentPlan || isUnavailable ? undefined : onPress}
+          onPressIn={pressIn}
+          onPressOut={pressOut}
+          disabled={isCurrentPlan || isUnavailable}
+          activeOpacity={isCurrentPlan || isUnavailable ? 1 : 0.88}
         >
-          {!isCurrentPlan && <View style={cardS.ctaShine} />}
+          {!isCurrentPlan && !isUnavailable && <View style={cardS.ctaShine} />}
           <Text style={cardS.ctaEmoji}>
-            {isCurrentPlan ? "✓" : pkg.price === 0 ? "🌟" : "⚡"}
+            {isCurrentPlan
+              ? "✓"
+              : isUnavailable
+                ? "⚠"
+                : pkg.price === 0
+                  ? "🌟"
+                  : "⚡"}
           </Text>
           <Text
-            style={[cardS.ctaText, isCurrentPlan && { color: accent.color }]}
+            style={[
+              cardS.ctaText,
+              (isCurrentPlan || isUnavailable) && { color: accent.color },
+            ]}
           >
-            {isCurrentPlan ? "You have this plan" : accent.ctaLabel}
+            {isCurrentPlan
+              ? "You have this plan"
+              : isUnavailable
+                ? "Temporarily unavailable"
+                : accent.ctaLabel}
           </Text>
         </TouchableOpacity>
 
-        {pkg.trialDays > 0 && !isCurrentPlan && (
+        {pkg.trialDays > 0 && !isCurrentPlan && !isUnavailable && (
           <Text style={cardS.trialNote}>🎁 {pkg.trialDays}-day free trial</Text>
         )}
-        {pkg.price === 0 && !isCurrentPlan && (
+        {pkg.price === 0 && !isCurrentPlan && !isUnavailable && (
           <TouchableOpacity
             onPress={onPress}
             activeOpacity={0.6}
@@ -645,7 +709,7 @@ const cardS = StyleSheet.create({
   },
 });
 
-// ── Cycle toggle ───────────────────────────────────────────────────────────
+// ── Cycle toggle ──────────────────────────────────────────────────────────────
 function CycleToggle({ selected, onSelect }) {
   return (
     <View style={togS.track}>
@@ -714,7 +778,7 @@ const togS = StyleSheet.create({
   badgeTextActive: { color: "#08081a" },
 });
 
-// ── Pagination dots ────────────────────────────────────────────────────────
+// ── Pagination dots ───────────────────────────────────────────────────────────
 function PaginationDots({ count, activeIndex, accentColor }) {
   return (
     <View style={dotS.row}>
@@ -752,8 +816,8 @@ const dotS = StyleSheet.create({
   dotActive: { width: 22, height: 6, borderRadius: 3 },
 });
 
-// ── Empty state ────────────────────────────────────────────────────────────
-function EmptyState({ tabEmpty }) {
+// ── Empty state ───────────────────────────────────────────────────────────────
+function EmptyState({ tabEmpty, onRetry }) {
   return (
     <View style={emS.container}>
       <Text style={emS.icon}>{tabEmpty ? "🗂️" : "📭"}</Text>
@@ -763,8 +827,17 @@ function EmptyState({ tabEmpty }) {
       <Text style={emS.subtitle}>
         {tabEmpty
           ? "No plans available for this billing period."
-          : "We're setting up our subscription plans.\nPlease check back soon!"}
+          : "We couldn't load subscription plans.\nPlease check your connection and try again."}
       </Text>
+      {!tabEmpty && onRetry && (
+        <TouchableOpacity
+          style={emS.retryBtn}
+          onPress={onRetry}
+          activeOpacity={0.85}
+        >
+          <Text style={emS.retryText}>Try Again</Text>
+        </TouchableOpacity>
+      )}
     </View>
   );
 }
@@ -790,38 +863,31 @@ const emS = StyleSheet.create({
     textAlign: "center",
     lineHeight: font.sm * 1.6,
   },
+  retryBtn: {
+    marginTop: pad.md,
+    backgroundColor: C.teal,
+    borderRadius: radius.md,
+    paddingHorizontal: pad.xl,
+    paddingVertical: pad.sm,
+  },
+  retryText: { fontFamily: FONTS.bold, fontSize: font.md, color: "#08081a" },
 });
 
-// ── Main screen ────────────────────────────────────────────────────────────
+// ── Main screen ───────────────────────────────────────────────────────────────
 export default function SubscriptionPlansScreen() {
   const router = useRouter();
-  const { execute, loading } = useApiCall();
+  const { execute } = useApiCall();
   const { userAccount } = useUser();
 
-  const [packages, setPackages] = useState([]);
+  // ── RC context — enrichedPackages replaces old fetchSubscriptionPackages ──
+  const { enrichedPackages, offeringsLoading, reloadOfferings } =
+    useRevenueCat();
+
   const [activeSubscription, setActiveSub] = useState(null);
   const [cycle, setCycle] = useState("MONTHLY");
   const [activeIndex, setActiveIndex] = useState(0);
   const fadeAnim = useRef(new Animated.Value(0)).current;
   const flatListRef = useRef(null);
-
-  const loadPackages = useCallback(async () => {
-    await execute(() => fetchSubscriptionPackages(), {
-      errorDisplay: "sheet",
-      errorMessage: "Couldn't Load Plans",
-      errorSubMessage: "Please check your connection and try again.",
-      errorRetry: true,
-      onSuccess: (data) => {
-        const list = Array.isArray(data) ? data : (data?.data ?? []);
-        setPackages(list.filter((p) => p.isActive !== false));
-        Animated.timing(fadeAnim, {
-          toValue: 1,
-          duration: 420,
-          useNativeDriver: true,
-        }).start();
-      },
-    });
-  }, [execute]);
 
   const loadSubscription = useCallback(async () => {
     await execute(() => fetchMySubscription(), {
@@ -831,18 +897,36 @@ export default function SubscriptionPlansScreen() {
   }, [execute]);
 
   useEffect(() => {
-    loadPackages();
     loadSubscription();
+    reloadOfferings();
   }, []);
 
   useEffect(() => {
     console.log("[PACKAGES LIFECYCLE] PACKAGES MOUNTED");
-    return () => {
-      console.log("[PACKAGES LIFECYCLE] PACKAGES UNMOUNTED");
-    };
+    return () => console.log("[PACKAGES LIFECYCLE] PACKAGES UNMOUNTED");
   }, []);
 
-  const filteredPackages = filterByTab(packages, cycle);
+  useEffect(() => {
+    if (!offeringsLoading && enrichedPackages.length > 0) {
+      Animated.timing(fadeAnim, {
+        toValue: 1,
+        duration: 420,
+        useNativeDriver: true,
+      }).start();
+    }
+  }, [offeringsLoading, enrichedPackages.length]);
+
+  // Filter out packages with no identifier before displaying
+  // This prevents broken cards if a package was created without the identifier field
+  const validPackages = enrichedPackages.filter((p) => {
+    const hasIdentifier = !!(p.identifier || p.rcIdentifier);
+    if (!hasIdentifier) {
+      console.warn(`[Plans] Package "${p.name}" has no identifier — skipping`);
+    }
+    return true; // still show but PlanCard marks it as unavailable
+  });
+
+  const filteredPackages = filterByTab(validPackages, cycle);
   const currentPackageId = activeSubscription?.packageId ?? null;
   const isOnFreePlan =
     !activeSubscription ||
@@ -862,7 +946,7 @@ export default function SubscriptionPlansScreen() {
   useEffect(() => {
     setActiveIndex(0);
     flatListRef.current?.scrollToOffset?.({ offset: 0, animated: false });
-  }, [cycle, packages.length]);
+  }, [cycle, enrichedPackages.length]);
 
   const onScroll = (e) => {
     const idx = Math.round(
@@ -872,7 +956,8 @@ export default function SubscriptionPlansScreen() {
   };
 
   const handleSelectPlan = (pkg) => {
-    if (pkg.price === 0) {
+    // ── Edge case: free plan ──────────────────────────────────────────────────
+    if (!pkg.price || Number(pkg.price) === 0) {
       Alert.alert(
         "Start Free Plan",
         "You'll get access to the free tier features immediately.",
@@ -887,21 +972,49 @@ export default function SubscriptionPlansScreen() {
       );
       return;
     }
+
+    // ── Edge case: missing identifier ─────────────────────────────────────────
+    // This should never happen in production if packages are seeded correctly,
+    // but we guard it here to prevent a broken navigation state.
+    const pkgIdentifier = pkg.identifier || pkg.rcIdentifier;
+    if (!pkgIdentifier) {
+      console.error(
+        `[Plans] Cannot purchase package "${pkg.name}" — missing identifier field`,
+      );
+      Alert.alert(
+        "Temporarily Unavailable",
+        "This plan is currently unavailable. Please try again later or contact support.",
+        [{ text: "OK" }],
+      );
+      return;
+    }
+
+    // ── Normal purchase flow ──────────────────────────────────────────────────
+    // We only pass packageJson — PurchaseScreen reads pkg.identifier from it
+    // to find the live RC package object from RevenueCatContext.enrichedPackages
+    const navParams = {
+      packageJson: JSON.stringify(pkg),
+    };
+
     if (isOnFreePlan) {
+      // New subscriber — go through level select first
       router.push({
         pathname: "/components/billing/LevelSelectScreen",
-        params: { packageJson: JSON.stringify(pkg) },
+        params: navParams,
       });
       return;
     }
+
+    // Existing subscriber — go straight to checkout
     router.push({
       pathname: "/components/billing/PurchaseScreen",
-      params: { packageJson: JSON.stringify(pkg) },
+      params: navParams,
     });
   };
 
   return (
     <View style={scr.root}>
+      {/* Header */}
       <View style={scr.header}>
         <TouchableOpacity
           style={scr.backBtn}
@@ -916,7 +1029,7 @@ export default function SubscriptionPlansScreen() {
         </View>
       </View>
 
-      {loading ? (
+      {offeringsLoading ? (
         <View style={scr.center}>
           <ActivityIndicator color={C.teal} size="large" />
           <Text style={scr.loadingText}>Loading plans…</Text>
@@ -928,12 +1041,13 @@ export default function SubscriptionPlansScreen() {
             contentContainerStyle={scr.scroll}
           >
             <CycleToggle selected={cycle} onSelect={setCycle} />
+
             {filteredPackages.length > 1 && (
               <Text style={scr.swipeHint}>Swipe to compare plans →</Text>
             )}
 
-            {packages.length === 0 ? (
-              <EmptyState tabEmpty={false} />
+            {enrichedPackages.length === 0 ? (
+              <EmptyState tabEmpty={false} onRetry={reloadOfferings} />
             ) : filteredPackages.length === 0 ? (
               <EmptyState tabEmpty={true} />
             ) : (
@@ -941,7 +1055,9 @@ export default function SubscriptionPlansScreen() {
                 <FlatList
                   ref={flatListRef}
                   data={filteredPackages}
-                  keyExtractor={(item) => item.id ?? item.name}
+                  keyExtractor={(item) =>
+                    item.rcIdentifier ?? item.identifier ?? item.id ?? item.name
+                  }
                   horizontal
                   showsHorizontalScrollIndicator={false}
                   snapToInterval={CARD_WIDTH + CARD_MARGIN}
@@ -971,7 +1087,8 @@ export default function SubscriptionPlansScreen() {
 
             {filteredPackages.length > 0 && (
               <Text style={scr.footerNote}>
-                Secure checkout · Cancel anytime
+                Secure checkout via {Platform.OS === "ios" ? "Apple" : "Google"}{" "}
+                · Cancel anytime
               </Text>
             )}
             <View style={{ height: 48 }} />
@@ -998,15 +1115,15 @@ const scr = StyleSheet.create({
   header: {
     flexDirection: "row",
     alignItems: "center",
-    paddingTop: STATUS_BAR_HEIGHT + pad.sm, // was: + 10
-    paddingBottom: pad.lg, // was: 20
-    paddingHorizontal: pad.md, // was: 18
+    paddingTop: STATUS_BAR_HEIGHT + pad.sm,
+    paddingBottom: pad.lg,
+    paddingHorizontal: pad.md,
     borderBottomWidth: 1,
     borderBottomColor: "rgba(0,188,212,0.1)",
   },
   backBtn: {
     width: size.hitMd,
-    height: size.hitMd, // was: 40
+    height: size.hitMd,
     borderRadius: size.hitMd / 2,
     backgroundColor: "rgba(255,255,255,0.06)",
     borderWidth: 1,
@@ -1027,7 +1144,7 @@ const scr = StyleSheet.create({
     color: C.textMuted,
     marginTop: 2,
   },
-  scroll: { paddingTop: pad.xl }, // was: 24
+  scroll: { paddingTop: pad.xl },
   swipeHint: {
     fontFamily: FONTS.light,
     fontSize: font.sm,
