@@ -44,10 +44,15 @@ export function SubscriptionProvider({ children, isLoggedIn }) {
   /** Call this after a successful purchase to update the context immediately */
   const refreshSubscription = useCallback(() => refresh(), [refresh]);
 
+  const updateSubscription = useCallback((sub) => {
+    setSubscription(sub);
+  }, []);
+
   const value = {
     subscription,
     subscriptionLoading: loading,
     refreshSubscription,
+    updateSubscription,
     /** Convenience: display name shown in UI */
     planName: subscription?.packageName ?? "Free",
     /** True when user is on the free tier */

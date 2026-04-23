@@ -34,6 +34,7 @@ import { useUser } from "../../_contexts/UserContext";
 import { font, pad, radius, size } from "../../theme/tokens";
 import { APP_CONFIG } from "../../config/appConfig";
 import { simulateWebhookPurchase } from "../../services/revenueCatService.mock";
+import { fetchMySubscription } from "../../services/subscriptionService";
 
 const STATUS_BAR_HEIGHT =
   Platform.OS === "android" ? (StatusBar.currentHeight ?? 24) : 50;
@@ -181,7 +182,7 @@ export default function PurchaseScreen() {
     reloadOfferings,
     offeringsLoading,
   } = useRevenueCat();
-  const { refreshSubscription } = useSubscription();
+  const { refreshSubscription, subscription, updateSubscription } = useSubscription();
   const { initForProfile }      = useLevelAccess();
   const { currentProfile, userAccount } = useUser();
 
@@ -270,13 +271,43 @@ export default function PurchaseScreen() {
     );
   }, [rcPackage, pkg, priceString, cycleLabel]);
 
+  const sleep = (ms) => new Promise(res => setTimeout(res, ms));
+
+  const hasSubscriptionChanged = (beforeSub, sub) => {
+    const beforeIsDefault = !beforeSub?.rcProductId;
+    const currentIsDefault = !sub?.rcProductId;
+
+    return (
+      (beforeIsDefault && !currentIsDefault) ||
+      (sub?.rcTransactionId && sub.rcTransactionId !== beforeSub?.rcTransactionId) ||
+      (sub?.nextDueDate !== beforeSub?.nextDueDate) ||
+      (sub?.rcProductId !== beforeSub?.rcProductId)
+    );
+  };
+
+  const waitForSubscriptionUpdate = async (beforeSub, retries = 6, delay = 1000) => {
+    for (let i = 0; i < retries; i++) {
+      const sub = await fetchMySubscription();
+
+      if (hasSubscriptionChanged(beforeSub, sub)) {
+        return sub;
+      }
+
+      await sleep(delay);
+    }
+    return null;
+  };
+
   const doPurchase = useCallback(async () => {
     setPurchasing(true);
     try {
+      // ✅ snapshot BEFORE state
+      const beforeSub = subscription;
+
       // ── Step 1: RC purchase — opens native Apple/Google sheet (real)
       //            or waits 1.5s and returns fake success (mock)
       await purchase(rcPackage);
-
+      
       // ── Step 2 (MOCK ONLY): Simulate the RC webhook call ─────────────────
       // In real mode RC fires the webhook automatically before purchase()
       // resolves. In mock mode nothing fires, so we call the webhook
@@ -290,23 +321,17 @@ export default function PurchaseScreen() {
         await simulateWebhookPurchase(userAccountId, rcProductId);
       }
 
-      // ── Purchase succeeded — navigate immediately ────────────────────────
-      // We navigate BEFORE refreshing backend state so the user
-      // isn't stuck on the checkout screen if the network is slow.
-      // Both refreshSubscription and initForProfile are best-effort —
-      // they will naturally sync on next app open if they fail here.
-      router.dismiss(3);
-
       // ── Step 3: Refresh backend subscription state (best-effort) ────────
       // Real mode: RC webhook already fired before we get here —
       //   /subscriptions/my returns the new subscription immediately.
       // Mock mode: webhook simulation ran in Step 2 —
       //   /subscriptions/my also returns the new subscription.
-      try {
-        await refreshSubscription();
-      } catch (err) {
-        // Non-fatal — subscription will sync on next app open
-        console.warn("[PurchaseScreen] refreshSubscription failed post-purchase:", err?.message);
+      // ✅ wait for backend sync
+      const updatedSub = await waitForSubscriptionUpdate(beforeSub);
+      if (updatedSub) {
+        updateSubscription(updatedSub); // ✅ no extra API call
+      } else {
+        await refreshSubscription(); // fallback
       }
 
       // ── Step 4: Refresh level access for current profile (best-effort) ──
@@ -318,6 +343,9 @@ export default function PurchaseScreen() {
           console.warn("[PurchaseScreen] initForProfile failed post-purchase:", err?.message);
         }
       }
+
+      // ── Purchase succeeded — navigate immediately ────────────────────────
+      router.dismiss(3);
 
     } catch (err) {
       // ── User cancelled — silent dismiss ───────────────────────────────────
@@ -337,7 +365,7 @@ export default function PurchaseScreen() {
     } finally {
       setPurchasing(false);
     }
-  }, [rcPackage, purchase, refreshSubscription, initForProfile, currentProfile, router]);
+  }, [subscription, purchase, rcPackage, updateSubscription, refreshSubscription, initForProfile, currentProfile, router]);
 
   // ── Handle restore ────────────────────────────────────────────────────────
   const handleRestore = useCallback(async () => {

@@ -10,7 +10,7 @@ export const APP_CONFIG = {
   // ── Mock IAP ──────────────────────────────────────────────────────────────
   // true  → uses revenueCatService.mock.js (safe for Expo Go, no native modules)
   // false → uses revenueCatService.js (requires dev build with native modules)
-  MOCK_IAP: true,
+  MOCK_IAP: false,
 
   // ── Dev webhook secret ────────────────────────────────────────────────────
   // Used ONLY in mock mode to simulate the RC webhook call locally.

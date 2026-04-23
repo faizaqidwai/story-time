@@ -639,6 +639,8 @@ const Account = () => {
     mode: "upgrade", // "upgrade" | "limit"
   });
 
+  useEffect(() => {}, [subscription])
+
   const handleSaveCredentials = async () => {
     const trimmedEmail = emailInput.trim();
     const trimmedPassword = passwordInput.trim();

@@ -63,9 +63,9 @@ const RootLayout = () => {
   const router = useRouter();
 
   const [fontsLoaded] = useFonts({
-    CoText: require("../assets/fonts/Co Text.otf"),
-    "CoText-Bold": require("../assets/fonts/Co Text Bold.otf"),
-    "CoText-Light": require("../assets/fonts/Co Text Light.otf"),
+    CoText: require("../assets/fonts/Co-Text.otf"),
+    "CoText-Bold": require("../assets/fonts/Co-Text-Bold.otf"),
+    "CoText-Light": require("../assets/fonts/Co-Text-Light.otf"),
   });
 
   useEffect(() => {
