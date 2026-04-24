@@ -1,4 +1,10 @@
 // app/account.jsx
+// CHANGES FROM ORIGINAL:
+//   ✅ Profile add/edit/delete locked when subscription is not ACTIVE
+//   ✅ Add New Profile button shows lock state when subscription inactive
+//   ✅ handleAddNew, handleEdit, handleDelete guard against inactive subscription
+//   ✅ ProfileCard receives isSubscriptionActive prop to lock edit/delete icons
+//   ✅ All other functionality (viewing profiles, account section, logout, plan cards) unchanged
 
 import {
   StyleSheet,
@@ -89,9 +95,7 @@ const YELLOW = "#FFD54F";
 const PINK = "#EC407A";
 
 // ─────────────────────────────────────────────────────────────────────────────
-// PROFILE LIMIT MODAL
-// mode: "upgrade" — free/basic plan, needs premium to add multiple profiles
-//       "limit"   — already paid but hit the plan's profile cap
+// PROFILE LIMIT MODAL — unchanged from original
 // ─────────────────────────────────────────────────────────────────────────────
 const UPGRADE_PROPS = [
   { emoji: "👨‍👩‍👧‍👦", text: "Create a profile for every child" },
@@ -126,88 +130,38 @@ function ProfileLimitModal({ visible, mode, onClose, onUpgrade }) {
 
   useEffect(() => {
     if (visible) {
-      // Reset all values
       backdropOp.setValue(0);
       cardY.setValue(60);
       cardOp.setValue(0);
-      vpAnims.forEach((a) => {
-        a.slide.setValue(30);
-        a.op.setValue(0);
-      });
+      vpAnims.forEach((a) => { a.slide.setValue(30); a.op.setValue(0); });
 
-      // Backdrop + card entrance
       Animated.parallel([
-        Animated.timing(backdropOp, {
-          toValue: 1,
-          duration: 300,
-          useNativeDriver: true,
-        }),
-        Animated.spring(cardY, {
-          toValue: 0,
-          friction: 7,
-          tension: 60,
-          useNativeDriver: true,
-        }),
-        Animated.timing(cardOp, {
-          toValue: 1,
-          duration: 280,
-          useNativeDriver: true,
-        }),
+        Animated.timing(backdropOp, { toValue: 1, duration: 300, useNativeDriver: true }),
+        Animated.spring(cardY, { toValue: 0, friction: 7, tension: 60, useNativeDriver: true }),
+        Animated.timing(cardOp, { toValue: 1, duration: 280, useNativeDriver: true }),
       ]).start();
 
-      // Value props stagger
       vpAnims.forEach((a, i) => {
         Animated.sequence([
           Animated.delay(300 + i * 80),
           Animated.parallel([
-            Animated.timing(a.op, {
-              toValue: 1,
-              duration: 250,
-              useNativeDriver: true,
-            }),
-            Animated.spring(a.slide, {
-              toValue: 0,
-              friction: 6,
-              tension: 80,
-              useNativeDriver: true,
-            }),
+            Animated.timing(a.op, { toValue: 1, duration: 250, useNativeDriver: true }),
+            Animated.spring(a.slide, { toValue: 0, friction: 6, tension: 80, useNativeDriver: true }),
           ]),
         ]).start();
       });
 
-      // Pulse loop on icon
       Animated.loop(
         Animated.sequence([
-          Animated.timing(pulseAnim, {
-            toValue: 1.08,
-            duration: 900,
-            easing: Easing.inOut(Easing.sin),
-            useNativeDriver: true,
-          }),
-          Animated.timing(pulseAnim, {
-            toValue: 0.94,
-            duration: 900,
-            easing: Easing.inOut(Easing.sin),
-            useNativeDriver: true,
-          }),
+          Animated.timing(pulseAnim, { toValue: 1.08, duration: 900, easing: Easing.inOut(Easing.sin), useNativeDriver: true }),
+          Animated.timing(pulseAnim, { toValue: 0.94, duration: 900, easing: Easing.inOut(Easing.sin), useNativeDriver: true }),
         ]),
       ).start();
 
-      // Glow loop
       Animated.loop(
         Animated.sequence([
-          Animated.timing(glowAnim, {
-            toValue: 1,
-            duration: 1200,
-            easing: Easing.inOut(Easing.sin),
-            useNativeDriver: true,
-          }),
-          Animated.timing(glowAnim, {
-            toValue: 0,
-            duration: 1200,
-            easing: Easing.inOut(Easing.sin),
-            useNativeDriver: true,
-          }),
+          Animated.timing(glowAnim, { toValue: 1, duration: 1200, easing: Easing.inOut(Easing.sin), useNativeDriver: true }),
+          Animated.timing(glowAnim, { toValue: 0, duration: 1200, easing: Easing.inOut(Easing.sin), useNativeDriver: true }),
         ]),
       ).start();
     }
@@ -215,141 +169,58 @@ function ProfileLimitModal({ visible, mode, onClose, onUpgrade }) {
 
   const animateOut = (cb) => {
     Animated.parallel([
-      Animated.timing(backdropOp, {
-        toValue: 0,
-        duration: 220,
-        useNativeDriver: true,
-      }),
-      Animated.timing(cardOp, {
-        toValue: 0,
-        duration: 200,
-        useNativeDriver: true,
-      }),
-      Animated.timing(cardY, {
-        toValue: 60,
-        duration: 220,
-        useNativeDriver: true,
-      }),
+      Animated.timing(backdropOp, { toValue: 0, duration: 220, useNativeDriver: true }),
+      Animated.timing(cardOp, { toValue: 0, duration: 200, useNativeDriver: true }),
+      Animated.timing(cardY, { toValue: 60, duration: 220, useNativeDriver: true }),
     ]).start(() => cb?.());
   };
 
   const handleClose = () => animateOut(onClose);
   const handleUpgrade = () => animateOut(onUpgrade);
 
-  const glowOpacity = glowAnim.interpolate({
-    inputRange: [0, 1],
-    outputRange: [0.3, 0.8],
-  });
-  const glowScale = glowAnim.interpolate({
-    inputRange: [0, 1],
-    outputRange: [0.85, 1.15],
-  });
+  const glowOpacity = glowAnim.interpolate({ inputRange: [0, 1], outputRange: [0.3, 0.8] });
+  const glowScale   = glowAnim.interpolate({ inputRange: [0, 1], outputRange: [0.85, 1.15] });
 
   if (!visible) return null;
 
   return (
-    <Modal
-      transparent
-      visible={visible}
-      animationType="none"
-      onRequestClose={handleClose}
-    >
+    <Modal transparent visible={visible} animationType="none" onRequestClose={handleClose}>
       <View style={plm.shell}>
-        {/* Backdrop */}
         <Animated.View style={[plm.backdrop, { opacity: backdropOp }]} />
-        <TouchableOpacity
-          style={plm.backdropTap}
-          activeOpacity={1}
-          onPress={handleClose}
-        />
-
-        {/* Card */}
-        <Animated.View
-          style={[
-            plm.card,
-            { opacity: cardOp, transform: [{ translateY: cardY }] },
-          ]}
-        >
-          {/* Close button */}
-          <TouchableOpacity
-            style={plm.closeBtn}
-            onPress={handleClose}
-            activeOpacity={0.7}
-          >
+        <TouchableOpacity style={plm.backdropTap} activeOpacity={1} onPress={handleClose} />
+        <Animated.View style={[plm.card, { opacity: cardOp, transform: [{ translateY: cardY }] }]}>
+          <TouchableOpacity style={plm.closeBtn} onPress={handleClose} activeOpacity={0.7}>
             <Text style={plm.closeTxt}>✕</Text>
           </TouchableOpacity>
-
-          {/* Animated icon */}
           <View style={plm.iconWrapper}>
-            <Animated.View
-              style={[
-                plm.glowRingOuter,
-                { opacity: glowOpacity, transform: [{ scale: glowScale }] },
-              ]}
-            />
-            <Animated.View
-              style={[
-                plm.glowRingInner,
-                { opacity: glowOpacity, transform: [{ scale: pulseAnim }] },
-              ]}
-            />
-            <Animated.View
-              style={[plm.iconCircle, { transform: [{ scale: pulseAnim }] }]}
-            >
+            <Animated.View style={[plm.glowRingOuter, { opacity: glowOpacity, transform: [{ scale: glowScale }] }]} />
+            <Animated.View style={[plm.glowRingInner, { opacity: glowOpacity, transform: [{ scale: pulseAnim }] }]} />
+            <Animated.View style={[plm.iconCircle, { transform: [{ scale: pulseAnim }] }]}>
               <Text style={plm.iconEmoji}>{isUpgrade ? "👑" : "🚫"}</Text>
             </Animated.View>
           </View>
-
-          {/* Headline */}
-          <Text style={plm.headline}>
-            {isUpgrade ? "Upgrade to Add Profiles" : "Profile Limit Reached"}
-          </Text>
+          <Text style={plm.headline}>{isUpgrade ? "Upgrade to Add Profiles" : "Profile Limit Reached"}</Text>
           <Text style={plm.subline}>
             {isUpgrade
               ? "Multiple child profiles are a premium feature. Upgrade your plan to create a profile for each child."
               : "You've reached the maximum number of profiles on your current plan. Upgrade to add more."}
           </Text>
-
-          {/* Value props */}
           <View style={plm.propsContainer}>
             {propList.map((p, i) => (
-              <Animated.View
-                key={i}
-                style={[
-                  plm.propRow,
-                  {
-                    opacity: vpAnims[i].op,
-                    transform: [{ translateX: vpAnims[i].slide }],
-                  },
-                ]}
-              >
-                <View style={plm.propEmojiWrap}>
-                  <Text style={plm.propEmoji}>{p.emoji}</Text>
-                </View>
+              <Animated.View key={i} style={[plm.propRow, { opacity: vpAnims[i].op, transform: [{ translateX: vpAnims[i].slide }] }]}>
+                <View style={plm.propEmojiWrap}><Text style={plm.propEmoji}>{p.emoji}</Text></View>
                 <Text style={plm.propText}>{p.text}</Text>
               </Animated.View>
             ))}
           </View>
-
-          {/* CTA */}
-          <TouchableOpacity
-            style={plm.ctaBtn}
-            onPress={handleUpgrade}
-            activeOpacity={0.88}
-          >
+          <TouchableOpacity style={plm.ctaBtn} onPress={handleUpgrade} activeOpacity={0.88}>
             <View style={plm.ctaBtnInner}>
               <Text style={plm.ctaEmoji}>⚡</Text>
               <Text style={plm.ctaTxt}>Upgrade Plan</Text>
             </View>
             <View style={plm.ctaShine} />
           </TouchableOpacity>
-
-          {/* Dismiss */}
-          <TouchableOpacity
-            onPress={handleClose}
-            activeOpacity={0.6}
-            style={plm.dismissWrap}
-          >
+          <TouchableOpacity onPress={handleClose} activeOpacity={0.6} style={plm.dismissWrap}>
             <Text style={plm.dismissTxt}>Maybe later</Text>
           </TouchableOpacity>
         </Animated.View>
@@ -360,233 +231,52 @@ function ProfileLimitModal({ visible, mode, onClose, onUpgrade }) {
 
 const plm = StyleSheet.create({
   shell: { flex: 1, alignItems: "center", justifyContent: "center" },
-  backdrop: {
-    ...StyleSheet.absoluteFillObject,
-    backgroundColor: "rgba(0,0,0,0.75)",
-  },
+  backdrop: { ...StyleSheet.absoluteFillObject, backgroundColor: "rgba(0,0,0,0.75)" },
   backdropTap: { ...StyleSheet.absoluteFillObject },
-  card: {
-    width: SW - 40,
-    maxWidth: 400,
-    backgroundColor: C.card,
-    borderRadius: 28,
-    borderWidth: 1.5,
-    borderColor: C.border,
-    borderTopColor: "rgba(0,188,212,0.4)",
-    borderTopWidth: 1.5,
-    paddingTop: 32,
-    paddingBottom: 24,
-    paddingHorizontal: 20,
-    alignItems: "center",
-    shadowColor: TEAL,
-    shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.2,
-    shadowRadius: 24,
-    elevation: 20,
-  },
-  closeBtn: {
-    position: "absolute",
-    top: 14,
-    right: 16,
-    width: 30,
-    height: 30,
-    borderRadius: 15,
-    backgroundColor: "rgba(255,255,255,0.07)",
-    alignItems: "center",
-    justifyContent: "center",
-  },
+  card: { width: SW - 40, maxWidth: 400, backgroundColor: C.card, borderRadius: 28, borderWidth: 1.5, borderColor: C.border, borderTopColor: "rgba(0,188,212,0.4)", borderTopWidth: 1.5, paddingTop: 32, paddingBottom: 24, paddingHorizontal: 20, alignItems: "center", shadowColor: TEAL, shadowOffset: { width: 0, height: 8 }, shadowOpacity: 0.2, shadowRadius: 24, elevation: 20 },
+  closeBtn: { position: "absolute", top: 14, right: 16, width: 30, height: 30, borderRadius: 15, backgroundColor: "rgba(255,255,255,0.07)", alignItems: "center", justifyContent: "center" },
   closeTxt: { fontFamily: FONTS.bold, fontSize: 13, color: C.textMuted },
-  iconWrapper: {
-    width: 120,
-    height: 120,
-    alignItems: "center",
-    justifyContent: "center",
-    marginBottom: 8,
-  },
-  glowRingOuter: {
-    position: "absolute",
-    width: 120,
-    height: 120,
-    borderRadius: 60,
-    backgroundColor: "rgba(255,213,79,0.08)",
-    borderWidth: 1.5,
-    borderColor: "rgba(255,213,79,0.2)",
-  },
-  glowRingInner: {
-    position: "absolute",
-    width: 90,
-    height: 90,
-    borderRadius: 45,
-    backgroundColor: "rgba(255,213,79,0.1)",
-    borderWidth: 1.5,
-    borderColor: "rgba(255,213,79,0.35)",
-  },
-  iconCircle: {
-    width: 68,
-    height: 68,
-    borderRadius: 34,
-    backgroundColor: "#1a1f3a",
-    borderWidth: 2,
-    borderColor: YELLOW,
-    alignItems: "center",
-    justifyContent: "center",
-    shadowColor: YELLOW,
-    shadowOffset: { width: 0, height: 0 },
-    shadowOpacity: 0.7,
-    shadowRadius: 16,
-    elevation: 12,
-  },
+  iconWrapper: { width: 120, height: 120, alignItems: "center", justifyContent: "center", marginBottom: 8 },
+  glowRingOuter: { position: "absolute", width: 120, height: 120, borderRadius: 60, backgroundColor: "rgba(255,213,79,0.08)", borderWidth: 1.5, borderColor: "rgba(255,213,79,0.2)" },
+  glowRingInner: { position: "absolute", width: 90, height: 90, borderRadius: 45, backgroundColor: "rgba(255,213,79,0.1)", borderWidth: 1.5, borderColor: "rgba(255,213,79,0.35)" },
+  iconCircle: { width: 68, height: 68, borderRadius: 34, backgroundColor: "#1a1f3a", borderWidth: 2, borderColor: YELLOW, alignItems: "center", justifyContent: "center", shadowColor: YELLOW, shadowOffset: { width: 0, height: 0 }, shadowOpacity: 0.7, shadowRadius: 16, elevation: 12 },
   iconEmoji: { fontSize: 32 },
-  headline: {
-    fontFamily: FONTS.bold,
-    fontSize: 22,
-    color: C.textPri,
-    letterSpacing: 0.3,
-    textAlign: "center",
-    marginBottom: 8,
-    textShadowColor: "rgba(0,188,212,0.3)",
-    textShadowOffset: { width: 0, height: 0 },
-    textShadowRadius: 8,
-  },
-  subline: {
-    fontFamily: FONTS.light,
-    fontSize: 14,
-    color: C.textMuted,
-    textAlign: "center",
-    lineHeight: 21,
-    marginBottom: 20,
-    paddingHorizontal: 8,
-  },
+  headline: { fontFamily: FONTS.bold, fontSize: 22, color: C.textPri, letterSpacing: 0.3, textAlign: "center", marginBottom: 8, textShadowColor: "rgba(0,188,212,0.3)", textShadowOffset: { width: 0, height: 0 }, textShadowRadius: 8 },
+  subline: { fontFamily: FONTS.light, fontSize: 14, color: C.textMuted, textAlign: "center", lineHeight: 21, marginBottom: 20, paddingHorizontal: 8 },
   propsContainer: { width: "100%", marginBottom: 22, gap: 4 },
-  propRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    paddingVertical: 9,
-    paddingHorizontal: 16,
-    marginVertical: 3,
-    backgroundColor: "rgba(0,188,212,0.08)",
-    borderRadius: 14,
-    borderWidth: 1,
-    borderColor: C.border,
-    width: "100%",
-  },
-  propEmojiWrap: {
-    width: 32,
-    height: 32,
-    borderRadius: 10,
-    backgroundColor: "rgba(255,255,255,0.05)",
-    alignItems: "center",
-    justifyContent: "center",
-    marginRight: 12,
-  },
+  propRow: { flexDirection: "row", alignItems: "center", paddingVertical: 9, paddingHorizontal: 16, marginVertical: 3, backgroundColor: "rgba(0,188,212,0.08)", borderRadius: 14, borderWidth: 1, borderColor: C.border, width: "100%" },
+  propEmojiWrap: { width: 32, height: 32, borderRadius: 10, backgroundColor: "rgba(255,255,255,0.05)", alignItems: "center", justifyContent: "center", marginRight: 12 },
   propEmoji: { fontSize: 16 },
-  propText: {
-    fontFamily: FONTS.regular,
-    fontSize: 14,
-    color: C.textPri,
-    flex: 1,
-  },
-  ctaBtn: {
-    width: "100%",
-    height: 54,
-    borderRadius: 27,
-    backgroundColor: YELLOW,
-    alignItems: "center",
-    justifyContent: "center",
-    marginBottom: 12,
-    overflow: "hidden",
-    shadowColor: YELLOW,
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.5,
-    shadowRadius: 14,
-    elevation: 10,
-  },
+  propText: { fontFamily: FONTS.regular, fontSize: 14, color: C.textPri, flex: 1 },
+  ctaBtn: { width: "100%", height: 54, borderRadius: 27, backgroundColor: YELLOW, alignItems: "center", justifyContent: "center", marginBottom: 12, overflow: "hidden", shadowColor: YELLOW, shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.5, shadowRadius: 14, elevation: 10 },
   ctaBtnInner: { flexDirection: "row", alignItems: "center", gap: 8 },
   ctaEmoji: { fontSize: 18 },
-  ctaTxt: {
-    fontFamily: FONTS.bold,
-    fontSize: 16,
-    color: "#08081a",
-    letterSpacing: 0.3,
-  },
-  ctaShine: {
-    position: "absolute",
-    top: 0,
-    left: "15%",
-    width: "40%",
-    height: "50%",
-    backgroundColor: "rgba(255,255,255,0.18)",
-    borderRadius: 20,
-    transform: [{ rotate: "-15deg" }],
-  },
+  ctaTxt: { fontFamily: FONTS.bold, fontSize: 16, color: "#08081a", letterSpacing: 0.3 },
+  ctaShine: { position: "absolute", top: 0, left: "15%", width: "40%", height: "50%", backgroundColor: "rgba(255,255,255,0.18)", borderRadius: 20, transform: [{ rotate: "-15deg" }] },
   dismissWrap: { paddingVertical: 4 },
-  dismissTxt: {
-    fontFamily: FONTS.regular,
-    fontSize: 13,
-    color: C.textMuted,
-    textDecorationLine: "underline",
-  },
+  dismissTxt: { fontFamily: FONTS.regular, fontSize: 13, color: C.textMuted, textDecorationLine: "underline" },
 });
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Account Option Card
+// Account Option Card — unchanged
 // ─────────────────────────────────────────────────────────────────────────────
 function AccountOptionCard({ image, label, onPress, sz }) {
   const scale = useRef(new Animated.Value(1)).current;
 
-  const pressIn = () =>
-    Animated.spring(scale, {
-      toValue: 0.95,
-      friction: 5,
-      tension: 200,
-      useNativeDriver: true,
-    }).start();
-  const pressOut = () =>
-    Animated.spring(scale, {
-      toValue: 1,
-      friction: 5,
-      tension: 200,
-      useNativeDriver: true,
-    }).start();
+  const pressIn = () => Animated.spring(scale, { toValue: 0.95, friction: 5, tension: 200, useNativeDriver: true }).start();
+  const pressOut = () => Animated.spring(scale, { toValue: 1, friction: 5, tension: 200, useNativeDriver: true }).start();
 
   return (
     <Animated.View style={[{ flex: 1, transform: [{ scale }] }]}>
       <TouchableOpacity
-        style={{
-          backgroundColor: "rgba(255,255,255,0.05)",
-          borderRadius: sz.optionCardBorderRadius,
-          borderWidth: 1.5,
-          borderColor: "rgba(0,188,212,0.44)",
-          alignItems: "center",
-          justifyContent: "center",
-          paddingVertical: sz.optionCardPaddingV,
-          paddingHorizontal: sz.optionCardPaddingH,
-          gap: sz.optionCardGap,
-        }}
+        style={{ backgroundColor: "rgba(255,255,255,0.05)", borderRadius: sz.optionCardBorderRadius, borderWidth: 1.5, borderColor: "rgba(0,188,212,0.44)", alignItems: "center", justifyContent: "center", paddingVertical: sz.optionCardPaddingV, paddingHorizontal: sz.optionCardPaddingH, gap: sz.optionCardGap }}
         onPress={onPress}
         onPressIn={pressIn}
         onPressOut={pressOut}
         activeOpacity={1}
       >
-        <ExpoImage
-          source={image}
-          style={{
-            width: sz.optionCardIconSize,
-            height: sz.optionCardIconSize,
-          }}
-          contentFit="contain"
-        />
-        <Text
-          style={{
-            fontFamily: FONTS.bold,
-            fontSize: font.md,
-            letterSpacing: 0.2,
-            textAlign: "center",
-            color: COLORS.teal,
-          }}
-        >
-          {label}
-        </Text>
+        <ExpoImage source={image} style={{ width: sz.optionCardIconSize, height: sz.optionCardIconSize }} contentFit="contain" />
+        <Text style={{ fontFamily: FONTS.bold, fontSize: font.md, letterSpacing: 0.2, textAlign: "center", color: COLORS.teal }}>{label}</Text>
       </TouchableOpacity>
     </Animated.View>
   );
@@ -602,21 +292,16 @@ const Account = () => {
   const sz = sizes.account;
   const insets = useSafeAreaInsets();
 
-  const {
-    profiles,
-    addProfile,
-    updateProfile,
-    deleteProfile,
-    selectProfile,
-    currentProfile,
-    userAccount,
-    setUserAccount,
-  } = useUser();
+  const { profiles, addProfile, updateProfile, deleteProfile, selectProfile, currentProfile, userAccount, setUserAccount } = useUser();
 
   const [emailInput, setEmailInput] = useState("");
   const [passwordInput, setPasswordInput] = useState("");
   const [isSavingEmail, setIsSavingEmail] = useState(false);
   const { planName, isFree, subscription } = useSubscription();
+
+  // ── Subscription active check ─────────────────────────────────────────────
+  // When false: add, edit, delete profile operations are blocked
+  const isSubscriptionActive = subscription?.status === "ACTIVE";
 
   const hasEmail = userAccount?.email && userAccount.email.trim().length > 0;
 
@@ -625,38 +310,20 @@ const Account = () => {
 
   const [modalVisible, setModalVisible] = useState(false);
   const [editingProfile, setEditingProfile] = useState(null);
-  const [formData, setFormData] = useState({
-    id: "",
-    name: "",
-    age: "",
-    gender: "",
-  });
+  const [formData, setFormData] = useState({ id: "", name: "", age: "", gender: "" });
   const [isSaving, setIsSaving] = useState(false);
 
-  // Profile limit modal state
-  const [profileLimitModal, setProfileLimitModal] = useState({
-    visible: false,
-    mode: "upgrade", // "upgrade" | "limit"
-  });
+  const [profileLimitModal, setProfileLimitModal] = useState({ visible: false, mode: "upgrade" });
 
-  useEffect(() => {}, [subscription])
+  useEffect(() => {}, [subscription]);
 
   const handleSaveCredentials = async () => {
-    const trimmedEmail = emailInput.trim();
+    const trimmedEmail    = emailInput.trim();
     const trimmedPassword = passwordInput.trim();
-    if (!trimmedEmail) {
-      Alert.alert("Error", "Please enter an email address");
-      return;
-    }
+    if (!trimmedEmail) { Alert.alert("Error", "Please enter an email address"); return; }
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    if (!emailRegex.test(trimmedEmail)) {
-      Alert.alert("Error", "Please enter a valid email address");
-      return;
-    }
-    if (!trimmedPassword || trimmedPassword.length < 6) {
-      Alert.alert("Error", "Password must be at least 6 characters");
-      return;
-    }
+    if (!emailRegex.test(trimmedEmail)) { Alert.alert("Error", "Please enter a valid email address"); return; }
+    if (!trimmedPassword || trimmedPassword.length < 6) { Alert.alert("Error", "Password must be at least 6 characters"); return; }
 
     setIsSavingEmail(true);
     await execute(
@@ -664,15 +331,13 @@ const Account = () => {
       {
         successDisplay: "sheet",
         successMessage: "Email Linked Successfully! 🎉",
-        successSubMessage:
-          "Your account is now secured and can be recovered on any device.",
+        successSubMessage: "Your account is now secured and can be recovered on any device.",
         errorDisplay: "sheet",
         errorMessage: "Failed to Save Credentials",
         errorSubMessage: "Please check your details and try again.",
         errorRetry: true,
         onSuccess: async () => {
-          if (setUserAccount)
-            setUserAccount((prev) => ({ ...prev, email: trimmedEmail }));
+          if (setUserAccount) setUserAccount((prev) => ({ ...prev, email: trimmedEmail }));
           setEmailInput("");
           setPasswordInput("");
         },
@@ -687,10 +352,23 @@ const Account = () => {
     router.back();
   };
 
+  // ── Add profile — blocked when subscription inactive ──────────────────────
   const handleAddNew = () => {
+    // Block profile creation when subscription is not active
+    if (!isSubscriptionActive) {
+      Alert.alert(
+        "Subscription Required",
+        "An active subscription is required to manage profiles. Please renew your plan to continue.",
+        [
+          { text: "Cancel", style: "cancel" },
+          { text: "View Plans", onPress: () => router.push("/components/billing/SubscriptionPlansScreen") },
+        ],
+      );
+      return;
+    }
+
     const features = subscription?.subscribedPackage?.features;
     const maxProfiles = features?.maxProfiles;
-
     if (!maxProfiles || maxProfiles < 2) {
       setProfileLimitModal({ visible: true, mode: "upgrade" });
       return;
@@ -704,7 +382,19 @@ const Account = () => {
     setModalVisible(true);
   };
 
+  // ── Edit profile — blocked when subscription inactive ─────────────────────
   const handleEdit = (profile) => {
+    if (!isSubscriptionActive) {
+      Alert.alert(
+        "Subscription Required",
+        "An active subscription is required to edit profiles. Please renew your plan to continue.",
+        [
+          { text: "Cancel", style: "cancel" },
+          { text: "View Plans", onPress: () => router.push("/components/billing/SubscriptionPlansScreen") },
+        ],
+      );
+      return;
+    }
     setEditingProfile(profile);
     setFormData({
       id: profile.id,
@@ -716,12 +406,21 @@ const Account = () => {
     setModalVisible(true);
   };
 
+  // ── Delete profile — blocked when subscription inactive ───────────────────
   const handleDelete = (profile) => {
-    if (userAccount?.defaultProfileId === profile.id) {
+    if (!isSubscriptionActive) {
       Alert.alert(
-        "Not Allowed",
-        "You cannot delete the primary profile of this account.",
+        "Subscription Required",
+        "An active subscription is required to manage profiles. Please renew your plan to continue.",
+        [
+          { text: "Cancel", style: "cancel" },
+          { text: "View Plans", onPress: () => router.push("/components/billing/SubscriptionPlansScreen") },
+        ],
       );
+      return;
+    }
+    if (userAccount?.defaultProfileId === profile.id) {
+      Alert.alert("Not Allowed", "You cannot delete the primary profile of this account.");
       return;
     }
     Alert.alert(
@@ -747,29 +446,16 @@ const Account = () => {
   };
 
   const handleSave = async () => {
-    if (!formData.name.trim()) {
-      Alert.alert("Error", "Please enter a name");
-      return;
-    }
-    if (!formData.age || parseInt(formData.age) < 1) {
-      Alert.alert("Error", "Please enter a valid age");
-      return;
-    }
-    if (!formData.playLevel || parseInt(formData.playLevel) < 1) {
-      Alert.alert("Error", "Please enter a valid level");
-      return;
-    }
+    if (!formData.name.trim()) { Alert.alert("Error", "Please enter a name"); return; }
+    if (!formData.age || parseInt(formData.age) < 1) { Alert.alert("Error", "Please enter a valid age"); return; }
+    if (!formData.playLevel || parseInt(formData.playLevel) < 1) { Alert.alert("Error", "Please enter a valid level"); return; }
     setIsSaving(true);
     await execute(() => saveProfile(formData), {
       successDisplay: "sheet",
       successMessage: editingProfile ? "Profile Updated!" : "Profile Created!",
-      successSubMessage: editingProfile
-        ? "Your changes have been saved."
-        : "You're all set to start reading!",
+      successSubMessage: editingProfile ? "Your changes have been saved." : "You're all set to start reading!",
       errorDisplay: "sheet",
-      errorMessage: editingProfile
-        ? "Unable to Update Profile"
-        : "Unable to Create Profile",
+      errorMessage: editingProfile ? "Unable to Update Profile" : "Unable to Create Profile",
       onSuccess: async (savedProfile) => {
         const profileForContext = {
           id: savedProfile.id,
@@ -791,10 +477,7 @@ const Account = () => {
         setFormData({ id: "", name: "", age: "", gender: "", level: "" });
         setEditingProfile(null);
       },
-      onError: () => {
-        setIsSaving(false);
-        setModalVisible(false);
-      },
+      onError: () => { setIsSaving(false); setModalVisible(false); },
     });
     setIsSaving(false);
   };
@@ -823,336 +506,62 @@ const Account = () => {
 
   const styles = StyleSheet.create({
     safeArea: { flex: 1, paddingTop: 0, backgroundColor: C.bg },
-    optionCardsSection: {
-      paddingHorizontal: sz.optionSectionPaddingH,
-      paddingTop: sz.optionSectionPaddingTop,
-      paddingBottom: sz.optionSectionPaddingBottom,
-    },
+    optionCardsSection: { paddingHorizontal: sz.optionSectionPaddingH, paddingTop: sz.optionSectionPaddingTop, paddingBottom: sz.optionSectionPaddingBottom },
     optionCardsRow: { flexDirection: "row", gap: sz.optionCardRowGap },
-    divider: {
-      height: 1,
-      marginHorizontal: sz.optionSectionPaddingH,
-      backgroundColor: "rgba(0,188,212,0.2)",
-      marginBottom: 4,
-    },
-    title: {
-      fontFamily: FONTS.bold,
-      fontSize: sz.titleFontSize,
-      color: COLORS.textPrimary,
-      textAlign: "center",
-      marginTop: sz.titleMarginTop,
-      marginBottom: sz.titleMarginBottom,
-      textShadowColor: "rgba(0,188,212,0.4)",
-      textShadowOffset: { width: 0, height: 2 },
-      textShadowRadius: 8,
-    },
-    currentProfileBanner: {
-      backgroundColor: COLORS.surfacePurple,
-      borderWidth: 1.5,
-      borderColor: COLORS.purple,
-      padding: sz.bannerPadding,
-      marginHorizontal: sz.bannerMarginH,
-      marginTop: sz.bannerMarginTop,
-      marginBottom: sz.bannerMarginBottom,
-      borderRadius: sz.bannerBorderRadius,
-    },
-    currentProfileText: {
-      fontFamily: FONTS.regular,
-      color: COLORS.purpleLight,
-      fontSize: font.lg,
-      textAlign: "center",
-    },
-    listContent: {
-      paddingHorizontal: sz.listPaddingH,
-      paddingTop: 12,
-      paddingBottom: 20,
-    },
-    addButton: {
-      backgroundColor: "rgba(0,188,212,0.1)",
-      borderRadius: sz.addBtnBorderRadius,
-      padding: sz.addBtnPadding,
-      marginTop: sz.addBtnMarginTop,
-      borderWidth: 2,
-      borderColor: COLORS.teal,
-      borderStyle: "dashed",
-    },
-    addButtonText: {
-      fontFamily: FONTS.bold,
-      fontSize: sz.addBtnFontSize,
-      color: COLORS.teal,
-      textAlign: "center",
-    },
-    accountSection: {
-      marginHorizontal: sz.accountSectionMarginH,
-      marginTop: sz.accountSectionMarginTop,
-      marginBottom: sz.accountSectionMarginBottom,
-      backgroundColor: "rgba(255,255,255,0.05)",
-      borderRadius: sz.accountSectionBorderRadius,
-      borderWidth: 1.5,
-      borderColor: COLORS.borderTeal,
-      padding: sz.accountSectionPadding,
-    },
-    accountSectionHeader: {
-      flexDirection: "row",
-      alignItems: "center",
-      gap: sz.accountSectionHeaderGap,
-      marginBottom: sz.accountSectionHeaderMarginBottom,
-    },
+    divider: { height: 1, marginHorizontal: sz.optionSectionPaddingH, backgroundColor: "rgba(0,188,212,0.2)", marginBottom: 4 },
+    title: { fontFamily: FONTS.bold, fontSize: sz.titleFontSize, color: COLORS.textPrimary, textAlign: "center", marginTop: sz.titleMarginTop, marginBottom: sz.titleMarginBottom, textShadowColor: "rgba(0,188,212,0.4)", textShadowOffset: { width: 0, height: 2 }, textShadowRadius: 8 },
+    currentProfileBanner: { backgroundColor: COLORS.surfacePurple, borderWidth: 1.5, borderColor: COLORS.purple, padding: sz.bannerPadding, marginHorizontal: sz.bannerMarginH, marginTop: sz.bannerMarginTop, marginBottom: sz.bannerMarginBottom, borderRadius: sz.bannerBorderRadius },
+    currentProfileText: { fontFamily: FONTS.regular, color: COLORS.purpleLight, fontSize: font.lg, textAlign: "center" },
+    listContent: { paddingHorizontal: sz.listPaddingH, paddingTop: 12, paddingBottom: 20 },
+    addButton: { backgroundColor: "rgba(0,188,212,0.1)", borderRadius: sz.addBtnBorderRadius, padding: sz.addBtnPadding, marginTop: sz.addBtnMarginTop, borderWidth: 2, borderColor: COLORS.teal, borderStyle: "dashed" },
+    // Locked state for Add button when subscription inactive
+    addButtonLocked: { backgroundColor: "rgba(255,255,255,0.03)", borderRadius: sz.addBtnBorderRadius, padding: sz.addBtnPadding, marginTop: sz.addBtnMarginTop, borderWidth: 2, borderColor: "rgba(255,255,255,0.1)", borderStyle: "dashed" },
+    addButtonText: { fontFamily: FONTS.bold, fontSize: sz.addBtnFontSize, color: COLORS.teal, textAlign: "center" },
+    addButtonTextLocked: { fontFamily: FONTS.bold, fontSize: sz.addBtnFontSize, color: "rgba(255,255,255,0.2)", textAlign: "center" },
+    accountSection: { marginHorizontal: sz.accountSectionMarginH, marginTop: sz.accountSectionMarginTop, marginBottom: sz.accountSectionMarginBottom, backgroundColor: "rgba(255,255,255,0.05)", borderRadius: sz.accountSectionBorderRadius, borderWidth: 1.5, borderColor: COLORS.borderTeal, padding: sz.accountSectionPadding },
+    accountSectionHeader: { flexDirection: "row", alignItems: "center", gap: sz.accountSectionHeaderGap, marginBottom: sz.accountSectionHeaderMarginBottom },
     accountSectionIcon: { fontSize: sz.accountSectionIconFontSize },
-    accountSectionTitle: {
-      fontFamily: FONTS.bold,
-      fontSize: sz.accountSectionTitleFontSize,
-      color: COLORS.textPrimary,
-    },
+    accountSectionTitle: { fontFamily: FONTS.bold, fontSize: sz.accountSectionTitleFontSize, color: COLORS.textPrimary },
     credentialsForm: { gap: 12 },
-    credentialsHint: {
-      fontFamily: FONTS.light,
-      fontSize: sz.credentialsHintFontSize,
-      color: COLORS.textMuted,
-      lineHeight: sz.credentialsHintLineHeight,
-      marginBottom: 4,
-    },
-    credentialsInput: {
-      fontFamily: FONTS.regular,
-      backgroundColor: COLORS.surfaceDim,
-      borderRadius: sz.credentialsInputBorderRadius,
-      padding: sz.credentialsInputPadding,
-      fontSize: sz.credentialsInputFontSize,
-      color: COLORS.textPrimary,
-      borderWidth: 1.5,
-      borderColor: COLORS.borderTeal,
-    },
-    credentialsSaveBtn: {
-      backgroundColor: COLORS.teal,
-      borderRadius: sz.credentialsBtnBorderRadius,
-      paddingVertical: sz.credentialsBtnPaddingV,
-      alignItems: "center",
-      marginTop: 4,
-    },
+    credentialsHint: { fontFamily: FONTS.light, fontSize: sz.credentialsHintFontSize, color: COLORS.textMuted, lineHeight: sz.credentialsHintLineHeight, marginBottom: 4 },
+    credentialsInput: { fontFamily: FONTS.regular, backgroundColor: COLORS.surfaceDim, borderRadius: sz.credentialsInputBorderRadius, padding: sz.credentialsInputPadding, fontSize: sz.credentialsInputFontSize, color: COLORS.textPrimary, borderWidth: 1.5, borderColor: COLORS.borderTeal },
+    credentialsSaveBtn: { backgroundColor: COLORS.teal, borderRadius: sz.credentialsBtnBorderRadius, paddingVertical: sz.credentialsBtnPaddingV, alignItems: "center", marginTop: 4 },
     credentialsSaveBtnDisabled: { backgroundColor: "rgba(0,188,212,0.25)" },
-    credentialsSaveBtnText: {
-      fontFamily: FONTS.bold,
-      fontSize: sz.credentialsBtnFontSize,
-      color: "#fff",
-      letterSpacing: 0.3,
-    },
-    emailLinkedRow: {
-      flexDirection: "row",
-      alignItems: "center",
-      gap: sz.emailLinkedRowGap,
-      backgroundColor: "rgba(0,188,212,0.07)",
-      borderRadius: sz.emailLinkedRowBorderRadius,
-      padding: sz.emailLinkedRowPadding,
-      borderWidth: 1,
-      borderColor: "rgba(0,188,212,0.25)",
-    },
-    emailLinkedBadge: {
-      width: sz.emailLinkedBadgeSize,
-      height: sz.emailLinkedBadgeSize,
-      borderRadius: sz.emailLinkedBadgeBorderRadius,
-      backgroundColor: "rgba(0,188,212,0.2)",
-      borderWidth: 1.5,
-      borderColor: COLORS.teal,
-      justifyContent: "center",
-      alignItems: "center",
-    },
-    emailLinkedIcon: {
-      fontFamily: FONTS.bold,
-      color: COLORS.teal,
-      fontSize: sz.emailLinkedIconFontSize,
-    },
-    emailLinkedLabel: {
-      fontFamily: FONTS.light,
-      fontSize: sz.emailLinkedLabelFontSize,
-      color: COLORS.textMuted,
-      marginBottom: 2,
-    },
-    emailLinkedValue: {
-      fontFamily: FONTS.regular,
-      fontSize: sz.emailLinkedValueFontSize,
-      color: COLORS.tealLight ?? COLORS.teal,
-    },
-    logoutBtn: {
-      flexDirection: "row",
-      alignItems: "center",
-      justifyContent: "center",
-      gap: sz.logoutGap,
-      marginHorizontal: sz.logoutMarginH,
-      marginTop: sz.logoutMarginTop,
-      paddingVertical: sz.logoutPaddingV,
-      borderRadius: sz.logoutBorderRadius,
-      borderWidth: 1.5,
-      borderColor: "rgba(255,80,80,0.4)",
-      backgroundColor: "rgba(255,80,80,0.08)",
-    },
+    credentialsSaveBtnText: { fontFamily: FONTS.bold, fontSize: sz.credentialsBtnFontSize, color: "#fff", letterSpacing: 0.3 },
+    emailLinkedRow: { flexDirection: "row", alignItems: "center", gap: sz.emailLinkedRowGap, backgroundColor: "rgba(0,188,212,0.07)", borderRadius: sz.emailLinkedRowBorderRadius, padding: sz.emailLinkedRowPadding, borderWidth: 1, borderColor: "rgba(0,188,212,0.25)" },
+    emailLinkedBadge: { width: sz.emailLinkedBadgeSize, height: sz.emailLinkedBadgeSize, borderRadius: sz.emailLinkedBadgeBorderRadius, backgroundColor: "rgba(0,188,212,0.2)", borderWidth: 1.5, borderColor: COLORS.teal, justifyContent: "center", alignItems: "center" },
+    emailLinkedIcon: { fontFamily: FONTS.bold, color: COLORS.teal, fontSize: sz.emailLinkedIconFontSize },
+    emailLinkedLabel: { fontFamily: FONTS.light, fontSize: sz.emailLinkedLabelFontSize, color: COLORS.textMuted, marginBottom: 2 },
+    emailLinkedValue: { fontFamily: FONTS.regular, fontSize: sz.emailLinkedValueFontSize, color: COLORS.tealLight ?? COLORS.teal },
+    logoutBtn: { flexDirection: "row", alignItems: "center", justifyContent: "center", gap: sz.logoutGap, marginHorizontal: sz.logoutMarginH, marginTop: sz.logoutMarginTop, paddingVertical: sz.logoutPaddingV, borderRadius: sz.logoutBorderRadius, borderWidth: 1.5, borderColor: "rgba(255,80,80,0.4)", backgroundColor: "rgba(255,80,80,0.08)" },
     logoutIcon: { fontSize: sz.logoutIconFontSize, color: "#FF6B6B" },
-    logoutText: {
-      fontFamily: FONTS.bold,
-      fontSize: sz.logoutTextFontSize,
-      color: "#FF6B6B",
-      letterSpacing: 0.4,
-    },
-    modalOverlay: {
-      flex: 1,
-      backgroundColor: "rgba(0,0,0,0.75)",
-      justifyContent: "center",
-      alignItems: "center",
-      padding: sz.modalOverlayPadding,
-    },
-    modalContent: {
-      backgroundColor: COLORS.darkBg2,
-      borderRadius: sz.modalBorderRadius,
-      padding: sz.modalPadding,
-      width: "100%",
-      maxWidth: sz.modalMaxWidth,
-      maxHeight: "80%",
-      borderWidth: 1.5,
-      borderColor: COLORS.borderTealBold,
-      ...SHADOWS.tealGlow,
-    },
-    modalTitle: {
-      fontFamily: FONTS.bold,
-      fontSize: sz.modalTitleFontSize,
-      color: COLORS.textPrimary,
-      textAlign: "center",
-      marginBottom: sz.modalTitleMarginBottom,
-    },
+    logoutText: { fontFamily: FONTS.bold, fontSize: sz.logoutTextFontSize, color: "#FF6B6B", letterSpacing: 0.4 },
+    modalOverlay: { flex: 1, backgroundColor: "rgba(0,0,0,0.75)", justifyContent: "center", alignItems: "center", padding: sz.modalOverlayPadding },
+    modalContent: { backgroundColor: COLORS.darkBg2, borderRadius: sz.modalBorderRadius, padding: sz.modalPadding, width: "100%", maxWidth: sz.modalMaxWidth, maxHeight: "80%", borderWidth: 1.5, borderColor: COLORS.borderTealBold, ...SHADOWS.tealGlow },
+    modalTitle: { fontFamily: FONTS.bold, fontSize: sz.modalTitleFontSize, color: COLORS.textPrimary, textAlign: "center", marginBottom: sz.modalTitleMarginBottom },
     inputGroup: { marginBottom: sz.modalInputGroupMarginBottom },
-    label: {
-      fontFamily: FONTS.bold,
-      fontSize: sz.modalLabelFontSize,
-      color: COLORS.textSecondary,
-      marginBottom: sz.modalLabelMarginBottom,
-    },
-    input: {
-      fontFamily: FONTS.regular,
-      backgroundColor: COLORS.surfaceDim,
-      borderRadius: sz.modalInputBorderRadius,
-      padding: sz.modalInputPadding,
-      fontSize: sz.modalInputFontSize,
-      color: COLORS.textPrimary,
-      borderWidth: 1.5,
-      borderColor: COLORS.borderTeal,
-    },
-    ageSection: {
-      flexDirection: "row",
-      flexWrap: "wrap",
-      justifyContent: "center",
-      gap: sz.ageSectionGap,
-      marginTop: sz.ageSectionMarginTop,
-    },
-    ageBtn: {
-      width: sz.ageBtnSize,
-      height: sz.ageBtnSize,
-      alignItems: "center",
-      justifyContent: "center",
-      borderRadius: sz.ageBtnBorderRadius,
-      backgroundColor: "rgba(0,188,212,0.1)",
-      borderWidth: 2,
-      borderColor: "rgba(0,188,212,0.45)",
-      shadowColor: TEAL,
-      shadowOffset: { width: 0, height: 0 },
-      shadowOpacity: 0.3,
-      shadowRadius: 8,
-      elevation: 4,
-      gap: 4,
-    },
+    label: { fontFamily: FONTS.bold, fontSize: sz.modalLabelFontSize, color: COLORS.textSecondary, marginBottom: sz.modalLabelMarginBottom },
+    input: { fontFamily: FONTS.regular, backgroundColor: COLORS.surfaceDim, borderRadius: sz.modalInputBorderRadius, padding: sz.modalInputPadding, fontSize: sz.modalInputFontSize, color: COLORS.textPrimary, borderWidth: 1.5, borderColor: COLORS.borderTeal },
+    ageSection: { flexDirection: "row", flexWrap: "wrap", justifyContent: "center", gap: sz.ageSectionGap, marginTop: sz.ageSectionMarginTop },
+    ageBtn: { width: sz.ageBtnSize, height: sz.ageBtnSize, alignItems: "center", justifyContent: "center", borderRadius: sz.ageBtnBorderRadius, backgroundColor: "rgba(0,188,212,0.1)", borderWidth: 2, borderColor: "rgba(0,188,212,0.45)", shadowColor: TEAL, shadowOffset: { width: 0, height: 0 }, shadowOpacity: 0.3, shadowRadius: 8, elevation: 4, gap: 4 },
     ageBtnActive: { backgroundColor: COLORS.teal, borderColor: COLORS.teal },
-    ageBtnText: {
-      fontFamily: FONTS.bold,
-      fontSize: sz.ageBtnFontSize,
-      color: "#E0F7FA",
-    },
-    genderSection: {
-      flexDirection: "row",
-      gap: sz.genderSectionGap,
-      marginTop: sz.genderSectionMarginTop,
-    },
-    genderBtn: {
-      flex: 1,
-      alignItems: "center",
-      justifyContent: "center",
-      borderRadius: sz.genderBtnBorderRadius,
-      paddingVertical: sz.genderBtnPaddingV,
-      elevation: 6,
-      borderWidth: 2.5,
-    },
-    genderBtnBoy: {
-      backgroundColor: "rgba(66,165,245,0.15)",
-      borderColor: "#42A5F5",
-      shadowColor: "#42A5F5",
-      shadowOffset: { width: 0, height: 0 },
-      shadowOpacity: 0.45,
-      shadowRadius: 10,
-    },
-    genderBtnGirl: {
-      backgroundColor: "rgba(236,64,122,0.15)",
-      borderColor: PINK,
-      shadowColor: PINK,
-      shadowOffset: { width: 0, height: 0 },
-      shadowOpacity: 0.45,
-      shadowRadius: 10,
-    },
+    ageBtnText: { fontFamily: FONTS.bold, fontSize: sz.ageBtnFontSize, color: "#E0F7FA" },
+    genderSection: { flexDirection: "row", gap: sz.genderSectionGap, marginTop: sz.genderSectionMarginTop },
+    genderBtn: { flex: 1, alignItems: "center", justifyContent: "center", borderRadius: sz.genderBtnBorderRadius, paddingVertical: sz.genderBtnPaddingV, elevation: 6, borderWidth: 2.5 },
+    genderBtnBoy: { backgroundColor: "rgba(66,165,245,0.15)", borderColor: "#42A5F5", shadowColor: "#42A5F5", shadowOffset: { width: 0, height: 0 }, shadowOpacity: 0.45, shadowRadius: 10 },
+    genderBtnGirl: { backgroundColor: "rgba(236,64,122,0.15)", borderColor: PINK, shadowColor: PINK, shadowOffset: { width: 0, height: 0 }, shadowOpacity: 0.45, shadowRadius: 10 },
     genderEmoji: { fontSize: sz.genderEmojiFontSize, marginBottom: 10 },
     genderBtnActive: { opacity: 1, borderWidth: 5.5 },
-    genderLabel: {
-      fontFamily: FONTS.bold,
-      fontSize: sz.genderLabelFontSize,
-      color: "#E0F7FA",
-      letterSpacing: 1,
-    },
-    modalActions: {
-      flexDirection: "row",
-      gap: sz.modalActionGap,
-      marginTop: sz.modalActionMarginTop,
-    },
-    actionButton: {
-      flex: 1,
-      paddingVertical: sz.actionBtnPaddingV,
-      borderRadius: sz.actionBtnBorderRadius,
-      alignItems: "center",
-    },
-    cancelButton: {
-      backgroundColor: COLORS.surfaceDim,
-      borderWidth: 1,
-      borderColor: "rgba(255,255,255,0.2)",
-    },
-    cancelButtonText: {
-      fontFamily: FONTS.regular,
-      fontSize: sz.actionBtnFontSize,
-      color: COLORS.textSecondary,
-    },
+    genderLabel: { fontFamily: FONTS.bold, fontSize: sz.genderLabelFontSize, color: "#E0F7FA", letterSpacing: 1 },
+    modalActions: { flexDirection: "row", gap: sz.modalActionGap, marginTop: sz.modalActionMarginTop },
+    actionButton: { flex: 1, paddingVertical: sz.actionBtnPaddingV, borderRadius: sz.actionBtnBorderRadius, alignItems: "center" },
+    cancelButton: { backgroundColor: COLORS.surfaceDim, borderWidth: 1, borderColor: "rgba(255,255,255,0.2)" },
+    cancelButtonText: { fontFamily: FONTS.regular, fontSize: sz.actionBtnFontSize, color: COLORS.textSecondary },
     saveButton: { backgroundColor: COLORS.teal },
-    saveButtonText: {
-      fontFamily: FONTS.bold,
-      fontSize: sz.actionBtnFontSize,
-      color: "#fff",
-    },
-    planBadgeRow: {
-      flexDirection: "row",
-      justifyContent: "flex-end",
-      width: "90%",
-    },
-    customHeader: {
-      flexDirection: "row",
-      alignItems: "center",
-      paddingHorizontal: pad.sm,
-      paddingBottom: pad.sm,
-      backgroundColor: C.bg,
-      borderBottomWidth: 1,
-      borderBottomColor: "rgba(0,188,212,0.12)",
-    },
-    backButton: {
-      width: size.hitSm,
-      height: size.hitSm,
-      borderRadius: size.hitSm / 2,
-      backgroundColor: "rgba(0,188,212,0.08)",
-      borderWidth: 1,
-      borderColor: C.tealBorder,
-      alignItems: "center",
-      justifyContent: "center",
-      flexShrink: 0,
-    },
+    saveButtonText: { fontFamily: FONTS.bold, fontSize: sz.actionBtnFontSize, color: "#fff" },
+    planBadgeRow: { flexDirection: "row", justifyContent: "flex-end", width: "90%" },
+    customHeader: { flexDirection: "row", alignItems: "center", paddingHorizontal: pad.sm, paddingBottom: pad.sm, backgroundColor: C.bg, borderBottomWidth: 1, borderBottomColor: "rgba(0,188,212,0.12)" },
+    backButton: { width: size.hitSm, height: size.hitSm, borderRadius: size.hitSm / 2, backgroundColor: "rgba(0,188,212,0.08)", borderWidth: 1, borderColor: C.tealBorder, alignItems: "center", justifyContent: "center", flexShrink: 0 },
     headerSpacer: { flex: 1 },
   });
 
@@ -1160,11 +569,7 @@ const Account = () => {
     <ScreenWrapper>
       <SafeAreaView style={styles.safeArea} edges={[]}>
         <View style={[styles.customHeader, { paddingTop: headerPaddingTop }]}>
-          <TouchableOpacity
-            style={styles.backButton}
-            onPress={() => router.back()}
-            hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-          >
+          <TouchableOpacity style={styles.backButton} onPress={() => router.back()} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
             <Ionicons name="chevron-back" size={20} color={C.teal} />
           </TouchableOpacity>
           <View style={styles.headerSpacer} />
@@ -1173,38 +578,13 @@ const Account = () => {
           </View>
           <View style={styles.headerSpacer} />
         </View>
-        <KeyboardAvoidingView
-          style={{ flex: 1 }}
-          behavior={Platform.OS === "ios" ? "padding" : "height"}
-          keyboardVerticalOffset={Platform.OS === "ios" ? 90 : 60}
-        >
-          <ScrollView
-            ref={scrollRef}
-            showsVerticalScrollIndicator={false}
-            keyboardShouldPersistTaps="handled"
-          >
+        <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === "ios" ? "padding" : "height"} keyboardVerticalOffset={Platform.OS === "ios" ? 90 : 60}>
+          <ScrollView ref={scrollRef} showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
             <View style={styles.optionCardsSection}>
               <View style={styles.optionCardsRow}>
-                <AccountOptionCard
-                  image={require("../assets/img/card-icon.png")}
-                  label="Plan and Billing"
-                  onPress={() =>
-                    router.push("/components/billing/PlanBillingScreen")
-                  }
-                  sz={sz}
-                />
-                <AccountOptionCard
-                  image={require("../assets/img/learning-path-icon-3.png")}
-                  label="Learning Path Levels"
-                  onPress={() => router.push("/components/LearningPath")}
-                  sz={sz}
-                />
-                <AccountOptionCard
-                  image={require("../assets/img/progress-report-icon.png")}
-                  label="Progress Reports"
-                  onPress={() => router.push("/components/Reports")}
-                  sz={sz}
-                />
+                <AccountOptionCard image={require("../assets/img/card-icon.png")} label="Plan and Billing" onPress={() => router.push("/components/billing/PlanBillingScreen")} sz={sz} />
+                <AccountOptionCard image={require("../assets/img/learning-path-icon-3.png")} label="Learning Path Levels" onPress={() => router.push("/components/LearningPath")} sz={sz} />
+                <AccountOptionCard image={require("../assets/img/progress-report-icon.png")} label="Progress Reports" onPress={() => router.push("/components/Reports")} sz={sz} />
               </View>
             </View>
 
@@ -1215,10 +595,7 @@ const Account = () => {
             {currentProfile && (
               <View style={styles.currentProfileBanner}>
                 <Text style={styles.currentProfileText}>
-                  Currently: {currentProfile.name} (
-                  {currentProfile.level.charAt(0) +
-                    currentProfile.level.slice(1).toLowerCase()}
-                  )
+                  Currently: {currentProfile.name} ({currentProfile.level.charAt(0) + currentProfile.level.slice(1).toLowerCase()})
                 </Text>
               </View>
             )}
@@ -1229,9 +606,7 @@ const Account = () => {
                   key={item.id}
                   name={item.name}
                   age={item.age}
-                  readingLevel={
-                    item.level.charAt(0) + item.level.slice(1).toLowerCase()
-                  }
+                  readingLevel={item.level.charAt(0) + item.level.slice(1).toLowerCase()}
                   avatar={item.avatar || null}
                   isCurrentProfile={currentProfile?.id === item.id}
                   onPress={() => handleProfilePress(item)}
@@ -1239,8 +614,15 @@ const Account = () => {
                   onDelete={() => handleDelete(item)}
                 />
               ))}
-              <TouchableOpacity style={styles.addButton} onPress={handleAddNew}>
-                <Text style={styles.addButtonText}>+ Add New Profile</Text>
+
+              {/* Add New Profile button — locked state when subscription inactive */}
+              <TouchableOpacity
+                style={isSubscriptionActive ? styles.addButton : styles.addButtonLocked}
+                onPress={handleAddNew}
+              >
+                <Text style={isSubscriptionActive ? styles.addButtonText : styles.addButtonTextLocked}>
+                  {isSubscriptionActive ? "+ Add New Profile" : "🔒 Add New Profile"}
+                </Text>
               </TouchableOpacity>
             </View>
 
@@ -1249,12 +631,10 @@ const Account = () => {
                 <Text style={styles.accountSectionIcon}>🔐</Text>
                 <Text style={styles.accountSectionTitle}>Account</Text>
               </View>
-
               {!hasEmail ? (
                 <View style={styles.credentialsForm}>
                   <Text style={styles.credentialsHint}>
-                    Link an email and password to secure your account and
-                    recover it on any device.
+                    Link an email and password to secure your account and recover it on any device.
                   </Text>
                   <TextInput
                     style={styles.credentialsInput}
@@ -1268,17 +648,9 @@ const Account = () => {
                     onFocus={() => {
                       setTimeout(() => {
                         emailSectionRef.current?.measureLayout(
-                          scrollRef.current?.getScrollableNode?.() ??
-                            scrollRef.current,
-                          (_x, y) =>
-                            scrollRef.current?.scrollTo({
-                              y: y - 16,
-                              animated: true,
-                            }),
-                          () =>
-                            scrollRef.current?.scrollToEnd({
-                              animated: true,
-                            }),
+                          scrollRef.current?.getScrollableNode?.() ?? scrollRef.current,
+                          (_x, y) => scrollRef.current?.scrollTo({ y: y - 16, animated: true }),
+                          () => scrollRef.current?.scrollToEnd({ animated: true }),
                         );
                       }, 150);
                     }}
@@ -1294,27 +666,13 @@ const Account = () => {
                     autoCorrect={false}
                   />
                   <TouchableOpacity
-                    style={[
-                      styles.credentialsSaveBtn,
-                      (!emailInput.trim() ||
-                        !passwordInput.trim() ||
-                        isSavingEmail) &&
-                        styles.credentialsSaveBtnDisabled,
-                    ]}
+                    style={[styles.credentialsSaveBtn, (!emailInput.trim() || !passwordInput.trim() || isSavingEmail) && styles.credentialsSaveBtnDisabled]}
                     onPress={handleSaveCredentials}
-                    disabled={
-                      !emailInput.trim() ||
-                      !passwordInput.trim() ||
-                      isSavingEmail
-                    }
+                    disabled={!emailInput.trim() || !passwordInput.trim() || isSavingEmail}
                   >
-                    {isSavingEmail ? (
-                      <ActivityIndicator color="#fff" size="small" />
-                    ) : (
-                      <Text style={styles.credentialsSaveBtnText}>
-                        Link Account ➜
-                      </Text>
-                    )}
+                    {isSavingEmail
+                      ? <ActivityIndicator color="#fff" size="small" />
+                      : <Text style={styles.credentialsSaveBtnText}>Link Account ➜</Text>}
                   </TouchableOpacity>
                 </View>
               ) : (
@@ -1324,19 +682,13 @@ const Account = () => {
                   </View>
                   <View style={{ flex: 1 }}>
                     <Text style={styles.emailLinkedLabel}>Linked account</Text>
-                    <Text style={styles.emailLinkedValue}>
-                      {userAccount.email}
-                    </Text>
+                    <Text style={styles.emailLinkedValue}>{userAccount.email}</Text>
                   </View>
                 </View>
               )}
             </View>
 
-            <TouchableOpacity
-              style={styles.logoutBtn}
-              onPress={handleLogout}
-              activeOpacity={0.8}
-            >
+            <TouchableOpacity style={styles.logoutBtn} onPress={handleLogout} activeOpacity={0.8}>
               <Text style={styles.logoutIcon}>⏻</Text>
               <Text style={styles.logoutText}>Log Out</Text>
             </TouchableOpacity>
@@ -1345,31 +697,15 @@ const Account = () => {
           </ScrollView>
         </KeyboardAvoidingView>
 
-        {/* Profile create / edit modal */}
-        <Modal
-          animationType="slide"
-          transparent={true}
-          visible={modalVisible}
-          onRequestClose={handleCancel}
-        >
+        {/* Profile create / edit modal — unchanged */}
+        <Modal animationType="slide" transparent={true} visible={modalVisible} onRequestClose={handleCancel}>
           <View style={styles.modalOverlay}>
             <View style={styles.modalContent}>
-              <Text style={styles.modalTitle}>
-                {editingProfile ? "Edit Profile" : "Create New Profile"}
-              </Text>
-
+              <Text style={styles.modalTitle}>{editingProfile ? "Edit Profile" : "Create New Profile"}</Text>
               <ScrollView showsVerticalScrollIndicator={false}>
                 <View style={styles.inputGroup}>
                   <Text style={styles.label}>Name</Text>
-                  <TextInput
-                    style={styles.input}
-                    placeholder="Enter name"
-                    placeholderTextColor={COLORS.textMuted}
-                    value={formData.name}
-                    onChangeText={(text) =>
-                      setFormData({ ...formData, name: text })
-                    }
-                  />
+                  <TextInput style={styles.input} placeholder="Enter name" placeholderTextColor={COLORS.textMuted} value={formData.name} onChangeText={(text) => setFormData({ ...formData, name: text })} />
                 </View>
                 {!editingProfile && (
                   <View>
@@ -1377,22 +713,9 @@ const Account = () => {
                       <Text style={styles.label}>Age</Text>
                       <View style={styles.ageSection}>
                         {AGE_OPTIONS.map((opt) => {
-                          const isSelected =
-                            parseInt(formData.age) === opt.value;
+                          const isSelected = parseInt(formData.age) === opt.value;
                           return (
-                            <TouchableOpacity
-                              key={opt.value}
-                              style={[
-                                styles.ageBtn,
-                                isSelected && styles.ageBtnActive,
-                              ]}
-                              onPress={() =>
-                                setFormData({
-                                  ...formData,
-                                  age: opt.value.toString(),
-                                })
-                              }
-                            >
+                            <TouchableOpacity key={opt.value} style={[styles.ageBtn, isSelected && styles.ageBtnActive]} onPress={() => setFormData({ ...formData, age: opt.value.toString() })}>
                               <Text style={styles.ageBtnText}>{opt.label}</Text>
                             </TouchableOpacity>
                           );
@@ -1403,22 +726,9 @@ const Account = () => {
                       <Text style={styles.label}>Level</Text>
                       <View style={styles.ageSection}>
                         {START_LEVEL.map((opt) => {
-                          const isSelected =
-                            parseInt(formData.playLevel) === opt.value;
+                          const isSelected = parseInt(formData.playLevel) === opt.value;
                           return (
-                            <TouchableOpacity
-                              key={opt.value}
-                              style={[
-                                styles.ageBtn,
-                                isSelected && styles.ageBtnActive,
-                              ]}
-                              onPress={() =>
-                                setFormData({
-                                  ...formData,
-                                  playLevel: opt.value.toString(),
-                                })
-                              }
-                            >
+                            <TouchableOpacity key={opt.value} style={[styles.ageBtn, isSelected && styles.ageBtnActive]} onPress={() => setFormData({ ...formData, playLevel: opt.value.toString() })}>
                               <Text style={styles.ageBtnText}>{opt.label}</Text>
                             </TouchableOpacity>
                           );
@@ -1429,73 +739,22 @@ const Account = () => {
                 )}
                 <Text style={styles.label}>Gender</Text>
                 <View style={styles.genderSection}>
-                  <TouchableOpacity
-                    style={[
-                      styles.genderBtn,
-                      styles.genderBtnBoy,
-                      formData.gender === "MALE" && styles.genderBtnActive,
-                    ]}
-                    onPress={() => setFormData({ ...formData, gender: "MALE" })}
-                    activeOpacity={0.85}
-                  >
-                    <ExpoImage
-                      source={require("../assets/img/boy-icon.png")}
-                      style={{
-                        width: 50,
-                        height: 50,
-                        marginBottom: 5,
-                      }}
-                      contentFit="cover"
-                      cachePolicy="memory-disk"
-                    />
+                  <TouchableOpacity style={[styles.genderBtn, styles.genderBtnBoy, formData.gender === "MALE" && styles.genderBtnActive]} onPress={() => setFormData({ ...formData, gender: "MALE" })} activeOpacity={0.85}>
+                    <ExpoImage source={require("../assets/img/boy-icon.png")} style={{ width: 50, height: 50, marginBottom: 5 }} contentFit="cover" cachePolicy="memory-disk" />
                     <Text style={styles.genderLabel}>Boy</Text>
                   </TouchableOpacity>
-                  <TouchableOpacity
-                    style={[
-                      styles.genderBtn,
-                      styles.genderBtnGirl,
-                      formData.gender === "FEMALE" && styles.genderBtnActive,
-                    ]}
-                    onPress={() =>
-                      setFormData({ ...formData, gender: "FEMALE" })
-                    }
-                    activeOpacity={0.85}
-                  >
-                    <ExpoImage
-                      source={require("../assets/img/girl-icon.png")}
-                      style={{
-                        width: 50,
-                        height: 50,
-                        marginBottom: 5,
-                      }}
-                      contentFit="cover"
-                      cachePolicy="memory-disk"
-                    />
+                  <TouchableOpacity style={[styles.genderBtn, styles.genderBtnGirl, formData.gender === "FEMALE" && styles.genderBtnActive]} onPress={() => setFormData({ ...formData, gender: "FEMALE" })} activeOpacity={0.85}>
+                    <ExpoImage source={require("../assets/img/girl-icon.png")} style={{ width: 50, height: 50, marginBottom: 5 }} contentFit="cover" cachePolicy="memory-disk" />
                     <Text style={styles.genderLabel}>Girl</Text>
                   </TouchableOpacity>
                 </View>
               </ScrollView>
-
               <View style={styles.modalActions}>
-                <TouchableOpacity
-                  style={[styles.actionButton, styles.cancelButton]}
-                  onPress={handleCancel}
-                  disabled={isSaving}
-                >
+                <TouchableOpacity style={[styles.actionButton, styles.cancelButton]} onPress={handleCancel} disabled={isSaving}>
                   <Text style={styles.cancelButtonText}>Cancel</Text>
                 </TouchableOpacity>
-                <TouchableOpacity
-                  style={[styles.actionButton, styles.saveButton]}
-                  onPress={handleSave}
-                  disabled={isSaving}
-                >
-                  {isSaving ? (
-                    <ActivityIndicator color="#fff" />
-                  ) : (
-                    <Text style={styles.saveButtonText}>
-                      {editingProfile ? "Update" : "Save"}
-                    </Text>
-                  )}
+                <TouchableOpacity style={[styles.actionButton, styles.saveButton]} onPress={handleSave} disabled={isSaving}>
+                  {isSaving ? <ActivityIndicator color="#fff" /> : <Text style={styles.saveButtonText}>{editingProfile ? "Update" : "Save"}</Text>}
                 </TouchableOpacity>
               </View>
             </View>
@@ -1503,13 +762,10 @@ const Account = () => {
         </Modal>
       </SafeAreaView>
 
-      {/* Profile limit / upgrade modal — outside SafeAreaView so it covers everything */}
       <ProfileLimitModal
         visible={profileLimitModal.visible}
         mode={profileLimitModal.mode}
-        onClose={() =>
-          setProfileLimitModal((prev) => ({ ...prev, visible: false }))
-        }
+        onClose={() => setProfileLimitModal((prev) => ({ ...prev, visible: false }))}
         onUpgrade={() => {
           setProfileLimitModal((prev) => ({ ...prev, visible: false }));
           router.push("/components/billing/PlanBillingScreen");

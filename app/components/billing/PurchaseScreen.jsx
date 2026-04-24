@@ -1,29 +1,9 @@
 // app/components/billing/PurchaseScreen.jsx
-//
-// CHANGES FROM ORIGINAL:
-//   ✅ AddCardSheet removed — Apple/Google handle card entry natively
-//   ✅ Payment methods list removed — store handles it
-//   ✅ purchasePackage() now calls RevenueCat SDK via RevenueCatContext
-//   ✅ rcPackage looked up from enrichedPackages using pkg.identifier
-//   ✅ Full edge case handling at every layer
-//   ✅ Post-purchase errors (refreshSubscription, initForProfile) don't
-//      block navigation — purchase already succeeded in RC
-//   ✅ userCancelled handled silently
-//   ✅ priceString preferred over price for display (store-localised)
-//   ✅ Restore purchases link added (App Store requirement)
 
 import React, { useEffect, useRef, useState, useCallback } from "react";
 import {
-  View,
-  Text,
-  StyleSheet,
-  ScrollView,
-  TouchableOpacity,
-  Animated,
-  ActivityIndicator,
-  Alert,
-  Platform,
-  StatusBar,
+  View, Text, StyleSheet, ScrollView, TouchableOpacity,
+  Animated, ActivityIndicator, Alert, Platform, StatusBar,
 } from "react-native";
 import { useRouter, useLocalSearchParams } from "expo-router";
 import { FONTS } from "../../theme";
@@ -31,6 +11,7 @@ import { useRevenueCat } from "../../_contexts/RevenueCatContext";
 import { useSubscription } from "../../_contexts/SubscriptionContext";
 import { useLevelAccess } from "../../_contexts/LevelAccessContext";
 import { useUser } from "../../_contexts/UserContext";
+import { useNotify } from "../../_contexts/NotificationContext";
 import { font, pad, radius, size } from "../../theme/tokens";
 import { APP_CONFIG } from "../../config/appConfig";
 import { simulateWebhookPurchase } from "../../services/revenueCatService.mock";
@@ -51,8 +32,6 @@ const C = {
   textMuted: "#546E7A",
 };
 
-// ── Helpers ───────────────────────────────────────────────────────────────────
-
 function billingLabel(billingCycle) {
   switch (billingCycle) {
     case "MONTHLY":  return "billed monthly";
@@ -62,11 +41,6 @@ function billingLabel(billingCycle) {
   }
 }
 
-/**
- * Resolve display price string.
- * Prefers RC's store-localised priceString (e.g. "$4.99") over backend price.
- * Falls back to backend price if priceString is missing (mock mode).
- */
 function resolvePrice(pkg) {
   if (pkg?.priceString && pkg.priceString.trim()) return pkg.priceString;
   if (!pkg?.price || Number(pkg.price) === 0) return "Free";
@@ -74,7 +48,6 @@ function resolvePrice(pkg) {
   return `${sym}${Number(pkg.price).toFixed(2)}`;
 }
 
-// ── Feature row ───────────────────────────────────────────────────────────────
 function FeatureRow({ feature, accentColor }) {
   if (!feature.enabled) return null;
   return (
@@ -85,34 +58,23 @@ function FeatureRow({ feature, accentColor }) {
   );
 }
 
-// ── Restore purchases link ────────────────────────────────────────────────────
 function RestoreLink({ onRestore, restoring }) {
   return (
-    <TouchableOpacity
-      style={styles.restoreWrap}
-      onPress={onRestore}
-      disabled={restoring}
-      activeOpacity={0.7}
-    >
-      {restoring ? (
-        <ActivityIndicator color={C.textMuted} size="small" />
-      ) : (
-        <Text style={styles.restoreText}>Restore purchases</Text>
-      )}
+    <TouchableOpacity style={styles.restoreWrap} onPress={onRestore} disabled={restoring} activeOpacity={0.7}>
+      {restoring
+        ? <ActivityIndicator color={C.textMuted} size="small" />
+        : <Text style={styles.restoreText}>Restore purchases</Text>}
     </TouchableOpacity>
   );
 }
 
-// ── No package guard screen ───────────────────────────────────────────────────
 function NoPackageScreen({ onBack }) {
   return (
     <View style={styles.root}>
       <View style={styles.center}>
         <Text style={styles.errorEmoji}>📦</Text>
         <Text style={styles.errorTitle}>No Plan Selected</Text>
-        <Text style={styles.errorSubtitle}>
-          Please go back and choose a plan to continue.
-        </Text>
+        <Text style={styles.errorSubtitle}>Please go back and choose a plan to continue.</Text>
         <TouchableOpacity style={styles.errorBtn} onPress={onBack}>
           <Text style={styles.errorBtnText}>Go Back</Text>
         </TouchableOpacity>
@@ -121,9 +83,6 @@ function NoPackageScreen({ onBack }) {
   );
 }
 
-// ── RC package not found screen ───────────────────────────────────────────────
-// Shows when pkg.identifier exists but no matching rcPackage found in context.
-// This can happen if offerings reloaded between screens and the package disappeared.
 function PackageUnavailableScreen({ pkg, onBack, onRetry, retrying }) {
   return (
     <View style={styles.root}>
@@ -133,23 +92,12 @@ function PackageUnavailableScreen({ pkg, onBack, onRetry, retrying }) {
         <Text style={styles.errorSubtitle}>
           {`The ${pkg?.name ?? "selected"} plan couldn't be loaded right now. Please try again or go back and select another plan.`}
         </Text>
-        <TouchableOpacity
-          style={styles.errorBtn}
-          onPress={onRetry}
-          disabled={retrying}
-          activeOpacity={0.85}
-        >
-          {retrying ? (
-            <ActivityIndicator color="#08081a" size="small" />
-          ) : (
-            <Text style={styles.errorBtnText}>Try Again</Text>
-          )}
+        <TouchableOpacity style={styles.errorBtn} onPress={onRetry} disabled={retrying} activeOpacity={0.85}>
+          {retrying
+            ? <ActivityIndicator color="#08081a" size="small" />
+            : <Text style={styles.errorBtnText}>Try Again</Text>}
         </TouchableOpacity>
-        <TouchableOpacity
-          style={styles.errorBtnSecondary}
-          onPress={onBack}
-          activeOpacity={0.75}
-        >
+        <TouchableOpacity style={styles.errorBtnSecondary} onPress={onBack} activeOpacity={0.75}>
           <Text style={styles.errorBtnSecondaryText}>Go Back</Text>
         </TouchableOpacity>
       </View>
@@ -157,16 +105,11 @@ function PackageUnavailableScreen({ pkg, onBack, onRetry, retrying }) {
   );
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
-// MAIN SCREEN
-// ─────────────────────────────────────────────────────────────────────────────
 export default function PurchaseScreen() {
   const router = useRouter();
   const params = useLocalSearchParams();
+  const notify = useNotify();
 
-  // ── Parse package from params ─────────────────────────────────────────────
-  // packageJson contains the full enriched package (backend fields + RC fields)
-  // except rcPackage which is non-serialisable and looked up from context below
   let pkg = null;
   try {
     pkg = params.packageJson ? JSON.parse(params.packageJson) : null;
@@ -175,28 +118,18 @@ export default function PurchaseScreen() {
     pkg = null;
   }
 
-  const {
-    purchase,
-    restorePurchases,
-    enrichedPackages,
-    reloadOfferings,
-    offeringsLoading,
-  } = useRevenueCat();
+  const { purchase, restorePurchases, enrichedPackages, reloadOfferings, offeringsLoading } = useRevenueCat();
   const { refreshSubscription, subscription, updateSubscription } = useSubscription();
-  const { initForProfile }      = useLevelAccess();
+  const { initForProfile }     = useLevelAccess();
   const { currentProfile, userAccount } = useUser();
 
-  const [purchasing, setPurchasing]   = useState(false);
-  const [restoring, setRestoring]     = useState(false);
-  const [retrying, setRetrying]       = useState(false);
+  const [purchasing, setPurchasing] = useState(false);
+  const [restoring, setRestoring]   = useState(false);
+  const [retrying, setRetrying]     = useState(false);
   const fadeAnim = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
-    Animated.timing(fadeAnim, {
-      toValue: 1,
-      duration: 380,
-      useNativeDriver: true,
-    }).start();
+    Animated.timing(fadeAnim, { toValue: 1, duration: 380, useNativeDriver: true }).start();
   }, []);
 
   useEffect(() => {
@@ -204,27 +137,14 @@ export default function PurchaseScreen() {
     return () => console.log("[CHECKOUT LIFECYCLE] CHECKOUT UNMOUNTED");
   }, []);
 
-  // ── Guard 1: no package in params ────────────────────────────────────────
-  if (!pkg) {
-    return <NoPackageScreen onBack={() => router.back()} />;
-  }
+  if (!pkg) return <NoPackageScreen onBack={() => router.back()} />;
 
-  // ── Find the live RC package object from context ──────────────────────────
-  // We match on pkg.identifier (set in MongoDB + RC dashboard).
-  // This is done here rather than passed via params because rcPackage
-  // contains non-serialisable objects (functions, class instances).
   const pkgIdentifier = pkg.identifier || pkg.rcIdentifier;
   const enrichedPkg   = enrichedPackages.find(
-    (ep) =>
-      ep.rcIdentifier === pkgIdentifier ||
-      ep.identifier   === pkgIdentifier ||
-      ep.id           === pkg.id,
+    (ep) => ep.rcIdentifier === pkgIdentifier || ep.identifier === pkgIdentifier || ep.id === pkg.id,
   );
   const rcPackage = enrichedPkg?.rcPackage ?? null;
 
-  // ── Guard 2: RC package not found ────────────────────────────────────────
-  // Offerings may have reloaded between screens, or identifier mismatch.
-  // Show a recoverable error screen with retry.
   const handleRetry = async () => {
     setRetrying(true);
     await reloadOfferings();
@@ -232,51 +152,19 @@ export default function PurchaseScreen() {
   };
 
   if (!offeringsLoading && !rcPackage && pkgIdentifier) {
-    return (
-      <PackageUnavailableScreen
-        pkg={pkg}
-        onBack={() => router.back()}
-        onRetry={handleRetry}
-        retrying={retrying}
-      />
-    );
+    return <PackageUnavailableScreen pkg={pkg} onBack={() => router.back()} onRetry={handleRetry} retrying={retrying} />;
   }
 
-  // ── Resolve display values ────────────────────────────────────────────────
-  const accentColor = pkg.accentColorRgb
-    ? `rgb(${pkg.accentColorRgb})`
-    : C.teal;
+  const accentColor = pkg.accentColorRgb ? `rgb(${pkg.accentColorRgb})` : C.teal;
   const priceString = resolvePrice(enrichedPkg ?? pkg);
   const cycleLabel  = billingLabel(pkg.billingCycle);
   const features    = (pkg.displayFeatures ?? []).filter((f) => f.enabled).slice(0, 5);
 
-  // ── Handle purchase ───────────────────────────────────────────────────────
-  const handleConfirm = useCallback(() => {
-    if (!rcPackage) {
-      Alert.alert(
-        "Not Available",
-        "This plan isn't available for purchase right now. Please try again later.",
-        [{ text: "OK" }],
-      );
-      return;
-    }
-
-    Alert.alert(
-      "Confirm Subscription",
-      `Subscribe to ${pkg.name} for ${priceString}${cycleLabel ? ` (${cycleLabel})` : ""}.\n\nYou can cancel anytime from your ${Platform.OS === "ios" ? "Apple ID" : "Google Play"} settings.`,
-      [
-        { text: "Cancel", style: "cancel" },
-        { text: "Subscribe", onPress: doPurchase },
-      ],
-    );
-  }, [rcPackage, pkg, priceString, cycleLabel]);
-
-  const sleep = (ms) => new Promise(res => setTimeout(res, ms));
+  const sleep = (ms) => new Promise((res) => setTimeout(res, ms));
 
   const hasSubscriptionChanged = (beforeSub, sub) => {
-    const beforeIsDefault = !beforeSub?.rcProductId;
+    const beforeIsDefault  = !beforeSub?.rcProductId;
     const currentIsDefault = !sub?.rcProductId;
-
     return (
       (beforeIsDefault && !currentIsDefault) ||
       (sub?.rcTransactionId && sub.rcTransactionId !== beforeSub?.rcTransactionId) ||
@@ -288,74 +176,92 @@ export default function PurchaseScreen() {
   const waitForSubscriptionUpdate = async (beforeSub, retries = 6, delay = 1000) => {
     for (let i = 0; i < retries; i++) {
       const sub = await fetchMySubscription();
-
-      if (hasSubscriptionChanged(beforeSub, sub)) {
-        return sub;
-      }
-
+      if (hasSubscriptionChanged(beforeSub, sub)) return sub;
       await sleep(delay);
     }
     return null;
   };
 
+  // Single navigate-back used by both sheet onDismiss callbacks
+  const navigateBack = useCallback(() => {
+    router.dismiss(3);
+  }, [router]);
+
+  const handleConfirm = useCallback(() => {
+    if (!rcPackage) {
+      Alert.alert("Not Available", "This plan isn't available for purchase right now. Please try again later.", [{ text: "OK" }]);
+      return;
+    }
+    Alert.alert(
+      "Confirm Subscription",
+      `Subscribe to ${pkg.name} for ${priceString}${cycleLabel ? ` (${cycleLabel})` : ""}.\n\nYou can cancel anytime from your ${Platform.OS === "ios" ? "Apple ID" : "Google Play"} settings.`,
+      [
+        { text: "Cancel", style: "cancel" },
+        { text: "Subscribe", onPress: doPurchase },
+      ],
+    );
+  }, [rcPackage, pkg, priceString, cycleLabel]);
+
   const doPurchase = useCallback(async () => {
     setPurchasing(true);
     try {
-      // ✅ snapshot BEFORE state
       const beforeSub = subscription;
 
-      // ── Step 1: RC purchase — opens native Apple/Google sheet (real)
-      //            or waits 1.5s and returns fake success (mock)
+      // Step 1: RC purchase
       await purchase(rcPackage);
-      
-      // ── Step 2 (MOCK ONLY): Simulate the RC webhook call ─────────────────
-      // In real mode RC fires the webhook automatically before purchase()
-      // resolves. In mock mode nothing fires, so we call the webhook
-      // endpoint ourselves so the backend creates the real subscription record.
-      // This makes refreshSubscription() return the actual updated subscription.
+
+      // Step 2: Mock only — simulate webhook so backend creates subscription
       if (APP_CONFIG.MOCK_IAP) {
-        // userAccount.id is the MongoDB _id of the UserAccount document
-        // This is what your backend stores as userAccountId on subscriptions
         const rcProductId   = pkg.rcProductId ?? pkg.identifier;
         const userAccountId = userAccount?.id ?? null;
         await simulateWebhookPurchase(userAccountId, rcProductId);
       }
 
-      // ── Step 3: Refresh backend subscription state (best-effort) ────────
-      // Real mode: RC webhook already fired before we get here —
-      //   /subscriptions/my returns the new subscription immediately.
-      // Mock mode: webhook simulation ran in Step 2 —
-      //   /subscriptions/my also returns the new subscription.
-      // ✅ wait for backend sync
+      // Step 3: Poll backend for subscription update (up to 6s)
       const updatedSub = await waitForSubscriptionUpdate(beforeSub);
+
       if (updatedSub) {
-        updateSubscription(updatedSub); // ✅ no extra API call
+        updateSubscription(updatedSub);
       } else {
-        await refreshSubscription(); // fallback
+        await refreshSubscription();
       }
 
-      // ── Step 4: Refresh level access for current profile (best-effort) ──
+      // Step 4: Refresh level access (best-effort)
       if (currentProfile) {
         try {
           await initForProfile(currentProfile);
         } catch (err) {
-          // Non-fatal — level access will refresh on next app open
-          console.warn("[PurchaseScreen] initForProfile failed post-purchase:", err?.message);
+          console.warn("[PurchaseScreen] initForProfile failed:", err?.message);
         }
       }
 
-      // ── Purchase succeeded — navigate immediately ────────────────────────
-      router.dismiss(3);
-
+      // Step 5: Show result sheet — navigate on dismiss
+      if (updatedSub) {
+        // ── SUCCESS ────────────────────────────────────────────────────────────
+        notify.sheet.success({
+          message: `Welcome to ${updatedSub.packageName}! 🎉`,
+          subMessage: "Your subscription is now active. Enjoy unlimited reading!",
+          icon: pkg.icon ?? "🎉",
+          autoDismissMs: 0,
+          onDismiss: navigateBack,
+        });
+      } else {
+        // ── PROCESSING (polling timed out — payment accepted, backend slow) ────
+        // Not an error — payment went through, backend just needs a moment.
+        // We use the error sheet visually because it draws attention,
+        // but the message is calm and reassuring, not alarming.
+        notify.sheet.error({
+          message: "Payment Received",
+          subMessage:
+            "We are processing your payment and will update you shortly. Your plan will appear in a few moments — please check back soon.",
+          onDismiss: navigateBack,
+        });
+      }
     } catch (err) {
-      // ── User cancelled — silent dismiss ───────────────────────────────────
-      // userCancelled is set by RC when user taps Cancel on the native sheet
       if (err?.userCancelled) {
         console.log("[PurchaseScreen] User cancelled purchase");
         return;
       }
-
-      // ── Real payment error — show to user ─────────────────────────────────
       console.error("[PurchaseScreen] Purchase failed:", err?.message);
       Alert.alert(
         "Purchase Failed",
@@ -365,132 +271,72 @@ export default function PurchaseScreen() {
     } finally {
       setPurchasing(false);
     }
-  }, [subscription, purchase, rcPackage, updateSubscription, refreshSubscription, initForProfile, currentProfile, router]);
+  }, [
+    subscription, purchase, rcPackage, pkg, userAccount,
+    updateSubscription, refreshSubscription, initForProfile,
+    currentProfile, notify, navigateBack,
+  ]);
 
-  // ── Handle restore ────────────────────────────────────────────────────────
   const handleRestore = useCallback(async () => {
     setRestoring(true);
     try {
       await restorePurchases();
       await refreshSubscription();
-      Alert.alert(
-        "Restored",
-        "Your purchases have been restored successfully.",
-        [{ text: "OK", onPress: () => router.dismiss(3) }],
-      );
+      notify.sheet.success({
+        message: "Purchases Restored",
+        subMessage: "Your previous subscription has been restored successfully.",
+        icon: "✅",
+        autoDismissMs: 0,
+        onDismiss: navigateBack,
+      });
     } catch (err) {
-      Alert.alert(
-        "Restore Failed",
-        err?.message ?? "Nothing to restore, or an error occurred.",
-        [{ text: "OK" }],
-      );
+      Alert.alert("Restore Failed", err?.message ?? "Nothing to restore, or an error occurred.", [{ text: "OK" }]);
     } finally {
       setRestoring(false);
     }
-  }, [restorePurchases, refreshSubscription, router]);
+  }, [restorePurchases, refreshSubscription, notify, navigateBack]);
 
-  // ── Render ────────────────────────────────────────────────────────────────
   return (
     <View style={styles.root}>
-      {/* Header */}
       <View style={styles.header}>
-        <TouchableOpacity
-          style={styles.headerBack}
-          onPress={() => router.back()}
-          activeOpacity={0.75}
-        >
+        <TouchableOpacity style={styles.headerBack} onPress={() => router.back()} activeOpacity={0.75}>
           <Text style={styles.headerBackIcon}>←</Text>
         </TouchableOpacity>
         <Text style={styles.headerTitle}>Checkout</Text>
         <View style={{ width: size.hitMd }} />
       </View>
 
-      {/* Loading while offerings reload */}
       {offeringsLoading ? (
         <View style={styles.center}>
           <ActivityIndicator color={C.teal} size="large" />
           <Text style={styles.loadingText}>Loading plan details…</Text>
         </View>
       ) : (
-        <Animated.ScrollView
-          style={{ opacity: fadeAnim }}
-          contentContainerStyle={styles.scroll}
-          showsVerticalScrollIndicator={false}
-        >
-          {/* ── Order Summary ──────────────────────────────────────────── */}
+        <Animated.ScrollView style={{ opacity: fadeAnim }} contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
           <Text style={styles.sectionLabel}>Order Summary</Text>
-          <View
-            style={[
-              styles.orderCard,
-              {
-                borderColor:    `rgba(${pkg.accentColorRgb ?? "0,188,212"},0.35)`,
-                borderTopColor: `rgba(${pkg.accentColorRgb ?? "0,188,212"},0.70)`,
-                backgroundColor: pkg.darkBg ?? "#03080a",
-              },
-            ]}
-          >
-            {/* Plan header */}
+          <View style={[styles.orderCard, { borderColor: `rgba(${pkg.accentColorRgb ?? "0,188,212"},0.35)`, borderTopColor: `rgba(${pkg.accentColorRgb ?? "0,188,212"},0.70)`, backgroundColor: pkg.darkBg ?? "#03080a" }]}>
             <View style={styles.planHeader}>
-              <View
-                style={[
-                  styles.planIcon,
-                  {
-                    borderColor:     accentColor,
-                    backgroundColor: `rgba(${pkg.accentColorRgb ?? "0,188,212"},0.12)`,
-                  },
-                ]}
-              >
+              <View style={[styles.planIcon, { borderColor: accentColor, backgroundColor: `rgba(${pkg.accentColorRgb ?? "0,188,212"},0.12)` }]}>
                 <Text style={styles.planIconEmoji}>{pkg.icon ?? "📦"}</Text>
               </View>
               <View style={{ flex: 1 }}>
-                <Text style={[styles.planName, { color: accentColor }]}>
-                  {pkg.name}
-                </Text>
-                {!!pkg.tagLine && (
-                  <Text style={styles.planTagline}>{pkg.tagLine}</Text>
-                )}
+                <Text style={[styles.planName, { color: accentColor }]}>{pkg.name}</Text>
+                {!!pkg.tagLine && <Text style={styles.planTagline}>{pkg.tagLine}</Text>}
               </View>
             </View>
-
-            {/* Description */}
-            {!!pkg.description && (
-              <Text style={styles.planDesc}>{pkg.description}</Text>
-            )}
-
-            {/* Price pill */}
-            <View
-              style={[
-                styles.pricePill,
-                {
-                  borderColor:     `rgba(${pkg.accentColorRgb ?? "0,188,212"},0.25)`,
-                  backgroundColor: `rgba(${pkg.accentColorRgb ?? "0,188,212"},0.07)`,
-                },
-              ]}
-            >
-              <Text style={[styles.priceAmount, { color: accentColor }]}>
-                {priceString}
-              </Text>
-              {!!cycleLabel && (
-                <Text style={styles.priceCycle}>{cycleLabel}</Text>
-              )}
+            {!!pkg.description && <Text style={styles.planDesc}>{pkg.description}</Text>}
+            <View style={[styles.pricePill, { borderColor: `rgba(${pkg.accentColorRgb ?? "0,188,212"},0.25)`, backgroundColor: `rgba(${pkg.accentColorRgb ?? "0,188,212"},0.07)` }]}>
+              <Text style={[styles.priceAmount, { color: accentColor }]}>{priceString}</Text>
+              {!!cycleLabel && <Text style={styles.priceCycle}>{cycleLabel}</Text>}
             </View>
-
-            {/* Features */}
-            {features.map((f, i) => (
-              <FeatureRow key={f.key ?? i} feature={f} accentColor={accentColor} />
-            ))}
-
-            {/* Trial badge */}
+            {features.map((f, i) => <FeatureRow key={f.key ?? i} feature={f} accentColor={accentColor} />)}
             {!!pkg.trialDays && pkg.trialDays > 0 && (
               <View style={styles.trialBanner}>
-                <Text style={[styles.trialText, { color: accentColor }]}>
-                  🎁  {pkg.trialDays}-day free trial included
-                </Text>
+                <Text style={[styles.trialText, { color: accentColor }]}>🎁  {pkg.trialDays}-day free trial included</Text>
               </View>
             )}
           </View>
 
-          {/* ── How payment works ──────────────────────────────────────── */}
           <View style={styles.howItWorksCard}>
             <Text style={styles.howTitle}>How payment works</Text>
             <Text style={styles.howBody}>
@@ -500,53 +346,35 @@ export default function PurchaseScreen() {
             </Text>
           </View>
 
-          {/* ── Total ─────────────────────────────────────────────────── */}
           <View style={styles.totalCard}>
             <View style={styles.totalRow}>
               <Text style={styles.totalLabel}>Total</Text>
-              <Text style={[styles.totalAmount, { color: accentColor }]}>
-                {priceString}
-              </Text>
+              <Text style={[styles.totalAmount, { color: accentColor }]}>{priceString}</Text>
             </View>
-            {!!cycleLabel && (
-              <Text style={styles.totalCycle}>{cycleLabel}</Text>
-            )}
+            {!!cycleLabel && <Text style={styles.totalCycle}>{cycleLabel}</Text>}
           </View>
 
-          {/* ── Policy ────────────────────────────────────────────────── */}
           <Text style={styles.policyNote}>
             You can manage or cancel your subscription anytime from your{" "}
-            {Platform.OS === "ios" ? "Apple ID" : "Google Play"} account settings.
-            No hidden fees.
+            {Platform.OS === "ios" ? "Apple ID" : "Google Play"} account settings. No hidden fees.
           </Text>
 
-          {/* ── Checkout button ───────────────────────────────────────── */}
           <TouchableOpacity
-            style={[
-              styles.checkoutBtn,
-              { backgroundColor: accentColor },
-              (!rcPackage || purchasing) && styles.checkoutBtnDisabled,
-            ]}
+            style={[styles.checkoutBtn, { backgroundColor: accentColor }, (!rcPackage || purchasing) && styles.checkoutBtnDisabled]}
             onPress={handleConfirm}
             disabled={!rcPackage || purchasing}
             activeOpacity={0.88}
           >
             <View style={styles.btnShine} />
-            {purchasing ? (
-              <ActivityIndicator color="#08081a" size="small" />
-            ) : (
-              <>
-                <Text style={styles.btnEmoji}>⚡</Text>
-                <Text style={styles.btnText}>
-                  {pkg.ctaLabel ?? `Subscribe to ${pkg.name}`}
-                </Text>
-              </>
-            )}
+            {purchasing
+              ? <ActivityIndicator color="#08081a" size="small" />
+              : (<>
+                  <Text style={styles.btnEmoji}>⚡</Text>
+                  <Text style={styles.btnText}>{pkg.ctaLabel ?? `Subscribe to ${pkg.name}`}</Text>
+                </>)}
           </TouchableOpacity>
 
-          {/* ── Restore purchases (App Store requirement) ─────────────── */}
           <RestoreLink onRestore={handleRestore} restoring={restoring} />
-
           <View style={{ height: 48 }} />
         </Animated.ScrollView>
       )}
@@ -554,306 +382,52 @@ export default function PurchaseScreen() {
   );
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
 const styles = StyleSheet.create({
-  root: { flex: 1, backgroundColor: C.bg },
-
-  // ── Error / loading states ─────────────────────────────────────────────────
-  center: {
-    flex: 1,
-    justifyContent: "center",
-    alignItems: "center",
-    gap: pad.md,
-    padding: pad.xl,
-  },
-  loadingText: {
-    fontFamily: FONTS.light,
-    fontSize: font.md,
-    color: C.textMuted,
-  },
-  errorEmoji: { fontSize: size.iconXl },
-  errorTitle: {
-    fontFamily: FONTS.bold,
-    fontSize: font.xl,
-    color: C.textPri,
-    textAlign: "center",
-  },
-  errorSubtitle: {
-    fontFamily: FONTS.light,
-    fontSize: font.md,
-    color: C.textMuted,
-    textAlign: "center",
-    lineHeight: font.md * 1.5,
-  },
-  errorBtn: {
-    backgroundColor: C.teal,
-    borderRadius: radius.md,
-    paddingHorizontal: pad.xl,
-    paddingVertical: pad.sm,
-    marginTop: pad.sm,
-  },
-  errorBtnText: {
-    fontFamily: FONTS.bold,
-    fontSize: font.md,
-    color: "#08081a",
-  },
-  errorBtnSecondary: {
-    paddingHorizontal: pad.xl,
-    paddingVertical: pad.sm,
-  },
-  errorBtnSecondaryText: {
-    fontFamily: FONTS.regular,
-    fontSize: font.md,
-    color: C.textMuted,
-    textDecorationLine: "underline",
-  },
-
-  // ── Header ─────────────────────────────────────────────────────────────────
-  header: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    paddingTop: STATUS_BAR_HEIGHT + pad.sm,
-    paddingBottom: pad.md,
-    paddingHorizontal: pad.md,
-    borderBottomWidth: 1,
-    borderBottomColor: "rgba(0,188,212,0.1)",
-  },
-  headerBack: {
-    width: size.hitMd,
-    height: size.hitMd,
-    borderRadius: size.hitMd / 2,
-    backgroundColor: "rgba(255,255,255,0.06)",
-    borderWidth: 1,
-    borderColor: "rgba(255,255,255,0.1)",
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  headerBackIcon: {
-    fontFamily: FONTS.bold,
-    fontSize: font.xl,
-    color: C.teal,
-  },
-  headerTitle: {
-    fontFamily: FONTS.bold,
-    fontSize: font.xxl,
-    color: C.textPri,
-    letterSpacing: 0.3,
-  },
-
-  scroll: { padding: pad.md, paddingTop: pad.lg },
-
-  sectionLabel: {
-    fontFamily: FONTS.bold,
-    fontSize: font.sm,
-    color: C.textMuted,
-    letterSpacing: 1,
-    textTransform: "uppercase",
-    marginBottom: pad.sm,
-  },
-
-  // ── Order card ─────────────────────────────────────────────────────────────
-  orderCard: {
-    borderRadius: radius.xl,
-    borderWidth: 1.5,
-    borderTopWidth: 2,
-    padding: pad.lg,
-    marginBottom: pad.lg,
-  },
-  planHeader: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: pad.md,
-    marginBottom: pad.md,
-  },
-  planIcon: {
-    width: 52,
-    height: 52,
-    borderRadius: radius.md,
-    borderWidth: 2,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  planIconEmoji: { fontSize: font.xxl },
-  planName: {
-    fontFamily: FONTS.bold,
-    fontSize: font.xl,
-    letterSpacing: 0.2,
-  },
-  planTagline: {
-    fontFamily: FONTS.light,
-    fontSize: font.sm,
-    color: C.textMuted,
-    marginTop: 2,
-  },
-  planDesc: {
-    fontFamily: FONTS.regular,
-    fontSize: font.sm,
-    color: C.textMuted,
-    lineHeight: font.sm * 1.5,
-    marginBottom: pad.md,
-  },
-  pricePill: {
-    flexDirection: "row",
-    alignItems: "baseline",
-    gap: pad.xs,
-    alignSelf: "flex-start",
-    borderRadius: radius.lg,
-    borderWidth: 1,
-    paddingVertical: pad.sm,
-    paddingHorizontal: pad.lg,
-    marginBottom: pad.md,
-  },
-  priceAmount: {
-    fontFamily: FONTS.bold,
-    fontSize: font.h3,
-    letterSpacing: -0.3,
-  },
-  priceCycle: {
-    fontFamily: FONTS.light,
-    fontSize: font.md,
-    color: C.textMuted,
-  },
-
-  // ── Feature rows ───────────────────────────────────────────────────────────
-  featureRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: pad.sm,
-    marginBottom: pad.xs,
-  },
-  featureCheck: {
-    fontFamily: FONTS.bold,
-    fontSize: font.md,
-    width: 18,
-  },
-  featureLabel: {
-    fontFamily: FONTS.regular,
-    fontSize: font.sm,
-    color: C.textSec,
-    flex: 1,
-  },
-
-  // ── Trial banner ───────────────────────────────────────────────────────────
-  trialBanner: {
-    marginTop: pad.sm,
-    paddingVertical: pad.xs,
-    paddingHorizontal: pad.sm,
-    backgroundColor: "rgba(255,255,255,0.04)",
-    borderRadius: radius.sm,
-    borderWidth: 1,
-    borderColor: "rgba(255,255,255,0.08)",
-  },
-  trialText: {
-    fontFamily: FONTS.bold,
-    fontSize: font.sm,
-    textAlign: "center",
-  },
-
-  // ── How it works ───────────────────────────────────────────────────────────
-  howItWorksCard: {
-    backgroundColor: C.surface,
-    borderRadius: radius.lg,
-    borderWidth: 1,
-    borderColor: "rgba(255,255,255,0.07)",
-    padding: pad.md,
-    marginBottom: pad.lg,
-  },
-  howTitle: {
-    fontFamily: FONTS.bold,
-    fontSize: font.md,
-    color: C.textPri,
-    marginBottom: pad.xs,
-  },
-  howBody: {
-    fontFamily: FONTS.light,
-    fontSize: font.sm,
-    color: C.textMuted,
-    lineHeight: font.sm * 1.6,
-  },
-
-  // ── Total ──────────────────────────────────────────────────────────────────
-  totalCard: {
-    backgroundColor: C.surface,
-    borderRadius: radius.lg,
-    borderWidth: 1,
-    borderColor: "rgba(255,255,255,0.07)",
-    padding: pad.md,
-    marginBottom: pad.lg,
-  },
-  totalRow: {
-    flexDirection: "row",
-    alignItems: "baseline",
-    justifyContent: "space-between",
-  },
-  totalLabel: {
-    fontFamily: FONTS.bold,
-    fontSize: font.md,
-    color: C.textSec,
-  },
-  totalAmount: {
-    fontFamily: FONTS.bold,
-    fontSize: font.h3,
-    letterSpacing: -0.3,
-  },
-  totalCycle: {
-    fontFamily: FONTS.light,
-    fontSize: font.sm,
-    color: C.textMuted,
-    marginTop: 4,
-  },
-
-  // ── Policy ─────────────────────────────────────────────────────────────────
-  policyNote: {
-    fontFamily: FONTS.light,
-    fontSize: font.sm,
-    color: C.textMuted,
-    textAlign: "center",
-    lineHeight: font.sm * 1.6,
-    marginBottom: pad.lg,
-    paddingHorizontal: pad.sm,
-  },
-
-  // ── Checkout button ────────────────────────────────────────────────────────
-  checkoutBtn: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-    gap: pad.s,
-    borderRadius: radius.pill,
-    height: size.btnHeightLg,
-    overflow: "hidden",
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.55,
-    shadowRadius: 14,
-    elevation: 10,
-    marginBottom: pad.sm,
-  },
-  checkoutBtnDisabled: { opacity: 0.45 },
-  btnShine: {
-    position: "absolute",
-    top: 0,
-    left: "14%",
-    width: "38%",
-    height: "52%",
-    backgroundColor: "rgba(255,255,255,0.20)",
-    borderRadius: 20,
-    transform: [{ rotate: "-15deg" }],
-  },
-  btnEmoji: { fontSize: font.lg },
-  btnText: {
-    fontFamily: FONTS.bold,
-    fontSize: font.lg,
-    color: "#08081a",
-    letterSpacing: 0.3,
-  },
-
-  // ── Restore ────────────────────────────────────────────────────────────────
-  restoreWrap: { alignSelf: "center", paddingVertical: pad.sm },
-  restoreText: {
-    fontFamily: FONTS.regular,
-    fontSize: font.sm,
-    color: C.textMuted,
-    textDecorationLine: "underline",
-  },
+  root:               { flex: 1, backgroundColor: C.bg },
+  center:             { flex: 1, justifyContent: "center", alignItems: "center", gap: pad.md, padding: pad.xl },
+  loadingText:        { fontFamily: FONTS.light, fontSize: font.md, color: C.textMuted },
+  errorEmoji:         { fontSize: size.iconXl },
+  errorTitle:         { fontFamily: FONTS.bold, fontSize: font.xl, color: C.textPri, textAlign: "center" },
+  errorSubtitle:      { fontFamily: FONTS.light, fontSize: font.md, color: C.textMuted, textAlign: "center", lineHeight: font.md * 1.5 },
+  errorBtn:           { backgroundColor: C.teal, borderRadius: radius.md, paddingHorizontal: pad.xl, paddingVertical: pad.sm, marginTop: pad.sm },
+  errorBtnText:       { fontFamily: FONTS.bold, fontSize: font.md, color: "#08081a" },
+  errorBtnSecondary:  { paddingHorizontal: pad.xl, paddingVertical: pad.sm },
+  errorBtnSecondaryText: { fontFamily: FONTS.regular, fontSize: font.md, color: C.textMuted, textDecorationLine: "underline" },
+  header:             { flexDirection: "row", alignItems: "center", justifyContent: "space-between", paddingTop: STATUS_BAR_HEIGHT + pad.sm, paddingBottom: pad.md, paddingHorizontal: pad.md, borderBottomWidth: 1, borderBottomColor: "rgba(0,188,212,0.1)" },
+  headerBack:         { width: size.hitMd, height: size.hitMd, borderRadius: size.hitMd / 2, backgroundColor: "rgba(255,255,255,0.06)", borderWidth: 1, borderColor: "rgba(255,255,255,0.1)", alignItems: "center", justifyContent: "center" },
+  headerBackIcon:     { fontFamily: FONTS.bold, fontSize: font.xl, color: C.teal },
+  headerTitle:        { fontFamily: FONTS.bold, fontSize: font.xxl, color: C.textPri, letterSpacing: 0.3 },
+  scroll:             { padding: pad.md, paddingTop: pad.lg },
+  sectionLabel:       { fontFamily: FONTS.bold, fontSize: font.sm, color: C.textMuted, letterSpacing: 1, textTransform: "uppercase", marginBottom: pad.sm },
+  orderCard:          { borderRadius: radius.xl, borderWidth: 1.5, borderTopWidth: 2, padding: pad.lg, marginBottom: pad.lg },
+  planHeader:         { flexDirection: "row", alignItems: "center", gap: pad.md, marginBottom: pad.md },
+  planIcon:           { width: 52, height: 52, borderRadius: radius.md, borderWidth: 2, alignItems: "center", justifyContent: "center" },
+  planIconEmoji:      { fontSize: font.xxl },
+  planName:           { fontFamily: FONTS.bold, fontSize: font.xl, letterSpacing: 0.2 },
+  planTagline:        { fontFamily: FONTS.light, fontSize: font.sm, color: C.textMuted, marginTop: 2 },
+  planDesc:           { fontFamily: FONTS.regular, fontSize: font.sm, color: C.textMuted, lineHeight: font.sm * 1.5, marginBottom: pad.md },
+  pricePill:          { flexDirection: "row", alignItems: "baseline", gap: pad.xs, alignSelf: "flex-start", borderRadius: radius.lg, borderWidth: 1, paddingVertical: pad.sm, paddingHorizontal: pad.lg, marginBottom: pad.md },
+  priceAmount:        { fontFamily: FONTS.bold, fontSize: font.h3, letterSpacing: -0.3 },
+  priceCycle:         { fontFamily: FONTS.light, fontSize: font.md, color: C.textMuted },
+  featureRow:         { flexDirection: "row", alignItems: "center", gap: pad.sm, marginBottom: pad.xs },
+  featureCheck:       { fontFamily: FONTS.bold, fontSize: font.md, width: 18 },
+  featureLabel:       { fontFamily: FONTS.regular, fontSize: font.sm, color: C.textSec, flex: 1 },
+  trialBanner:        { marginTop: pad.sm, paddingVertical: pad.xs, paddingHorizontal: pad.sm, backgroundColor: "rgba(255,255,255,0.04)", borderRadius: radius.sm, borderWidth: 1, borderColor: "rgba(255,255,255,0.08)" },
+  trialText:          { fontFamily: FONTS.bold, fontSize: font.sm, textAlign: "center" },
+  howItWorksCard:     { backgroundColor: C.surface, borderRadius: radius.lg, borderWidth: 1, borderColor: "rgba(255,255,255,0.07)", padding: pad.md, marginBottom: pad.lg },
+  howTitle:           { fontFamily: FONTS.bold, fontSize: font.md, color: C.textPri, marginBottom: pad.xs },
+  howBody:            { fontFamily: FONTS.light, fontSize: font.sm, color: C.textMuted, lineHeight: font.sm * 1.6 },
+  totalCard:          { backgroundColor: C.surface, borderRadius: radius.lg, borderWidth: 1, borderColor: "rgba(255,255,255,0.07)", padding: pad.md, marginBottom: pad.lg },
+  totalRow:           { flexDirection: "row", alignItems: "baseline", justifyContent: "space-between" },
+  totalLabel:         { fontFamily: FONTS.bold, fontSize: font.md, color: C.textSec },
+  totalAmount:        { fontFamily: FONTS.bold, fontSize: font.h3, letterSpacing: -0.3 },
+  totalCycle:         { fontFamily: FONTS.light, fontSize: font.sm, color: C.textMuted, marginTop: 4 },
+  policyNote:         { fontFamily: FONTS.light, fontSize: font.sm, color: C.textMuted, textAlign: "center", lineHeight: font.sm * 1.6, marginBottom: pad.lg, paddingHorizontal: pad.sm },
+  checkoutBtn:        { flexDirection: "row", alignItems: "center", justifyContent: "center", gap: pad.s, borderRadius: radius.pill, height: size.btnHeightLg, overflow: "hidden", shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.55, shadowRadius: 14, elevation: 10, marginBottom: pad.sm },
+  checkoutBtnDisabled:{ opacity: 0.45 },
+  btnShine:           { position: "absolute", top: 0, left: "14%", width: "38%", height: "52%", backgroundColor: "rgba(255,255,255,0.20)", borderRadius: 20, transform: [{ rotate: "-15deg" }] },
+  btnEmoji:           { fontSize: font.lg },
+  btnText:            { fontFamily: FONTS.bold, fontSize: font.lg, color: "#08081a", letterSpacing: 0.3 },
+  restoreWrap:        { alignSelf: "center", paddingVertical: pad.sm },
+  restoreText:        { fontFamily: FONTS.regular, fontSize: font.sm, color: C.textMuted, textDecorationLine: "underline" },
 });

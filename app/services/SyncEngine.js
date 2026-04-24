@@ -1,19 +1,24 @@
 // app/services/SyncEngine.js
 //
 // Background sync engine.
-// Updated to use apiClient instead of raw fetch.
 //
-// Changes from previous version:
-//  • SYNC_INTERVAL_MS increased from 5 mins to 15 mins (fallback only)
-//  • AppState listener REMOVED — sync no longer fires on every app resume
-//  • _resolveAndPersist now batches AsyncStorage reads instead of looping individually
-//  • getAllKeys() called once per sync cycle and shared across _buildSyncRequest
-//    and _captureLocalSnapshot to avoid redundant expensive calls
+// CHANGE FROM ORIGINAL:
+//   ✅ _purgeConfirmedCompletedSessions no longer DELETES completed session keys.
+//      Instead it stamps lastSyncedAt on them to record that the backend has
+//      this data. The keys stay in AsyncStorage permanently as the local source
+//      of truth for story completion state.
+//
+//      Previously, sessions with rewardsDisbursed=true were removed after a
+//      successful sync. This caused the bug where completed stories lost their
+//      "Completed" badge after logout + login — loadAllStoryProgress found 0
+//      keys and had nothing to merge into localCompletedIds.
+//
+//   All other sync logic unchanged.
 
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { apiClient } from "./apiClient";
 
-const SYNC_INTERVAL_MS = 15 * 60 * 1000; // 15 mins — fallback only
+const SYNC_INTERVAL_MS = 15 * 60 * 1000;
 const LAST_SYNC_KEY = "@last_sync_time";
 const PROFILES_STORAGE_KEY = "@app_profiles";
 const STORY_PREFIX = "@story_activity_";
@@ -23,8 +28,6 @@ let _isSyncing = false;
 
 function start(getAuthToken, onSyncComplete) {
   stop();
-  // No initial delay sync — login and home screen handle their own pulls.
-  // This interval is a pure fallback safety net.
   _intervalId = setInterval(
     () => _runSync(getAuthToken, onSyncComplete),
     SYNC_INTERVAL_MS,
@@ -49,7 +52,6 @@ async function _runSync(getAuthToken, onSyncComplete) {
     const token = await getAuthToken?.();
     if (!token) return null;
 
-    // Get all keys ONCE and share between _buildSyncRequest and _captureLocalSnapshot
     const allKeys = await AsyncStorage.getAllKeys();
 
     const { request } = await _buildSyncRequest(allKeys);
@@ -60,7 +62,7 @@ async function _runSync(getAuthToken, onSyncComplete) {
     if (!response) return null;
 
     await _resolveAndPersist(response, localSnap);
-    await _purgeConfirmedCompletedSessions(response, localSnap);
+    await _markSyncedCompletedSessions(response, localSnap); // ← CHANGED (was _purgeConfirmedCompletedSessions)
     await AsyncStorage.setItem(LAST_SYNC_KEY, new Date().toISOString());
     onSyncComplete?.(response);
     return response;
@@ -151,12 +153,8 @@ async function _resolveAndPersist(syncResponse, localSnap) {
   if (!syncResponse?.resolvedActivities) return;
   const writes = [];
 
-  // Collect all keys that need individual reads (localAhead cases only)
   const keysToFetch = [];
-  for (const {
-    profileId,
-    storyActivities,
-  } of syncResponse.resolvedActivities) {
+  for (const { profileId, storyActivities } of syncResponse.resolvedActivities) {
     if (!storyActivities) continue;
     for (const ba of storyActivities) {
       const key = `${STORY_PREFIX}${profileId}_${ba.storyId}`;
@@ -167,15 +165,11 @@ async function _resolveAndPersist(syncResponse, localSnap) {
     }
   }
 
-  // Batch fetch all needed keys in one call instead of looping individually
   const fetched = keysToFetch.length
     ? Object.fromEntries(await AsyncStorage.multiGet(keysToFetch))
     : {};
 
-  for (const {
-    profileId,
-    storyActivities,
-  } of syncResponse.resolvedActivities) {
+  for (const { profileId, storyActivities } of syncResponse.resolvedActivities) {
     if (!storyActivities) continue;
     for (const ba of storyActivities) {
       const key = `${STORY_PREFIX}${profileId}_${ba.storyId}`;
@@ -186,10 +180,7 @@ async function _resolveAndPersist(syncResponse, localSnap) {
         const cur = fetched[key];
         if (cur) {
           try {
-            writes.push([
-              key,
-              JSON.stringify(_mergeLocalAhead(JSON.parse(cur), ba)),
-            ]);
+            writes.push([key, JSON.stringify(_mergeLocalAhead(JSON.parse(cur), ba))]);
           } catch {
             writes.push([key, JSON.stringify(_toSession(profileId, ba))]);
           }
@@ -200,8 +191,7 @@ async function _resolveAndPersist(syncResponse, localSnap) {
           const cur = fetched[key];
           if (cur) {
             try {
-              if (JSON.parse(cur).rewardsDisbursed)
-                sess.rewardsDisbursed = true;
+              if (JSON.parse(cur).rewardsDisbursed) sess.rewardsDisbursed = true;
             } catch {}
           }
         }
@@ -272,18 +262,9 @@ async function _applyProfileSummaries(summaries) {
       const s = map[p.id];
       if (!s) return p;
       const u = { ...p };
-      if (s.playLevel > (p.playLevel ?? 1)) {
-        u.playLevel = s.playLevel;
-        changed = true;
-      }
-      if (s.coins > (p.coins ?? 0)) {
-        u.coins = s.coins;
-        changed = true;
-      }
-      if (s.diamonds > (p.diamonds ?? 0)) {
-        u.diamonds = s.diamonds;
-        changed = true;
-      }
+      if (s.playLevel > (p.playLevel ?? 1)) { u.playLevel = s.playLevel; changed = true; }
+      if (s.coins > (p.coins ?? 0)) { u.coins = s.coins; changed = true; }
+      if (s.diamonds > (p.diamonds ?? 0)) { u.diamonds = s.diamonds; changed = true; }
       return u;
     });
     if (changed)
@@ -293,28 +274,45 @@ async function _applyProfileSummaries(summaries) {
   }
 }
 
-async function _purgeConfirmedCompletedSessions(syncResponse, localSnap) {
+// ── CHANGED: was _purgeConfirmedCompletedSessions ─────────────────────────
+//
+// Previously deleted AsyncStorage keys for completed+synced sessions.
+// This broke story completion state after logout+login since loadAllStoryProgress
+// relies on these keys to rebuild localCompletedIds.
+//
+// Now: only stamps lastSyncedAt on sessions that have been confirmed by the
+// backend. Keys are NEVER deleted — they are the permanent local source of
+// truth for whether a story has been completed.
+async function _markSyncedCompletedSessions(syncResponse, localSnap) {
   if (!syncResponse?.resolvedActivities) return;
-  const toDelete = [];
-  for (const {
-    profileId,
-    storyActivities,
-  } of syncResponse.resolvedActivities) {
+  const toMark = [];
+
+  for (const { profileId, storyActivities } of syncResponse.resolvedActivities) {
     if (!storyActivities) continue;
     for (const ba of storyActivities) {
       if (ba.nextActivityIndex < 4) continue;
       const key = `${STORY_PREFIX}${profileId}_${ba.storyId}`;
       const snap = localSnap[key];
+      // Skip if local is ahead of backend — don't stamp yet
       if (snap && snap.nextActivityIndex > ba.nextActivityIndex) continue;
       try {
         const raw = await AsyncStorage.getItem(key);
-        if (raw && JSON.parse(raw).rewardsDisbursed) toDelete.push(key);
+        if (!raw) continue;
+        const parsed = JSON.parse(raw);
+        // Only stamp if rewardsDisbursed=true and not yet stamped
+        if (parsed.rewardsDisbursed && !parsed.lastSyncedAt) {
+          toMark.push([key, JSON.stringify({
+            ...parsed,
+            lastSyncedAt: new Date().toISOString(),
+          })]);
+        }
       } catch {}
     }
   }
-  if (toDelete.length) {
-    await AsyncStorage.multiRemove(toDelete);
-    console.log("[SyncEngine] purged sessions:", toDelete.length);
+
+  if (toMark.length) {
+    await AsyncStorage.multiSet(toMark);
+    console.log("[SyncEngine] marked synced sessions:", toMark.length);
   }
 }
 

@@ -20,6 +20,7 @@ import {
   fetchPaymentMethods,
 } from "../../services/subscriptionService";
 import { font, pad, radius, size } from "../../theme/tokens"; // ← REPLACES useTheme
+import { useSubscription } from "../../_contexts/SubscriptionContext";
 
 const STATUS_BAR_HEIGHT =
   Platform.OS === "android" ? (StatusBar.currentHeight ?? 24) : 50;
@@ -102,7 +103,7 @@ export default function PlanBillingScreen() {
   const router = useRouter();
   const { execute } = useApiCall();
 
-  const [subscription, setSubscription] = useState(null);
+  const {subscription, updateSubscription} = useSubscription();
   const [defaultCard, setDefaultCard] = useState(null);
   const [loading, setLoading] = useState(true);
   const fadeAnim = useRef(new Animated.Value(0)).current;
@@ -112,7 +113,7 @@ export default function PlanBillingScreen() {
     await Promise.all([
       execute(() => fetchMySubscription(), {
         errorDisplay: "none",
-        onSuccess: (sub) => setSubscription(sub ?? null),
+        onSuccess: (sub) => updateSubscription(sub ?? null),
       }),
       execute(() => fetchPaymentMethods(), {
         errorDisplay: "toast",

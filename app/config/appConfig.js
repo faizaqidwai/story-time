@@ -4,7 +4,7 @@ export const APP_CONFIG = {
   // ── RevenueCat ────────────────────────────────────────────────────────────
   // Public SDK keys — safe to commit, not secret.
   // Get from: RC Dashboard → Apps & providers → Test Store → Public API Key
-  REVENUECAT_IOS_KEY:     "test_qZNLUDLdpYhSgVrDIpBBrTJJcfQ",
+  REVENUECAT_IOS_KEY:     "appl_wpakRhJXxcCdJPkXqPiCKSSLPEu",
   REVENUECAT_ANDROID_KEY: "test_qZNLUDLdpYhSgVrDIpBBrTJJcfQ",
 
   // ── Mock IAP ──────────────────────────────────────────────────────────────
