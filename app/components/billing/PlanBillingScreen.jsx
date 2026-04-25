@@ -233,59 +233,6 @@ export default function PlanBillingScreen() {
           </TouchableOpacity>
         </View>
 
-        {/* Payment method section */}
-        <View style={styles.section}>
-          <View style={styles.sectionRow}>
-            <Text style={styles.sectionTitle}>Payment Method</Text>
-            <TouchableOpacity
-              onPress={() =>
-                router.push("/components/billing/PaymentMethodScreen")
-              }
-              activeOpacity={0.75}
-            >
-              <Text style={styles.sectionLink}>Manage →</Text>
-            </TouchableOpacity>
-          </View>
-          {defaultCard ? (
-            <View style={styles.cardRow}>
-              <View
-                style={[
-                  styles.cardChip,
-                  {
-                    backgroundColor:
-                      BRAND_COLORS[defaultCard.brand?.toLowerCase()] ?? C.teal,
-                  },
-                ]}
-              >
-                <Text style={styles.cardChipText}>
-                  {(defaultCard.brand ?? "CARD").slice(0, 4).toUpperCase()}
-                </Text>
-              </View>
-              <View style={{ flex: 1, marginLeft: pad.sm }}>
-                <Text style={styles.cardNum}>
-                  {defaultCard.brand?.toUpperCase()} •••• {defaultCard.last4}
-                </Text>
-                <Text style={styles.cardExp}>
-                  Expires {defaultCard.expMonth}/{defaultCard.expYear}
-                </Text>
-              </View>
-              <View style={styles.defaultBadge}>
-                <Text style={styles.defaultBadgeText}>Default</Text>
-              </View>
-            </View>
-          ) : (
-            <TouchableOpacity
-              style={styles.addCardBtn}
-              onPress={() =>
-                router.push("/components/billing/PaymentMethodScreen")
-              }
-              activeOpacity={0.85}
-            >
-              <Text style={styles.addCardText}>+ Add Payment Method</Text>
-            </TouchableOpacity>
-          )}
-        </View>
-
         {/* Billing history section */}
         <View style={styles.section}>
           <View style={styles.sectionRow}>

@@ -66,11 +66,14 @@ export async function loginWithPrimaryAccount() {
 /** Login with email + password. No auth header. */
 export async function loginWithEmail(email, password) {
   const deviceId = await getDeviceId();
-  return apiClient.post(
+  const response = await apiClient.post(
     "/auth/user/login",
     { email, password, deviceToken: deviceId },
     { auth: "none" },
   );
+  await saveAccessToken(response.token);
+  await saveRefreshToken(response.refreshToken);
+  return response;
 }
 
 /** Fetch full user account details. Access token. */
