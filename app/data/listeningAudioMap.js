@@ -64,6 +64,42 @@ const AUDIO_MAP = {
   "l6-s6": require("../../assets/sounds/listening/l6-s6.mp3"),
   "l6-s7": require("../../assets/sounds/listening/l6-s7.mp3"),
   "l6-s8": require("../../assets/sounds/listening/l6-s8.mp3"),
+  // ── Level 7 ──────────────────────────────────────────────────────────────
+  "l7-s1": require("../../assets/sounds/listening/l7-s1.mp3"),
+  "l7-s2": require("../../assets/sounds/listening/l7-s2.mp3"),
+  "l7-s3": require("../../assets/sounds/listening/l7-s3.mp3"),
+  "l7-s4": require("../../assets/sounds/listening/l7-s4.mp3"),
+  "l7-s5": require("../../assets/sounds/listening/l7-s5.mp3"),
+  "l7-s6": require("../../assets/sounds/listening/l7-s6.mp3"),
+  "l7-s7": require("../../assets/sounds/listening/l7-s7.mp3"),
+  "l7-s8": require("../../assets/sounds/listening/l7-s8.mp3"),
+  // ── Level 8 ──────────────────────────────────────────────────────────────
+  "l8-s1": require("../../assets/sounds/listening/l8-s1.mp3"),
+  "l8-s2": require("../../assets/sounds/listening/l8-s2.mp3"),
+  "l8-s3": require("../../assets/sounds/listening/l8-s3.mp3"),
+  "l8-s4": require("../../assets/sounds/listening/l8-s4.mp3"),
+  "l8-s5": require("../../assets/sounds/listening/l8-s5.mp3"),
+  "l8-s6": require("../../assets/sounds/listening/l8-s6.mp3"),
+  "l8-s7": require("../../assets/sounds/listening/l8-s7.mp3"),
+  "l8-s8": require("../../assets/sounds/listening/l8-s8.mp3"),
+  // ── Level 9 ──────────────────────────────────────────────────────────────
+  "l9-s1": require("../../assets/sounds/listening/l9-s1.mp3"),
+  "l9-s2": require("../../assets/sounds/listening/l9-s2.mp3"),
+  "l9-s3": require("../../assets/sounds/listening/l9-s3.mp3"),
+  "l9-s4": require("../../assets/sounds/listening/l9-s4.mp3"),
+  "l9-s5": require("../../assets/sounds/listening/l9-s5.mp3"),
+  "l9-s6": require("../../assets/sounds/listening/l9-s6.mp3"),
+  "l9-s7": require("../../assets/sounds/listening/l9-s7.mp3"),
+  "l9-s8": require("../../assets/sounds/listening/l9-s8.mp3"),
+  // ── Level 10 ──────────────────────────────────────────────────────────────
+  "l10-s1": require("../../assets/sounds/listening/l10-s1.mp3"),
+  "l10-s2": require("../../assets/sounds/listening/l10-s2.mp3"),
+  "l10-s3": require("../../assets/sounds/listening/l10-s3.mp3"),
+  "l10-s4": require("../../assets/sounds/listening/l10-s4.mp3"),
+  "l10-s5": require("../../assets/sounds/listening/l10-s5.mp3"),
+  "l10-s6": require("../../assets/sounds/listening/l10-s6.mp3"),
+  "l10-s7": require("../../assets/sounds/listening/l10-s7.mp3"),
+  "l10-s8": require("../../assets/sounds/listening/l10-s8.mp3"),
 };
 
 /**

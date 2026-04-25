@@ -1038,7 +1038,7 @@ const Home = () => {
     describeIcon: useRef(null),
   };
 
-  const [showTutorial, setShowTutorial] = useState(true);
+  const [showTutorial, setShowTutorial] = useState(false);
   const [showSubscriptionExpired, setShowSubscriptionExpired] = useState(false);
   const handleTutorialDone = useCallback(() => setShowTutorial(false), []);
 
@@ -1147,6 +1147,19 @@ const Home = () => {
     });
     loadAllStoryProgress(currentProfile.id);
     getPendingProgression(currentProfile.id).then(setPendingProgression);
+    if (!userAccount?.id || _tutorialCheckedAccounts.has(userAccount.id)) {
+      setShowTutorial(false);
+    } else {
+      AsyncStorage.getItem(`@show_tutorial_${userAccount.id}`).then((flag) => {
+        _tutorialCheckedAccounts.add(userAccount.id);
+        if (flag === "true") {
+          AsyncStorage.removeItem(`@show_tutorial_${userAccount.id}`);
+          setShowTutorial(true);
+        } else {
+          setShowTutorial(false);
+        }
+      });
+    }
     if (!hasInitialSyncedRef.current) {
       hasInitialSyncedRef.current = true;
       syncNow().catch(() => {});
