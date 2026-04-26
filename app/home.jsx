@@ -78,6 +78,14 @@ const GAMES = [
     accentColor: "#FFD54F",
     route: "/DodgeCarGame",
   },
+  {
+    id: "monkey",
+    title: "Monkey Fishing",
+    subtitle: "Catch & learn words!",
+    gradient: ["#F5A623", "#C67C00"],
+    accentColor: "#FFF176",
+    route: "/MonkeyFishingGame",
+  },
 ];
 
 const TUTORIAL_STEPS = [
@@ -868,6 +876,87 @@ function MiniCat() {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
+// MINI MONKEY
+// ─────────────────────────────────────────────────────────────────────────────
+function MiniMonkey() {
+  const rodAnim  = useRef(new Animated.Value(0)).current;
+  const fishAnim = useRef(new Animated.Value(0)).current;
+
+  useEffect(() => {
+    // Rod gentle sway
+    Animated.loop(
+      Animated.sequence([
+        Animated.timing(rodAnim, { toValue: 1, duration: 900, easing: Easing.inOut(Easing.sin), useNativeDriver: true }),
+        Animated.timing(rodAnim, { toValue: 0, duration: 900, easing: Easing.inOut(Easing.sin), useNativeDriver: true }),
+      ]),
+    ).start();
+    // Fish bob
+    Animated.loop(
+      Animated.sequence([
+        Animated.timing(fishAnim, { toValue: 1, duration: 600, useNativeDriver: true }),
+        Animated.timing(fishAnim, { toValue: 0, duration: 600, useNativeDriver: true }),
+      ]),
+    ).start();
+  }, []);
+
+  const rodRot   = rodAnim.interpolate({ inputRange: [0, 1], outputRange: ["-6deg", "6deg"] });
+  const fishY    = fishAnim.interpolate({ inputRange: [0, 1], outputRange: [0, -5] });
+  const containerH = isTablet ? 100 : 72;
+  const bodySize   = isTablet ? 54 : 40;
+
+  return (
+    <View style={{ alignItems: "center", justifyContent: "center", marginTop: 14, marginBottom: 6, height: containerH }}>
+      {/* Body / head */}
+      <View style={{
+        width: bodySize, height: bodySize, borderRadius: bodySize / 2,
+        backgroundColor: "#8B5E3C", borderWidth: 2.5, borderColor: "#5C3A1E",
+        alignItems: "center", justifyContent: "center",
+        shadowColor: "#8B5E3C", shadowOffset: { width: 0, height: 0 }, shadowOpacity: 0.8, shadowRadius: 10, elevation: 8,
+      }}>
+        {/* Face patch */}
+        <View style={{
+          width: bodySize * 0.6, height: bodySize * 0.55,
+          borderRadius: bodySize * 0.3,
+          backgroundColor: "#D4956A", borderWidth: 1, borderColor: "#B07040",
+        }} />
+        {/* Eyes */}
+        <View style={{ position: "absolute", top: bodySize * 0.18, left: bodySize * 0.2, width: 7, height: 7, borderRadius: 3.5, backgroundColor: "#111" }} />
+        <View style={{ position: "absolute", top: bodySize * 0.18, right: bodySize * 0.2, width: 7, height: 7, borderRadius: 3.5, backgroundColor: "#111" }} />
+        {/* Smile */}
+        <View style={{
+          position: "absolute", bottom: bodySize * 0.18,
+          width: 12, height: 6,
+          borderBottomLeftRadius: 8, borderBottomRightRadius: 8,
+          borderWidth: 1.5, borderColor: "#5C3A1E", borderTopWidth: 0,
+        }} />
+        {/* Ears */}
+        <View style={{ position: "absolute", top: bodySize * 0.1, left: -8, width: 10, height: 10, borderRadius: 5, backgroundColor: "#8B5E3C", borderWidth: 2, borderColor: "#5C3A1E" }} />
+        <View style={{ position: "absolute", top: bodySize * 0.1, right: -8, width: 10, height: 10, borderRadius: 5, backgroundColor: "#8B5E3C", borderWidth: 2, borderColor: "#5C3A1E" }} />
+      </View>
+      {/* Fishing rod */}
+      <Animated.View style={{
+        position: "absolute",
+        top: 4,
+        right: isTablet ? 14 : 8,
+        width: isTablet ? 44 : 32,
+        height: 3,
+        backgroundColor: "#5C3A1E",
+        borderRadius: 2,
+        transform: [{ rotate: rodRot }],
+      }} />
+      {/* Fish */}
+      <Animated.Text style={{
+        position: "absolute",
+        bottom: isTablet ? 6 : 2,
+        right: isTablet ? 4 : 0,
+        fontSize: isTablet ? 20 : 14,
+        transform: [{ translateY: fishY }],
+      }}>🐟</Animated.Text>
+    </View>
+  );
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
 // PROFILE ICON
 // ─────────────────────────────────────────────────────────────────────────────
 function ProfileIcon({ name }) {
@@ -915,6 +1004,7 @@ function GameCard({ game, onPress }) {
         </View>
         {game.id === "flappy" && <MiniBird />}
         {game.id === "dodge" && <MiniCat />}
+        {game.id === "monkey" && <MiniMonkey />}
         <View style={{ paddingHorizontal: pad.sm, paddingBottom: pad.sm, marginTop: "auto" }}>
           <Text style={{ fontFamily: FONTS.bold, fontSize: font.md, color: "#fff", letterSpacing: 0.2, textShadowColor: "rgba(0,0,0,0.4)", textShadowOffset: { width: 0, height: 1 }, textShadowRadius: 4 }}>{game.title}</Text>
           <Text style={{ fontFamily: FONTS.light, fontSize: font.s, color: "rgba(255,255,255,0.7)", marginTop: 2 }}>{game.subtitle}</Text>

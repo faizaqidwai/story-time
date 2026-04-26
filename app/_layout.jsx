@@ -179,6 +179,15 @@ const RootLayout = () => {
             />
 
             <Stack.Screen
+              name="MonkeyFishingGame"
+              options={{
+                headerShown: false,
+                animation: "slide_from_bottom",
+                gestureEnabled: false,
+            }}
+            />
+
+            <Stack.Screen
               name="components/Levels"
               options={{
                 headerShown: false,
