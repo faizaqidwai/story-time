@@ -86,6 +86,14 @@ const GAMES = [
     accentColor: "#FFF176",
     route: "/MonkeyFishingGame",
   },
+  { id: "superhero", title: "Super Hero Mission", subtitle: "Blast the right words!", 
+  gradient: ["#FF1744", "#B71C1C"], accentColor: "#FFD740", route: "/SuperHeroMissionGame" },
+  { id: "dino", title: "Dino World", subtitle: "Catch the right eggs!",
+  gradient: ["#2E7D32", "#1B5E20"], accentColor: "#69F0AE", route: "/DinoWorldGame" },
+  { id: "police", title: "Police Pursuit", subtitle: "Catch the black car!",
+  gradient: ["#1565C0", "#0D47A1"], accentColor: "#00BCD4", route: "/PolicePursuitGame" },
+  { id: "treasure", title: "Treasure Hunt", subtitle: "Find the hidden chest!",
+  gradient: ["#5D4037", "#3E2723"], accentColor: "#FFD54F", route: "/TreasureHuntGame" }
 ];
 
 const TUTORIAL_STEPS = [

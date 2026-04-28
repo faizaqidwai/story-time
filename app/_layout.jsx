@@ -187,6 +187,24 @@ const RootLayout = () => {
             }}
             />
 
+            <Stack.Screen 
+              name="SuperHeroMissionGame"
+              options={{ 
+                headerShown: false, 
+                animation: "slide_from_bottom", 
+                gestureEnabled: false 
+              }} 
+            />
+
+            <Stack.Screen name="DinoWorldGame"
+  options={{ headerShown: false, animation: "slide_from_bottom", gestureEnabled: false }} />
+
+              <Stack.Screen name="PolicePursuitGame"
+  options={{ headerShown: false, animation: "slide_from_bottom", gestureEnabled: false }} />
+
+            <Stack.Screen name="TreasureHuntGame"
+  options={{ headerShown: false, animation: "slide_from_bottom", gestureEnabled: false }} />
+
             <Stack.Screen
               name="components/Levels"
               options={{
