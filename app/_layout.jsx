@@ -161,49 +161,13 @@ const RootLayout = () => {
             />
 
             <Stack.Screen
-              name="FlappyWordGame"
+              name="games"
               options={{
                 headerShown: false,
-                animation: "slide_from_bottom",
+                animation: "none", // games/_layout.jsx handles its own animation
                 gestureEnabled: false,
               }}
             />
-
-            <Stack.Screen
-              name="DodgeCarGame"
-              options={{
-                headerShown: false,
-                animation: "slide_from_bottom",
-                gestureEnabled: false,
-              }}
-            />
-
-            <Stack.Screen
-              name="MonkeyFishingGame"
-              options={{
-                headerShown: false,
-                animation: "slide_from_bottom",
-                gestureEnabled: false,
-            }}
-            />
-
-            <Stack.Screen 
-              name="SuperHeroMissionGame"
-              options={{ 
-                headerShown: false, 
-                animation: "slide_from_bottom", 
-                gestureEnabled: false 
-              }} 
-            />
-
-            <Stack.Screen name="DinoWorldGame"
-  options={{ headerShown: false, animation: "slide_from_bottom", gestureEnabled: false }} />
-
-              <Stack.Screen name="PolicePursuitGame"
-  options={{ headerShown: false, animation: "slide_from_bottom", gestureEnabled: false }} />
-
-            <Stack.Screen name="TreasureHuntGame"
-  options={{ headerShown: false, animation: "slide_from_bottom", gestureEnabled: false }} />
 
             <Stack.Screen
               name="components/Levels"

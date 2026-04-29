@@ -791,12 +791,12 @@ export default function DodgeCarGame({ onExit }) {
     (async () => {
       await Audio.setAudioModeAsync({ playsInSilentModeIOS: true });
       const map = [
-        [sndButton, require("../assets/sounds/button.mp3")],
-        [sndSwish, require("../assets/sounds/swish.mp3")],
-        [sndCorrect, require("../assets/sounds/game/correct-hit.mp3")],
-        [sndHit, require("../assets/sounds/game/hit.mp3")],
-        [sndWin, require("../assets/sounds/game/win.mp3")],
-        [sndLose, require("../assets/sounds/game/lose.mp3")],
+        [sndButton, require("../../assets/sounds/button.mp3")],
+        [sndSwish, require("../../assets/sounds/swish.mp3")],
+        [sndCorrect, require("../../assets/sounds/game/correct-hit.mp3")],
+        [sndHit, require("../../assets/sounds/game/hit.mp3")],
+        [sndWin, require("../../assets/sounds/game/win.mp3")],
+        [sndLose, require("../../assets/sounds/game/lose.mp3")],
       ];
       for (const [ref, asset] of map) {
         try {

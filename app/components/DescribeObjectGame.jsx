@@ -384,6 +384,7 @@ const DescribeObjectGame = ({ onExit }) => {
   const [score, setScore] = useState(0);
   const [showResult, setShowResult] = useState(false);
   const [badgeVisible, setBadgeVisible] = useState(false);
+  const [isDismissing, setIsDismissing] = useState(false);
   const totalCoinsRef = useRef(0);
   const finalScoreRef = useRef(0);
 
@@ -705,7 +706,7 @@ const DescribeObjectGame = ({ onExit }) => {
     } catch (_) {}
   };
 
-  if (badgeVisible) {
+  if (badgeVisible || isDismissing) {
     return (
       <View style={styles.root}>
         <BadgePopup
@@ -713,11 +714,14 @@ const DescribeObjectGame = ({ onExit }) => {
           badge="describe_won"
           finishMode={true}
           onClose={() => {
+            setIsDismissing(true);
             setBadgeVisible(false);
-            router.dismiss(2);
+            // Delay lets BadgePopup exit animation finish cleanly before nav
+            setTimeout(() => router.dismiss(2), 120);
           }}
           onPlay={() => {
             setBadgeVisible(false);
+            setIsDismissing(false);
             handleReplay();
           }}
         />
@@ -753,7 +757,8 @@ const DescribeObjectGame = ({ onExit }) => {
             }}
             onExit={() => {
               playButtonSound();
-              doExit();
+              // Small delay prevents the broken screen flash on navigate back
+              setTimeout(() => doExit(), 60);
             }}
           />
         </View>
