@@ -12,13 +12,15 @@
  */
 
 export const GAME_IDS = {
-  FLAPPY_WORD:       "flappy_word",
-  DODGE_CAR:         "dodge_car",
-  MONKEY_FISHING:    "monkey_fishing",
-  DINO_WORLD:        "dino_world",
-  POLICE_PURSUIT:    "police_pursuit",
-  SUPER_HERO_MISSION:"super_hero_mission",
-  TREASURE_HUNT:     "treasure_hunt",
+  FLAPPY_WORD: "flappy_word",
+  DODGE_CAR: "dodge_car",
+  MONKEY_FISHING: "monkey_fishing",
+  DINO_WORLD: "dino_world",
+  POLICE_PURSUIT: "police_pursuit",
+  SUPER_HERO_MISSION: "super_hero_mission",
+  TREASURE_HUNT: "treasure_hunt",
+  SPIN_WHEEL: "spin_wheel",
+  SCENE_DETECTIVE: "scene_detective",
 };
 
 /**
@@ -33,67 +35,85 @@ export const GAME_IDS = {
  */
 export const GAME_REGISTRY = {
   [GAME_IDS.FLAPPY_WORD]: {
-    gameId:      GAME_IDS.FLAPPY_WORD,
-    name:        "Flappy Word",
-    subtitle:    "Fly through the words!",
-    route:       "/games/FlappyWordGame",
-    gradient:    ["#00BCD4", "#0097A7"],
+    gameId: GAME_IDS.FLAPPY_WORD,
+    name: "Flappy Word",
+    subtitle: "Fly through the words!",
+    route: "/games/FlappyWordGame",
+    gradient: ["#00BCD4", "#0097A7"],
     accentColor: "#FFD54F",
-    icon:        "🐦",
+    icon: "🐦",
   },
   [GAME_IDS.DODGE_CAR]: {
-    gameId:      GAME_IDS.DODGE_CAR,
-    name:        "Dodge the Car",
-    subtitle:    "Swerve & survive!",
-    route:       "/games/DodgeCarGame",
-    gradient:    ["#EF5350", "#B71C1C"],
+    gameId: GAME_IDS.DODGE_CAR,
+    name: "Dodge the Car",
+    subtitle: "Swerve & survive!",
+    route: "/games/DodgeCarGame",
+    gradient: ["#EF5350", "#B71C1C"],
     accentColor: "#FFD54F",
-    icon:        "🚗",
+    icon: "🚗",
   },
   [GAME_IDS.MONKEY_FISHING]: {
-    gameId:      GAME_IDS.MONKEY_FISHING,
-    name:        "Monkey Fishing",
-    subtitle:    "Catch the right word!",
-    route:       "/games/MonkeyFishingGame",
-    gradient:    ["#31ad79", "#1e6e47"],
+    gameId: GAME_IDS.MONKEY_FISHING,
+    name: "Monkey Fishing",
+    subtitle: "Catch the right word!",
+    route: "/games/MonkeyFishingGame",
+    gradient: ["#31ad79", "#1e6e47"],
     accentColor: "#FFD54F",
-    icon:        "🐒",
+    icon: "🐒",
   },
   [GAME_IDS.DINO_WORLD]: {
-    gameId:      GAME_IDS.DINO_WORLD,
-    name:        "Dino World",
-    subtitle:    "Stomp through words!",
-    route:       "/games/DinoWorldGame",
-    gradient:    ["#8BC34A", "#558B2F"],
+    gameId: GAME_IDS.DINO_WORLD,
+    name: "Dino World",
+    subtitle: "Stomp through words!",
+    route: "/games/DinoWorldGame",
+    gradient: ["#8BC34A", "#558B2F"],
     accentColor: "#FFD54F",
-    icon:        "🦕",
+    icon: "🦕",
   },
   [GAME_IDS.POLICE_PURSUIT]: {
-    gameId:      GAME_IDS.POLICE_PURSUIT,
-    name:        "Police Pursuit",
-    subtitle:    "Chase the right answer!",
-    route:       "/games/PolicePursuitGame",
-    gradient:    ["#1565C0", "#0D47A1"],
+    gameId: GAME_IDS.POLICE_PURSUIT,
+    name: "Police Pursuit",
+    subtitle: "Chase the right answer!",
+    route: "/games/PolicePursuitGame",
+    gradient: ["#1565C0", "#0D47A1"],
     accentColor: "#FFD54F",
-    icon:        "🚔",
+    icon: "🚔",
   },
   [GAME_IDS.SUPER_HERO_MISSION]: {
-    gameId:      GAME_IDS.SUPER_HERO_MISSION,
-    name:        "Superhero Mission",
-    subtitle:    "Save the day with words!",
-    route:       "/games/SuperHeroMissionGame",
-    gradient:    ["#7B1FA2", "#4A148C"],
+    gameId: GAME_IDS.SUPER_HERO_MISSION,
+    name: "Superhero Mission",
+    subtitle: "Save the day with words!",
+    route: "/games/SuperHeroMissionGame",
+    gradient: ["#7B1FA2", "#4A148C"],
     accentColor: "#FFD54F",
-    icon:        "🦸",
+    icon: "🦸",
   },
   [GAME_IDS.TREASURE_HUNT]: {
-    gameId:      GAME_IDS.TREASURE_HUNT,
-    name:        "Treasure Hunt",
-    subtitle:    "Find the hidden word!",
-    route:       "/games/TreasureHuntGame",
-    gradient:    ["#F57F17", "#E65100"],
+    gameId: GAME_IDS.TREASURE_HUNT,
+    name: "Treasure Hunt",
+    subtitle: "Find the hidden word!",
+    route: "/games/TreasureHuntGame",
+    gradient: ["#F57F17", "#E65100"],
     accentColor: "#FFD54F",
-    icon:        "🪙",
+    icon: "🪙",
+  },
+  [GAME_IDS.SPIN_WHEEL]: {
+    gameId: GAME_IDS.SPIN_WHEEL,
+    name: "Spin Wheel",
+    subtitle: "Spin the wheel and reveal the word!",
+    route: "/games/SpinWheelGame",
+    gradient: ["#92400e", "#F59E0B"],
+    accentColor: "#FCD34D",
+    icon: "🎡",
+  },
+  [GAME_IDS.SCENE_DETECTIVE]: {
+    gameId: GAME_IDS.SCENE_DETECTIVE,
+    name: "Scene Detective",
+    subtitle: "Find the hidden word in the scene!",
+    route: "/games/SceneDetectiveGame",
+    gradient: ["#4c1d95", "#7C3AED"],
+    accentColor: "#A855F7",
+    icon: "🕵️",
   },
 };
 
@@ -113,27 +133,37 @@ export const MOCK_LEVEL_GAME_CONFIGS = {
   1: {
     levelNumber: 1,
     games: [
+      // {
+      //   gameId:          GAME_IDS.FLAPPY_WORD,
+      //   storyGroupIndex: 1,
+      //   gameData: [
+      //     // Single round — array of words the game uses
+      //     { words: ["big", "small", "tall", "short"] },
+      //   ],
+      // },
+      // {
+      //   gameId:          GAME_IDS.DODGE_CAR,
+      //   storyGroupIndex: 2,
+      //   gameData: [
+      //     { words: ["fast", "slow", "heavy", "light"] },
+      //   ],
+      // },
       {
-        gameId:          GAME_IDS.FLAPPY_WORD,
+        gameId: GAME_IDS.SPIN_WHEEL,
         storyGroupIndex: 1,
-        gameData: [
-          // Single round — array of words the game uses
-          { words: ["big", "small", "tall", "short"] },
-        ],
+        gameData: [{ words: ["fast", "slow", "heavy", "light"] }],
       },
       {
-        gameId:          GAME_IDS.DODGE_CAR,
+        gameId: GAME_IDS.SCENE_DETECTIVE,
         storyGroupIndex: 2,
-        gameData: [
-          { words: ["fast", "slow", "heavy", "light"] },
-        ],
+        gameData: [{ words: ["fast", "slow", "heavy", "light"] }],
       },
     ],
     coinShopConfig: {
-      enabled:     true,
+      enabled: true,
       coinsAmount: 500,
-      price:       5.00,
-      currency:    "USD",
+      price: 5.0,
+      currency: "USD",
     },
   },
 
@@ -141,7 +171,7 @@ export const MOCK_LEVEL_GAME_CONFIGS = {
     levelNumber: 2,
     games: [
       {
-        gameId:          GAME_IDS.MONKEY_FISHING,
+        gameId: GAME_IDS.MONKEY_FISHING,
         storyGroupIndex: 1,
         gameData: [
           { words: ["hot", "cold", "wet", "dry"] },
@@ -150,18 +180,16 @@ export const MOCK_LEVEL_GAME_CONFIGS = {
         ],
       },
       {
-        gameId:          GAME_IDS.DINO_WORLD,
+        gameId: GAME_IDS.DINO_WORLD,
         storyGroupIndex: 2,
-        gameData: [
-          { words: ["loud", "quiet", "rough", "smooth"] },
-        ],
+        gameData: [{ words: ["loud", "quiet", "rough", "smooth"] }],
       },
     ],
     coinShopConfig: {
-      enabled:     true,
+      enabled: true,
       coinsAmount: 500,
-      price:       5.00,
-      currency:    "USD",
+      price: 5.0,
+      currency: "USD",
     },
   },
 
@@ -169,25 +197,21 @@ export const MOCK_LEVEL_GAME_CONFIGS = {
     levelNumber: 3,
     games: [
       {
-        gameId:          GAME_IDS.POLICE_PURSUIT,
+        gameId: GAME_IDS.POLICE_PURSUIT,
         storyGroupIndex: 1,
-        gameData: [
-          { words: ["above", "below", "inside", "outside"] },
-        ],
+        gameData: [{ words: ["above", "below", "inside", "outside"] }],
       },
       {
-        gameId:          GAME_IDS.SUPER_HERO_MISSION,
+        gameId: GAME_IDS.SUPER_HERO_MISSION,
         storyGroupIndex: 2,
-        gameData: [
-          { words: ["before", "after", "first", "last"] },
-        ],
+        gameData: [{ words: ["before", "after", "first", "last"] }],
       },
     ],
     coinShopConfig: {
-      enabled:     true,
+      enabled: true,
       coinsAmount: 500,
-      price:       5.00,
-      currency:    "USD",
+      price: 5.0,
+      currency: "USD",
     },
   },
 
@@ -196,33 +220,31 @@ export const MOCK_LEVEL_GAME_CONFIGS = {
     games: [
       {
         // Same game as Level 1 Slot 1 — different gameData shape entirely
-        gameId:          GAME_IDS.MONKEY_FISHING,
+        gameId: GAME_IDS.MONKEY_FISHING,
         storyGroupIndex: 1,
         gameData: [
           // Level 4 uses a matching-pairs structure — completely different from Level 2
           {
             pairs: [
               { q: "narrow", a: "wide" },
-              { q: "huge",   a: "tiny" },
-              { q: "brave",  a: "scared" },
+              { q: "huge", a: "tiny" },
+              { q: "brave", a: "scared" },
             ],
             timeLimit: 30,
           },
         ],
       },
       {
-        gameId:          GAME_IDS.TREASURE_HUNT,
+        gameId: GAME_IDS.TREASURE_HUNT,
         storyGroupIndex: 2,
-        gameData: [
-          { words: ["ancient", "modern", "fragile", "sturdy"] },
-        ],
+        gameData: [{ words: ["ancient", "modern", "fragile", "sturdy"] }],
       },
     ],
     coinShopConfig: {
-      enabled:     true,
+      enabled: true,
       coinsAmount: 500,
-      price:       5.00,
-      currency:    "USD",
+      price: 5.0,
+      currency: "USD",
     },
   },
 };
@@ -245,8 +267,8 @@ export function getMockConfigForLevel(levelNumber) {
   return {
     ...config,
     games: config.games.map((slot) => ({
-      ...GAME_REGISTRY[slot.gameId],  // name, route, icon, gradient, accentColor
-      ...slot,                         // gameId, storyGroupIndex, gameData (wins over registry)
+      ...GAME_REGISTRY[slot.gameId], // name, route, icon, gradient, accentColor
+      ...slot, // gameId, storyGroupIndex, gameData (wins over registry)
     })),
   };
 }
