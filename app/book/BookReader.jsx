@@ -34,7 +34,7 @@ import { FONTS } from "../theme";
 import { font, pad, radius, size } from "../theme/tokens";
 
 const { width } = Dimensions.get("window");
-const READING_COINS = 50;
+const READING_COINS = 36;
 const SWIPE_THRESHOLD = width * 0.28;
 const VELOCITY_THRESHOLD = 0.4;
 const HALF_W = width / 2;

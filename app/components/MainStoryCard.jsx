@@ -13,6 +13,7 @@ import {
 import { FONTS } from "../../app/theme";
 import { useTheme } from "../../app/_contexts/ThemeContext";
 import { Image as ExpoImage } from "expo-image";
+import { font } from "../theme/tokens";
 
 const { width: SW } = Dimensions.get("window");
 const T = {
@@ -99,8 +100,9 @@ function PlayButton({ onPress, sz }) {
             borderRadius: sz.tapHintBorderRadius,
             paddingHorizontal: sz.tapHintPaddingH,
             paddingVertical: sz.tapHintPaddingV,
-            alignItems: "center",
-            justifyContent: "center",
+            // alignItems: "center",
+            //  justifyContent: "center",
+            flexDirection: "row",
             shadowColor: T.teal,
             shadowOffset: { width: 0, height: 0 },
             shadowOpacity: 0.7,
@@ -108,15 +110,26 @@ function PlayButton({ onPress, sz }) {
             elevation: 12,
           }}
         >
+          <ExpoImage
+            source={require("../../assets/img/play-icon-2.png")}
+            style={{
+              width: 25,
+              height: 25,
+              resizeMode: "contain",
+            }}
+            cachePolicy="memory-disk"
+          />
           <Text
             style={{
               fontFamily: FONTS.bold,
-              fontSize: sz.tapHintFontSize,
+              fontSize: font.xl,
+              // fontWeight: "800",
               color: "#08081a",
+              padding: 5,
               letterSpacing: sz.tapHintLetterSpacing,
             }}
           >
-            ▶ START
+            START
           </Text>
         </TouchableOpacity>
       </Animated.View>

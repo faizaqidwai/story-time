@@ -54,7 +54,7 @@ const BADGE_CONFIGS = {
     sourceLabel: "Game",
     sourceIcon: null,
     sourceImage: require("../../assets/img/guess_icon.png"),
-    rewardLabel: "Stars",
+    rewardLabel: "Coins",
     rewardAmount: 200,
     nextLabel: "Listen Quest!",
     nextSub: "Listen. Think. Choose.",
@@ -68,7 +68,7 @@ const BADGE_CONFIGS = {
     sourceLabel: "Game",
     sourceIcon: null,
     sourceImage: require("../../assets/img/describe_icon.png"),
-    rewardLabel: "Stars",
+    rewardLabel: "Coins",
     rewardAmount: 150,
     nextLabel: "Guess the Word",
     nextSub: "Word Challenge",
@@ -81,7 +81,7 @@ const BADGE_CONFIGS = {
     accentColor: "#FFD54F",
     sourceLabel: "Game",
     sourceIcon: "🎮",
-    rewardLabel: "Stars",
+    rewardLabel: "Coins",
     rewardAmount: 200,
     nextLabel: "Next Challenge",
     nextSub: "Keep it going!",
@@ -96,7 +96,7 @@ const BADGE_CONFIGS = {
     sourceLabel: "Listen",
     sourceIcon: null,
     sourceImage: require("../../assets/img/listen_icon.png"),
-    rewardLabel: "Stars",
+    rewardLabel: "Coins",
     rewardAmount: 250,
     nextLabel: "Spot the Truth",
     nextSub: "Choose what's true.",
@@ -275,6 +275,7 @@ const BadgePopup = ({
   onPlay,
   badge,
   finishMode = false,
+  coinsEarned = 5,
 }) => {
   const cfg = BADGE_CONFIGS[badge];
 
@@ -452,11 +453,11 @@ const BadgePopup = ({
       })),
     );
     let count = 0;
-    const step = cfg.rewardAmount / COIN_COUNT;
+    const step = coinsEarned / COIN_COUNT;
     const ticker = setInterval(() => {
       count += step;
-      setRewardCount(Math.min(Math.round(count), cfg.rewardAmount));
-      if (count >= cfg.rewardAmount) clearInterval(ticker);
+      setRewardCount(Math.min(Math.round(count), coinsEarned));
+      if (count >= coinsEarned) clearInterval(ticker);
     }, 130);
   };
 
@@ -675,7 +676,7 @@ const BadgePopup = ({
                       ]}
                     >
                       <ExpoImage
-                        source={require("../../assets/img/bag.png")}
+                        source={require("../../assets/img/wallet.png")}
                         style={{ width: 70, height: 70 }}
                         contentFit="contain"
                       />
@@ -683,7 +684,11 @@ const BadgePopup = ({
                     {rewardCount > 0 && (
                       <View style={styles.counterBadge}>
                         <Text style={styles.counterText}>+{rewardCount}</Text>
-                        <Text style={styles.counterStar}>⭐</Text>
+                        <ExpoImage
+                          source={require("../../assets/img/coin.png")}
+                          style={styles.coinIcon}
+                          contentFit="contain"
+                        />
                       </View>
                     )}
                   </View>
@@ -933,6 +938,7 @@ const styles = StyleSheet.create({
     color: COLORS.yellow,
   }, // was: 19
   counterStar: { fontSize: font.md },
+  coinIcon: { width: size.iconSm, height: size.iconSm },
 
   // Challenge panel
   challengeSection: { alignItems: "center" },

@@ -1229,6 +1229,7 @@ const Article = () => {
           setShowBadgePopup(false);
           proceedToNextActivity();
         }}
+        coinsEarned={coinCount}
       />
     </View>
   );

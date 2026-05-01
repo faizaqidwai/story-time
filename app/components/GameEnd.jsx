@@ -247,7 +247,14 @@ function WinCard({
               style={[styles.btn, styles.btnPrimary]}
               onPress={onBadge}
             >
-              <Text style={styles.btnPrimaryText}>⭐ Collect Stars!</Text>
+              <Text style={styles.btnPrimaryText}>
+                <ExpoImage
+                  source={require("../../assets/img/coin.png")}
+                  style={styles.coinIcon}
+                  contentFit="contain"
+                />
+                Collect Coins!
+              </Text>
             </Pressable>
           </Animated.View>
         ) : (
@@ -567,6 +574,7 @@ const styles = StyleSheet.create({
     marginBottom: pad.lg,
     lineHeight: font.md * 1.5,
   },
+  coinIcon: { width: size.iconMd, height: size.iconMd },
 
   // Stars
   starsRow: {
@@ -693,6 +701,7 @@ const styles = StyleSheet.create({
     fontSize: font.lg,
     color: C.bg,
     letterSpacing: 0.4,
+    marginLeft: 10,
   }, // was: 16
   btnRetry: {
     backgroundColor: "rgba(239,83,80,0.15)",

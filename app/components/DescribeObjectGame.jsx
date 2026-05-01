@@ -17,6 +17,7 @@ import {
 import { Audio } from "expo-av";
 import * as Speech from "expo-speech";
 import { useRouter } from "expo-router";
+import { Image as ExpoImage } from "expo-image";
 import { useStoryActivity, ACTIVITY } from "../_contexts/StoryActivityContext";
 import OBJECTS from "../data/describeObjects.json";
 import BadgePopup from "./BadgePopup";
@@ -556,6 +557,8 @@ const DescribeObjectGame = ({ onExit }) => {
 
   const handleCoinLand = (coinId) => {
     setFlyingCoins((prev) => prev.filter((c) => c.id !== coinId));
+
+    totalCoinsRef.current += 1;
     Animated.sequence([
       Animated.parallel([
         Animated.spring(badgeScale, {
@@ -596,7 +599,6 @@ const DescribeObjectGame = ({ onExit }) => {
     if (isCorrect) {
       playSound("correct");
       spawnCoins(option.id);
-      totalCoinsRef.current += COINS_PER_CORRECT;
       setCorrectFound((prev) => {
         const next = prev + 1;
         if (next === CORRECT_NEEDED) {
@@ -724,6 +726,7 @@ const DescribeObjectGame = ({ onExit }) => {
             setIsDismissing(false);
             handleReplay();
           }}
+          coinsEarned={totalCoinsRef.current}
         />
       </View>
     );
@@ -791,11 +794,16 @@ const DescribeObjectGame = ({ onExit }) => {
         <Animated.View
           ref={scoreBadgeRef}
           style={[
-            styles.scorePill,
+            styles.coinBadge,
             { transform: [{ scale: badgeScale }, { translateX: badgeShake }] },
           ]}
         >
-          <Text style={styles.scoreText}>⭐ {score}</Text>
+          <ExpoImage
+            source={require("../../assets/img/coin.png")}
+            style={styles.coinIcon}
+            contentFit="contain"
+          />
+          <Text style={styles.coinCount}> {totalCoinsRef.current}</Text>
         </Animated.View>
       </View>
 
@@ -984,6 +992,25 @@ const styles = StyleSheet.create({
     alignItems: "center",
   },
   scoreText: { fontFamily: FONTS.bold, fontSize: font.md, color: C.yellow }, // was: 14
+
+  coinBadge: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: pad.xs,
+    backgroundColor: C.yellowDim,
+    borderRadius: radius.pill,
+    borderWidth: 1.5,
+    borderColor: C.yellowBorder,
+    paddingHorizontal: pad.sm,
+    paddingVertical: pad.xs,
+    shadowColor: C.yellow,
+    shadowOffset: { width: 0, height: 0 },
+    shadowOpacity: 0.45,
+    shadowRadius: 8,
+    elevation: 5,
+  },
+  coinIcon: { width: size.iconSm, height: size.iconSm },
+  coinCount: { fontFamily: FONTS.bold, fontSize: font.md, color: C.yellow },
 
   progressRow: {
     flexDirection: "row",

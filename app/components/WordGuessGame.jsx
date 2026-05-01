@@ -1168,6 +1168,7 @@ const WordGuessGame = ({ onExit }) => {
           setShowBadgePopup(false);
           proceedToNextActivity();
         }}
+        coinsEarned={coinCount}
       />
     </View>
   );
