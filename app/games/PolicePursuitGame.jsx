@@ -35,7 +35,7 @@ import {
 } from "react-native";
 import { Audio } from "expo-av";
 import { useRouter } from "expo-router";
-
+import { font, pad, radius, size } from "../theme/tokens";
 // ─── LAYOUT ───────────────────────────────────────────────────────────────────
 const STATUS_H =
   Platform.OS === "android" ? (StatusBar.currentHeight ?? 24) : 50;
@@ -528,14 +528,12 @@ function PoliceCar({ x, y, sirenAnim }) {
         >
           <Text
             style={{
-              fontSize: 7,
+              fontSize: font.sm,
               fontWeight: "900",
               color: C.policeStripe,
               letterSpacing: 0.5,
             }}
-          >
-            POLICE
-          </Text>
+          ></Text>
         </View>
       </View>
 
@@ -1174,9 +1172,9 @@ function RoundBriefing({ round, onStart, onExit }) {
         <Text
           style={{
             color: C.textSec,
-            fontSize: 11,
+            fontSize: font.md,
             fontWeight: "700",
-            marginBottom: 8,
+            marginBottom: pad.sm,
             letterSpacing: 1,
           }}
         >
@@ -2248,7 +2246,7 @@ const st = StyleSheet.create({
     paddingHorizontal: 22,
   },
   idleTitle: {
-    fontSize: 38,
+    fontSize: font.h1 + 2,
     fontWeight: "900",
     color: C.teal,
     letterSpacing: 0.5,
@@ -2256,22 +2254,22 @@ const st = StyleSheet.create({
     textShadowColor: "rgba(0,188,212,0.6)",
     textShadowOffset: { width: 0, height: 0 },
     textShadowRadius: 18,
-    marginBottom: 6,
+    marginBottom: pad.sm,
   },
   idleSubtitle: {
-    fontSize: 14,
+    fontSize: font.lg,
     fontWeight: "700",
     color: C.yellow,
     letterSpacing: 2,
-    marginBottom: 18,
+    marginBottom: pad.xxl,
     textAlign: "center",
   },
   idleHint: {
-    fontSize: 14,
+    fontSize: font.xl,
     color: C.textSec,
     textAlign: "center",
-    lineHeight: 22,
-    marginBottom: 28,
+    lineHeight: 26,
+    marginBottom: pad.xxxl,
     paddingHorizontal: 8,
   },
 
@@ -2301,31 +2299,31 @@ const st = StyleSheet.create({
     marginBottom: 12,
   },
   roundHeaderTxt: {
-    fontSize: 12,
+    fontSize: font.lg,
     fontWeight: "900",
     color: C.teal,
     letterSpacing: 1.5,
   },
   cardTitle: {
-    fontSize: 22,
+    fontSize: font.xxl,
     fontWeight: "900",
     color: C.white,
     marginBottom: 8,
     textAlign: "center",
   },
   cardDesc: {
-    fontSize: 13,
+    fontSize: font.md,
     color: C.textSec,
     textAlign: "center",
     lineHeight: 20,
-    marginBottom: 14,
+    marginBottom: pad.xl,
   },
   chipRow: {
     flexDirection: "row",
     flexWrap: "wrap",
-    gap: 6,
+    gap: 10,
     justifyContent: "center",
-    marginBottom: 18,
+    marginBottom: pad.xxl,
   },
   chip: {
     backgroundColor: C.greenDim,
@@ -2335,7 +2333,7 @@ const st = StyleSheet.create({
     paddingHorizontal: 10,
     paddingVertical: 3,
   },
-  chipText: { color: C.green, fontWeight: "800", fontSize: 12 },
+  chipText: { color: C.green, fontWeight: "800", fontSize: font.lg },
 
   blueBtn: {
     backgroundColor: C.police,
@@ -2352,7 +2350,7 @@ const st = StyleSheet.create({
     borderColor: C.teal,
   },
   blueBtnText: {
-    fontSize: 17,
+    fontSize: font.h3,
     fontWeight: "900",
     color: C.white,
     letterSpacing: 0.5,
