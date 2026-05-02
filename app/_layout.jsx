@@ -6,24 +6,13 @@ import { LevelAccessProvider } from "./_contexts/LevelAccessContext";
 import { ThemeProvider } from "./_contexts/ThemeContext";
 import { useEffect } from "react";
 
-import {
-  SubscriptionProvider,
-  useSubscription,
-} from "./_contexts/SubscriptionContext";
+import { SubscriptionProvider } from "./_contexts/SubscriptionContext";
 import { RevenueCatProvider } from "./_contexts/RevenueCatContext";
-import PlanBadge from "./components/PlanBadge";
-import { COLORS } from "./theme";
 import { useFonts } from "expo-font";
 
 import { setNavigationRef, setNotifyRef } from "./services/apiClient";
 import { useRouter } from "expo-router";
 import { useNotify } from "./_contexts/NotificationContext";
-
-// ── Dynamic plan badge — reads subscription from context ─────────────────────
-function HeaderPlanBadge() {
-  const { planName, isFree } = useSubscription();
-  return <PlanBadge planName={planName} isFree={isFree} />;
-}
 
 // ── Notify wirer — must be INSIDE NotificationProvider ───────────────────────
 function NotifyWirer() {
@@ -104,59 +93,27 @@ const RootLayout = () => {
             />
 
             <Stack.Screen
-              name="home"
+              name="features/home"
               options={{
                 headerShown: false,
-                animation: "slide_from_right",
-                contentStyle: { backgroundColor: "#1a1a2e" },
+                animation: "none",
               }}
             />
 
             <Stack.Screen
-              name="account"
+              name="features/stories"
               options={{
                 headerShown: false,
-                title: "",
-                headerBackTitle: "",
-                animation: "slide_from_left",
-                headerStyle: {
-                  backgroundColor: COLORS.darkBg,
-                  borderBottomWidth: 1,
-                  borderBottomColor: COLORS.borderTeal,
-                },
-                headerTitleStyle: {
-                  color: COLORS.textPrimary,
-                  fontSize: 20,
-                  fontWeight: "bold",
-                },
-                headerTintColor: COLORS.teal,
-                headerShadowVisible: true,
-                headerRight: () => <HeaderPlanBadge />,
+                animation: "none",
               }}
             />
 
             <Stack.Screen
-              name="book/[id]"
-              options={{
-                headerShown: true,
-                title: "Story",
-                headerBackTitle: "",
-                animation: "slide_from_right",
-                headerStyle: { backgroundColor: COLORS.darkBg },
-                headerTitleStyle: {
-                  color: COLORS.textPrimary,
-                  fontWeight: "bold",
-                },
-                headerTintColor: COLORS.teal,
-              }}
-            />
-
-            <Stack.Screen
-              name="book/[id]/read"
+              name="features/user"
               options={{
                 headerShown: false,
-                animation: "slide_from_right",
-                contentStyle: { backgroundColor: "#08081a" },
+                animation: "slide_from_left", // user/_layout.jsx handles its own animation
+                gestureEnabled: false,
               }}
             />
 
@@ -170,17 +127,16 @@ const RootLayout = () => {
             />
 
             <Stack.Screen
-              name="components/Levels"
+              name="features/levels"
               options={{
                 headerShown: false,
-                animation: "none",
+                animation: "none", // levels/_layout.jsx handles its own animation
                 gestureEnabled: false,
-                contentStyle: { backgroundColor: "#08081a" },
               }}
             />
 
             <Stack.Screen
-              name="components/WordBag"
+              name="features/vocabulary/WordBag"
               options={{
                 headerShown: false,
                 animation: "slide_from_left",
@@ -189,29 +145,10 @@ const RootLayout = () => {
             />
 
             <Stack.Screen
-              name="components/LearningPath"
+              name="features/purchases"
               options={{
                 headerShown: false,
                 animation: "slide_from_right",
-                contentStyle: { backgroundColor: "#08081a" },
-              }}
-            />
-
-            <Stack.Screen
-              name="components/Reports"
-              options={{
-                headerShown: false,
-                animation: "slide_from_right",
-                contentStyle: { backgroundColor: "#08081a" },
-              }}
-            />
-
-            <Stack.Screen
-              name="components/billing/PlanBillingScreen"
-              options={{
-                headerShown: false,
-                animation: "slide_from_right",
-                contentStyle: { backgroundColor: "#08081a" },
               }}
             />
             <Stack.Screen

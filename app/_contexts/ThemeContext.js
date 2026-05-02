@@ -10,8 +10,8 @@
 import React, { createContext, useContext, useMemo } from "react";
 import { Dimensions } from "react-native";
 
-import { DEVICE_SIZES as MOBILE_SIZES } from "../theme-mobile";
-import { DEVICE_SIZES as TABLET_SIZES } from "../theme-tablet";
+import { DEVICE_SIZES as MOBILE_SIZES } from "../theme/theme-mobile";
+import { DEVICE_SIZES as TABLET_SIZES } from "../theme/theme-tablet";
 
 // ── Tablet breakpoint ─────────────────────────────────────────
 // 768pt is the standard smallest iPad width in portrait mode.

@@ -216,8 +216,10 @@ export function GamificationProvider({
    * Called by GameCard when user taps the Unlock button.
    */
   const openUnlockModal = useCallback((gameId) => {
-    setUnlockModal({ gameId });
-  }, []);
+    // Include the full slot so UnlockModal can render the game card preview
+    const slot = levelGames?.find((g) => g.gameId === gameId) ?? null;
+    setUnlockModal({ gameId, slot });
+  }, [levelGames]);
 
   /**
    * confirmUnlock(gameId)

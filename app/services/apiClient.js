@@ -102,7 +102,7 @@ export async function logoutLocally(reason) {
     await clearAuthTokens();
     if (_clearUserData) await _clearUserData();
   } catch (_) {}
-  if (_navigationRef) _navigationRef.replace("/login");
+  if (_navigationRef) _navigationRef.replace("/features/login/login");
 }
 
 /**
