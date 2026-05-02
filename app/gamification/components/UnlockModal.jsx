@@ -538,7 +538,7 @@ export default function UnlockModal() {
 
           {/* ── Header ── */}
           <Text style={s.heading}>
-            {panel === "done" ? "🎉 Game Unlocked!" : "💎 Unlock This Game"}
+            {panel === "done" ? "🎉 Game Unlocked!" : "Unlock This Game"}
           </Text>
           <Text style={s.subHeading}>
             {panel === "confirm" &&
@@ -765,18 +765,19 @@ const s = StyleSheet.create({
   },
   heading: {
     fontFamily: FONTS.bold,
-    fontSize: font.xl,
+    fontSize: font.h3,
     color: C.textPri,
     textAlign: "center",
     letterSpacing: 0.3,
-    marginBottom: pad.xs,
+    marginBottom: pad.xs + 1,
+    marginTop: pad.sm,
     textShadowColor: C.purpleGlow,
     textShadowOffset: { width: 0, height: 0 },
     textShadowRadius: 10,
   },
   subHeading: {
     fontFamily: FONTS.regular,
-    fontSize: font.md,
+    fontSize: font.lg,
     color: C.textMuted,
     textAlign: "center",
     marginBottom: pad.sm,
@@ -794,9 +795,9 @@ const s = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
     gap: GAP,
-    paddingVertical: pad.xs,
+    paddingVertical: pad.xxxl,
   },
-  iconCol: { alignItems: "center", gap: pad.s },
+  iconCol: { alignItems: "center", gap: pad.md },
   iconBox: {
     width: ICON_BOX,
     height: ICON_BOX,
@@ -818,7 +819,7 @@ const s = StyleSheet.create({
   boxImage: { width: ICON_BOX * 0.72, height: ICON_BOX * 0.72 },
   iconLabel: {
     fontFamily: FONTS.bold,
-    fontSize: font.s,
+    fontSize: font.sm,
     color: C.textMuted,
     letterSpacing: 1.1,
     textTransform: "uppercase",
@@ -893,10 +894,11 @@ const s = StyleSheet.create({
     borderColor: "rgba(255,255,255,0.18)",
     backgroundColor: "rgba(255,255,255,0.05)",
     alignItems: "center",
+    justifyContent: "center",
   },
   cancelBtnText: {
     fontFamily: FONTS.bold,
-    fontSize: font.md,
+    fontSize: font.lg,
     color: "rgba(255,255,255,0.55)",
   },
   confirmBtn: {
@@ -912,10 +914,11 @@ const s = StyleSheet.create({
     shadowOpacity: 0.5,
     shadowRadius: 8,
     elevation: 6,
+    justifyContent: "center",
   },
   confirmBtnText: {
     fontFamily: FONTS.bold,
-    fontSize: font.md,
+    fontSize: font.lg,
     color: C.purple,
   },
   cantAffordBox: {
