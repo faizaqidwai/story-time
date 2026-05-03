@@ -123,7 +123,6 @@ export const LevelAccessProvider = ({ children }) => {
   // Call this whenever currentProfile changes (from UserContext)
   const initForProfile = useCallback(
     async (profile) => {
-      console.log("[LVL CXT] InitforProfile START");
       if (!profile) return;
 
       const profileId = profile.id;
@@ -153,10 +152,6 @@ export const LevelAccessProvider = ({ children }) => {
 
       // Then fetch fresh data from backend
       const freshMap = await fetchLevelMap(profileId, playLevel);
-      console.log(
-        "[LVL CXT] InitforProfile after freshMap == " +
-          JSON.stringify(freshMap),
-      );
       // Guard: profile may have changed while we were waiting
       if (currentProfileIdRef.current !== profileId) return;
 

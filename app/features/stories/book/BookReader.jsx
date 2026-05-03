@@ -110,6 +110,13 @@ export default function BookReader() {
   const pendingFinishRef = useRef(null);
 
   useEffect(() => {
+    console.log("[BookReader LIFECYCLE] BookReader MOUNTED");
+    return () => {
+      console.log("[BookReader LIFECYCLE] BookReader UNMOUNTED");
+    };
+  }, []);
+
+  useEffect(() => {
     if (currentStory) {
       const enriched = currentStory.activityData
         ? currentStory

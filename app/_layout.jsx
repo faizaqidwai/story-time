@@ -14,6 +14,8 @@ import { setNavigationRef, setNotifyRef } from "./services/apiClient";
 import { useRouter } from "expo-router";
 import { useNotify } from "./_contexts/NotificationContext";
 
+import { COLORS } from "./theme";
+
 // ── Notify wirer — must be INSIDE NotificationProvider ───────────────────────
 function NotifyWirer() {
   const notify = useNotify();
@@ -75,24 +77,6 @@ const RootLayout = () => {
             }}
           >
             <Stack.Screen
-              name="IntroCarousel"
-              options={{
-                headerShown: false,
-                animation: "fade",
-                contentStyle: { backgroundColor: "#08081a" },
-              }}
-            />
-
-            <Stack.Screen
-              name="AccountChoice"
-              options={{
-                headerShown: false,
-                animation: "slide_from_right",
-                contentStyle: { backgroundColor: "#08081a" },
-              }}
-            />
-
-            <Stack.Screen
               name="features/home"
               options={{
                 headerShown: false,
@@ -101,10 +85,27 @@ const RootLayout = () => {
             />
 
             <Stack.Screen
-              name="features/stories"
+              name="features/stories/book/[id]"
+              options={{
+                headerShown: true,
+                title: "Story",
+                headerBackTitle: "",
+                animation: "slide_from_right",
+                headerStyle: { backgroundColor: COLORS.darkBg },
+                headerTitleStyle: {
+                  color: COLORS.textPrimary,
+                  fontWeight: "bold",
+                },
+                headerTintColor: COLORS.teal,
+              }}
+            />
+
+            <Stack.Screen
+              name="features/stories/book/[id]/read"
               options={{
                 headerShown: false,
-                animation: "none",
+                animation: "slide_from_right",
+                contentStyle: { backgroundColor: "#08081a" },
               }}
             />
 
@@ -121,7 +122,7 @@ const RootLayout = () => {
               name="games"
               options={{
                 headerShown: false,
-                animation: "none", // games/_layout.jsx handles its own animation
+                animation: "slide_from_bottom", // games/_layout.jsx handles its own animation
                 gestureEnabled: false,
               }}
             />
@@ -149,46 +150,6 @@ const RootLayout = () => {
               options={{
                 headerShown: false,
                 animation: "slide_from_right",
-              }}
-            />
-            <Stack.Screen
-              name="components/billing/SubscriptionPlansScreen"
-              options={{
-                headerShown: false,
-                animation: "slide_from_right",
-                contentStyle: { backgroundColor: "#08081a" },
-              }}
-            />
-            <Stack.Screen
-              name="components/billing/PaymentMethodScreen"
-              options={{
-                headerShown: false,
-                animation: "slide_from_right",
-                contentStyle: { backgroundColor: "#08081a" },
-              }}
-            />
-            <Stack.Screen
-              name="components/billing/BillingHistoryScreen"
-              options={{
-                headerShown: false,
-                animation: "slide_from_right",
-                contentStyle: { backgroundColor: "#08081a" },
-              }}
-            />
-            <Stack.Screen
-              name="components/billing/LevelSelectScreen"
-              options={{
-                headerShown: false,
-                animation: "slide_from_right",
-                contentStyle: { backgroundColor: "#08081a" },
-              }}
-            />
-            <Stack.Screen
-              name="components/billing/PurchaseScreen"
-              options={{
-                headerShown: false,
-                animation: "slide_from_right",
-                contentStyle: { backgroundColor: "#08081a" },
               }}
             />
           </Stack>

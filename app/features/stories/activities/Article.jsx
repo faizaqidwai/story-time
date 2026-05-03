@@ -987,6 +987,14 @@ const Article = () => {
   const coinShakeAnim = useRef(new Animated.Value(0)).current;
 
   const sndButtonMain = useRef(null);
+
+  useEffect(() => {
+    console.log("[Article LIFECYCLE] Article MOUNTED");
+    return () => {
+      console.log("[Article LIFECYCLE] Article UNMOUNTED");
+    };
+  }, []);
+
   useEffect(() => {
     let alive = true;
     (async () => {

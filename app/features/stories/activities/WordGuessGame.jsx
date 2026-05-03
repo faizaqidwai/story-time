@@ -578,6 +578,13 @@ const WordGuessGame = ({ onExit }) => {
   const coinIdRef = useRef(0);
   const soundRef = useRef(null);
 
+  useEffect(() => {
+    console.log("[WordGuess LIFECYCLE] WordGuess MOUNTED");
+    return () => {
+      console.log("[WordGuess LIFECYCLE] WordGuess UNMOUNTED");
+    };
+  }, []);
+
   // Auto-scroll hints to bottom when new hint added
   useEffect(() => {
     if (hintsInBox.length > 0) {

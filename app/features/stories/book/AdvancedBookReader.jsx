@@ -111,7 +111,7 @@ export default function AdvancedBookReader() {
   const navigateToNextActivity = () => {
     const nextRoute = ACTIVITY_ROUTES[ACTIVITY.WORD_STORY_CHALLENGE];
     router.replace({
-      pathname: `/components/${nextRoute}`,
+      pathname: `/features/stories/activities/${nextRoute}`,
       params: { storyId: book.id, title: book.title },
     });
   };

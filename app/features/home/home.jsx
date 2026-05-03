@@ -49,7 +49,6 @@ import {
 } from "../../gamification/GamificationContext";
 import GamesSection from "../../gamification/components/GamesSection";
 // ─────────────────────────────────────────────────────────────────────────────
-import WelcomeLevelOverlay from "../levels/components/WelcomeLevelOverlay";
 import DiamondInfoModal from "./components/DiamondInfoModal";
 import CoinInfoModal from "./components/CoinInfoModal";
 
@@ -2002,11 +2001,6 @@ const HomeContent = () => {
       const allKeys = await AsyncStorage.getAllKeys();
       const prefix = `@story_activity_${profileId}_`;
       const storyKeys = allKeys.filter((k) => k.startsWith(prefix));
-      console.log(
-        `[loadAllStoryProgress] profileId=${profileId} keys found:`,
-        storyKeys.length,
-        storyKeys,
-      );
       if (storyKeys.length === 0) {
         setStoryProgressMap({});
         return;
@@ -2020,9 +2014,6 @@ const HomeContent = () => {
           const session = JSON.parse(raw);
           if (!session.storyId) continue;
           const sid = String(session.storyId);
-          console.log(
-            `[loadAllStoryProgress] storyId=${sid} nextActivityIndex=${session.nextActivityIndex}`,
-          );
           if (session.nextActivityIndex > 0 && session.nextActivityIndex < 4) {
             map[sid] = session.nextActivityIndex;
           } else if (session.nextActivityIndex >= 4) {
@@ -2030,24 +2021,12 @@ const HomeContent = () => {
           }
         } catch (_) {}
       }
-      console.log(
-        `[loadAllStoryProgress] completedFromStorage:`,
-        [...completedFromStorage],
-        "inProgress:",
-        map,
-      );
       setStoryProgressMap(map);
       setLocalCompletedIds((prev) => {
         const merged =
           completedFromStorage.size === 0
             ? prev
             : new Set([...prev, ...completedFromStorage]);
-        console.log(
-          `[loadAllStoryProgress] setLocalCompletedIds prev:`,
-          [...prev],
-          "merged:",
-          [...merged],
-        );
         return merged;
       });
     } catch (_) {}
@@ -2065,8 +2044,6 @@ const HomeContent = () => {
   const [completedLevelRef, setCompletedLevelRef] = useState(null);
   const [pendingProgression, setPendingProgression] = useState(null);
   const [showPremiumModal, setShowPremiumModal] = useState(false);
-  const [showWelcomeLevel, setShowWelcomeLevel] = useState(false);
-  const [welcomeLevelNum, setWelcomeLevelNum] = useState(null);
   const [showDiamondInfo, setShowDiamondInfo] = useState(false);
   const [showCoinInfo, setShowCoinInfo] = useState(false);
   const DIAMONDS_PER_FINISH = 3;
@@ -2257,12 +2234,6 @@ const HomeContent = () => {
 
   const loadBooksForLevel = useCallback(
     async (levelNumber, profileId, playLevel) => {
-      console.log(
-        "[LOAD LEVEL BOOKS] level:",
-        levelNumber,
-        "profileId:",
-        profileId,
-      );
       setLoading(true);
       const cached = await loadStoriesFromCache(levelNumber);
       if (cached) {
@@ -2277,12 +2248,6 @@ const HomeContent = () => {
   );
 
   const _fetchBooksFromApi = async (levelNumber, profileId, playLevel) => {
-    console.log(
-      "[FETCH BOOKS FROM API] level:",
-      levelNumber,
-      "profileId:",
-      profileId,
-    );
     try {
       const data =
         levelNumber === playLevel
@@ -2298,12 +2263,6 @@ const HomeContent = () => {
   };
 
   useEffect(() => {
-    console.log(
-      "[PROFILE EFFECT] fired — current:",
-      currentProfile?.name,
-      "ref:",
-      lastInitializedProfileIdRef.current,
-    );
     if (!currentProfile) return;
     if (lastInitializedProfileIdRef.current === currentProfile.id) return;
 
@@ -2314,12 +2273,6 @@ const HomeContent = () => {
     setStoryProgressMap({});
     setLocalCompletedIds(new Set());
     setBooks([]);
-    console.log(
-      "[PROFILE EFFECT] about to init — name:",
-      currentProfile.name,
-      "id:",
-      currentProfile.id,
-    );
     initForProfile(currentProfile).then(() => {
       profileSwitchInProgressRef.current = false;
       prevLoadedLevelRef.current = currentProfile.playLevel ?? 1;
@@ -2528,13 +2481,6 @@ const HomeContent = () => {
     setStoryProgressMap({});
     setLocalCompletedIds(new Set());
     await updateProfile({ ...currentProfile, playLevel: result.newLevel });
-    // ── Show WelcomeLevelOverlay after all progression work is done ─────────
-    // Small delay ensures LevelProgressionOverlay has fully dismissed first.
-    setTimeout(() => {
-      setWelcomeLevelNum(result.newLevel);
-      setShowWelcomeLevel(true);
-    }, 400);
-    // ────────────────────────────────────────────────────────────────────────
   };
 
   const handleRetryLevelProgression = () => {
@@ -3032,12 +2978,6 @@ const HomeContent = () => {
       />
 
       {/* ── Gamification overlays ── */}
-      <WelcomeLevelOverlay
-        visible={showWelcomeLevel}
-        newLevel={welcomeLevelNum}
-        stories={books}
-        onDone={() => setShowWelcomeLevel(false)}
-      />
       <DiamondInfoModal
         visible={showDiamondInfo}
         onClose={() => setShowDiamondInfo(false)}

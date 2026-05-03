@@ -242,6 +242,13 @@ export default function StoryHome() {
   const headerOp = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
+    console.log("[StoryHome LIFECYCLE] StoryHome MOUNTED");
+    return () => {
+      console.log("[StoryHome LIFECYCLE] StoryHome UNMOUNTED");
+    };
+  }, []);
+
+  useEffect(() => {
     Animated.timing(headerOp, {
       toValue: 1,
       duration: 480,
@@ -276,7 +283,7 @@ export default function StoryHome() {
           </Text>
           <TouchableOpacity
             style={styles.fallbackBtn}
-            onPress={() => router.replace("/features/home")}
+            onPress={() => router.back()}
           >
             <Text style={styles.fallbackBtnText}>← Back to Home</Text>
           </TouchableOpacity>

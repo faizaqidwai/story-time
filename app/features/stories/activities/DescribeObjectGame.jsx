@@ -380,7 +380,7 @@ const DescribeObjectGame = ({ onExit }) => {
   const doExit = () => {
     Speech.stop();
     if (typeof onExit === "function") onExit();
-    else router.dismiss(3);
+    else router.dismiss(2);
   };
 
   const [queue, setQueue] = useState(() => shuffle(objectPool).slice(0, 3));
@@ -413,6 +413,13 @@ const DescribeObjectGame = ({ onExit }) => {
   const soundRef = useRef(null);
   const sndButton = useRef(null);
   const pulseLoop = useRef(null);
+
+  useEffect(() => {
+    console.log("[DescribeObject LIFECYCLE] DescribeObject MOUNTED");
+    return () => {
+      console.log("[DescribeObject LIFECYCLE] DescribeObject UNMOUNTED");
+    };
+  }, []);
 
   useEffect(() => {
     let alive = true;
@@ -722,7 +729,7 @@ const DescribeObjectGame = ({ onExit }) => {
             setIsDismissing(true);
             setBadgeVisible(false);
             // Delay lets BadgePopup exit animation finish cleanly before nav
-            setTimeout(() => router.dismiss(3), 120);
+            setTimeout(() => router.dismiss(2), 120);
           }}
           onPlay={() => {
             setBadgeVisible(false);

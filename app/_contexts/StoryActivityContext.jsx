@@ -48,8 +48,6 @@ const StoryActivityContext = createContext(null);
 
 // ─────────────────────────────────────────────────────────────────────────────
 function buildSession(story, profileId, isReadOnly) {
-  console.log("==== buildSession method =====");
-  console.log("==== isReadOnly ==== " + JSON.stringify(story));
   return {
     storyId: story.id,
     storyTitle: story.title,
