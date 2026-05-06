@@ -2,22 +2,6 @@
  * PolicePursuitGame.jsx
  *
  * POLICE PATROL CHASE — Top-down road game, word-learning for children.
- *
- * MECHANICS:
- *  - Top-down straight road view (like DodgeCar)
- *  - Police car chases a black criminal car ahead on the road
- *  - Words float down the road toward the police car
- *  - Collect CORRECT word → police car speeds up, gains on black car
- *  - Collect WRONG word   → police car slows down, black car pulls away
- *  - When police car catches the black car → GREAT CATCH! popup, points, new black car spawns
- *  - 5 rounds, each with a category of words
- *  - Black header bar with score badge + exit button
- *  - Stars fly to score badge on every catch
- *  - Gold/black result screens
- *
- * REGISTER IN _layout.jsx:
- *   <Stack.Screen name="PolicePursuitGame"
- *     options={{headerShown:false, animation:"slide_from_bottom", gestureEnabled:false}}/>
  */
 
 import React, { useEffect, useRef, useState, useCallback } from "react";
@@ -25,7 +9,6 @@ import {
   View,
   Text,
   StyleSheet,
-  Dimensions,
   Animated,
   Easing,
   Platform,
@@ -34,48 +17,44 @@ import {
   useWindowDimensions,
 } from "react-native";
 import { Audio } from "expo-av";
+import * as Speech from "expo-speech";
 import { useRouter } from "expo-router";
 import { font, pad, radius, size } from "../theme/tokens";
+
 // ─── LAYOUT ───────────────────────────────────────────────────────────────────
 const STATUS_H =
   Platform.OS === "android" ? (StatusBar.currentHeight ?? 24) : 50;
-const HEADER_H = STATUS_H + 56; // black header height
+const HEADER_H = STATUS_H + 56;
 const TICK_MS = 16;
 
-// Road & lanes
 const ROAD_PADDING = 24;
-const NUM_LANES = 3; // police switches between 3 lanes
+const NUM_LANES = 3;
 
-// Cars
 const POLICE_W = 48;
 const POLICE_H = 76;
 const BLACK_W = 44;
 const BLACK_H = 72;
 
-// Word chips
 const WORD_H = 38;
 const WORD_FONT = 15;
 const WORD_CHAR_W = 10;
 const WORD_PAD_H = 20;
 
-// Game physics
-const SPEED_NORMAL = 3.0; // baseline scroll speed
-const SPEED_BOOST = 5.5; // speed after correct word
-const SPEED_SLOW = 1.2; // speed after wrong word
-const SPEED_DECAY = 0.04; // how quickly boost/slow returns to normal per tick
-const CATCH_DIST = 30; // px between cars = caught!
-const START_GAP = 0.3; // black car starts at 30% of screen height
-const CLOSE_RATE = 0.8; // px per tick police gains on correct speed
-const OPEN_RATE = 1.4; // px per tick black car pulls away on slow
-const WORD_SPEED = 2.2; // word scroll speed (px/tick)
-const SPAWN_TICKS = 90; // ticks between word spawns
+const SPEED_NORMAL = 3.0;
+const SPEED_BOOST = 5.5;
+const SPEED_SLOW = 1.2;
+const SPEED_DECAY = 0.04;
+const CATCH_DIST = 30;
+const START_GAP = 0.3;
+const CLOSE_RATE = 0.8;
+const OPEN_RATE = 1.4;
+const WORD_SPEED = 2.2;
+const SPAWN_TICKS = 90;
 
-// Scoring
-const PTS_CATCH = 50; // points per black car caught
-const PTS_CORRECT = 5; // points per correct word (shown briefly)
+const PTS_CATCH = 50;
+const PTS_CORRECT = 5;
 const PTS_WRONG = -3;
 
-// Round
 const ROUND_SECS = 90;
 
 // ─── COLORS ───────────────────────────────────────────────────────────────────
@@ -287,7 +266,6 @@ const buildQ = (r) =>
       .map((w) => ({ word: w, isTarget: false })),
   ]);
 
-// Compute lane centre X positions for a given screen width
 function getLaneCentres(sw) {
   const roadW = sw - ROAD_PADDING * 2;
   const laneW = roadW / NUM_LANES;
@@ -300,12 +278,10 @@ function getLaneCentres(sw) {
 function makeWord(sw, sh, item) {
   const centres = getLaneCentres(sw);
   const laneW = (sw - ROAD_PADDING * 2) / NUM_LANES;
-  // Cap word width to 85% of lane width so it always fits
   const w = Math.min(
     item.word.length * WORD_CHAR_W + WORD_PAD_H * 2,
     laneW * 0.85,
   );
-  // Spawn centred in a random lane
   const cx = centres[Math.floor(Math.random() * NUM_LANES)];
   return {
     id: uid(),
@@ -327,7 +303,6 @@ function Road({ sw, sh, dashOffset }) {
     total = dashH + gapH;
   const count = Math.ceil(roadH / total) + 2;
   const off = dashOffset % total;
-  // 3 lane dividers
   const dividers = [sw * 0.33, sw * 0.66];
 
   return (
@@ -335,11 +310,9 @@ function Road({ sw, sh, dashOffset }) {
       style={[StyleSheet.absoluteFill, { top: HEADER_H }]}
       pointerEvents="none"
     >
-      {/* Road surface */}
       <View
         style={{ ...StyleSheet.absoluteFillObject, backgroundColor: C.road }}
       />
-      {/* Edge lines */}
       <View
         style={{
           position: "absolute",
@@ -362,7 +335,6 @@ function Road({ sw, sh, dashOffset }) {
           borderRadius: 2,
         }}
       />
-      {/* Lane dashes */}
       {dividers.map((lx, li) => (
         <View
           key={li}
@@ -390,7 +362,6 @@ function Road({ sw, sh, dashOffset }) {
           ))}
         </View>
       ))}
-      {/* Side grass/kerb hint */}
       <View
         style={{
           position: "absolute",
@@ -416,11 +387,8 @@ function Road({ sw, sh, dashOffset }) {
 }
 
 // ─── POLICE CAR ───────────────────────────────────────────────────────────────
-// Top-down view: police blue/white livery, siren on roof
 function PoliceCar({ x, y, sirenAnim }) {
-  // Siren uses opacity pulse on two separate colored halves
-  // Left half = red, right half = blue, alternating opacity
-  const redOp = sirenAnim; // JS driver only - no transforms
+  const redOp = sirenAnim;
   const blueOp = sirenAnim.interpolate({
     inputRange: [0, 1],
     outputRange: [1, 0],
@@ -438,7 +406,6 @@ function PoliceCar({ x, y, sirenAnim }) {
         zIndex: 70,
       }}
     >
-      {/* Body */}
       <View
         style={{
           position: "absolute",
@@ -457,7 +424,6 @@ function PoliceCar({ x, y, sirenAnim }) {
           elevation: 8,
         }}
       >
-        {/* White stripe across middle */}
         <View
           style={{
             position: "absolute",
@@ -469,7 +435,6 @@ function PoliceCar({ x, y, sirenAnim }) {
             opacity: 0.9,
           }}
         />
-        {/* Windshield (top) */}
         <View
           style={{
             position: "absolute",
@@ -483,7 +448,6 @@ function PoliceCar({ x, y, sirenAnim }) {
             borderColor: "rgba(255,255,255,0.3)",
           }}
         />
-        {/* Rear window (bottom) */}
         <View
           style={{
             position: "absolute",
@@ -495,7 +459,6 @@ function PoliceCar({ x, y, sirenAnim }) {
             borderRadius: 3,
           }}
         />
-        {/* Wheels — 4 corners */}
         {[
           { top: 8, left: -5 },
           { top: 8, right: -5 },
@@ -516,7 +479,6 @@ function PoliceCar({ x, y, sirenAnim }) {
             }}
           />
         ))}
-        {/* POLICE text */}
         <View
           style={{
             position: "absolute",
@@ -536,9 +498,6 @@ function PoliceCar({ x, y, sirenAnim }) {
           ></Text>
         </View>
       </View>
-
-      {/* ── SIREN light bar — JS-driver opacity, separate from body ── */}
-      {/* Dark base bar */}
       <View
         style={{
           position: "absolute",
@@ -550,7 +509,6 @@ function PoliceCar({ x, y, sirenAnim }) {
           backgroundColor: "#111",
         }}
       />
-      {/* Red half */}
       <Animated.View
         style={{
           position: "absolute",
@@ -568,7 +526,6 @@ function PoliceCar({ x, y, sirenAnim }) {
           elevation: 12,
         }}
       />
-      {/* Blue half */}
       <Animated.View
         style={{
           position: "absolute",
@@ -591,7 +548,6 @@ function PoliceCar({ x, y, sirenAnim }) {
 }
 
 // ─── BLACK CAR ────────────────────────────────────────────────────────────────
-// Top-down dark car — the fugitive
 function BlackCar({ x, y }) {
   return (
     <View
@@ -623,7 +579,6 @@ function BlackCar({ x, y }) {
           elevation: 8,
         }}
       >
-        {/* Windshield */}
         <View
           style={{
             position: "absolute",
@@ -635,7 +590,6 @@ function BlackCar({ x, y }) {
             borderRadius: 3,
           }}
         />
-        {/* Rear */}
         <View
           style={{
             position: "absolute",
@@ -647,7 +601,6 @@ function BlackCar({ x, y }) {
             borderRadius: 3,
           }}
         />
-        {/* Red tail lights */}
         <View
           style={{
             position: "absolute",
@@ -678,7 +631,6 @@ function BlackCar({ x, y }) {
             shadowRadius: 4,
           }}
         />
-        {/* Wheels */}
         {[
           { t: 6, l: -5 },
           { t: 6, r: -5 },
@@ -706,10 +658,8 @@ function BlackCar({ x, y }) {
 
 // ─── WORD CHIP ────────────────────────────────────────────────────────────────
 function WordChip({ word }) {
-  // JS-driver: border/bg glow — OUTER view only, NO transform/opacity here
   const glow = useRef(new Animated.Value(0)).current;
   const glowRef = useRef(null);
-  // Native-driver: opacity + scale on collect — INNER view only
   const op = useRef(new Animated.Value(1)).current;
   const sc = useRef(new Animated.Value(1)).current;
 
@@ -735,7 +685,7 @@ function WordChip({ word }) {
 
   useEffect(() => {
     if (word.hit) {
-      glowRef.current?.stop(); // stop JS loop BEFORE native animations fire
+      glowRef.current?.stop();
       Animated.parallel([
         Animated.spring(sc, {
           toValue: 1.5,
@@ -766,7 +716,6 @@ function WordChip({ word }) {
   });
 
   return (
-    // OUTER: JS-driver only — borderColor + backgroundColor, NO transform/opacity
     <Animated.View
       pointerEvents="none"
       style={{
@@ -784,7 +733,6 @@ function WordChip({ word }) {
         zIndex: 60,
       }}
     >
-      {/* INNER: native-driver only — opacity + scale, NO color props */}
       <Animated.View
         style={{
           opacity: op,
@@ -808,7 +756,7 @@ function WordChip({ word }) {
   );
 }
 
-// ─── SPEED INDICATOR ─────────────────────────────────────────────────────────
+// ─── SPEED BAR ───────────────────────────────────────────────────────────────
 function SpeedBar({ speed }) {
   const frac = Math.min(1, (speed - SPEED_SLOW) / (SPEED_BOOST - SPEED_SLOW));
   const color = frac > 0.6 ? C.green : frac > 0.3 ? C.yellow : C.red;
@@ -849,7 +797,6 @@ function CatchPopup({ sw, sh, catches, onDone }) {
   const sc = useRef(new Animated.Value(0)).current;
   const op = useRef(new Animated.Value(0)).current;
   const shimX = useRef(new Animated.Value(-160)).current;
-
   useEffect(() => {
     Animated.parallel([
       Animated.spring(sc, {
@@ -884,7 +831,6 @@ function CatchPopup({ sw, sh, catches, onDone }) {
     }, 1400);
     return () => clearTimeout(t);
   }, []);
-
   return (
     <Animated.View
       pointerEvents="none"
@@ -915,7 +861,6 @@ function CatchPopup({ sw, sh, catches, onDone }) {
           elevation: 16,
         }}
       >
-        {/* Shimmer */}
         <Animated.View
           pointerEvents="none"
           style={{
@@ -1461,14 +1406,9 @@ export default function PolicePursuitGame({ onExit }) {
   const router = useRouter();
   const { width: sw, height: sh } = useWindowDimensions();
 
-  // Police car fixed Y position
   const POLICE_Y = sh * 0.72;
-  // Lane centres computed from screen width
   const LANE_CENTRES = getLaneCentres(sw);
-  // Police starts in middle lane (index 1)
   const POLICE_START_LANE = 1;
-
-  // Badge position for stars
   const BADGE_X = sw - 60;
   const BADGE_Y = STATUS_H + 16;
 
@@ -1488,13 +1428,13 @@ export default function PolicePursuitGame({ onExit }) {
   const [catchPopup, setCatchPopup] = useState(null);
   const [notif, setNotif] = useState(null);
 
-  // ── Refs ──────────────────────────────────────────────────
+  // ── Game refs ─────────────────────────────────────────────
   const phaseRef = useRef("idle");
   const scoreRef = useRef(0);
   const catchesRef = useRef(0);
   const speedRef = useRef(SPEED_NORMAL);
   const blackYRef = useRef(sh * START_GAP);
-  const policeLaneRef = useRef(POLICE_START_LANE); // current lane index
+  const policeLaneRef = useRef(POLICE_START_LANE);
   const policeXRef = useRef(LANE_CENTRES[POLICE_START_LANE] - POLICE_W / 2);
   const wordsRef = useRef([]);
   const queueRef = useRef([]);
@@ -1507,54 +1447,139 @@ export default function PolicePursuitGame({ onExit }) {
   const renderRef = useRef(null);
   const tickFnRef = useRef(null);
 
-  // Police car animated X — spring between lane centres
-  const policeAnimX = useRef(
-    new Animated.Value(LANE_CENTRES[POLICE_START_LANE] - POLICE_W / 2),
-  ).current;
-
-  // Siren animation (JS driver - opacity only)
-  const sirenAnim = useRef(new Animated.Value(0)).current;
-  const sirenLoop = useRef(null);
-
-  // Badge pulse
-  const badgeScale = useRef(new Animated.Value(1)).current;
-
-  // ── Sounds ────────────────────────────────────────────────
+  // ── Sound refs — ALL declared at top level, never inside effects ──────────
+  const sndIntro = useRef(null);
+  const sndDoor = useRef(null);
+  const sndSiren = useRef(null);
   const sndCorrect = useRef(null);
   const sndWrong = useRef(null);
   const sndWin = useRef(null);
   const sndLose = useRef(null);
   const sndCatch = useRef(null);
 
+  // ── Animated values ───────────────────────────────────────
+  const policeAnimX = useRef(
+    new Animated.Value(LANE_CENTRES[POLICE_START_LANE] - POLICE_W / 2),
+  ).current;
+  const sirenAnim = useRef(new Animated.Value(0)).current;
+  const sirenLoop = useRef(null);
+  const badgeScale = useRef(new Animated.Value(1)).current;
+
+  // ── Load all sounds once on mount ────────────────────────
   useEffect(() => {
     let alive = true;
     (async () => {
       try {
         await Audio.setAudioModeAsync({ playsInSilentModeIOS: true });
       } catch (_) {}
-      for (const [r, a] of [
-        [sndCorrect, require("../../assets/sounds/game/correct-hit.mp3")],
-        [sndWrong, require("../../assets/sounds/game/wrong-hit.mp3")],
+
+      // [ref, asset] pairs — all refs are declared above, safe to use here
+      const assets = [
+        [
+          sndIntro,
+          require("../../assets/sounds/game/police-pursuit/intro.mp3"),
+        ],
+        [
+          sndDoor,
+          require("../../assets/sounds/game/police-pursuit/door-open.mp3"),
+        ],
+        [
+          sndSiren,
+          require("../../assets/sounds/game/police-pursuit/siren.mp3"),
+        ],
+        [
+          sndCorrect,
+          require("../../assets/sounds/game/police-pursuit/correct-hit.mp3"),
+        ],
+        [
+          sndWrong,
+          require("../../assets/sounds/game/police-pursuit/wrong-hit.mp3"),
+        ],
+        [
+          sndCatch,
+          require("../../assets/sounds/game/police-pursuit/caught.mp3"),
+        ],
         [sndWin, require("../../assets/sounds/game/win.mp3")],
         [sndLose, require("../../assets/sounds/game/lose.mp3")],
-        [sndCatch, require("../../assets/sounds/game/correct-hit.mp3")],
-      ]) {
+      ];
+
+      for (const [r, a] of assets) {
         try {
           const { sound } = await Audio.Sound.createAsync(a);
           if (alive) r.current = sound;
           else sound.unloadAsync();
         } catch (_) {}
       }
+
+      // Play intro music immediately after it loads if still on idle screen
+      if (alive && phaseRef.current === "idle") {
+        try {
+          sndIntro.current?.playAsync();
+        } catch (_) {}
+      }
     })();
+
     return () => {
       alive = false;
-      [sndCorrect, sndWrong, sndWin, sndLose, sndCatch].forEach((r) => {
+      [
+        sndIntro,
+        sndDoor,
+        sndSiren,
+        sndCorrect,
+        sndWrong,
+        sndCatch,
+        sndWin,
+        sndLose,
+      ].forEach((r) => {
         r.current?.unloadAsync();
         r.current = null;
       });
     };
   }, []);
 
+  // ── Phase-driven audio ────────────────────────────────────
+  // Intro music plays on idle screen; TTS reads boost words on briefing screen.
+  useEffect(() => {
+    // ── IDLE: intro music is started in the sound-loader after async load.
+    //    Here we handle returning to idle (restart) and stopping on exit.
+    if (phase === "idle") {
+      // Returning to idle after a game — rewind and replay
+      try {
+        sndIntro.current
+          ?.setPositionAsync(0)
+          .then(() => sndIntro.current?.playAsync());
+      } catch (_) {}
+    } else {
+      // Stop intro when leaving idle for any other phase
+      try {
+        sndIntro.current?.stopAsync();
+      } catch (_) {}
+    }
+
+    // ── BRIEFING: TTS reads the boost words ──
+    if (phase === "briefing") {
+      const round = ROUNDS[roundIndex];
+      const wordList = round.targetWords.slice(0, 8).join(", ");
+      const utterance = `Round ${round.id}. Category: ${round.category}. Speed boost words: ${wordList}`;
+
+      // Wait for card slide-in to finish before speaking
+      const t = setTimeout(() => {
+        Speech.speak(utterance, { language: "en", pitch: 1.0, rate: 0.88 });
+      }, 650);
+
+      return () => {
+        clearTimeout(t);
+        Speech.stop();
+      };
+    }
+
+    // Stop any ongoing speech when leaving briefing
+    if (phase !== "briefing") {
+      Speech.stop();
+    }
+  }, [phase, roundIndex]);
+
+  // ── Helpers ───────────────────────────────────────────────
   const playSound = (r) => {
     try {
       r.current?.setPositionAsync(0).then(() => r.current?.playAsync());
@@ -1590,7 +1615,6 @@ export default function PolicePursuitGame({ onExit }) {
       policeLaneRef.current = next;
       const targetX = LANE_CENTRES[next] - POLICE_W / 2;
       policeXRef.current = targetX;
-      // useNativeDriver:false because policeAnimX drives `left` (layout prop)
       Animated.spring(policeAnimX, {
         toValue: targetX,
         friction: 8,
@@ -1616,6 +1640,7 @@ export default function PolicePursuitGame({ onExit }) {
 
   // ── Siren ─────────────────────────────────────────────────
   const startSiren = () => {
+    // Visual
     sirenLoop.current?.stop();
     sirenLoop.current = Animated.loop(
       Animated.sequence([
@@ -1632,13 +1657,24 @@ export default function PolicePursuitGame({ onExit }) {
       ]),
     );
     sirenLoop.current.start();
+
+    // Audio — looped at low volume so it doesn't drown gameplay sounds
+    try {
+      sndSiren.current?.setIsLoopingAsync(true);
+      sndSiren.current?.setVolumeAsync(0.35);
+      sndSiren.current?.playAsync();
+    } catch (_) {}
   };
+
   const stopSiren = () => {
     sirenLoop.current?.stop();
     sirenAnim.setValue(0);
+    try {
+      sndSiren.current?.stopAsync();
+    } catch (_) {}
   };
 
-  // ── Stop all ──────────────────────────────────────────────
+  // ── Stop all loops ────────────────────────────────────────
   const stopAll = () => {
     clearInterval(loopRef.current);
     loopRef.current = null;
@@ -1647,13 +1683,11 @@ export default function PolicePursuitGame({ onExit }) {
     stopSiren();
   };
 
-  // ── Spawn black car at top after catch ────────────────────
   const respawnBlackCar = () => {
-    blackYRef.current = sh * 0.12; // reappear near top
+    blackYRef.current = sh * 0.12;
     setBlackCarY(sh * 0.12);
   };
 
-  // ── Batch render ──────────────────────────────────────────
   const scheduleRender = () => {
     if (renderRef.current) return;
     renderRef.current = setTimeout(() => {
@@ -1667,89 +1701,66 @@ export default function PolicePursuitGame({ onExit }) {
     }, 0);
   };
 
-  // ── Tick function (stored in ref to avoid stale closures) ─
+  // ── Game tick ─────────────────────────────────────────────
   tickFnRef.current = () => {
     if (phaseRef.current !== "playing") return;
     tickRef.current++;
 
-    // Decay speed toward normal
-    if (speedRef.current > SPEED_NORMAL) {
+    if (speedRef.current > SPEED_NORMAL)
       speedRef.current = Math.max(SPEED_NORMAL, speedRef.current - SPEED_DECAY);
-    } else if (speedRef.current < SPEED_NORMAL) {
+    else if (speedRef.current < SPEED_NORMAL)
       speedRef.current = Math.min(SPEED_NORMAL, speedRef.current + SPEED_DECAY);
-    }
 
-    // Scroll road dashes (speed-dependent)
     dashRef.current = (dashRef.current + speedRef.current) % 460;
 
-    // Move black car relative to speed:
-    // At SPEED_NORMAL → gap constant
-    // Above normal    → police gains (gap closes)
-    // Below normal    → black car pulls away (gap opens)
     const delta = speedRef.current - SPEED_NORMAL;
-    if (delta > 0) {
-      // gaining — black car moves toward police (Y increases toward POLICE_Y)
+    if (delta > 0)
       blackYRef.current = Math.min(
         POLICE_Y - CATCH_DIST - BLACK_H,
         blackYRef.current + delta * CLOSE_RATE,
       );
-    } else if (delta < 0) {
-      // slowing — black car moves away (Y decreases toward top)
+    else if (delta < 0)
       blackYRef.current = Math.max(
         sh * 0.05,
         blackYRef.current + delta * OPEN_RATE,
       );
-    }
 
-    // Catch check: black car close enough to police car
     if (blackYRef.current >= POLICE_Y - CATCH_DIST - BLACK_H) {
-      // CAUGHT!
       catchesRef.current++;
       scoreRef.current += PTS_CATCH;
       playSound(sndCatch);
-      const cx = policeXRef.current + POLICE_W / 2,
-        cy = POLICE_Y - 40;
-      spawnStars(cx, cy);
+      spawnStars(policeXRef.current + POLICE_W / 2, POLICE_Y - 40);
       setCatchPopup({ id: uid(), catches: catchesRef.current });
       respawnBlackCar();
-      // Reset speed to normal after catch
       speedRef.current = SPEED_NORMAL;
     }
 
-    // Spawn words from queue — loops back when queue exhausted so words never stop
     if (tickRef.current % SPAWN_TICKS === 0) {
-      // Wrap index to loop the queue infinitely for the full round duration
-      if (queueIdxRef.current >= queueRef.current.length) {
-        queueIdxRef.current = 0; // restart from beginning (reshuffled queue stays same order)
-      }
-      const item = queueRef.current[queueIdxRef.current];
-      queueIdxRef.current++;
+      if (queueIdxRef.current >= queueRef.current.length)
+        queueIdxRef.current = 0;
+      const item = queueRef.current[queueIdxRef.current++];
       wordsRef.current = [...wordsRef.current, makeWord(sw, sh, item)];
     }
 
-    // Move words down + collision with police car (use live policeXRef)
     const pLeft = policeXRef.current + 8;
     const pRight = policeXRef.current + POLICE_W - 8;
     const pTop = POLICE_Y + 8;
     const pBot = POLICE_Y + POLICE_H - 8;
-
-    let correctHit = null;
-    let wrongHit = null;
+    let correctHit = null,
+      wrongHit = null;
 
     wordsRef.current = wordsRef.current
       .map((w) => {
         if (w.hit) return w;
         const ny = w.y + WORD_SPEED;
-        const wLeft = w.x;
-        const wRight = w.x + w.w;
-        const wBot = ny + w.h;
-
-        if (wLeft < pRight && wRight > pLeft && wBot >= pTop && ny <= pBot) {
-          if (w.isTarget) {
-            correctHit = w;
-          } else {
-            wrongHit = w;
-          }
+        if (
+          w.x < pRight &&
+          w.x + w.w > pLeft &&
+          ny + w.h >= pTop &&
+          ny <= pBot
+        ) {
+          if (w.isTarget) correctHit = w;
+          else wrongHit = w;
           return { ...w, y: ny, hit: true, hitTick: tickRef.current };
         }
         return { ...w, y: ny };
@@ -1773,7 +1784,7 @@ export default function PolicePursuitGame({ onExit }) {
     }
     if (wrongHit) {
       speedRef.current = SPEED_SLOW;
-      scoreRef.current += PTS_WRONG; // negative
+      scoreRef.current += PTS_WRONG;
       playSound(sndWrong);
       setNotif({
         id: uid(),
@@ -1786,7 +1797,7 @@ export default function PolicePursuitGame({ onExit }) {
     scheduleRender();
   };
 
-  // ── End round ─────────────────────────────────────────────
+  // ── End / Start round ─────────────────────────────────────
   const endRound = useCallback(() => {
     if (phaseRef.current !== "playing") return;
     phaseRef.current = "result";
@@ -1798,12 +1809,10 @@ export default function PolicePursuitGame({ onExit }) {
     playSound(sndWin);
   }, []);
 
-  // ── Start round ───────────────────────────────────────────
   const startRound = useCallback(
     (idx) => {
       const round = ROUNDS[idx];
-      const q = buildQ(round);
-      queueRef.current = q;
+      queueRef.current = buildQ(round);
       queueIdxRef.current = 0;
       scoreRef.current = 0;
       catchesRef.current = 0;
@@ -1812,7 +1821,6 @@ export default function PolicePursuitGame({ onExit }) {
       wordsRef.current = [];
       dashRef.current = 0;
       tickRef.current = 0;
-      // Reset police to middle lane
       policeLaneRef.current = POLICE_START_LANE;
       const startX = LANE_CENTRES[POLICE_START_LANE] - POLICE_W / 2;
       policeXRef.current = startX;
@@ -1831,7 +1839,7 @@ export default function PolicePursuitGame({ onExit }) {
       phaseRef.current = "playing";
       setPhase("playing");
 
-      stopAll(); // stop first, then start fresh
+      stopAll();
       startSiren();
       loopRef.current = setInterval(() => tickFnRef.current(), TICK_MS);
       clockRef.current = setInterval(() => {
@@ -1847,17 +1855,24 @@ export default function PolicePursuitGame({ onExit }) {
     [sh, endRound, LANE_CENTRES, policeAnimX],
   );
 
-  // Cleanup
   useEffect(() => () => stopAll(), []);
 
-  // ── Navigation ────────────────────────────────────────────
+  // ── Navigation handlers ───────────────────────────────────
   const handleStartGame = () => {
+    // Play door-open sound when tapping START CHASE
+    playSound(sndDoor);
     setRoundIndex(0);
     setTotalScore(0);
     phaseRef.current = "briefing";
     setPhase("briefing");
   };
-  const handleStartRound = () => startRound(roundIndex);
+
+  const handleStartRound = () => {
+    // Play door-open sound when tapping GO!
+    playSound(sndDoor);
+    startRound(roundIndex);
+  };
+
   const handleNext = () => {
     const ns = lastResult?.score ?? 0;
     if (roundIndex + 1 >= ROUNDS.length) {
@@ -1872,14 +1887,17 @@ export default function PolicePursuitGame({ onExit }) {
       setPhase("briefing");
     }
   };
+
   const handleRestart = () => {
     setRoundIndex(0);
     setTotalScore(0);
     phaseRef.current = "idle";
     setPhase("idle");
   };
+
   const handleExit = useCallback(() => {
     stopAll();
+    Speech.stop();
     phaseRef.current = "idle";
     if (typeof onExit === "function") onExit();
     else router.back();
@@ -1908,7 +1926,6 @@ export default function PolicePursuitGame({ onExit }) {
           paddingHorizontal: 14,
         }}
       >
-        {/* Exit */}
         <TouchableOpacity
           style={st.headerExitBtn}
           onPress={handleExit}
@@ -1917,8 +1934,6 @@ export default function PolicePursuitGame({ onExit }) {
         >
           <Text style={st.exitTxt}>✕</Text>
         </TouchableOpacity>
-
-        {/* Title / round info */}
         <View style={{ flex: 1, alignItems: "center" }}>
           {isPlaying && (
             <>
@@ -1957,8 +1972,6 @@ export default function PolicePursuitGame({ onExit }) {
             </Text>
           )}
         </View>
-
-        {/* Score badge */}
         <Animated.View
           style={[st.scorePill, { transform: [{ scale: badgeScale }] }]}
         >
@@ -1966,15 +1979,13 @@ export default function PolicePursuitGame({ onExit }) {
         </Animated.View>
       </View>
 
-      {/* ── ROAD (below header) ── */}
       <Road sw={sw} sh={sh} dashOffset={dashOffset} />
 
-      {/* Background city/scenery stripes */}
+      {/* Background */}
       <View
         style={[StyleSheet.absoluteFill, { top: HEADER_H, zIndex: 1 }]}
         pointerEvents="none"
       >
-        {/* Sky */}
         <View
           style={{
             position: "absolute",
@@ -1985,7 +1996,6 @@ export default function PolicePursuitGame({ onExit }) {
             backgroundColor: "rgba(13,13,40,0.8)",
           }}
         />
-        {/* Stars */}
         {Array.from({ length: 18 }, (_, i) => (
           <View
             key={i}
@@ -2003,23 +2013,20 @@ export default function PolicePursuitGame({ onExit }) {
         ))}
       </View>
 
-      {/* ── WORD CHIPS ── */}
       {words.map((w) => (
         <WordChip key={w.id} word={w} />
       ))}
 
-      {/* ── BLACK CAR — horizontally centred (always middle lane) ── */}
       {isPlaying && (
         <BlackCar x={LANE_CENTRES[1] - BLACK_W / 2} y={blackCarY} />
       )}
 
-      {/* ── POLICE CAR — left animated directly, no translateX confusion ── */}
       {(isPlaying || phase === "briefing" || phase === "idle") && (
         <Animated.View
           pointerEvents="none"
           style={{
             position: "absolute",
-            left: policeAnimX, // animated directly as left position
+            left: policeAnimX,
             top: POLICE_Y,
             width: POLICE_W,
             height: POLICE_H,
@@ -2030,7 +2037,6 @@ export default function PolicePursuitGame({ onExit }) {
         </Animated.View>
       )}
 
-      {/* ── TAP ZONES — left/right halves steer police car ── */}
       {isPlaying && (
         <>
           <TouchableOpacity
@@ -2082,10 +2088,8 @@ export default function PolicePursuitGame({ onExit }) {
         </>
       )}
 
-      {/* ── SPEED BAR ── */}
       {isPlaying && <SpeedBar speed={speed} />}
 
-      {/* ── Speed hint label ── */}
       {isPlaying && (
         <View
           style={{
@@ -2119,7 +2123,6 @@ export default function PolicePursuitGame({ onExit }) {
         </View>
       )}
 
-      {/* ── Flying stars ── */}
       {stars.map((s) => (
         <FlyingStar
           key={s.id}
@@ -2132,7 +2135,6 @@ export default function PolicePursuitGame({ onExit }) {
         />
       ))}
 
-      {/* ── Catch popup ── */}
       {catchPopup && (
         <CatchPopup
           key={catchPopup.id}
@@ -2143,7 +2145,6 @@ export default function PolicePursuitGame({ onExit }) {
         />
       )}
 
-      {/* ── Notification ── */}
       {notif && (
         <Notif
           key={notif.id}
@@ -2156,7 +2157,6 @@ export default function PolicePursuitGame({ onExit }) {
         />
       )}
 
-      {/* ── Catches badge ── */}
       {isPlaying && (
         <View
           style={{
@@ -2178,7 +2178,6 @@ export default function PolicePursuitGame({ onExit }) {
         </View>
       )}
 
-      {/* ── Overlays ── */}
       {phase === "idle" && (
         <IdleOverlay onStart={handleStartGame} onExit={handleExit} />
       )}
@@ -2212,7 +2211,6 @@ export default function PolicePursuitGame({ onExit }) {
 // ─── STYLES ───────────────────────────────────────────────────────────────────
 const st = StyleSheet.create({
   root: { flex: 1, backgroundColor: C.bg, overflow: "hidden" },
-
   headerExitBtn: {
     width: 36,
     height: 36,
@@ -2224,7 +2222,6 @@ const st = StyleSheet.create({
     justifyContent: "center",
   },
   exitTxt: { fontSize: 13, color: C.textSec, fontWeight: "700" },
-
   scorePill: {
     backgroundColor: C.yellowDim,
     borderRadius: 18,
@@ -2236,7 +2233,6 @@ const st = StyleSheet.create({
     alignItems: "center",
   },
   scoreTxt: { fontSize: 14, fontWeight: "900", color: C.yellow },
-
   overlayBg: {
     ...StyleSheet.absoluteFillObject,
     backgroundColor: "rgba(8,8,26,0.92)",
@@ -2272,7 +2268,6 @@ const st = StyleSheet.create({
     marginBottom: pad.xxxl,
     paddingHorizontal: 8,
   },
-
   card: {
     width: "100%",
     maxWidth: 420,
@@ -2334,7 +2329,6 @@ const st = StyleSheet.create({
     paddingVertical: 3,
   },
   chipText: { color: C.green, fontWeight: "800", fontSize: font.lg },
-
   blueBtn: {
     backgroundColor: C.police,
     borderRadius: 30,
@@ -2355,7 +2349,6 @@ const st = StyleSheet.create({
     color: C.white,
     letterSpacing: 0.5,
   },
-
   resultCard: {
     width: "100%",
     maxWidth: 400,

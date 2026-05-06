@@ -22,54 +22,54 @@ function HeaderPlanBadge() {
   return <PlanBadge planName={planName} isFree={isFree} />;
 }
 
-export default function UserLayout() {
-  return (
-    <Stack
-      screenOptions={{
-        headerShown: false,
-        contentStyle: { backgroundColor: "transparent" },
-      }}
-    >
-      <Stack.Screen
-        name="account"
-        options={{
-          headerShown: false,
-          title: "",
-          headerBackTitle: "",
-          animation: "slide_from_left",
-          headerStyle: {
-            backgroundColor: COLORS.darkBg,
-            borderBottomWidth: 1,
-            borderBottomColor: COLORS.borderTeal,
-          },
-          headerTitleStyle: {
-            color: COLORS.textPrimary,
-            fontSize: 20,
-            fontWeight: "bold",
-          },
-          headerTintColor: COLORS.teal,
-          headerShadowVisible: true,
-          headerRight: () => <HeaderPlanBadge />,
-        }}
-      />
+// export default function UserLayout() {
+//   return (
+//     <Stack
+//       screenOptions={{
+//         headerShown: false,
+//         contentStyle: { backgroundColor: "transparent" },
+//       }}
+//     >
+//       <Stack.Screen
+//         name="account"
+//         options={{
+//           headerShown: false,
+//           title: "",
+//           headerBackTitle: "",
+//           animation: "slide_from_left",
+//           headerStyle: {
+//             backgroundColor: COLORS.darkBg,
+//             borderBottomWidth: 1,
+//             borderBottomColor: COLORS.borderTeal,
+//           },
+//           headerTitleStyle: {
+//             color: COLORS.textPrimary,
+//             fontSize: 20,
+//             fontWeight: "bold",
+//           },
+//           headerTintColor: COLORS.teal,
+//           headerShadowVisible: true,
+//           headerRight: () => <HeaderPlanBadge />,
+//         }}
+//       />
 
-      <Stack.Screen
-        name="LearningPath"
-        options={{
-          headerShown: false,
-          animation: "slide_from_right",
-          contentStyle: { backgroundColor: "#08081a" },
-        }}
-      />
+//       <Stack.Screen
+//         name="LearningPath"
+//         options={{
+//           headerShown: false,
+//           animation: "slide_from_right",
+//           contentStyle: { backgroundColor: "#08081a" },
+//         }}
+//       />
 
-      <Stack.Screen
-        name="Reports"
-        options={{
-          headerShown: false,
-          animation: "slide_from_right",
-          contentStyle: { backgroundColor: "#08081a" },
-        }}
-      />
-    </Stack>
-  );
-}
+//       <Stack.Screen
+//         name="Reports"
+//         options={{
+//           headerShown: false,
+//           animation: "slide_from_right",
+//           contentStyle: { backgroundColor: "#08081a" },
+//         }}
+//       />
+//     </Stack>
+//   );
+// }

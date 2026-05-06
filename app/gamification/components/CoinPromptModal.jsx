@@ -1,16 +1,16 @@
 /**
- * CoinPromptModal.jsx
- * app/gamification/components/CoinPromptModal.jsx
- *
- * Bottom sheet, same animation as StoryFinishOverlay.
- * Step 0: Coin pile + current balance (not enough)
- * Step 1: How to earn more (Continue button)
+ * CoinPromptModal.jsx (SINGLE SCREEN + PURCHASE)
  */
 
-import React, { useRef, useEffect, useState, useCallback } from "react";
+import React, { useRef, useEffect, useCallback } from "react";
 import {
-  View, Text, StyleSheet, Animated, Easing,
-  Dimensions, TouchableOpacity, Modal, Alert,
+  View,
+  Text,
+  StyleSheet,
+  Animated,
+  Dimensions,
+  TouchableOpacity,
+  Modal,
 } from "react-native";
 import { Image as ExpoImage } from "expo-image";
 import { FONTS } from "../../theme";
@@ -21,267 +21,355 @@ import { useUser } from "../../_contexts/UserContext";
 const { height: SH } = Dimensions.get("window");
 
 const C = {
-  bg:           "rgba(8,8,26,0.96)",
-  teal:         "#00BCD4",
-  tealGlow:     "rgba(0,188,212,0.35)",
-  tealBorder:   "rgba(0,188,212,0.5)",
-  yellow:       "#FFD54F",
-  yellowGlow:   "rgba(255,213,79,0.35)",
+  bg: "rgba(8,8,26,0.96)",
+  teal: "#00BCD4",
+  tealBorder: "rgba(0,188,212,0.5)",
+  yellow: "#FFD54F",
   yellowBorder: "rgba(255,213,79,0.6)",
-  textPri:      "#E0F7FA",
-  textMuted:    "#7a9aaa",
+  red: "#EF5350",
+  redBorder: "rgba(239,83,80,0.5)",
+  textPri: "#E0F7FA",
+  textMuted: "#7a9aaa",
 };
 
 const SHEET_HEIGHT = SH * 0.65;
-const TOP_CLEAR    = SH - SHEET_HEIGHT;
+
+/* ---------------- COIN PILE ---------------- */
 
 const PILE_OFFSETS = [
-  { x: 0,   y: 0,   rot: "0deg",   sc: 1.0  },
-  { x: -16, y: -9,  rot: "-13deg", sc: 0.87 },
-  { x: 16,  y: -9,  rot: "13deg",  sc: 0.87 },
-  { x: -9,  y: -18, rot: "-6deg",  sc: 0.75 },
-  { x: 9,   y: -18, rot: "6deg",   sc: 0.75 },
+  { x: 0, y: 0, rot: "0deg", sc: 1 },
+  { x: -12, y: -6, rot: "-10deg", sc: 0.85 },
+  { x: 12, y: -6, rot: "10deg", sc: 0.85 },
 ];
 
-function PileIcon({ source, size: iconSize = 72, glowColor }) {
+function PileIcon({ source, size = 60 }) {
   return (
-    <View style={{ width: iconSize + 40, height: iconSize + 22, alignItems: "center", justifyContent: "flex-end" }}>
+    <View style={{ width: size + 30, height: size + 20 }}>
       {PILE_OFFSETS.map((o, i) => (
-        <ExpoImage key={i} source={source} style={{
-          position: "absolute", width: iconSize * o.sc, height: iconSize * o.sc,
-          bottom: 0, left: "50%", marginLeft: -(iconSize * o.sc) / 2 + o.x,
-          marginBottom: -o.y, opacity: 1 - i * 0.07,
-          transform: [{ rotate: o.rot }],
-          shadowColor: glowColor, shadowOffset: { width: 0, height: 3 },
-          shadowOpacity: 0.7, shadowRadius: 10,
-        }} contentFit="contain" />
+        <ExpoImage
+          key={i}
+          source={source}
+          style={{
+            position: "absolute",
+            width: size * o.sc,
+            height: size * o.sc,
+            bottom: 0,
+            left: "50%",
+            marginLeft: -(size * o.sc) / 2 + o.x,
+            transform: [{ rotate: o.rot }],
+            opacity: 1 - i * 0.1,
+          }}
+          contentFit="contain"
+        />
       ))}
     </View>
   );
 }
 
-function InfoChip({ icon, text, delay }) {
-  const sc = useRef(new Animated.Value(0)).current;
-  const op = useRef(new Animated.Value(0)).current;
-  useEffect(() => {
-    Animated.sequence([
-      Animated.delay(delay),
-      Animated.parallel([
-        Animated.spring(sc, { toValue: 1, friction: 5, tension: 80, useNativeDriver: true }),
-        Animated.timing(op, { toValue: 1, duration: 180, useNativeDriver: true }),
-      ]),
-    ]).start();
-  }, []);
-  return (
-    <Animated.View style={[cS.chip, { opacity: op, transform: [{ scale: sc }] }]}>
-      <Text style={cS.chipIcon}>{icon}</Text>
-      <Text style={cS.chipText}>{text}</Text>
-    </Animated.View>
-  );
-}
-
-const cS = StyleSheet.create({
-  chip: {
-    flexDirection: "row", alignItems: "center", gap: 10,
-    backgroundColor: "rgba(0,188,212,0.08)", borderWidth: 1.5,
-    borderColor: C.tealBorder, borderRadius: radius.pill,
-    paddingHorizontal: pad.sm, paddingVertical: pad.s,
-    marginVertical: pad.xs, width: "100%",
-  },
-  chipIcon: { fontSize: font.xl },
-  chipText: { fontFamily: FONTS.regular, color: C.textPri, fontSize: font.md, flex: 1, lineHeight: font.md * 1.4 },
-});
+/* ---------------- MAIN ---------------- */
 
 export default function CoinPromptModal() {
   const { coinPrompt, setCoinPrompt, coinShopConfig } = useGamification();
   const { currentProfile } = useUser();
 
-  const coins      = currentProfile?.coins ?? 0;
+  const coins = currentProfile?.coins ?? 0;
   const shopConfig = coinShopConfig ?? { enabled: false };
 
-  const [step, setStep]                 = useState(-1);
-  const [showContinue, setShowContinue] = useState(false);
-  const advancingRef  = useRef(false);
-  const wasVisibleRef = useRef(false);
-
-  const sheetY    = useRef(new Animated.Value(SHEET_HEIGHT)).current;
-  const scrOp     = useRef(new Animated.Value(0)).current;
-  const enterAnim = useRef(new Animated.Value(0.85)).current;
-  const opAnim    = useRef(new Animated.Value(0)).current;
-
-  const STEPS = [
-    {
-      accentColor:  "#EF5350",
-      glowColor:    "rgba(239,83,80,0.35)",
-      borderColor:  "rgba(239,83,80,0.5)",
-      heading:      "Need More Coins",
-      countLabel:   `${coins} 🪙`,
-      countUnit:    "coins remaining",
-      subLabel:     "you need 100 coins to play a game",
-      chips:        null,
-      showContinue: false,
-    },
-    {
-      accentColor:  C.teal,
-      glowColor:    C.tealGlow,
-      borderColor:  C.tealBorder,
-      heading:      "Earn More Coins",
-      countLabel:   "150–200 🪙",
-      countUnit:    "per story completed",
-      subLabel:     "complete stories to top up your coins",
-      chips: [
-        { icon: "📚", text: "Complete any story — earn 150 to 200 coins" },
-        ...(shopConfig.enabled ? [{ icon: "🪙", text: `Or get ${shopConfig.coinsAmount} coins for $${shopConfig.price?.toFixed(2)}` }] : []),
-      ],
-      showContinue: true,
-    },
-  ];
+  const sheetY = useRef(new Animated.Value(SHEET_HEIGHT)).current;
+  const scrim = useRef(new Animated.Value(0)).current;
+  const scale = useRef(new Animated.Value(0.9)).current;
+  const opacity = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
-    if (!coinPrompt) {
-      if (!wasVisibleRef.current) return;
-      wasVisibleRef.current = false;
-      Animated.timing(sheetY, { toValue: SHEET_HEIGHT, duration: 350, easing: Easing.in(Easing.quad), useNativeDriver: true })
-        .start(() => { setStep(-1); setShowContinue(false); scrOp.setValue(0); });
-      return;
-    }
-    wasVisibleRef.current = true;
-    advancingRef.current = false;
-    setShowContinue(false);
-    scrOp.setValue(0);
+    if (!coinPrompt) return;
+
     sheetY.setValue(SHEET_HEIGHT);
+    scrim.setValue(0);
+
     Animated.parallel([
-      Animated.timing(scrOp,  { toValue: 1, duration: 350, useNativeDriver: true }),
-      Animated.spring(sheetY, { toValue: 0, friction: 8, tension: 65, useNativeDriver: true }),
-    ]).start((r) => { if (r.finished) setTimeout(() => setStep(0), 300); });
+      Animated.timing(scrim, {
+        toValue: 1,
+        duration: 250,
+        useNativeDriver: true,
+      }),
+      Animated.spring(sheetY, { toValue: 0, useNativeDriver: true }),
+    ]).start();
+
+    Animated.parallel([
+      Animated.spring(scale, { toValue: 1, useNativeDriver: true }),
+      Animated.timing(opacity, {
+        toValue: 1,
+        duration: 250,
+        useNativeDriver: true,
+      }),
+    ]).start();
   }, [coinPrompt]);
 
-  useEffect(() => {
-    if (step < 0 || step >= STEPS.length) return;
-    advancingRef.current = false;
-    setShowContinue(false);
-    enterAnim.setValue(0.85);
-    opAnim.setValue(0);
-    Animated.parallel([
-      Animated.spring(enterAnim, { toValue: 1, friction: 5, tension: 62, useNativeDriver: true }),
-      Animated.timing(opAnim,   { toValue: 1, duration: 260, useNativeDriver: true }),
-    ]).start((r) => {
-      if (!r.finished || advancingRef.current) return;
-      advancingRef.current = true;
-      if (!STEPS[step].showContinue) {
-        setTimeout(() => {
-          Animated.parallel([
-            Animated.timing(opAnim,    { toValue: 0, duration: 200, useNativeDriver: true }),
-            Animated.spring(enterAnim, { toValue: 0.85, friction: 6, tension: 80, useNativeDriver: true }),
-          ]).start(() => setStep((p) => p + 1));
-        }, 1200);
-      } else {
-        setShowContinue(true);
-      }
-    });
-  }, [step]);
-
   const handleClose = useCallback(() => {
-    setShowContinue(false);
     Animated.parallel([
-      Animated.timing(sheetY, { toValue: SHEET_HEIGHT, duration: 380, easing: Easing.in(Easing.quad), useNativeDriver: true }),
-      Animated.timing(scrOp,  { toValue: 0, duration: 300, useNativeDriver: true }),
-    ]).start(() => setTimeout(() => setCoinPrompt(false), 100));
-  }, [setCoinPrompt]);
+      Animated.timing(sheetY, {
+        toValue: SHEET_HEIGHT,
+        duration: 250,
+        useNativeDriver: true,
+      }),
+      Animated.timing(scrim, {
+        toValue: 0,
+        duration: 200,
+        useNativeDriver: true,
+      }),
+    ]).start(() => setCoinPrompt(false));
+  }, []);
 
-  const handlePurchase = useCallback(() => {
-    handleClose();
-    setTimeout(() => {
-      Alert.alert(
-        "Purchase Coins",
-        `Get ${shopConfig.coinsAmount} coins for $${shopConfig.price?.toFixed(2)}`,
-        [
-          { text: "Cancel", style: "cancel" },
-          { text: "Buy Now", onPress: () => console.log("[CoinPromptModal] purchase initiated") },
-        ],
-      );
-    }, 400);
-  }, [shopConfig, handleClose]);
-
-  if (!coinPrompt && step === -1) return null;
-  const cfg = step >= 0 && step < STEPS.length ? STEPS[step] : null;
+  if (!coinPrompt) return null;
 
   return (
-    <Modal transparent visible={coinPrompt || step !== -1} animationType="none" onRequestClose={handleClose}>
-      <View style={s.shell} pointerEvents="box-none">
-        <Animated.View style={[s.scrim, { opacity: scrOp }]} pointerEvents="none" />
-        <Animated.View style={[s.sheet, { transform: [{ translateY: sheetY }] }]}>
+    <Modal transparent visible animationType="none">
+      <View style={s.shell}>
+        {/* SCRIM */}
+        <TouchableOpacity
+          activeOpacity={1}
+          onPress={handleClose}
+          style={StyleSheet.absoluteFill}
+        >
+          <Animated.View style={[s.scrim, { opacity: scrim }]} />
+        </TouchableOpacity>
+
+        {/* SHEET */}
+        <Animated.View
+          style={[s.sheet, { transform: [{ translateY: sheetY }] }]}
+        >
           <View style={s.handle} />
-          {cfg && (
-            <Animated.View style={[s.card, { borderColor: cfg.borderColor, shadowColor: cfg.glowColor, opacity: opAnim, transform: [{ scale: enterAnim }] }]}>
-              <Text style={s.heading}>{cfg.heading}</Text>
-              <View style={s.pileWrap}>
-                <PileIcon source={require("../../../assets/img/coin.png")} size={72} glowColor={cfg.glowColor} />
-              </View>
-              <Text style={[s.countText, { color: cfg.accentColor }]}>{cfg.countLabel}</Text>
-              <Text style={s.countUnit}>{cfg.countUnit}</Text>
-              <Text style={s.subLabel}>{cfg.subLabel}</Text>
-              {cfg.chips && (
-                <View style={s.chipsWrap}>
-                  {cfg.chips.map((c, i) => (
-                    <InfoChip key={i} icon={c.icon} text={c.text} delay={i * 120} />
-                  ))}
-                </View>
-              )}
-              {showContinue && (
-                <View style={s.btnRow}>
-                  <TouchableOpacity style={[s.continueBtn, { borderColor: cfg.accentColor }]} onPress={handleClose} activeOpacity={0.85}>
-                    <Text style={[s.continueBtnText, { color: cfg.accentColor }]}>Go Read ✓</Text>
+
+          <Animated.View style={{ opacity, transform: [{ scale }] }}>
+            {/* HEADER */}
+            <View style={s.header}>
+              <PileIcon source={require("../../../assets/img/coin.png")} />
+              <Text style={[s.count, { color: C.red }]}>{coins}</Text>
+              <Text style={s.label}>Coins Available</Text>
+            </View>
+
+            {/* MESSAGE */}
+            <Text style={s.mainText}>Not enough coins 😕</Text>
+            <Text style={s.subText}>You need 100 coins to play this game</Text>
+
+            {/* DIVIDER */}
+            {shopConfig.enabled && (
+              <>
+                {/* PURCHASE */}
+                <View style={s.packRow}>
+                  <TouchableOpacity style={s.pack}>
+                    <ExpoImage
+                      source={require("../../../assets/img/coin.png")}
+                      style={s.packIcon}
+                      contentFit="contain"
+                    />
+                    <Text style={s.packValue}>+500</Text>
+                    <Text style={s.packPrice}>$0.99</Text>
                   </TouchableOpacity>
-                  {shopConfig.enabled && (
-                    <TouchableOpacity style={[s.purchaseBtn]} onPress={handlePurchase} activeOpacity={0.85}>
-                      <Text style={s.purchaseBtnText}>Buy Coins 🪙</Text>
-                    </TouchableOpacity>
-                  )}
+
+                  <TouchableOpacity style={[s.pack, s.best]}>
+                    <ExpoImage
+                      source={require("../../../assets/img/coin.png")}
+                      style={s.packIcon}
+                      contentFit="contain"
+                    />
+                    <Text style={s.packValue}>+1200</Text>
+                    <Text style={s.packPrice}>$1.99</Text>
+                    <Text style={s.bestBadge}>BEST</Text>
+                  </TouchableOpacity>
+
+                  <TouchableOpacity style={s.pack}>
+                    <ExpoImage
+                      source={require("../../../assets/img/coin.png")}
+                      style={s.packIcon}
+                      contentFit="contain"
+                    />
+                    <Text style={s.packValue}>+3000</Text>
+                    <Text style={s.packPrice}>$3.99</Text>
+                  </TouchableOpacity>
                 </View>
-              )}
-            </Animated.View>
-          )}
+
+                <View style={s.dividerRow}>
+                  <View style={s.dividerLine} />
+                  <Text style={s.dividerText}> OR </Text>
+                  <View style={s.dividerLine} />
+                </View>
+              </>
+            )}
+            {/* EARN */}
+            <View style={{ width: "100%", alignItems: "center" }}>
+              <Text style={s.earnSub}>
+                Complete stories to earn 150–200 coins
+              </Text>
+            </View>
+
+            {/* ACTION */}
+            <TouchableOpacity
+              style={s.primaryBtn}
+              onPress={handleClose}
+              activeOpacity={0.85}
+            >
+              <Text style={s.primaryBtnText}>Read Story📚</Text>
+            </TouchableOpacity>
+          </Animated.View>
         </Animated.View>
       </View>
     </Modal>
   );
 }
 
+/* ---------------- STYLES ---------------- */
+
 const s = StyleSheet.create({
-  shell: { flex: 1, backgroundColor: "transparent" },
-  scrim: { position: "absolute", top: 0, left: 0, right: 0, height: TOP_CLEAR + 20, backgroundColor: "rgba(0,0,0,0.35)" },
+  shell: { flex: 1 },
+
+  scrim: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: "rgba(0,0,0,0.4)",
+  },
+
   sheet: {
-    position: "absolute", bottom: 0, left: 0, right: 0,
-    height: SHEET_HEIGHT, backgroundColor: C.bg,
-    borderTopLeftRadius: radius.xxl, borderTopRightRadius: radius.xxl,
-    borderTopWidth: 1.5, borderLeftWidth: 1.5, borderRightWidth: 1.5,
-    borderColor: "rgba(0,188,212,0.25)", alignItems: "center", paddingTop: pad.s,
-    shadowColor: "#000", shadowOffset: { width: 0, height: -8 },
-    shadowOpacity: 0.5, shadowRadius: 20, elevation: 24,
+    position: "absolute",
+    bottom: 0,
+    width: "100%",
+    height: SHEET_HEIGHT,
+    backgroundColor: C.bg,
+    borderTopLeftRadius: radius.xxl,
+    borderTopRightRadius: radius.xxl,
+    padding: pad.lg,
   },
-  handle: { width: 44, height: 5, borderRadius: 3, backgroundColor: "rgba(255,255,255,0.2)", marginBottom: pad.xs },
-  card: { width: "100%", backgroundColor: "transparent", padding: pad.xl, alignItems: "center" },
-  heading: {
-    fontFamily: FONTS.bold, fontSize: font.xl, color: C.textPri,
-    marginBottom: pad.lg, letterSpacing: 0.3,
-    textShadowColor: "rgba(0,188,212,0.35)", textShadowOffset: { width: 0, height: 0 }, textShadowRadius: 10,
+  packIcon: {
+    width: 22,
+    height: 22,
+    marginBottom: 4,
   },
-  pileWrap:  { marginBottom: pad.sm, alignItems: "center" },
-  countText: { fontFamily: FONTS.bold, fontSize: font.h2, letterSpacing: 0.5 },
-  countUnit: { fontFamily: FONTS.regular, fontSize: font.lg, color: C.textMuted, marginTop: pad.xs },
-  subLabel:  { fontFamily: FONTS.regular, fontSize: font.md, color: C.textMuted, marginTop: pad.xs, marginBottom: pad.sm, textAlign: "center" },
-  chipsWrap: { width: "100%", marginTop: pad.sm },
-  btnRow:    { flexDirection: "row", gap: pad.sm, marginTop: pad.lg, width: "100%" },
-  continueBtn: {
-    flex: 1, paddingVertical: pad.sm, borderRadius: radius.pill,
-    borderWidth: 1.5, backgroundColor: "rgba(0,188,212,0.1)", alignItems: "center",
+  handle: {
+    width: 40,
+    height: 5,
+    alignSelf: "center",
+    backgroundColor: "#ffffff30",
+    borderRadius: 3,
+    marginBottom: 10,
   },
-  continueBtnText: { fontFamily: FONTS.bold, fontSize: font.md },
-  purchaseBtn: {
-    flex: 1, paddingVertical: pad.sm, borderRadius: radius.pill,
-    borderWidth: 1.5, borderColor: "rgba(255,213,79,0.5)",
-    backgroundColor: "rgba(255,213,79,0.1)", alignItems: "center",
+
+  header: { alignItems: "center" },
+
+  count: {
+    fontSize: font.h1,
+    fontFamily: FONTS.bold,
   },
-  purchaseBtnText: { fontFamily: FONTS.bold, fontSize: font.md, color: C.yellow },
+
+  label: {
+    color: C.textMuted,
+    fontSize: font.md,
+  },
+
+  mainText: {
+    textAlign: "center",
+    color: C.textPri,
+    fontFamily: FONTS.bold,
+    fontSize: font.xxl,
+    marginTop: 6,
+  },
+
+  subText: {
+    textAlign: "center",
+    color: C.textMuted,
+    fontSize: font.lg,
+    marginBottom: pad.md,
+  },
+
+  earnCard: {
+    borderRadius: radius.lg,
+    borderWidth: 1.5,
+    borderColor: C.yellowBorder,
+    backgroundColor: "rgba(255,213,79,0.08)",
+    padding: pad.md,
+    marginBottom: pad.lg,
+  },
+
+  earnTitle: {
+    fontFamily: FONTS.bold,
+    color: C.textPri,
+    fontSize: font.xl,
+  },
+
+  earnSub: {
+    color: C.textMuted,
+    fontSize: font.lg,
+  },
+
+  dividerRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginBottom: pad.md,
+  },
+
+  dividerLine: {
+    flex: 1,
+    height: 0.5,
+    backgroundColor: "rgba(255,213,79,0.35)",
+  },
+
+  dividerText: {
+    color: "#7a9aaa",
+    marginHorizontal: 8,
+  },
+
+  packRow: {
+    flexDirection: "row",
+    gap: 8,
+    marginBottom: pad.lg,
+  },
+
+  pack: {
+    flex: 1,
+    borderRadius: 14,
+    paddingVertical: 12,
+    alignItems: "center",
+    backgroundColor: "rgba(0,188,212,0.12)",
+    borderWidth: 1.5,
+    borderColor: C.tealBorder,
+  },
+
+  best: {
+    transform: [{ scale: 1.05 }],
+    borderColor: C.yellow,
+    backgroundColor: "rgba(255,213,79,0.18)",
+  },
+
+  packEmoji: { fontSize: 18 },
+
+  packValue: {
+    fontFamily: FONTS.bold,
+    fontSize: font.lg,
+    color: C.textPri,
+  },
+
+  packPrice: {
+    fontSize: font.sm,
+    color: C.textMuted,
+  },
+
+  bestBadge: {
+    fontSize: 10,
+    color: C.yellow,
+    marginTop: 2,
+  },
+
+  primaryBtn: {
+    marginTop: pad.sm,
+    paddingVertical: pad.md,
+    borderRadius: radius.pill,
+    backgroundColor: "rgba(0,188,212,0.15)",
+    borderWidth: 1.5,
+    borderColor: C.tealBorder,
+    alignItems: "center",
+  },
+
+  primaryBtnText: {
+    fontFamily: FONTS.bold,
+    fontSize: font.xxl,
+    color: C.teal,
+  },
 });

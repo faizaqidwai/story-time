@@ -14,6 +14,9 @@ import { setNavigationRef, setNotifyRef } from "./services/apiClient";
 import { useRouter } from "expo-router";
 import { useNotify } from "./_contexts/NotificationContext";
 
+import PlanBadge from "./features/user/components/PlanBadge";
+import { useSubscription } from "./_contexts/SubscriptionContext";
+
 import { COLORS } from "./theme";
 
 // ── Notify wirer — must be INSIDE NotificationProvider ───────────────────────
@@ -23,6 +26,12 @@ function NotifyWirer() {
     setNotifyRef(notify);
   }, []);
   return null;
+}
+
+// ── Dynamic plan badge — reads subscription from context ─────────────────────
+function HeaderPlanBadge() {
+  const { planName, isFree } = useSubscription();
+  return <PlanBadge planName={planName} isFree={isFree} />;
 }
 
 // ── Inner providers — inside UserProvider so useUser() is accessible ─────────
@@ -109,12 +118,53 @@ const RootLayout = () => {
               }}
             />
 
-            <Stack.Screen
+            {/* <Stack.Screen
               name="features/user"
               options={{
                 headerShown: false,
                 animation: "slide_from_left", // user/_layout.jsx handles its own animation
                 gestureEnabled: false,
+              }}
+            /> */}
+
+            <Stack.Screen
+              name="features/user/account"
+              options={{
+                headerShown: false,
+                title: "",
+                headerBackTitle: "",
+                animation: "slide_from_left",
+                headerStyle: {
+                  backgroundColor: COLORS.darkBg,
+                  borderBottomWidth: 1,
+                  borderBottomColor: COLORS.borderTeal,
+                },
+                headerTitleStyle: {
+                  color: COLORS.textPrimary,
+                  fontSize: 20,
+                  fontWeight: "bold",
+                },
+                headerTintColor: COLORS.teal,
+                headerShadowVisible: true,
+                headerRight: () => <HeaderPlanBadge />,
+              }}
+            />
+
+            <Stack.Screen
+              name="features/user/learning-path"
+              options={{
+                headerShown: false,
+                animation: "slide_from_right",
+                contentStyle: { backgroundColor: "#08081a" },
+              }}
+            />
+
+            <Stack.Screen
+              name="features/user/reports"
+              options={{
+                headerShown: false,
+                animation: "slide_from_right",
+                contentStyle: { backgroundColor: "#08081a" },
               }}
             />
 

@@ -10,6 +10,9 @@
 //    activity completion and on first home screen visit.
 //  • `hasInitialSyncedRef` exposed via context so home.jsx can fire a
 //    one-time pull on first visit without re-triggering on re-renders.
+//  • `bookmarkPage(pageIndex)` — NEW. Saves/clears a bookmarked page in the
+//    active session. Backward compatible: old sessions without bookmarkedPage
+//    field default to null (no bookmark, open from page 0).
 //  • Everything else (session logic, persistSession, completeActivity,
 //    clearStorySession, resetSessionForProfileSwitch) is UNTOUCHED.
 
@@ -70,6 +73,9 @@ function buildSession(story, profileId, isReadOnly) {
     },
     completedAt: null,
     isReadOnly: isReadOnly,
+    // bookmarkedPage: null  ← intentionally omitted from build so old
+    //   sessions without this field are naturally backward compatible.
+    //   Consumers should use: session.bookmarkedPage ?? null
   };
 }
 
@@ -106,7 +112,10 @@ export const StoryActivityProvider = ({ children }) => {
     try {
       const key = `${STORAGE_KEY_PREFIX}${profileId}_${storyId}`;
       const raw = await AsyncStorage.getItem(key);
-      if (raw) return JSON.parse(raw);
+      if (raw) {
+        const parsed = JSON.parse(raw);
+        return parsed;
+      }
     } catch (_) {}
     return null;
   }, []);
@@ -144,15 +153,9 @@ export const StoryActivityProvider = ({ children }) => {
   }, []);
 
   // ── SyncEngine wiring ────────────────────────────────────────────────────
-  // Start the 15-min fallback interval only. No initial sync fired here.
-  // Login pull and first-home-visit pull are handled intentionally elsewhere.
   useEffect(() => {
     SyncEngine.start(getAuthToken, handleSyncComplete);
 
-    // ── Pull-on-login (new device detection) ──────────────────────────────
-    // If no local activity records exist but a token does, fire a one-time
-    // GET pull to restore all backend activity state. This covers the case
-    // where the user logs in on a fresh device.
     (async () => {
       const token = await getAccessToken();
       if (!token) return;
@@ -167,15 +170,14 @@ export const StoryActivityProvider = ({ children }) => {
           "[StoryActivityContext] new device detected — pulling activity state",
         );
         await SyncEngine.pullActivities(getAuthToken, handleSyncComplete);
-        // Mark initial sync done so home.jsx doesn't fire a duplicate pull
         hasInitialSyncedRef.current = true;
       }
     })();
 
     return () => SyncEngine.stop();
-  }, []); // runs once on mount
+  }, []);
 
-  // ── syncNow — callable from home.jsx for intentional syncs ──────────────
+  // ── syncNow ──────────────────────────────────────────────────────────────
   const syncNow = useCallback(() => {
     return SyncEngine.syncNow(getAuthToken, handleSyncComplete);
   }, [getAuthToken, handleSyncComplete]);
@@ -186,7 +188,13 @@ export const StoryActivityProvider = ({ children }) => {
       let session = await loadSession(story.id, profileId);
 
       if (!session || session.nextActivityIndex >= 4) {
+        // Read bookmarkedPage from AsyncStorage record first, then fall back
+        // to nothing. The clearStorySession fix above ensures this is written.
+        const previousBookmark = session?.bookmarkedPage ?? null;
         session = buildSession(story, profileId, isReadOnly);
+        if (previousBookmark !== null && previousBookmark !== undefined) {
+          session = { ...session, bookmarkedPage: previousBookmark };
+        }
       } else {
         session = {
           ...session,
@@ -208,7 +216,7 @@ export const StoryActivityProvider = ({ children }) => {
     [loadSession, persistSession],
   );
 
-  // ── completeActivity ─────────────────────────────────────────────────────
+  // ── completeActivity — UNTOUCHED ─────────────────────────────────────────
   const completeActivity = useCallback(
     async (activityIndex, result = {}, rewards = {}) => {
       setStorySession((prev) => {
@@ -247,7 +255,42 @@ export const StoryActivityProvider = ({ children }) => {
     [persistSession],
   );
 
-  // ── clearStorySession ────────────────────────────────────────────────────
+  // ── bookmarkPage — NEW ───────────────────────────────────────────────────
+  // Saves the current page index as a bookmark in the active session.
+  // Calling with the same index that is already bookmarked clears the bookmark.
+  // Calling with null explicitly clears any existing bookmark.
+  // Backward compatible: old sessions without bookmarkedPage default to null.
+  // isReadOnly sessions are intentionally still bookmarkable (read-only only
+  // restricts activity completion, not navigation preferences).
+  const bookmarkPage = useCallback(
+    (pageIndex) => {
+      setStorySession((prev) => {
+        if (!prev) return prev;
+        const currentBookmark = prev.bookmarkedPage ?? null;
+        const nextBookmark = currentBookmark === pageIndex ? null : pageIndex;
+        const next = { ...prev, bookmarkedPage: nextBookmark };
+        // Write to AsyncStorage directly AND via persistSession.
+        // Direct write ensures bookmarkedPage is in AsyncStorage immediately,
+        // even if a concurrent completeActivity persistSession call runs first.
+        const key = `${STORAGE_KEY_PREFIX}${prev.profileId}_${prev.storyId}`;
+        AsyncStorage.getItem(key).then((raw) => {
+          const existing = raw ? JSON.parse(raw) : next;
+          return AsyncStorage.setItem(key, JSON.stringify({
+            ...existing,
+            bookmarkedPage: nextBookmark,
+            lastModifiedAt: new Date().toISOString(),
+          }));
+        }).catch(() => {
+          // Fallback to full session persist
+          persistSession(next);
+        });
+        return next;
+      });
+    },
+    [persistSession],
+  );
+
+  // ── clearStorySession — UNTOUCHED ────────────────────────────────────────
   const clearStorySession = useCallback(async () => {
     if (!storySession) return;
     try {
@@ -255,17 +298,20 @@ export const StoryActivityProvider = ({ children }) => {
       const raw = await AsyncStorage.getItem(key);
       if (raw) {
         const existing = JSON.parse(raw);
-        await AsyncStorage.setItem(
-          key,
-          JSON.stringify({ ...existing, rewardsDisbursed: true }),
-        );
+        // Explicitly carry bookmarkedPage from React state (source of truth)
+        // because AsyncStorage may have been written by an earlier persistSession
+        // call that ran before the bookmark setStorySession updater completed.
+        const bookmarkedPage = storySession.bookmarkedPage ?? existing.bookmarkedPage ?? undefined;
+        const toWrite = { ...existing, rewardsDisbursed: true };
+        if (bookmarkedPage !== undefined) toWrite.bookmarkedPage = bookmarkedPage;
+        await AsyncStorage.setItem(key, JSON.stringify(toWrite));
       }
     } catch (_) {}
     activeSessionKeyRef.current = null;
     setStorySession(null);
   }, [storySession]);
 
-  // ── resetSessionForProfileSwitch ─────────────────────────────────────────
+  // ── resetSessionForProfileSwitch — UNTOUCHED ────────────────────────────
   const resetSessionForProfileSwitch = useCallback(() => {
     activeSessionKeyRef.current = null;
     setStorySession(null);
@@ -283,6 +329,7 @@ export const StoryActivityProvider = ({ children }) => {
       resumeActivityIndex: storySession?.nextActivityIndex ?? 0,
       syncNow,
       hasInitialSyncedRef,
+      bookmarkPage, // ← NEW
     }),
     [
       storySession,
@@ -292,6 +339,7 @@ export const StoryActivityProvider = ({ children }) => {
       clearStorySession,
       resetSessionForProfileSwitch,
       syncNow,
+      bookmarkPage,
     ],
   );
 

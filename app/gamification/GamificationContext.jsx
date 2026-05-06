@@ -25,6 +25,7 @@ import React, {
   useRef,
   useState,
 } from "react";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useRouter } from "expo-router";
 
 import {
@@ -42,7 +43,7 @@ import {
 import { getMockConfigForLevel } from "./constants/gameIds";
 
 // ─── Toggle this to false once the real backend endpoint is ready ─────────────
-const USE_MOCK_CONFIG = true;
+const USE_MOCK_CONFIG = false; // ← flip to true to use mock data during development
 
 // ─── Context ──────────────────────────────────────────────────────────────────
 const GamificationContext = createContext(null);
@@ -75,16 +76,23 @@ export function GamificationProvider({
 }) {
   const router = useRouter();
 
+  // Keep a ref so callbacks always read the latest balance without needing
+  // to be recreated on every prop change (avoids stale closure bugs).
+  const diamondsRef = useRef(diamonds);
+  const coinsRef = useRef(coins);
+  diamondsRef.current = diamonds;
+  coinsRef.current = coins;
+
   // ── UI state ────────────────────────────────────────────────────────────────
-  const [levelGames, setLevelGames]       = useState([]);
+  const [levelGames, setLevelGames] = useState([]);
   const [coinShopConfig, setCoinShopConfig] = useState(null);
-  const [loadingGames, setLoadingGames]   = useState(false);
-  const [seedError, setSeedError]         = useState(false);
+  const [loadingGames, setLoadingGames] = useState(false);
+  const [seedError, setSeedError] = useState(false);
 
   // Modal state — managed here so any child can trigger them
-  const [unlockModal, setUnlockModal]     = useState(null);  // { gameId } | null
-  const [lockedModal, setLockedModal]     = useState(null);  // { gameId, storiesCompleted } | null
-  const [coinPrompt, setCoinPrompt]       = useState(false);
+  const [unlockModal, setUnlockModal] = useState(null); // { gameId } | null
+  const [lockedModal, setLockedModal] = useState(null); // { gameId, storiesCompleted } | null
+  const [coinPrompt, setCoinPrompt] = useState(false);
 
   // Track which level is currently loaded so we can guard stale calls
   const loadedLevelRef = useRef(null);
@@ -98,7 +106,7 @@ export function GamificationProvider({
    */
   const _refreshFromStorage = useCallback(async (pId, levelNumber) => {
     const [config, state] = await Promise.all([
-      loadLevelConfig(levelNumber),
+      loadLevelConfig(pId, levelNumber),
       loadLevelState(pId, levelNumber),
     ]);
     const games = buildLevelGames(config, state);
@@ -131,55 +139,120 @@ export function GamificationProvider({
    * If the config is already seeded → reads from AsyncStorage instantly.
    * If not seeded (first visit) → seeds from mock/backend, shows loadingGames.
    */
-  const loadGamesForLevel = useCallback(async (levelNumber) => {
-    if (!profileId) return;
+  const loadGamesForLevel = useCallback(
+    async (levelNumber) => {
+      if (!profileId) return;
 
-    loadedLevelRef.current = levelNumber;
-    setSeedError(false);
+      loadedLevelRef.current = levelNumber;
+      setSeedError(false);
 
-    // Fast path: config already seeded — no loader needed
-    // NOTE: temporarily clearing stale cache so registry merge fix takes effect.
-    // Remove these two lines once you have confirmed the cards show correctly.
-    const AsyncStorage = require("@react-native-async-storage/async-storage").default;
-    await AsyncStorage.removeItem(`@game_config_${levelNumber}`);
-    // END TEMP
-
-    const existingConfig = await loadLevelConfig(levelNumber);
-    if (existingConfig) {
-      await _refreshFromStorage(profileId, levelNumber);
-      return;
-    }
-
-    // Slow path: first visit to this level — seed config
-    setLoadingGames(true);
-    setLevelGames([]);
-
-    try {
-      let apiResponse;
-
-      if (USE_MOCK_CONFIG) {
-        // ── Mock mode (Steps 3–9) ────────────────────────────────────────────
-        apiResponse = getMockConfigForLevel(levelNumber);
-        if (!apiResponse) {
-          // Level not in mock data yet — show empty games section gracefully
-          setLoadingGames(false);
+      // Fast path: config already seeded — no loader needed.
+      // LIVE MODE GUARD: if the config was seeded from mock data (source="mock"),
+      // clear it so we fetch from the real backend this time.
+      const existingConfig = await loadLevelConfig(profileId, levelNumber);
+      if (existingConfig) {
+        if (!USE_MOCK_CONFIG) {
+          // Check if this config was seeded by mock — if so, discard and re-fetch
+          const sourceKey = `@game_config_source_${profileId}_${levelNumber}`;
+          try {
+            const source = await AsyncStorage.getItem(sourceKey);
+            // Only trust configs explicitly tagged as "live".
+            // null  = seeded before source-tagging (legacy mock) → clear
+            // "mock" = explicitly tagged as mock → clear
+            // "live" = real backend data → use it
+            if (source === "live") {
+              // Always restore server state so second-device login reflects correct progress
+              const { restoreProfileStateFromServer } =
+                await import("./GamificationSyncEngine");
+              await restoreProfileStateFromServer(profileId, levelNumber);
+              await _refreshFromStorage(profileId, levelNumber);
+              return;
+            }
+            // source is null or "mock" — stale, clear and re-fetch from backend
+            await AsyncStorage.removeItem(
+              `@game_config_${profileId}_${levelNumber}`,
+            );
+            await AsyncStorage.removeItem(sourceKey);
+            console.log(
+              "[Gamification] cleared stale config (source=" +
+                source +
+                ") for level",
+              levelNumber,
+            );
+            // Fall through to slow path below
+          } catch (_) {
+            // AsyncStorage error — clear and re-fetch to be safe
+            await AsyncStorage.removeItem(
+              `@game_config_${profileId}_${levelNumber}`,
+            );
+            await AsyncStorage.removeItem(
+              `@game_config_source_${profileId}_${levelNumber}`,
+            );
+          }
+        } else {
+          await _refreshFromStorage(profileId, levelNumber);
           return;
         }
-      } else {
-        // ── Real backend (Step 10+) ──────────────────────────────────────────
-        const { syncOnLevelLoad } = await import("./GamificationSyncEngine");
-        apiResponse = await syncOnLevelLoad(profileId, levelNumber);
-        if (!apiResponse) throw new Error("Backend seed failed");
       }
 
-      await seedLevelConfig(profileId, levelNumber, apiResponse);
-      await _refreshFromStorage(profileId, levelNumber);
-    } catch {
-      setSeedError(true);
-    } finally {
-      setLoadingGames(false);
-    }
-  }, [profileId, _refreshFromStorage]);
+      // Slow path: first visit to this level — seed config
+      setLoadingGames(true);
+      setLevelGames([]);
+
+      try {
+        let apiResponse;
+
+        if (USE_MOCK_CONFIG) {
+          // ── Mock mode (Steps 3–9) ────────────────────────────────────────────
+          apiResponse = getMockConfigForLevel(levelNumber);
+          if (!apiResponse) {
+            setLoadingGames(false);
+            return;
+          }
+          // Tag this config as mock-sourced so live mode knows to discard it
+          await AsyncStorage.setItem(
+            `@game_config_source_${profileId}_${levelNumber}`,
+            "mock",
+          );
+        } else {
+          // ── Real backend (Step 10+) ──────────────────────────────────────────
+          console.log(
+            "[Gamification] calling backend for level",
+            levelNumber,
+            "profileId:",
+            profileId,
+          );
+          const { syncOnLevelLoad } = await import("./GamificationSyncEngine");
+          apiResponse = await syncOnLevelLoad(profileId, levelNumber);
+          console.log(
+            "[Gamification] backend response:",
+            JSON.stringify(apiResponse),
+          );
+          if (!apiResponse)
+            throw new Error(
+              "Backend returned no config for level " + levelNumber,
+            );
+          // Tag as live-sourced
+          await AsyncStorage.setItem(
+            `@game_config_source_${profileId}_${levelNumber}`,
+            "live",
+          );
+        }
+
+        await seedLevelConfig(profileId, levelNumber, apiResponse);
+        await _refreshFromStorage(profileId, levelNumber);
+      } catch (err) {
+        console.error(
+          "[Gamification] loadGamesForLevel FAILED:",
+          err?.message ?? err,
+        );
+        setSeedError(true);
+      } finally {
+        setLoadingGames(false);
+      }
+    },
+    [profileId, _refreshFromStorage],
+  );
 
   /**
    * onStoryComplete(storyId, levelNumber)
@@ -187,21 +260,24 @@ export function GamificationProvider({
    * Called from handleFinishDone in home.jsx after every story completion.
    * Updates game reveal state locally, fires background sync.
    */
-  const onStoryComplete = useCallback(async (storyId, levelNumber) => {
-    if (!profileId) return;
+  const onStoryComplete = useCallback(
+    async (storyId, levelNumber) => {
+      if (!profileId) return;
 
-    const result = await onStoryCompleted(profileId, levelNumber, storyId);
-    if (!result.success) {
-      console.warn("[Gamification] onStoryComplete failed:", result.error);
-      return;
-    }
+      const result = await onStoryCompleted(profileId, levelNumber, storyId);
+      if (!result.success) {
+        console.warn("[Gamification] onStoryComplete failed:", result.error);
+        return;
+      }
 
-    // Refresh in-memory state so GameCards re-render with updated scratch progress
-    await _refreshFromStorage(profileId, levelNumber);
+      // Refresh in-memory state so GameCards re-render with updated scratch progress
+      await _refreshFromStorage(profileId, levelNumber);
 
-    // Background sync — does not block
-    _fireBackgroundSync(profileId, levelNumber);
-  }, [profileId, _refreshFromStorage, _fireBackgroundSync]);
+      // Background sync — does not block
+      _fireBackgroundSync(profileId, levelNumber);
+    },
+    [profileId, _refreshFromStorage, _fireBackgroundSync],
+  );
 
   /**
    * openLockedModal(gameId, storiesCompleted)
@@ -215,11 +291,14 @@ export function GamificationProvider({
    * openUnlockModal(gameId)
    * Called by GameCard when user taps the Unlock button.
    */
-  const openUnlockModal = useCallback((gameId) => {
-    // Include the full slot so UnlockModal can render the game card preview
-    const slot = levelGames?.find((g) => g.gameId === gameId) ?? null;
-    setUnlockModal({ gameId, slot });
-  }, [levelGames]);
+  const openUnlockModal = useCallback(
+    (gameId) => {
+      // Include the full slot so UnlockModal can render the game card preview
+      const slot = levelGames?.find((g) => g.gameId === gameId) ?? null;
+      setUnlockModal({ gameId, slot });
+    },
+    [levelGames],
+  );
 
   /**
    * confirmUnlock(gameId)
@@ -227,30 +306,47 @@ export function GamificationProvider({
    * Called by UnlockModal when user confirms.
    * Deducts 9 diamonds locally, flips slot to UNLOCKED, updates UserContext.
    */
-  const confirmUnlock = useCallback(async (gameId) => {
-    if (!profileId || loadedLevelRef.current === null) return;
+  const confirmUnlock = useCallback(
+    async (gameId) => {
+      if (!profileId || loadedLevelRef.current === null) return;
 
-    const levelNumber = loadedLevelRef.current;
-    const result = await unlockGame(profileId, levelNumber, gameId, diamonds);
+      console.log(
+        "[Gamification] confirmUnlock called for profileId: " +
+          profileId +
+          ", gameId: " +
+          gameId,
+      );
+      const levelNumber = loadedLevelRef.current;
+      const result = await unlockGame(
+        profileId,
+        levelNumber,
+        gameId,
+        diamondsRef.current,
+      );
+      console.log("[Gamification] unlockGame result:", result);
 
-    if (!result.success) {
-      if (result.error === ENGINE_ERROR.INSUFFICIENT_DIAMONDS) {
-        // Should not normally happen — button is hidden when balance is too low
-        console.warn("[Gamification] Unlock attempted with insufficient diamonds");
+      if (!result.success) {
+        if (result.error === ENGINE_ERROR.INSUFFICIENT_DIAMONDS) {
+          // Should not normally happen — button is hidden when balance is too low
+          console.warn(
+            "[Gamification] Unlock attempted with insufficient diamonds",
+          );
+        }
+        setUnlockModal(null);
+        return;
       }
+
+      // Update diamond balance in UserContext immediately
+      onUpdateDiamonds(result.newDiamonds);
+
+      // Refresh UI
+      await _refreshFromStorage(profileId, levelNumber);
       setUnlockModal(null);
-      return;
-    }
 
-    // Update diamond balance in UserContext immediately
-    onUpdateDiamonds(result.newDiamonds);
-
-    // Refresh UI
-    await _refreshFromStorage(profileId, levelNumber);
-    setUnlockModal(null);
-
-    _fireBackgroundSync(profileId, levelNumber);
-  }, [profileId, diamonds, onUpdateDiamonds, _refreshFromStorage, _fireBackgroundSync]);
+      _fireBackgroundSync(profileId, levelNumber);
+    },
+    [profileId, onUpdateDiamonds, _refreshFromStorage, _fireBackgroundSync],
+  );
 
   /**
    * startPlay(gameId)
@@ -259,39 +355,49 @@ export function GamificationProvider({
    * Deducts 100 coins locally, retrieves gameData, navigates to game screen.
    * Shows CoinPromptModal if balance is insufficient.
    */
-  const startPlay = useCallback(async (gameId) => {
-    if (!profileId || loadedLevelRef.current === null) return;
+  const startPlay = useCallback(
+    async (gameId) => {
+      if (!profileId || loadedLevelRef.current === null) return;
 
-    const levelNumber = loadedLevelRef.current;
+      const levelNumber = loadedLevelRef.current;
 
-    // Find the route for this game from in-memory levelGames
-    const slot = levelGames.find((g) => g.gameId === gameId);
-    if (!slot) return;
+      // Find the route for this game from in-memory levelGames
+      const slot = levelGames.find((g) => g.gameId === gameId);
+      if (!slot) return;
 
-    const result = await playGame(profileId, levelNumber, gameId, coins);
+      const result = await playGame(
+        profileId,
+        levelNumber,
+        gameId,
+        coinsRef.current,
+      );
 
-    if (!result.success) {
-      if (result.error === ENGINE_ERROR.INSUFFICIENT_COINS) {
-        setCoinPrompt(true);
-      } else {
-        console.warn("[Gamification] startPlay failed:", result.error);
+      console.log("[Gamification] playGame result:", result);
+
+      if (!result.success) {
+        if (result.error === ENGINE_ERROR.INSUFFICIENT_COINS) {
+          setCoinPrompt(true);
+        } else {
+          console.warn("[Gamification] startPlay failed:", result.error);
+        }
+        return;
       }
-      return;
-    }
 
-    // Update coin balance in UserContext immediately
-    onUpdateCoins(result.newCoins);
+      // Update coin balance in UserContext immediately
+      onUpdateCoins(result.newCoins);
 
-    _fireBackgroundSync(profileId, levelNumber);
+      _fireBackgroundSync(profileId, levelNumber);
 
-    // Navigate to the game screen.
-    // gameData will be wired as a param in Step 10 when backend is ready.
-    // For now navigate directly so existing game screens open without crash.
-    router.push(slot.route);
-  }, [profileId, coins, levelGames, onUpdateCoins, router, _fireBackgroundSync]);
+      // Navigate to the game screen.
+      // gameData will be wired as a param in Step 10 when backend is ready.
+      // For now navigate directly so existing game screens open without crash.
+      router.push(slot.route);
+    },
+    [profileId, levelGames, onUpdateCoins, router, _fireBackgroundSync],
+  );
 
   // ── Derived values for UI ───────────────────────────────────────────────────
-  const canAffordPlay   = coins >= 100;
+  const canAffordPlay = coins >= 100;
   const canAffordUnlock = diamonds >= 9;
 
   // ═══════════════════════════════════════════════════════════════════════════

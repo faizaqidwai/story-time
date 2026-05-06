@@ -1987,6 +1987,8 @@ const HomeContent = () => {
   // ─────────────────────────────────────────────────────────────────────────
 
   const pendingSessionRef = useRef(null);
+  const storyCompletedRef = useRef(false); // ← ADD
+  const rewardsDispersedRef = useRef(false);
   const prevLoadedLevelRef = useRef(null);
   const lastInitializedProfileIdRef = useRef(null);
   const profileSwitchInProgressRef = useRef(false);
@@ -2034,6 +2036,7 @@ const HomeContent = () => {
 
   const [showFinish, setShowFinish] = useState(false);
   const [finishData, setFinishData] = useState({
+    storyId: null,
     words: 0,
     coins: 0,
     diamonds: 0,
@@ -2284,9 +2287,10 @@ const HomeContent = () => {
       // ── Gamification: seed games for the initial level ──────────────────
       // Wrapped in try/catch — cannot affect existing profile init flow.
       try {
-        if (gamification) {
+        if (gamification && !storyCompletedRef.current) {
           gamification.loadGamesForLevel(currentProfile.playLevel ?? 1);
         }
+        storyCompletedRef.current = false;
       } catch (_) {}
       // ────────────────────────────────────────────────────────────────────
     });
@@ -2307,7 +2311,16 @@ const HomeContent = () => {
     }
     if (!hasInitialSyncedRef.current) {
       hasInitialSyncedRef.current = true;
-      syncNow().catch(() => {});
+      // Await sync first so server state is written to AsyncStorage
+      // before loadAllStoryProgress reads it — fixes story completion
+      // state not appearing on second device / re-login.
+      syncNow()
+        .catch(() => {})
+        .finally(() => {
+          loadAllStoryProgress(currentProfile.id);
+        });
+    } else {
+      loadAllStoryProgress(currentProfile.id);
     }
   }, [currentProfile?.id]);
 
@@ -2344,47 +2357,88 @@ const HomeContent = () => {
       pendingSessionRef.current = storySession;
       const challengeWords = storySession.challengeWords || [];
       const rewards = storySession.totalRewards;
-      // ── Compute scratch slot state for step 4 of StoryFinishOverlay ─────
-      // Read levelGames from gamification context BEFORE onStoryComplete fires.
-      // Each slot covers 3 stories. Slot 0 = stories 1-3, Slot 1 = stories 4-6.
-      // Stories 7-8 have no slot — scratchSlot stays null.
-      let scratchSlot = null;
-      try {
-        const games = gamification?.levelGames ?? [];
-        for (const slot of games) {
-          const before = slot.storiesCompletedInGroup ?? 0;
-          // Show scratch step for LOCKED slots still progressing,
-          // OR for REVEALED slots (storiesCompletedInGroup === 3) that
-          // just flipped on THIS story — meaning before was 2.
-          // We detect this by checking if before < 3 (LOCKED) or
-          // status === REVEALED and before === 3 (just revealed).
-          // Since onStoryComplete hasn't fired yet, REVEALED with 3 means
-          // this story was the 3rd one.
-          const isProgressingLocked = slot.status === "LOCKED" && before < 3;
-          const isJustRevealed = slot.status === "REVEALED" && before === 3;
-          if (isProgressingLocked || isJustRevealed) {
-            const afterCount = isJustRevealed ? 3 : Math.min(before + 1, 3);
-            scratchSlot = {
-              storiesCompletedBefore: isJustRevealed ? 2 : before,
-              storiesCompletedAfter: afterCount,
-              gameId: slot.gameId,
-              gradient: slot.gradient,
-              icon: slot.icon,
-              name: slot.name,
-            };
-            break;
+      (async () => {
+        let scratchSlot = null;
+        try {
+          const games = gamification?.levelGames ?? [];
+          // Only show scratch step if there are games in this level
+          if (games.length > 0 && currentProfile?.id) {
+            // Count completed stories for this profile by scanning AsyncStorage
+            const allKeys = await AsyncStorage.getAllKeys();
+            const prefix = `@story_activity_${currentProfile.id}_`;
+            const storyKeys = allKeys.filter((k) => k.startsWith(prefix));
+            const pairs = await AsyncStorage.multiGet(storyKeys);
+            // Only count stories that belong to the current level's books
+            const currentLevelStoryIds = new Set(
+              books.map((b) => String(b.id)),
+            );
+            let completedCount = 0;
+            for (const [, raw] of pairs) {
+              if (!raw) continue;
+              try {
+                const session = JSON.parse(raw);
+                if (
+                  (session.nextActivityIndex ?? 0) >= 4 &&
+                  currentLevelStoryIds.has(String(session.storyId))
+                )
+                  completedCount++;
+              } catch (_) {}
+            }
+            // This story just completed so +1 (not yet written to storage)
+            const totalAfter = completedCount;
+            // Stories 7 and 8 (index 7, 8) have no game slot — stop showing scratch
+            if (totalAfter <= 6) {
+              // Find the first slot that is still LOCKED and actively progressing.
+              // Use actual game state storiesCompletedInGroup rather than
+              // arithmetic — this handles cases where slot 0 is already
+              // REVEALED/UNLOCKED and slot 1 has just started progressing.
+              const activeSlot = games.find(
+                (g) => g.status === "LOCKED" && g.storiesCompletedInGroup < 3,
+              );
+              if (activeSlot) {
+                const storiesCompletedBefore =
+                  activeSlot.storiesCompletedInGroup;
+                const storiesCompletedAfter = Math.min(
+                  storiesCompletedBefore + 1,
+                  3,
+                );
+                console.log(
+                  "[Scratch] totalAfter:",
+                  totalAfter,
+                  "activeSlot:",
+                  activeSlot.gameId,
+                  "before:",
+                  storiesCompletedBefore,
+                  "after:",
+                  storiesCompletedAfter,
+                );
+                scratchSlot = {
+                  storiesCompletedBefore,
+                  storiesCompletedAfter,
+                  gameId: activeSlot.gameId,
+                  gradient: activeSlot.gradient,
+                  icon: activeSlot.icon,
+                  name: activeSlot.name,
+                };
+              }
+            }
           }
-        }
-      } catch (_) {}
-      // ─────────────────────────────────────────────────────────────────────
-      setFinishData({
-        coins: rewards.coins || 0,
-        diamonds: DIAMONDS_PER_FINISH,
-        words: challengeWords.length,
-        sampleWords: challengeWords.slice(0, 8).map((w) => w.name || w),
-        scratchSlot,
-      });
-      setTimeout(() => setShowFinish(true), 1000);
+        } catch (_) {}
+        // ─────────────────────────────────────────────────────────────────────
+        setFinishData({
+          storyId: storySession.storyId,
+          coins: rewards.coins || 0,
+          diamonds: DIAMONDS_PER_FINISH,
+          projectedDiamonds:
+            (currentProfile?.diamonds || 0) + DIAMONDS_PER_FINISH,
+          words: challengeWords.length,
+          sampleWords: challengeWords.slice(0, 8).map((w) => w.name || w),
+          scratchSlot,
+        });
+        storyCompletedRef.current = false; // ← ADD
+        rewardsDispersedRef.current = false;
+        setTimeout(() => setShowFinish(true), 1000);
+      })();
     }, [storySession?.nextActivityIndex, storySession?.storyId, showFinish]),
   );
 
@@ -2405,6 +2459,32 @@ const HomeContent = () => {
     });
   };
 
+  const disburseRewards = async () => {
+    if (rewardsDispersedRef.current) return;
+    rewardsDispersedRef.current = true;
+    const session = pendingSessionRef.current;
+    if (!currentProfile || !session) return;
+    const rewards = session.totalRewards;
+    const storyId = String(session.storyId);
+    const updatedProfile = {
+      ...currentProfile,
+      coins: (currentProfile.coins || 0) + (rewards.coins || 0),
+      diamonds: (currentProfile.diamonds || 0) + DIAMONDS_PER_FINISH,
+      wordBag: {
+        ...currentProfile.wordBag,
+        words: [
+          ...(currentProfile.wordBag?.words || []),
+          ...(session.challengeWords || []),
+        ],
+      },
+      readingHistory: currentProfile.readingHistory?.includes(storyId)
+        ? currentProfile.readingHistory
+        : [...(currentProfile.readingHistory || []), storyId],
+    };
+    setLocalCompletedIds((prev) => new Set([...prev, storyId]));
+    await updateProfile(updatedProfile);
+  };
+
   const handleFinishDone = async () => {
     if (_finishHandled) return;
     _finishHandled = true;
@@ -2412,34 +2492,16 @@ const HomeContent = () => {
     setTimeout(async () => {
       const session = pendingSessionRef.current;
       if (currentProfile && session) {
-        const rewards = session.totalRewards;
         const storyId = String(session.storyId);
-        const updatedProfile = {
-          ...currentProfile,
-          coins: (currentProfile.coins || 0) + (rewards.coins || 0),
-          diamonds: (currentProfile.diamonds || 0) + DIAMONDS_PER_FINISH,
-          wordBag: {
-            ...currentProfile.wordBag,
-            words: [
-              ...(currentProfile.wordBag?.words || []),
-              ...(session.challengeWords || []),
-            ],
-          },
-          readingHistory: currentProfile.readingHistory?.includes(storyId)
-            ? currentProfile.readingHistory
-            : [...(currentProfile.readingHistory || []), storyId],
-        };
-        setLocalCompletedIds((prev) => new Set([...prev, storyId]));
-        await updateProfile(updatedProfile);
+        await disburseRewards();
         pendingSessionRef.current = null;
 
         // ── Gamification: notify engine that a story was completed ──────────
-        // Wrapped in try/catch — isolated from all existing finish logic.
-        // If this throws for any reason, handleFinishDone continues normally.
         try {
-          if (gamification) {
+          if (gamification && !storyCompletedRef.current) {
             gamification.onStoryComplete(storyId, loadedLevel);
           }
+          storyCompletedRef.current = false;
         } catch (_) {}
         // ───────────────────────────────────────────────────────────────────
       }
@@ -2950,6 +3012,20 @@ const HomeContent = () => {
         coinsEarned={finishData.coins}
         diamondsEarned={finishData.diamonds}
         scratchSlot={finishData.scratchSlot}
+        diamonds={(currentProfile?.diamonds ?? 0) + DIAMONDS_PER_FINISH}
+        onConfirmUnlock={async (gameId) => {
+          // Disburse rewards first so engine sees the diamonds before unlock
+          await disburseRewards();
+          const storyId = String(
+            finishData.storyId ?? pendingSessionRef.current?.storyId ?? "",
+          );
+          if (storyId && !storyCompletedRef.current) {
+            storyCompletedRef.current = true;
+            await gamification.onStoryComplete(storyId, loadedLevel);
+          }
+          await gamification.confirmUnlock(gameId);
+        }}
+        onPlayGame={(gameId) => gamification.startPlay(gameId)}
         coinTargetRef={coinIconRef}
         diamondTargetRef={diamondIconRef}
         wordTargetRef={bagIconRef}

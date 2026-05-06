@@ -25,6 +25,7 @@ import Svg, {
   Image as SvgImage,
 } from "react-native-svg";
 import { GAME_ANIMATIONS } from "../../../gamification/constants/gameAnimations";
+import UnlockFlow from "../../../gamification/components/UnlockFlow";
 
 const { width: SW, height: SH } = Dimensions.get("window");
 
@@ -275,13 +276,16 @@ function ScratchLines({ progress }) {
   );
 }
 
-function ScratchGameCard({ slot, progressAfter }) {
+function ScratchGameCard({ slot, progressAfter, onFullyRevealed }) {
   // Always animate from 0 (full cover) to progressAfter
   // so the user always sees the full scratch reveal happen in front of them.
   const shakeY = useRef(new Animated.Value(0)).current;
   const shakeX = useRef(new Animated.Value(0)).current;
   const glowAnim = useRef(new Animated.Value(0)).current;
   const progressAnim = useRef(new Animated.Value(0)).current; // always start at 0
+  // Fade cover out entirely on full reveal (progress === 3)
+  const coverOpacity = useRef(new Animated.Value(1)).current;
+  const isFullReveal = progressAfter >= 3;
 
   useEffect(() => {
     // Glow loop — starts immediately and pulses throughout
@@ -364,7 +368,17 @@ function ScratchGameCard({ slot, progressAfter }) {
         duration: 700,
         useNativeDriver: false,
       }),
-    ]).start(() => glowLoop.stop());
+    ]).start(() => {
+      glowLoop.stop();
+      if (isFullReveal) {
+        // Fade the entire cover out — card fully visible
+        Animated.timing(coverOpacity, {
+          toValue: 0,
+          duration: 450,
+          useNativeDriver: true,
+        }).start(() => onFullyRevealed?.());
+      }
+    });
 
     return () => glowLoop.stop();
   }, []);
@@ -440,8 +454,11 @@ function ScratchGameCard({ slot, progressAfter }) {
           })()}
         </View>
 
-        {/* SVG scratch cover overlay — always starts full, tears as progress grows */}
-        <View style={StyleSheet.absoluteFillObject} pointerEvents="none">
+        {/* SVG scratch cover overlay — fades out entirely on full reveal */}
+        <Animated.View
+          style={[StyleSheet.absoluteFillObject, { opacity: coverOpacity }]}
+          pointerEvents="none"
+        >
           <Svg width={CARD_W} height={CARD_H}>
             <Defs>
               <ClipPath id="sfoScratchClip">
@@ -463,7 +480,7 @@ function ScratchGameCard({ slot, progressAfter }) {
             />
             {tearPath && <ScratchLines progress={displayProgress} />}
           </Svg>
-        </View>
+        </Animated.View>
       </Animated.View>
     </View>
   );
@@ -536,10 +553,30 @@ const scrS = StyleSheet.create({
 // STEP CARD
 // ─────────────────────────────────────────────────────────────────────────────
 const StepCard = React.forwardRef(function StepCard(
-  { config, enterAnim, opAnim, showContinue, onContinue, scratchSlot },
+  {
+    config,
+    enterAnim,
+    opAnim,
+    showContinue,
+    onContinue,
+    scratchSlot,
+    onScratchFullyRevealed,
+    showExpandedCard,
+    onPlayFromScratch,
+    scratchDiamonds,
+    onConfirmUnlock,
+  },
   ref,
 ) {
   const isScratchStep = config.isScratchStep === true;
+  const isFullReveal = scratchSlot?.storiesCompletedAfter >= 3;
+
+  if (isScratchStep)
+    console.log(
+      "[Scratch] StepCard rendering:",
+      scratchSlot?.storiesCompletedAfter,
+      JSON.stringify(scratchSlot),
+    );
 
   return (
     <Animated.View
@@ -561,23 +598,40 @@ const StepCard = React.forwardRef(function StepCard(
       {isScratchStep ? (
         // ── Scratch step content ─────────────────────────────────────────────
         <>
-          <ScratchGameCard
-            slot={scratchSlot}
-            progressAfter={scratchSlot?.storiesCompletedAfter ?? 1}
-          />
-          <Text style={[pS.countText, { color: config.accentColor }]}>
-            {scratchSlot?.storiesCompletedAfter ?? 1}/3
-          </Text>
-          <Text style={pS.subLabel}>
-            {scratchSlot?.storiesCompletedAfter === 3
-              ? "fully revealed! 🎉"
-              : "stories done — keep going!"}
-          </Text>
-          <Text style={pS.scratchHint}>
-            {scratchSlot?.storiesCompletedAfter === 3
-              ? "You've revealed the game! Earn 9 💎 to unlock and play."
-              : `${3 - (scratchSlot?.storiesCompletedAfter ?? 1)} more ${3 - (scratchSlot?.storiesCompletedAfter ?? 1) === 1 ? "story" : "stories"} to fully reveal the hidden surprise!`}
-          </Text>
+          {showExpandedCard ? null : ( // UnlockFlow is rendered below, outside this block
+            <ScratchGameCard
+              slot={scratchSlot}
+              progressAfter={scratchSlot?.storiesCompletedAfter ?? 1}
+              onFullyRevealed={onScratchFullyRevealed}
+            />
+          )}
+          {!showExpandedCard && (
+            <>
+              <Text style={[pS.countText, { color: config.accentColor }]}>
+                {scratchSlot?.storiesCompletedAfter ?? 1}/3
+              </Text>
+              <Text style={pS.subLabel}>
+                {isFullReveal
+                  ? "fully revealed! 🎉"
+                  : "stories done — keep going!"}
+              </Text>
+              {!isFullReveal && (
+                <Text style={pS.scratchHint}>
+                  {`${3 - (scratchSlot?.storiesCompletedAfter ?? 1)} more ${3 - (scratchSlot?.storiesCompletedAfter ?? 1) === 1 ? "story" : "stories"} to fully reveal the hidden surprise!`}
+                </Text>
+              )}
+            </>
+          )}
+          {/* Full unlock flow — shown after scratch fully reveals */}
+          {showExpandedCard && (
+            <UnlockFlow
+              slot={scratchSlot}
+              diamonds={scratchDiamonds}
+              onPlay={onPlayFromScratch}
+              onCancel={onContinue}
+              confirmUnlock={onConfirmUnlock}
+            />
+          )}
         </>
       ) : (
         // ── Normal steps (coins, diamonds, words) ────────────────────────────
@@ -603,7 +657,19 @@ const StepCard = React.forwardRef(function StepCard(
         </>
       )}
 
-      {showContinue && (
+      {showContinue && !isScratchStep && (
+        <TouchableOpacity
+          style={[pS.continueBtn, { borderColor: config.accentColor }]}
+          onPress={onContinue}
+          activeOpacity={0.85}
+        >
+          <Text style={[pS.continueBtnText, { color: config.accentColor }]}>
+            Continue ✓
+          </Text>
+        </TouchableOpacity>
+      )}
+      {/* Scratch step: show Continue unless expanded card is showing (it has its own Play) */}
+      {showContinue && isScratchStep && !showExpandedCard && (
         <TouchableOpacity
           style={[pS.continueBtn, { borderColor: config.accentColor }]}
           onPress={onContinue}
@@ -679,7 +745,10 @@ const StoryFinishOverlay = ({
   sampleWords,
   coinsEarned = 0,
   diamondsEarned = 0,
-  scratchSlot = null, // NEW — null means no scratch step
+  scratchSlot = null,
+  diamonds = 0, // current profile diamonds — needed for UnlockFlow
+  onConfirmUnlock, // called when unlock is confirmed (fires confirmUnlock in context)
+  onPlayGame,
   coinTargetRef,
   diamondTargetRef,
   wordTargetRef,
@@ -687,6 +756,7 @@ const StoryFinishOverlay = ({
 }) => {
   const [step, setStep] = useState(-1);
   const [showContinue, setShowContinue] = useState(false);
+  const [showExpandedCard, setShowExpandedCard] = useState(false);
   const advancingRef = useRef(false);
   const wasVisibleRef = useRef(false);
   const cardRef = useRef(null);
@@ -777,6 +847,12 @@ const StoryFinishOverlay = ({
     ];
 
     // Add scratch step only when a slot is actively progressing
+    console.log(
+      "[Scratch] buildSteps slot:",
+      slot?.storiesCompletedBefore,
+      "->",
+      slot?.storiesCompletedAfter,
+    );
     if (slot && slot.storiesCompletedBefore < 3) {
       base.push({
         isScratchStep: true,
@@ -813,6 +889,7 @@ const StoryFinishOverlay = ({
     wasVisibleRef.current = true;
     advancingRef.current = false;
     setShowContinue(false);
+    setShowExpandedCard(false);
     scrOp.setValue(0);
     sheetY.setValue(SHEET_HEIGHT);
     // Capture scratch slot and build steps at show time
@@ -936,6 +1013,23 @@ const StoryFinishOverlay = ({
               showContinue={showContinue}
               onContinue={handleContinue}
               scratchSlot={scratchSlotRef.current}
+              showExpandedCard={showExpandedCard}
+              scratchDiamonds={diamonds}
+              onConfirmUnlock={onConfirmUnlock}
+              onScratchFullyRevealed={() => {
+                setShowContinue(false);
+                setShowExpandedCard(true);
+              }}
+              onPlayFromScratch={() => {
+                handleContinue();
+                setTimeout(() => {
+                  console.log(
+                    "[OnPlayFromScratch] Method Called with gameId:",
+                    scratchSlotRef.current?.gameId,
+                  );
+                  onPlayGame?.(scratchSlotRef.current?.gameId);
+                }, 450);
+              }}
             />
           )}
         </Animated.View>

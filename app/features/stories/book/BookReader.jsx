@@ -12,6 +12,7 @@ import {
   Animated,
   PanResponder,
   unstable_batchedUpdates,
+  TouchableOpacity,
 } from "react-native";
 import { ScrollView } from "react-native";
 import { Image as ExpoImage } from "expo-image";
@@ -41,40 +42,105 @@ const HALF_W = width / 2;
 // ─────────────────────────────────────────────────────────────────────────────
 // ARCHITECTURE — permanent base layer + temporary animated overlay
 //
-// The flash in previous versions was caused by React conditionally
-// mounting/unmounting the page views during state transitions. Any time
-// isTurning toggled, React destroyed and recreated views, causing a
-// 1-frame gap.
-//
-// This version uses a completely different model:
-//
 // Layer 1 (BASE) — always mounted, never unmounts.
-//   Shows `basePage` which is updated via ref+forceUpdate.
-//   This is what the user sees at rest AND what shows through as
-//   the destination during a forward turn.
+//   Shows `basePage`, updated to destination BEFORE animation starts.
 //
 // Layer 2 (OVERLAY TOP) — only mounted during a turn.
-//   Shows the departing page rotating away.
-//   Uses a fresh Animated.Value per turn (never setValue to reset).
-//   When animation ends, this layer unmounts — but by then Layer 1
-//   already shows the correct destination, so the unmount is invisible.
+//   Shows departing page rotating away.
+//   When animation ends, unmounts — Layer 1 already shows correct page.
 //
 // WHY NO FLASH:
-//   - Layer 1 is updated to destination page BEFORE the animation starts.
-//     So throughout the entire animation Layer 1 already shows the right page.
-//   - The overlay (Layer 2) covers Layer 1 completely at anim=0 (progress=0).
-//   - As Layer 2 rotates away, Layer 1 is revealed — already showing
-//     the correct destination.
-//   - When Layer 2 unmounts at turn end, Layer 1 is already correct.
-//     Nothing changes visually. Zero flash.
+//   Layer 1 is updated to destination before animation starts.
+//   Overlay covers Layer 1 at progress=0, rotates away revealing Layer 1.
+//   When overlay unmounts, Layer 1 already shows correct page — zero flash.
 // ─────────────────────────────────────────────────────────────────────────────
 
+// ─────────────────────────────────────────────────────────────────────────────
+// TAP GUIDE TOOLTIP
+// ─────────────────────────────────────────────────────────────────────────────
+function TapGuideTooltip({ visible }) {
+  const fadeAnim = useRef(new Animated.Value(0)).current;
+
+  useEffect(() => {
+    if (visible) {
+      Animated.timing(fadeAnim, { toValue: 1, duration: 250, useNativeDriver: true }).start();
+    } else {
+      Animated.timing(fadeAnim, { toValue: 0, duration: 300, useNativeDriver: true }).start();
+    }
+  }, [visible]);
+
+  return (
+    <Animated.View style={[styles.tapTooltip, { opacity: fadeAnim }]} pointerEvents="none">
+      <Text style={styles.tapTooltipText}>👆 Tap any word to hear it!</Text>
+    </Animated.View>
+  );
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// FLOATING BUTTONS — bookmark + tap guide
+// Positioned absolutely on the left side over the image area
+// ─────────────────────────────────────────────────────────────────────────────
+function FloatingButtons({ isBookmarked, onBookmark, onTapGuide }) {
+  const bookmarkScale = useRef(new Animated.Value(1)).current;
+
+  const handleBookmarkPress = () => {
+    // Quick pop animation on tap
+    Animated.sequence([
+      Animated.timing(bookmarkScale, { toValue: 0.78, duration: 100, useNativeDriver: true }),
+      Animated.spring(bookmarkScale,  { toValue: 1, friction: 4, tension: 200, useNativeDriver: true }),
+    ]).start();
+    onBookmark();
+  };
+
+  return (
+    <View style={styles.floatingBtns} pointerEvents="box-none">
+      {/* Bookmark button */}
+      <TouchableOpacity
+        onPress={handleBookmarkPress}
+        activeOpacity={0.85}
+        style={[
+          styles.floatingBtn,
+          isBookmarked && styles.floatingBtnActive,
+        ]}
+      >
+        <Animated.View style={{ transform: [{ scale: bookmarkScale }] }}>
+          <ExpoImage
+            source={require("../../../../assets/img/bookmark-icon.png")}
+            style={[
+              styles.floatingBtnIcon,
+              { opacity: isBookmarked ? 1 : 0.65 },
+            ]}
+            contentFit="contain"
+          />
+        </Animated.View>
+      </TouchableOpacity>
+
+      {/* Tap guide button */}
+      <TouchableOpacity
+        onPress={onTapGuide}
+        activeOpacity={0.85}
+        style={styles.floatingBtn}
+      >
+        <ExpoImage
+          source={require("../../../../assets/img/tap-icon.png")}
+          style={[styles.floatingBtnIcon, { opacity: 0.75 }]}
+          contentFit="contain"
+        />
+      </TouchableOpacity>
+    </View>
+  );
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// MAIN COMPONENT
+// ─────────────────────────────────────────────────────────────────────────────
 export default function BookReader() {
   const { id, replay } = useLocalSearchParams();
   const isReplay = replay === "1";
   const router = useRouter();
   const { currentProfile } = useUser();
-  const { storySession, completeActivity, currentStory } = useStoryActivity();
+  const { storySession, completeActivity, currentStory, bookmarkPage } =
+    useStoryActivity();
 
   const [book, setBook] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -87,17 +153,21 @@ export default function BookReader() {
   const [displayIndex, setDisplayIndex] = useState(0);
 
   // ── Base layer state ──────────────────────────────────────────────────────
-  // basePage: what Layer 1 (permanent base) shows.
-  // Updated to destination BEFORE animation starts.
   const [basePage, setBasePage] = useState(null);
 
   // ── Overlay state ─────────────────────────────────────────────────────────
-  // overlayPage: what the animated overlay (Layer 2) shows — the departing page.
-  // isTurning: whether overlay is mounted.
-  // turnDir: drives interpolation direction.
   const [overlayPage, setOverlayPage] = useState(null);
   const [isTurning, setIsTurning] = useState(false);
   const [turnDir, setTurnDir] = useState(1);
+
+  // ── NEW: bookmark + tap guide state ──────────────────────────────────────
+  // isBookmarked: true when the current displayIndex equals session.bookmarkedPage
+  const [showTapGuide, setShowTapGuide] = useState(false);
+  const tapGuideTimerRef = useRef(null);
+  // We derive isBookmarked from storySession so it stays in sync with context
+  const bookmarkedPage   = storySession?.bookmarkedPage ?? null;
+  const isBookmarked     = bookmarkedPage === displayIndex;
+  // ─────────────────────────────────────────────────────────────────────────
 
   // ── Refs ──────────────────────────────────────────────────────────────────
   const isTurningRef = useRef(false);
@@ -108,11 +178,20 @@ export default function BookReader() {
   const gestureStartedRef = useRef(false);
   const animRef = useRef(new Animated.Value(0));
   const pendingFinishRef = useRef(null);
+  // Track whether we already jumped to bookmark (do it once on mount only)
+  const bookmarkJumpedRef = useRef(false);
+  // Bookmark jump timer — declared here so unmount cleanup can reach it
+  const bookmarkTimerRef  = useRef(null);
+  const bookmarkedPageRef = useRef(null); // updated each render below
 
   useEffect(() => {
     console.log("[BookReader LIFECYCLE] BookReader MOUNTED");
     return () => {
       console.log("[BookReader LIFECYCLE] BookReader UNMOUNTED");
+      // Clean up tap guide timer on unmount
+      if (tapGuideTimerRef.current) clearTimeout(tapGuideTimerRef.current);
+      // Clean up bookmark jump timer on unmount
+      if (bookmarkTimerRef.current)  clearTimeout(bookmarkTimerRef.current);
     };
   }, []);
 
@@ -136,6 +215,26 @@ export default function BookReader() {
       setCachedChallengeWords(storySession.challengeWords);
     }
   }, [storySession]);
+
+  // ── NEW: Capture bookmarkedPage at mount time into a ref ────────────────
+  // We read it once from storySession (already loaded from AsyncStorage by
+  // startStorySession in home.jsx before navigation). We never re-read it
+  // reactively — the goal is just to open the reader at the saved page.
+  // bookmarkedPageRef holds the TARGET page we want to jump to.
+  // It is null if there is no bookmark or if we're in replay mode.
+  if (!bookmarkJumpedRef.current) {
+    // isReplay intentionally NOT used here — bookmark navigation applies
+    // regardless of whether the user is re-reading or reading for the first time.
+    // isReplay only controls whether completeActivity is called, not navigation.
+    bookmarkedPageRef.current = storySession?.bookmarkedPage ?? null;
+    console.log('[Bookmark] captured at render:', {
+      bookmarkedPage: storySession?.bookmarkedPage,
+      isReplay,
+      refValue: bookmarkedPageRef.current,
+      sessionExists: !!storySession,
+    });
+  }
+  // ─────────────────────────────────────────────────────────────────────────
 
   const handleWordTap = (word) =>
     setWordTaps((prev) => [...prev, word.toLowerCase()]);
@@ -211,10 +310,7 @@ export default function BookReader() {
   };
 
   // ── beginTurn ─────────────────────────────────────────────────────────────
-  // 1. Set base layer to DESTINATION page immediately (before animation).
-  // 2. Set overlay to DEPARTING page (current page).
-  // 3. Mount overlay (isTurning=true).
-  // 4. Return fresh Animated.Value.
+  // UNTOUCHED
   const beginTurn = useCallback((fromIdx, toIdx, dir) => {
     const b = bookRef.current;
     if (!b) return null;
@@ -222,11 +318,7 @@ export default function BookReader() {
     animRef.current = anim;
     directionRef.current = dir;
     isTurningRef.current = true;
-    // Update base layer to destination NOW — it sits underneath the overlay.
-    // This means at all times during the animation, Layer 1 already shows
-    // the correct final state. No update needed at turn end.
     setBasePage(b.pages[toIdx]);
-    // Overlay shows the departing page on top, animates away.
     setOverlayPage(b.pages[fromIdx]);
     setTurnDir(dir);
     setIsTurning(true);
@@ -234,13 +326,10 @@ export default function BookReader() {
   }, []);
 
   // ── endTurn ───────────────────────────────────────────────────────────────
-  // Animation reached 1. Base layer already shows correct page.
-  // Just unmount the overlay and update page tracking.
+  // UNTOUCHED
   const endTurn = useCallback((nextIdx) => {
     pageIndexRef.current = nextIdx;
     isTurningRef.current = false;
-    // Single batch — unmount overlay and update display index together.
-    // Base layer (Layer 1) already shows nextIdx page, no update needed.
     unstable_batchedUpdates(() => {
       setIsTurning(false);
       setOverlayPage(null);
@@ -249,6 +338,7 @@ export default function BookReader() {
   }, []);
 
   // ── cancelTurn ────────────────────────────────────────────────────────────
+  // UNTOUCHED
   const cancelTurn = useCallback((anim) => {
     Animated.timing(anim, {
       toValue: 0,
@@ -256,7 +346,6 @@ export default function BookReader() {
       useNativeDriver: true,
     }).start(({ finished }) => {
       if (finished) {
-        // Restore base layer to current page (we set it to destination in beginTurn)
         const b = bookRef.current;
         if (b) setBasePage(b.pages[pageIndexRef.current]);
         isTurningRef.current = false;
@@ -268,7 +357,7 @@ export default function BookReader() {
     });
   }, []);
 
-  // ── commitTurn: button-driven ─────────────────────────────────────────────
+  // ── commitTurn — UNTOUCHED ────────────────────────────────────────────────
   const commitTurn = useCallback(
     (nextIdx, duration = 400) => {
       if (isAnimatingRef.current) return;
@@ -299,8 +388,40 @@ export default function BookReader() {
     },
     [commitTurn],
   );
+  // Keep a stable ref to goToPage so the bookmark setTimeout closure
+  // always calls the latest version without stale closure issues
+  const goToPageRef = useRef(goToPage);
+  goToPageRef.current = goToPage;
 
-  // ── PanResponder ──────────────────────────────────────────────────────────
+  // ── NEW: Navigate to bookmarked page — fires once after book + goToPage ready
+  // This effect runs after book is loaded AND after all callbacks are defined.
+  // bookmarkedPageRef.current was captured at render time above (mount only).
+  useEffect(() => {
+    console.log('[Bookmark] jump effect fired:', {
+      alreadyJumped: bookmarkJumpedRef.current,
+      book: !!book,
+      bp: bookmarkedPageRef.current,
+      pages: book?.pages?.length,
+    });
+    if (bookmarkJumpedRef.current) return;
+    if (!book) return;
+
+    const bp = bookmarkedPageRef.current;
+    if (bp === null || bp === undefined || bp <= 0 || bp >= book.pages.length) {
+      console.log('[Bookmark] skipped - invalid bp:', bp, 'pages:', book?.pages?.length);
+      return;
+    }
+
+    bookmarkJumpedRef.current = true;
+    console.log('[Bookmark] navigating to page:', bp);
+    bookmarkTimerRef.current = setTimeout(() => {
+      bookmarkTimerRef.current = null;
+      console.log('[Bookmark] goToPage called with:', bp, 'goToPageRef:', !!goToPageRef.current);
+      goToPageRef.current?.(bp);
+    }, 350);
+  }, [book]); // only book matters — goToPageRef is always current via the line above
+
+  // ── PanResponder — UNTOUCHED ──────────────────────────────────────────────
   const panResponder = useRef(
     PanResponder.create({
       onStartShouldSetPanResponder: () => false,
@@ -366,6 +487,22 @@ export default function BookReader() {
     }),
   ).current;
 
+  // ── NEW: Bookmark handler ─────────────────────────────────────────────────
+  const handleBookmark = useCallback(() => {
+    bookmarkPage(displayIndex);
+  }, [bookmarkPage, displayIndex]);
+
+  // ── NEW: Tap guide handler ────────────────────────────────────────────────
+  const handleTapGuide = useCallback(() => {
+    // Clear any existing timer
+    if (tapGuideTimerRef.current) clearTimeout(tapGuideTimerRef.current);
+    setShowTapGuide(true);
+    tapGuideTimerRef.current = setTimeout(() => {
+      setShowTapGuide(false);
+    }, 3500);
+  }, []);
+  // ─────────────────────────────────────────────────────────────────────────
+
   if (loading)
     return (
       <View style={styles.center}>
@@ -384,10 +521,9 @@ export default function BookReader() {
     );
   if (!book) return null;
 
-  // ── Interpolations ─────────────────────────────────────────────────────
+  // ── Interpolations — UNTOUCHED ─────────────────────────────────────────
   const anim = animRef.current;
 
-  // Overlay (departing page) rotates away from left edge
   const overlayRotateY = anim.interpolate({
     inputRange: [0, 1],
     outputRange: turnDir === 1 ? ["0deg", "-80deg"] : ["0deg", "0deg"],
@@ -403,15 +539,11 @@ export default function BookReader() {
     outputRange: turnDir === 1 ? [0, 0.25, 0.68] : [0, 0, 0],
     extrapolate: "clamp",
   });
-  // For backward: overlay fades out as base swings in from spine
   const overlayOpacity = anim.interpolate({
     inputRange: [0, 0.5, 1],
     outputRange: turnDir === 1 ? [1, 1, 1] : [1, 0.5, 0],
     extrapolate: "clamp",
   });
-
-  // Base layer: for backward turn, it swings in from spine (-80→0)
-  // For forward turn: base is static (overlay rotates away revealing it)
   const baseRotateY = anim.interpolate({
     inputRange: [0, 1],
     outputRange: turnDir === -1 ? ["-80deg", "0deg"] : ["0deg", "0deg"],
@@ -425,6 +557,7 @@ export default function BookReader() {
 
   return (
     <ScreenWrapper background={backgroundImage}>
+      {/* ── Header — UNTOUCHED ── */}
       <View style={styles.header}>
         <Pressable style={styles.backButton} onPress={() => router.back()}>
           <Ionicons name="chevron-back" size={22} color="#E0F7FA" />
@@ -435,11 +568,9 @@ export default function BookReader() {
         <View style={styles.headerSpacer} />
       </View>
 
+      {/* ── Page stage with pan handlers — UNTOUCHED except NEW overlays ── */}
       <View style={styles.pageStage} {...panResponder.panHandlers}>
-        {/* ── LAYER 1: BASE — always mounted, never unmounts ── */}
-        {/* Shows destination page. Updated before animation starts.  */}
-        {/* During forward turn: sits still, revealed as overlay rotates away. */}
-        {/* During backward turn: swings in from spine (-80→0deg).    */}
+        {/* ── LAYER 1: BASE — UNTOUCHED ── */}
         <Animated.View
           style={[
             StyleSheet.absoluteFill,
@@ -467,9 +598,7 @@ export default function BookReader() {
           )}
         </Animated.View>
 
-        {/* ── LAYER 2: OVERLAY — only mounted during turn ── */}
-        {/* Shows departing page. Rotates away revealing Layer 1. */}
-        {/* When this unmounts, Layer 1 already shows correct page — invisible transition. */}
+        {/* ── LAYER 2: OVERLAY — UNTOUCHED ── */}
         {isTurning && overlayPage && (
           <Animated.View
             style={[
@@ -496,8 +625,20 @@ export default function BookReader() {
             />
           </Animated.View>
         )}
+
+        {/* ── NEW: Floating buttons (bookmark + tap guide) ── */}
+        {/* Rendered outside the animated layers so they don't rotate with pages */}
+        <FloatingButtons
+          isBookmarked={isBookmarked}
+          onBookmark={handleBookmark}
+          onTapGuide={handleTapGuide}
+        />
+
+        {/* ── NEW: Tap guide tooltip ── */}
+        <TapGuideTooltip visible={showTapGuide} />
       </View>
 
+      {/* ── Navigation buttons — UNTOUCHED ── */}
       <View style={styles.buttons}>
         <Pressable
           disabled={displayIndex === 0}
@@ -538,7 +679,7 @@ export default function BookReader() {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// STORY SWIPE PAGE — unchanged from original
+// STORY SWIPE PAGE — UNTOUCHED
 // ─────────────────────────────────────────────────────────────────────────────
 const StorySwipePage = ({ page, onWordTap }) => (
   <View style={[styles.page, { width }]}>
@@ -634,5 +775,68 @@ const styles = StyleSheet.create({
   pageStage: {
     flex: 1,
     overflow: "hidden",
+  },
+
+  // ── NEW: Floating buttons ────────────────────────────────────────────────
+  floatingBtns: {
+    position:   "absolute",
+    top:        16,
+    left:       12,
+    gap:        10,
+    zIndex:     50,
+    alignItems: "center",
+  },
+  floatingBtn: {
+    width:           44,
+    height:          44,
+    borderRadius:    22,
+    backgroundColor: "rgba(8, 8, 26, 0.72)",
+    borderWidth:     1.5,
+    borderColor:     "rgba(255,255,255,0.18)",
+    alignItems:      "center",
+    justifyContent:  "center",
+    shadowColor:     "#000",
+    shadowOffset:    { width: 0, height: 2 },
+    shadowOpacity:   0.55,
+    shadowRadius:    6,
+    elevation:       8,
+  },
+  // Active state — bookmarked
+  floatingBtnActive: {
+    backgroundColor: "rgba(0, 188, 212, 0.88)",
+    borderColor:     "#00BCD4",
+    shadowColor:     "#00BCD4",
+    shadowOpacity:   0.7,
+    shadowRadius:    8,
+  },
+  floatingBtnIcon: {
+    width:  24,
+    height: 24,
+  },
+
+  // ── NEW: Tap guide tooltip ───────────────────────────────────────────────
+  tapTooltip: {
+    position:          "absolute",
+    top:               70,   // aligns with tap guide button (second button)
+    left:              66,   // sits right of the floating buttons
+    backgroundColor:   "rgba(8,8,26,0.90)",
+    borderRadius:      radius.lg,
+    borderWidth:       1.5,
+    borderColor:       "rgba(0,188,212,0.55)",
+    paddingHorizontal: pad.sm,
+    paddingVertical:   pad.s,
+    zIndex:            50,
+    shadowColor:       "#00BCD4",
+    shadowOffset:      { width: 0, height: 0 },
+    shadowOpacity:     0.4,
+    shadowRadius:      8,
+    elevation:         10,
+    maxWidth:          220,
+  },
+  tapTooltipText: {
+    fontFamily:  FONTS.bold,
+    fontSize:    font.sm,
+    color:       "#E0F7FA",
+    letterSpacing: 0.2,
   },
 });

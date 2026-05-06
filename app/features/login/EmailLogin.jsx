@@ -58,7 +58,7 @@ const EmailLogin = () => {
         errorDisplay: "toast",
         onSuccess: () => {
           // router.dismissAll();
-          setTimeout(() => router.replace("/feature/home"), 0);
+          setTimeout(() => router.replace("/features/home"), 0);
         },
         onError: () => setIsLoading(false),
       },

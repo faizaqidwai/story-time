@@ -20,13 +20,16 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 import { GAME_REGISTRY } from "./constants/gameIds";
 
 // ─── Key builders ─────────────────────────────────────────────────────────────
-const CONFIG_KEY          = (levelNumber)            => `@game_config_${levelNumber}`;
-const STATE_KEY           = (profileId, levelNumber) => `@game_state_${profileId}_${levelNumber}`;
-const COMPLETED_KEY       = (profileId, levelNumber) => `@game_completed_stories_${profileId}_${levelNumber}`;
+const CONFIG_KEY = (profileId, levelNumber) =>
+  `@game_config_${profileId}_${levelNumber}`;
+const STATE_KEY = (profileId, levelNumber) =>
+  `@game_state_${profileId}_${levelNumber}`;
+const COMPLETED_KEY = (profileId, levelNumber) =>
+  `@game_completed_stories_${profileId}_${levelNumber}`;
 
 // ─── Game status constants ────────────────────────────────────────────────────
 export const GAME_STATUS = {
-  LOCKED:   "LOCKED",
+  LOCKED: "LOCKED",
   REVEALED: "REVEALED",
   UNLOCKED: "UNLOCKED",
 };
@@ -34,16 +37,16 @@ export const GAME_STATUS = {
 // ─── Error codes returned by mutations ───────────────────────────────────────
 export const ENGINE_ERROR = {
   INSUFFICIENT_DIAMONDS: "INSUFFICIENT_DIAMONDS",
-  INSUFFICIENT_COINS:    "INSUFFICIENT_COINS",
-  WRONG_STATUS:          "WRONG_STATUS",
-  CONFIG_NOT_FOUND:      "CONFIG_NOT_FOUND",
-  STATE_NOT_FOUND:       "STATE_NOT_FOUND",
+  INSUFFICIENT_COINS: "INSUFFICIENT_COINS",
+  WRONG_STATUS: "WRONG_STATUS",
+  CONFIG_NOT_FOUND: "CONFIG_NOT_FOUND",
+  STATE_NOT_FOUND: "STATE_NOT_FOUND",
 };
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 const STORIES_REQUIRED_TO_REVEAL = 3;
-const DIAMONDS_TO_UNLOCK         = 9;
-const COINS_TO_PLAY              = 100;
+const DIAMONDS_TO_UNLOCK = 9;
+const COINS_TO_PLAY = 100;
 
 // ═════════════════════════════════════════════════════════════════════════════
 // READ FUNCTIONS
@@ -55,9 +58,9 @@ const COINS_TO_PLAY              = 100;
  * Reads the seeded game config for a level from AsyncStorage.
  * Returns null if the level has never been seeded (first visit, backend needed).
  */
-export async function loadLevelConfig(levelNumber) {
+export async function loadLevelConfig(profileId, levelNumber) {
   try {
-    const raw = await AsyncStorage.getItem(CONFIG_KEY(levelNumber));
+    const raw = await AsyncStorage.getItem(CONFIG_KEY(profileId, levelNumber));
     if (!raw) return null;
     return JSON.parse(raw);
   } catch (err) {
@@ -107,9 +110,9 @@ export function buildLevelGames(config, state) {
     // even if the config came from a backend that omits display fields.
     const registrySlot = GAME_REGISTRY[configSlot.gameId] ?? {};
     return {
-      ...registrySlot,   // name, route, icon, gradient, accentColor from registry
-      ...configSlot,     // gameId, storyGroupIndex, gameData from config (wins)
-      status:                  stateSlot?.status                  ?? GAME_STATUS.LOCKED,
+      ...registrySlot, // name, route, icon, gradient, accentColor from registry
+      ...configSlot, // gameId, storyGroupIndex, gameData from config (wins)
+      status: stateSlot?.status ?? GAME_STATUS.LOCKED,
       storiesCompletedInGroup: stateSlot?.storiesCompletedInGroup ?? 0,
     };
   });
@@ -133,17 +136,23 @@ export async function seedLevelConfig(profileId, levelNumber, apiResponse) {
   try {
     // 1. Write config (always overwrite — backend is canonical for config)
     await AsyncStorage.setItem(
-      CONFIG_KEY(levelNumber),
-      JSON.stringify({ ...apiResponse, seededAt: new Date().toISOString() })
+      CONFIG_KEY(profileId, levelNumber),
+      JSON.stringify({ ...apiResponse, seededAt: new Date().toISOString() }),
     );
 
     // 2. Create initial state only if none exists
-    const existingState = await AsyncStorage.getItem(STATE_KEY(profileId, levelNumber));
+    const existingState = await AsyncStorage.getItem(
+      STATE_KEY(profileId, levelNumber),
+    );
     if (!existingState) {
-      const initialState = _buildInitialState(profileId, levelNumber, apiResponse.games);
+      const initialState = _buildInitialState(
+        profileId,
+        levelNumber,
+        apiResponse.games,
+      );
       await AsyncStorage.setItem(
         STATE_KEY(profileId, levelNumber),
-        JSON.stringify(initialState)
+        JSON.stringify(initialState),
       );
     }
 
@@ -176,16 +185,17 @@ export async function seedLevelConfig(profileId, levelNumber, apiResponse) {
 export async function onStoryCompleted(profileId, levelNumber, storyId) {
   try {
     const [config, state] = await Promise.all([
-      _readConfig(levelNumber),
+      _readConfig(profileId, levelNumber),
       _readState(profileId, levelNumber),
     ]);
 
-    if (!config) return { success: false, error: ENGINE_ERROR.CONFIG_NOT_FOUND };
-    if (!state)  return { success: false, error: ENGINE_ERROR.STATE_NOT_FOUND };
+    if (!config)
+      return { success: false, error: ENGINE_ERROR.CONFIG_NOT_FOUND };
+    if (!state) return { success: false, error: ENGINE_ERROR.STATE_NOT_FOUND };
 
     // Read the set of unique story IDs already counted for this level
     const completedStoriesRaw = await AsyncStorage.getItem(
-      COMPLETED_KEY(profileId, levelNumber)
+      COMPLETED_KEY(profileId, levelNumber),
     );
     const completedStoryIds = completedStoriesRaw
       ? JSON.parse(completedStoriesRaw)
@@ -193,14 +203,19 @@ export async function onStoryCompleted(profileId, levelNumber, storyId) {
 
     // Guard: story already counted — nothing to do
     if (completedStoryIds.includes(storyId)) {
-      return { success: true, updatedState: state, revealed: false, revealedGameId: null };
+      return {
+        success: true,
+        updatedState: state,
+        revealed: false,
+        revealedGameId: null,
+      };
     }
 
     // Add this story to the completed set and persist it
     const updatedCompletedIds = [...completedStoryIds, storyId];
     await AsyncStorage.setItem(
       COMPLETED_KEY(profileId, levelNumber),
-      JSON.stringify(updatedCompletedIds)
+      JSON.stringify(updatedCompletedIds),
     );
 
     const totalCompleted = updatedCompletedIds.length;
@@ -209,10 +224,10 @@ export async function onStoryCompleted(profileId, levelNumber, storyId) {
     // Slot 0 (storyGroupIndex 1): revealed when totalCompleted >= 3
     // Slot 1 (storyGroupIndex 2): revealed when totalCompleted >= 6
     const updatedGames = state.games.map((slot, index) => {
-      const threshold    = (index + 1) * STORIES_REQUIRED_TO_REVEAL;
+      const threshold = (index + 1) * STORIES_REQUIRED_TO_REVEAL;
       const countForSlot = Math.min(
         Math.max(totalCompleted - index * STORIES_REQUIRED_TO_REVEAL, 0),
-        STORIES_REQUIRED_TO_REVEAL
+        STORIES_REQUIRED_TO_REVEAL,
       );
 
       // Never go backwards — if already revealed/unlocked keep it
@@ -223,7 +238,10 @@ export async function onStoryCompleted(profileId, levelNumber, storyId) {
       return {
         ...slot,
         storiesCompletedInGroup: countForSlot,
-        status: totalCompleted >= threshold ? GAME_STATUS.REVEALED : GAME_STATUS.LOCKED,
+        status:
+          totalCompleted >= threshold
+            ? GAME_STATUS.REVEALED
+            : GAME_STATUS.LOCKED,
       };
     });
 
@@ -231,16 +249,16 @@ export async function onStoryCompleted(profileId, levelNumber, storyId) {
     const newlyRevealedSlot = updatedGames.find(
       (updated, i) =>
         updated.status === GAME_STATUS.REVEALED &&
-        state.games[i].status === GAME_STATUS.LOCKED
+        state.games[i].status === GAME_STATUS.LOCKED,
     );
 
     const updatedState = _stampState(state, updatedGames);
     await _writeState(profileId, levelNumber, updatedState);
 
     return {
-      success:        true,
+      success: true,
       updatedState,
-      revealed:       !!newlyRevealedSlot,
+      revealed: !!newlyRevealedSlot,
       revealedGameId: newlyRevealedSlot?.gameId ?? null,
     };
   } catch (err) {
@@ -259,13 +277,19 @@ export async function onStoryCompleted(profileId, levelNumber, storyId) {
  *   { success: true, updatedState, newDiamonds }      — on success
  *   { success: false, error: ENGINE_ERROR.* }          — on failure
  */
-export async function unlockGame(profileId, levelNumber, gameId, currentDiamonds) {
+export async function unlockGame(
+  profileId,
+  levelNumber,
+  gameId,
+  currentDiamonds,
+) {
   try {
     const state = await _readState(profileId, levelNumber);
     if (!state) return { success: false, error: ENGINE_ERROR.STATE_NOT_FOUND };
 
     const slotIndex = state.games.findIndex((g) => g.gameId === gameId);
-    if (slotIndex === -1) return { success: false, error: ENGINE_ERROR.STATE_NOT_FOUND };
+    if (slotIndex === -1)
+      return { success: false, error: ENGINE_ERROR.STATE_NOT_FOUND };
 
     const slot = state.games[slotIndex];
 
@@ -291,10 +315,10 @@ export async function unlockGame(profileId, levelNumber, gameId, currentDiamonds
       events: [
         ...(state.events ?? []),
         {
-          type:             "UNLOCK",
+          type: "UNLOCK",
           gameId,
           diamondsDeducted: DIAMONDS_TO_UNLOCK,
-          timestamp:        new Date().toISOString(),
+          timestamp: new Date().toISOString(),
         },
       ],
     });
@@ -321,14 +345,15 @@ export async function unlockGame(profileId, levelNumber, gameId, currentDiamonds
 export async function playGame(profileId, levelNumber, gameId, currentCoins) {
   try {
     const [config, state] = await Promise.all([
-      _readConfig(levelNumber),
+      _readConfig(profileId, levelNumber),
       _readState(profileId, levelNumber),
     ]);
 
-    if (!config) return { success: false, error: ENGINE_ERROR.CONFIG_NOT_FOUND };
-    if (!state)  return { success: false, error: ENGINE_ERROR.STATE_NOT_FOUND };
+    if (!config)
+      return { success: false, error: ENGINE_ERROR.CONFIG_NOT_FOUND };
+    if (!state) return { success: false, error: ENGINE_ERROR.STATE_NOT_FOUND };
 
-    const stateSlot  = state.games.find((g) => g.gameId === gameId);
+    const stateSlot = state.games.find((g) => g.gameId === gameId);
     const configSlot = config.games.find((g) => g.gameId === gameId);
 
     if (!stateSlot || !configSlot) {
@@ -352,10 +377,10 @@ export async function playGame(profileId, levelNumber, gameId, currentCoins) {
       events: [
         ...(state.events ?? []),
         {
-          type:          "PLAY",
+          type: "PLAY",
           gameId,
           coinsDeducted: COINS_TO_PLAY,
-          timestamp:     new Date().toISOString(),
+          timestamp: new Date().toISOString(),
         },
       ],
     });
@@ -386,18 +411,34 @@ export async function getPendingSyncPayload(profileId, levelNumber) {
     const state = await _readState(profileId, levelNumber);
     if (!state || !state.pendingSync) return null;
 
+    // Read completed story IDs from their separate key
+    const completedStoriesRaw = await AsyncStorage.getItem(
+      COMPLETED_KEY(profileId, levelNumber),
+    );
+    const completedStoryIds = completedStoriesRaw
+      ? JSON.parse(completedStoriesRaw)
+      : [];
+    console.log(
+      `[GamificationEngine] completedStoryIds for profileId=${profileId} level=${levelNumber}:`,
+      completedStoryIds,
+    );
+
     return {
       profileId,
       levelNumber,
-      gameStates: state.games.map((g) => ({
-        gameId:                  g.gameId,
-        status:                  g.status,
+      games: state.games.map((g) => ({
+        gameId: g.gameId,
+        status: g.status,
         storiesCompletedInGroup: g.storiesCompletedInGroup,
+        completedStoryIds, // same list applies to all slots for this level
       })),
       events: state.events ?? [],
     };
   } catch (err) {
-    console.warn("[GamificationEngine] getPendingSyncPayload failed:", err?.message);
+    console.warn(
+      "[GamificationEngine] getPendingSyncPayload failed:",
+      err?.message,
+    );
     return null;
   }
 }
@@ -415,8 +456,8 @@ export async function clearPendingSync(profileId, levelNumber) {
 
     const clearedState = {
       ...state,
-      pendingSync:  false,
-      events:       [],
+      pendingSync: false,
+      events: [],
       lastSyncedAt: new Date().toISOString(),
     };
 
@@ -430,12 +471,15 @@ export async function clearPendingSync(profileId, levelNumber) {
 // PRIVATE HELPERS
 // ═════════════════════════════════════════════════════════════════════════════
 
-async function _readConfig(levelNumber) {
-  const raw = await AsyncStorage.getItem(CONFIG_KEY(levelNumber));
+async function _readConfig(profileId, levelNumber) {
+  const raw = await AsyncStorage.getItem(CONFIG_KEY(profileId, levelNumber));
   return raw ? JSON.parse(raw) : null;
 }
 
 async function _readState(profileId, levelNumber) {
+  console.log(
+    `[GamificationEngine] _readState for profileId=${profileId} levelNumber=${levelNumber}`,
+  );
   const raw = await AsyncStorage.getItem(STATE_KEY(profileId, levelNumber));
   return raw ? JSON.parse(raw) : null;
 }
@@ -443,7 +487,7 @@ async function _readState(profileId, levelNumber) {
 async function _writeState(profileId, levelNumber, state) {
   await AsyncStorage.setItem(
     STATE_KEY(profileId, levelNumber),
-    JSON.stringify(state)
+    JSON.stringify(state),
   );
 }
 
@@ -460,8 +504,8 @@ function _stampState(existingState, updatedGames, extraFields = {}) {
   return {
     ...existingState,
     ...extraFields,
-    games:          updatedGames,
-    pendingSync:    true,
+    games: updatedGames,
+    pendingSync: true,
     lastModifiedAt: new Date().toISOString(),
   };
 }
@@ -476,13 +520,13 @@ function _buildInitialState(profileId, levelNumber, configGames) {
     profileId,
     levelNumber,
     games: configGames.map((g) => ({
-      gameId:                  g.gameId,
-      status:                  GAME_STATUS.LOCKED,
+      gameId: g.gameId,
+      status: GAME_STATUS.LOCKED,
       storiesCompletedInGroup: 0,
     })),
-    events:         [],
-    pendingSync:    false,
+    events: [],
+    pendingSync: false,
     lastModifiedAt: new Date().toISOString(),
-    lastSyncedAt:   null,
+    lastSyncedAt: null,
   };
 }

@@ -78,6 +78,12 @@ async function _buildSyncRequest(allKeys) {
   const snapshotTime = new Date().toISOString();
   const raw = await AsyncStorage.getItem(PROFILES_STORAGE_KEY);
   const profiles = raw ? JSON.parse(raw) : [];
+  console.log(
+    "[SyncEngine] _buildSyncRequest profiles:",
+    profiles?.length,
+    "keys with story prefix:",
+    allKeys.filter((k) => k.startsWith(STORY_PREFIX)).length,
+  );
   const profileSyncData = await Promise.all(
     profiles.map(async (p) => ({
       profileId: p.id,
@@ -154,7 +160,10 @@ async function _resolveAndPersist(syncResponse, localSnap) {
   const writes = [];
 
   const keysToFetch = [];
-  for (const { profileId, storyActivities } of syncResponse.resolvedActivities) {
+  for (const {
+    profileId,
+    storyActivities,
+  } of syncResponse.resolvedActivities) {
     if (!storyActivities) continue;
     for (const ba of storyActivities) {
       const key = `${STORY_PREFIX}${profileId}_${ba.storyId}`;
@@ -169,7 +178,10 @@ async function _resolveAndPersist(syncResponse, localSnap) {
     ? Object.fromEntries(await AsyncStorage.multiGet(keysToFetch))
     : {};
 
-  for (const { profileId, storyActivities } of syncResponse.resolvedActivities) {
+  for (const {
+    profileId,
+    storyActivities,
+  } of syncResponse.resolvedActivities) {
     if (!storyActivities) continue;
     for (const ba of storyActivities) {
       const key = `${STORY_PREFIX}${profileId}_${ba.storyId}`;
@@ -180,7 +192,10 @@ async function _resolveAndPersist(syncResponse, localSnap) {
         const cur = fetched[key];
         if (cur) {
           try {
-            writes.push([key, JSON.stringify(_mergeLocalAhead(JSON.parse(cur), ba))]);
+            writes.push([
+              key,
+              JSON.stringify(_mergeLocalAhead(JSON.parse(cur), ba)),
+            ]);
           } catch {
             writes.push([key, JSON.stringify(_toSession(profileId, ba))]);
           }
@@ -191,7 +206,8 @@ async function _resolveAndPersist(syncResponse, localSnap) {
           const cur = fetched[key];
           if (cur) {
             try {
-              if (JSON.parse(cur).rewardsDisbursed) sess.rewardsDisbursed = true;
+              if (JSON.parse(cur).rewardsDisbursed)
+                sess.rewardsDisbursed = true;
             } catch {}
           }
         }
@@ -262,9 +278,18 @@ async function _applyProfileSummaries(summaries) {
       const s = map[p.id];
       if (!s) return p;
       const u = { ...p };
-      if (s.playLevel > (p.playLevel ?? 1)) { u.playLevel = s.playLevel; changed = true; }
-      if (s.coins > (p.coins ?? 0)) { u.coins = s.coins; changed = true; }
-      if (s.diamonds > (p.diamonds ?? 0)) { u.diamonds = s.diamonds; changed = true; }
+      if (s.playLevel > (p.playLevel ?? 1)) {
+        u.playLevel = s.playLevel;
+        changed = true;
+      }
+      if (s.coins > (p.coins ?? 0)) {
+        u.coins = s.coins;
+        changed = true;
+      }
+      if (s.diamonds > (p.diamonds ?? 0)) {
+        u.diamonds = s.diamonds;
+        changed = true;
+      }
       return u;
     });
     if (changed)
@@ -287,7 +312,10 @@ async function _markSyncedCompletedSessions(syncResponse, localSnap) {
   if (!syncResponse?.resolvedActivities) return;
   const toMark = [];
 
-  for (const { profileId, storyActivities } of syncResponse.resolvedActivities) {
+  for (const {
+    profileId,
+    storyActivities,
+  } of syncResponse.resolvedActivities) {
     if (!storyActivities) continue;
     for (const ba of storyActivities) {
       if (ba.nextActivityIndex < 4) continue;
@@ -301,10 +329,13 @@ async function _markSyncedCompletedSessions(syncResponse, localSnap) {
         const parsed = JSON.parse(raw);
         // Only stamp if rewardsDisbursed=true and not yet stamped
         if (parsed.rewardsDisbursed && !parsed.lastSyncedAt) {
-          toMark.push([key, JSON.stringify({
-            ...parsed,
-            lastSyncedAt: new Date().toISOString(),
-          })]);
+          toMark.push([
+            key,
+            JSON.stringify({
+              ...parsed,
+              lastSyncedAt: new Date().toISOString(),
+            }),
+          ]);
         }
       } catch {}
     }
