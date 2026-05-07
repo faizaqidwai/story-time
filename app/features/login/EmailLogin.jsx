@@ -57,7 +57,7 @@ const EmailLogin = () => {
         successMessage: "Login Successful",
         errorDisplay: "toast",
         onSuccess: () => {
-          // router.dismissAll();
+          router.dismissAll();
           setTimeout(() => router.replace("/features/home"), 0);
         },
         onError: () => setIsLoading(false),

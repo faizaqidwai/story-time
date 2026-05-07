@@ -42,10 +42,13 @@ function stop() {
 }
 
 async function syncNow(getAuthToken, onSyncComplete) {
+  console.log("[SyncEngine] manual sync triggered");
   return _runSync(getAuthToken, onSyncComplete);
 }
 
 async function _runSync(getAuthToken, onSyncComplete) {
+  console.log("[SyncEngine] attempting sync...");
+  console.log("[SyncEngine] _isSyncing:", _isSyncing);
   if (_isSyncing) return null;
   _isSyncing = true;
   try {
@@ -93,7 +96,7 @@ async function _buildSyncRequest(allKeys) {
   return {
     request: {
       clientSnapshotTime: snapshotTime,
-      profiles: profileSyncData.filter((p) => p.storyActivities.length > 0),
+      profiles: profileSyncData,
     },
   };
 }

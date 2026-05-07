@@ -188,6 +188,13 @@ export async function onStoryCompleted(profileId, levelNumber, storyId) {
       _readConfig(profileId, levelNumber),
       _readState(profileId, levelNumber),
     ]);
+    console.log(
+      `[GamificationEngine] ENG - onStoryCompleted - called for profileId=${profileId} levelNumber=${levelNumber} storyId=${storyId}`,
+    );
+    console.log(
+      `[GamificationEngine] ENG - onStoryCompleted - current state =`,
+      state,
+    );
 
     if (!config)
       return { success: false, error: ENGINE_ERROR.CONFIG_NOT_FOUND };
@@ -197,9 +204,18 @@ export async function onStoryCompleted(profileId, levelNumber, storyId) {
     const completedStoriesRaw = await AsyncStorage.getItem(
       COMPLETED_KEY(profileId, levelNumber),
     );
+    console.log(
+      `[GamificationEngine] ENG - onStoryCompleted - completed stories raw =`,
+      completedStoriesRaw,
+    );
+
     const completedStoryIds = completedStoriesRaw
       ? JSON.parse(completedStoriesRaw)
       : [];
+    console.log(
+      `[GamificationEngine] ENG - onStoryCompleted - completed story IDs =`,
+      completedStoryIds,
+    );
 
     // Guard: story already counted — nothing to do
     if (completedStoryIds.includes(storyId)) {
@@ -217,13 +233,33 @@ export async function onStoryCompleted(profileId, levelNumber, storyId) {
       COMPLETED_KEY(profileId, levelNumber),
       JSON.stringify(updatedCompletedIds),
     );
+    console.log(
+      `[GamificationEngine] ENG - onStoryCompleted - updated completed story IDs =`,
+      updatedCompletedIds,
+    );
 
     const totalCompleted = updatedCompletedIds.length;
+    console.log(
+      `[GamificationEngine] ENG - onStoryCompleted - total unique stories completed for this level =`,
+      totalCompleted,
+    );
 
     // Derive which slots should now be revealed purely from total count.
     // Slot 0 (storyGroupIndex 1): revealed when totalCompleted >= 3
     // Slot 1 (storyGroupIndex 2): revealed when totalCompleted >= 6
-    const updatedGames = state.games.map((slot, index) => {
+    console.log(`[GamificationEngine] ENG - onStoryCompleted - Updating games`);
+
+    // Sort games by storyGroupIndex from config to ensure correct threshold calculation.
+    // State games order may differ from config order (e.g. after server restore),
+    // which would cause wrong threshold assignment if we use array index.
+    const configGameOrder = config.games
+      .slice()
+      .sort((a, b) => a.storyGroupIndex - b.storyGroupIndex)
+      .map((g) => g.gameId);
+
+    const updatedGames = state.games.map((slot) => {
+      const slotIndex = configGameOrder.indexOf(slot.gameId);
+      const index = slotIndex === -1 ? 0 : slotIndex;
       const threshold = (index + 1) * STORIES_REQUIRED_TO_REVEAL;
       const countForSlot = Math.min(
         Math.max(totalCompleted - index * STORIES_REQUIRED_TO_REVEAL, 0),
@@ -245,15 +281,28 @@ export async function onStoryCompleted(profileId, levelNumber, storyId) {
       };
     });
 
+    console.log(
+      `[GamificationEngine] ENG - onStoryCompleted - updated game slots =`,
+      updatedGames,
+    );
+
     // Detect which slot just flipped to REVEALED this call
     const newlyRevealedSlot = updatedGames.find(
       (updated, i) =>
         updated.status === GAME_STATUS.REVEALED &&
         state.games[i].status === GAME_STATUS.LOCKED,
     );
+    console.log(
+      `[GamificationEngine] ENG - onStoryCompleted - newly revealed slot =`,
+      newlyRevealedSlot,
+    );
 
     const updatedState = _stampState(state, updatedGames);
     await _writeState(profileId, levelNumber, updatedState);
+    console.log(
+      `[GamificationEngine] ENG - onStoryCompleted - updated state written =`,
+      updatedState,
+    );
 
     return {
       success: true,

@@ -86,7 +86,7 @@ const RootLayout = () => {
             }}
           >
             <Stack.Screen
-              name="features/home"
+              name="features/home/index"
               options={{
                 headerShown: false,
                 animation: "none",

@@ -22,6 +22,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import ScreenWrapper from "../../shared/ScreenWrapper";
 import ProfileCard from "./components/ProfileCard";
 import { useUser } from "../../_contexts/UserContext";
+import { useStoryActivity } from "../../_contexts/StoryActivityContext";
 import { saveProfile } from "../../services/profileService";
 import { setUserAccountCredentials } from "../../services/userAccountService";
 import { COLORS, SHADOWS, FONTS } from "../../theme";
@@ -576,6 +577,7 @@ const Account = () => {
   const { sizes } = useTheme();
   const sz = sizes.account;
   const insets = useSafeAreaInsets();
+  const { resetInitialSyncFlag } = useStoryActivity();
 
   const {
     profiles,
@@ -839,6 +841,7 @@ const Account = () => {
         text: "Log Out",
         style: "destructive",
         onPress: async () => {
+          resetInitialSyncFlag();
           await logoutUser();
           await logoutLocally();
         },

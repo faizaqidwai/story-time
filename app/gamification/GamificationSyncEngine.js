@@ -42,7 +42,15 @@ export async function syncOnLevelLoad(profileId, levelNumber) {
 // ─────────────────────────────────────────────────────────────────────────────
 export async function syncAfterMutation(profileId, levelNumber) {
   try {
+    console.log(
+      `[GamificationSync] - SYNC ENG - syncAfterMutation called for profileId=${profileId} level=${levelNumber}`,
+    );
     const payload = await getPendingSyncPayload(profileId, levelNumber);
+    console.log(
+      `[GamificationSync] - SYNC ENG - got pending payload for profileId=${profileId} level=${levelNumber}:`,
+      JSON.stringify(payload),
+    );
+
     if (!payload || !payload.games || payload.games.length === 0) {
       console.log(
         `[GamificationSync] nothing to sync profileId=${profileId} level=${levelNumber}`,

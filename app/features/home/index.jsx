@@ -59,6 +59,7 @@ import { font, pad, radius, size, isTablet } from "../../theme/tokens";
 // ── Module-level guards ───────────────────────────────────────────────────────
 let _finishHandled = false;
 let _overlayShownForStoryId = null;
+let _initializedProfileId = null;
 
 const { width, height } = Dimensions.get("window");
 
@@ -1967,7 +1968,6 @@ const HomeContent = () => {
     clearStorySession,
     resetSessionForProfileSwitch,
     syncNow,
-    hasInitialSyncedRef,
   } = useStoryActivity();
   const {
     loadedLevel,
@@ -2267,8 +2267,9 @@ const HomeContent = () => {
 
   useEffect(() => {
     if (!currentProfile) return;
-    if (lastInitializedProfileIdRef.current === currentProfile.id) return;
+    if (_initializedProfileId === currentProfile.id) return;
 
+    _initializedProfileId = currentProfile.id;
     lastInitializedProfileIdRef.current = currentProfile.id;
     profileSwitchInProgressRef.current = true;
 
@@ -2309,19 +2310,15 @@ const HomeContent = () => {
         }
       });
     }
-    if (!hasInitialSyncedRef.current) {
-      hasInitialSyncedRef.current = true;
-      // Await sync first so server state is written to AsyncStorage
-      // before loadAllStoryProgress reads it — fixes story completion
-      // state not appearing on second device / re-login.
-      syncNow()
-        .catch(() => {})
-        .finally(() => {
-          loadAllStoryProgress(currentProfile.id);
-        });
-    } else {
-      loadAllStoryProgress(currentProfile.id);
-    }
+
+    console.log("[Init For Profile] - syncing");
+    // Everytime profile is initialized or changed, syncs story activities from backend
+    // First we fetch local state and render on home screen, on background we sync with backend and refresh all stories progress on successful response only.
+    syncNow()
+      .catch(() => {})
+      .finally(() => {
+        loadAllStoryProgress(currentProfile.id);
+      });
   }, [currentProfile?.id]);
 
   useEffect(() => {

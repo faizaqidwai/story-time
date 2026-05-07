@@ -111,6 +111,13 @@ export function GamificationProvider({
     ]);
     const games = buildLevelGames(config, state);
     setLevelGames(games);
+    console.log(
+      "[Gamification] - CTX - refreshed levelGames from storage for level",
+      levelNumber,
+      "games:",
+      JSON.stringify(games),
+    );
+
     if (config?.coinShopConfig) setCoinShopConfig(config.coinShopConfig);
   }, []);
 
@@ -264,11 +271,22 @@ export function GamificationProvider({
     async (storyId, levelNumber) => {
       if (!profileId) return;
 
+      console.log(
+        "[Gamification] CTX - onStoryComplete - called for profileId:" +
+          profileId +
+          ", levelNumber:" +
+          levelNumber,
+      );
+
       const result = await onStoryCompleted(profileId, levelNumber, storyId);
       if (!result.success) {
         console.warn("[Gamification] onStoryComplete failed:", result.error);
         return;
       }
+      console.log(
+        "[Gamification] - CTX - onStoryComplete - engine RETURN:" +
+          JSON.stringify(result),
+      );
 
       // Refresh in-memory state so GameCards re-render with updated scratch progress
       await _refreshFromStorage(profileId, levelNumber);
