@@ -41,6 +41,7 @@ import {
   clearPendingProgression,
 } from "../../services/levelProgressionService";
 import LevelBadge from "../levels/components/LevelBadge";
+import { HomeVocabularySection } from "../vocabulary/components/HomeVocabularySection";
 
 // ── Gamification ─────────────────────────────────────────────────────────────
 import {
@@ -2740,7 +2741,7 @@ const HomeContent = () => {
                       collapsable={false}
                       style={{ alignItems: "center" }}
                       onPress={() =>
-                        router.push("/features/vocabulary/WordBag")
+                        router.push("/features/vocabulary/VocabularyScreen")
                       }
                       activeOpacity={0.8}
                     >
@@ -2963,6 +2964,15 @@ const HomeContent = () => {
                   </>
                 )}
 
+                {/* ── VOCABULARY SECTION ──────────────────────────────────────────────── */}
+                {/* Only show when subscription is active and level is not locked */}
+                {!showSubscriptionExpired && !isViewOnly && (
+                  <HomeVocabularySection
+                    playLevel={currentProfile.playLevel ?? 1}
+                  />
+                )}
+                {/* ──────────────────────────────────────────────────────────────────────── */}
+
                 {/* ── GAMES SECTION ─────────────────────────────────────── */}
                 {/* Header kept exactly as original */}
                 <View style={styles.sectionHeader}>
@@ -2971,6 +2981,7 @@ const HomeContent = () => {
                     Learn while you play 🎮
                   </Text>
                 </View>
+
                 {/* GamesSection replaces the old GAMES.map() ScrollView.   */}
                 {/* It renders null until Step 5 builds the real component.  */}
                 {/* The old GameCard ScrollView is preserved below as        */}

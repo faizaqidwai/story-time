@@ -196,6 +196,24 @@ const RootLayout = () => {
             />
 
             <Stack.Screen
+              name="features/vocabulary/VocabularyScreen"
+              options={{
+                headerShown: false,
+                animation: "slide_from_left",
+                contentStyle: { backgroundColor: "#08081a" },
+              }}
+            />
+
+            <Stack.Screen
+              name="features/vocabulary/CategoryScreen"
+              options={{
+                headerShown: false,
+                animation: "slide_from_right",
+                contentStyle: { backgroundColor: "#08081a" },
+              }}
+            />
+
+            <Stack.Screen
               name="features/purchases"
               options={{
                 headerShown: false,
