@@ -891,7 +891,7 @@ export const DEVICE_SIZES = {
   // ── Learning Path screen ──────────────────────────────────
   learningPath: {
     cardWidth: 0.38,
-    cardHeight: 210,
+    cardHeight: 310,
     connectorHeight: 80,
     screenPad: 24,
 

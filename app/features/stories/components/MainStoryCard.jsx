@@ -386,7 +386,7 @@ export default function MainStoryCard({
               </Text>
             </View>
             <View style={s.newBadge}>
-              <Text style={s.newBadgeTxt}>NEW</Text>
+              <Text style={s.newBadgeTxt}>RECOMENDED</Text>
             </View>
           </View>
         )}

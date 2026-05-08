@@ -75,7 +75,7 @@ export function HomeVocabularySection({ playLevel }) {
     <View>
       <View style={s.header}>
         <Text style={s.title}>Words</Text>
-        <Text style={s.tagline}>Explore words by topic 📖</Text>
+        <Text style={s.tagline}>Explore words by topic</Text>
       </View>
       <ScrollView
         horizontal

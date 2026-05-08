@@ -2758,35 +2758,6 @@ const HomeContent = () => {
                           cachePolicy="memory-disk"
                         />
                       </Animated.View>
-                      <View
-                        style={{
-                          position: "absolute",
-                          top: -6,
-                          right: -6,
-                          minWidth: BADGE_SIZE,
-                          height: BADGE_SIZE,
-                          paddingHorizontal: pad.s,
-                          borderRadius: BADGE_SIZE / 2,
-                          backgroundColor: "#FF3B30",
-                          justifyContent: "center",
-                          alignItems: "center",
-                          borderWidth: 2,
-                          borderColor: "#fff",
-                          elevation: 8,
-                        }}
-                      >
-                        <Text
-                          style={{
-                            fontFamily: FONTS.bold,
-                            color: "#fff",
-                            fontSize: BADGE_FONT,
-                          }}
-                        >
-                          {formatNumber(
-                            currentProfile?.wordBag?.words?.length ?? 0,
-                          )}
-                        </Text>
-                      </View>
                     </TouchableOpacity>
                   </View>
                   <TouchableOpacity
@@ -2905,6 +2876,9 @@ const HomeContent = () => {
 
                     <View style={{ paddingHorizontal: 15 }}>
                       <Text style={styles.sectionTitle}>Stories</Text>
+                      <Text style={styles.sectionTagline}>
+                        Read stories to earn rewards
+                      </Text>
                     </View>
 
                     <ScrollView
@@ -2978,7 +2952,7 @@ const HomeContent = () => {
                 <View style={styles.sectionHeader}>
                   <Text style={styles.sectionTitle}>Games</Text>
                   <Text style={styles.sectionTagline}>
-                    Learn while you play 🎮
+                    Learn while you play
                   </Text>
                 </View>
 
