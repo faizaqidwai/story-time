@@ -13,6 +13,7 @@ import {
 } from "react-native";
 import { Audio } from "expo-av";
 import { useRouter } from "expo-router";
+import { ImageBackground } from "react-native";
 
 const { width: SW, height: SH } = Dimensions.get("window");
 const STATUS_H =
@@ -39,7 +40,7 @@ const BG_SPEED_BUILDING = 1.2;
 const BG_SPEED_GROUND = WORD_SPEED;
 
 const C = {
-  bg: "#08081a",
+  bg: "#171756ad",
   bgMid: "#0d0d28",
   teal: "#00BCD4",
   tealDim: "rgba(0,188,212,0.18)",
@@ -54,10 +55,10 @@ const C = {
   redDim: "rgba(239,83,80,0.2)",
   redBorder: "rgba(239,83,80,0.6)",
   purple: "#9652D9",
-  cloud: "rgba(160,200,255,0.18)",
-  cloudBorder: "rgba(180,220,255,0.10)",
-  building: "rgba(80,110,200,0.22)",
-  buildingWin: "rgba(0,188,212,0.09)",
+  cloud: "rgba(2, 48, 112, 0.97)",
+  cloudBorder: "rgba(2, 48, 112, 0.97)",
+  building: "rgba(80, 110, 200, 0.15)",
+  buildingWin: "rgba(0, 187, 212, 0.23)",
   ground: "rgba(0,188,212,0.15)",
   white: "#FFFFFF",
   textSec: "#B0BEC5",
@@ -689,94 +690,106 @@ export default function FlappyWordGame({ onExit }) {
   return (
     <TouchableWithoutFeedback onPress={handleTap}>
       <View style={styles.root}>
-        {/* BACKGROUND */}
-        <View style={StyleSheet.absoluteFill} pointerEvents="none">
-          <View style={[StyleSheet.absoluteFill, { backgroundColor: C.bg }]} />
-          <View
-            style={[
-              StyleSheet.absoluteFill,
-              {
-                backgroundColor: "transparent",
-                borderBottomWidth: SH * 0.5,
-                borderBottomColor: "rgba(13,13,40,0.6)",
-                borderTopWidth: 0,
-              },
-            ]}
-          />
-          {bgObjs.map((o) =>
-            o.type === "cloud" ? (
-              <CloudShape key={o.id} x={o.x} y={o.y} w={o.w} h={o.h} />
-            ) : (
-              <BuildingShape key={o.id} x={o.x} y={o.y} w={o.w} h={o.h} />
-            ),
-          )}
-          <GroundStripe offsetX={groundX} />
-        </View>
-
-        {/* FLYING COINS */}
-        {coinsAnim.map((c) => (
-          <FlyingCoin
-            key={c.id}
-            startX={c.startX}
-            startY={c.startY}
-            endX={c.endX}
-            endY={c.endY}
-            delay={c.delay}
-            onDone={() => removeCoin(c.id)}
-          />
-        ))}
-
-        {/* HUD — pointerEvents box-none so tap-to-flap still works on bg */}
-        <View style={styles.hud} pointerEvents="box-none">
-          <TouchableOpacity
-            style={styles.exitBtn}
-            onPress={handleExit}
-            activeOpacity={0.8}
-            hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-          >
-            <Text style={styles.exitTxt}>✕</Text>
-          </TouchableOpacity>
-          <Animated.View
-            style={[styles.scorePill, { transform: [{ scale: badgeScale }] }]}
-          >
-            <Text style={styles.scoreTxt}>🪙 {score}</Text>
-          </Animated.View>
-        </View>
-
-        {/* TICKER */}
-        {phase === "playing" && (
-          <WordTicker queue={collectQueue} currentIdx={collectIdx} />
-        )}
-
-        {/* WORDS */}
-        {words.map((w) => (
-          <WordChip key={w.id} word={w} />
-        ))}
-
-        {/* BIRD */}
-        <Animated.View
-          pointerEvents="none"
-          style={[
-            styles.bird,
-            {
-              top: birdY,
-              left: BIRD_X - BIRD_W / 2,
-              transform: [{ rotate: `${birdRot}deg` }],
-            },
-          ]}
+        <ImageBackground
+          source={require("../../assets/games/flappy-word/game-back.jpg")}
+          resizeMode="stretch"
+          style={StyleSheet.absoluteFill}
         >
-          <View style={styles.birdBody}>
-            <Animated.View
-              style={[styles.birdWing, { transform: [{ translateY: wingY }] }]}
+          {/* BACKGROUND */}
+          <View style={StyleSheet.absoluteFill} pointerEvents="none">
+            <View
+              style={[StyleSheet.absoluteFill, { backgroundColor: C.bg }]}
             />
-            <View style={styles.birdEye}>
-              <View style={styles.birdPupil} />
-            </View>
-            <View style={styles.birdBeak} />
-            <View style={styles.birdGlow} />
+            <View
+              style={[
+                StyleSheet.absoluteFill,
+                {
+                  backgroundColor: "transparent",
+                  borderBottomWidth: SH * 0.5,
+                  borderBottomColor: "rgba(13, 13, 40, 0.42)",
+                  borderTopWidth: 0,
+                },
+              ]}
+            />
+            {bgObjs.map((o) =>
+              o.type === "cloud" ? (
+                <CloudShape key={o.id} x={o.x} y={o.y} w={o.w} h={o.h} />
+              ) : (
+                <BuildingShape key={o.id} x={o.x} y={o.y} w={o.w} h={o.h} />
+              ),
+            )}
+            <GroundStripe offsetX={groundX} />
           </View>
-        </Animated.View>
 
+          {/* FLYING COINS */}
+          {coinsAnim.map((c) => (
+            <FlyingCoin
+              key={c.id}
+              startX={c.startX}
+              startY={c.startY}
+              endX={c.endX}
+              endY={c.endY}
+              delay={c.delay}
+              onDone={() => removeCoin(c.id)}
+            />
+          ))}
+
+          {/* HUD — pointerEvents box-none so tap-to-flap still works on bg */}
+          <View style={styles.hud} pointerEvents="box-none">
+            <TouchableOpacity
+              style={styles.exitBtn}
+              onPress={handleExit}
+              activeOpacity={0.8}
+              hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+            >
+              <Text style={styles.exitTxt}>✕</Text>
+            </TouchableOpacity>
+            <Animated.View
+              style={[styles.scorePill, { transform: [{ scale: badgeScale }] }]}
+            >
+              <Text style={styles.scoreTxt}>🪙 {score}</Text>
+            </Animated.View>
+          </View>
+
+          {/* TICKER */}
+          {phase === "playing" && (
+            <WordTicker queue={collectQueue} currentIdx={collectIdx} />
+          )}
+
+          {/* WORDS */}
+          {words.map((w) => (
+            <WordChip key={w.id} word={w} />
+          ))}
+
+          {/* BIRD */}
+          {phase != "idle" && (
+            <Animated.View
+              pointerEvents="none"
+              style={[
+                styles.bird,
+                {
+                  top: birdY,
+                  left: BIRD_X - BIRD_W / 2,
+                  transform: [{ rotate: `${birdRot}deg` }],
+                },
+              ]}
+            >
+              <View style={styles.birdBody}>
+                <Animated.View
+                  style={[
+                    styles.birdWing,
+                    { transform: [{ translateY: wingY }] },
+                  ]}
+                />
+                <View style={styles.birdEye}>
+                  <View style={styles.birdPupil} />
+                </View>
+                <View style={styles.birdBeak} />
+                <View style={styles.birdGlow} />
+              </View>
+            </Animated.View>
+          )}
+        </ImageBackground>
         {phase === "idle" && <IdleOverlay />}
 
         {(phase === "dead" || phase === "won") && (
@@ -1023,7 +1036,13 @@ function BuildingShape({ x, y, w, h }) {
   const winRows = Math.floor(h / 26);
   return (
     <View
-      style={{ position: "absolute", left: x, top: y, width: w, height: h }}
+      style={{
+        position: "absolute",
+        left: x,
+        top: y,
+        width: w,
+        height: h + 100,
+      }}
     >
       <View
         style={{
@@ -1072,7 +1091,7 @@ function BuildingShape({ x, y, w, h }) {
           left: w * 0.3,
           width: w * 0.4,
           height: 4,
-          backgroundColor: "rgba(0,188,212,0.25)",
+          backgroundColor: "rgba(0, 187, 212, 0.49)",
           borderRadius: 2,
         }}
       />
@@ -1120,19 +1139,31 @@ function IdleOverlay() {
     ).start();
   }, []);
   return (
-    <View style={styles.overlayCenter} pointerEvents="none">
-      <Text style={styles.idleTitle}>Bird Word</Text>
-      <Text style={styles.idleSubtitle}>Flappy Edition</Text>
-      <Animated.View
-        style={[styles.tapHint, { transform: [{ scale: pulse }] }]}
-      >
-        <Text style={styles.tapHintText}>👆 TAP TO START</Text>
-      </Animated.View>
-      <Text style={styles.idleHint}>
+    <ImageBackground
+      source={require("../../assets/games/flappy-word/cover.jpg")}
+      resizeMode="stretch"
+      style={StyleSheet.absoluteFill}
+    >
+      <View style={styles.overlayCenter} pointerEvents="none">
+        {/* <Text style={styles.idleTitle}>Bird Word</Text>
+      <Text style={styles.idleSubtitle}>Flappy Edition</Text> */}
+        <Animated.View
+          style={[styles.tapHint, { transform: [{ scale: pulse }] }]}
+        >
+          <ImageBackground
+            source={require("../../assets/games/flappy-word/play.png")}
+            style={styles.startBtnBg}
+            imageStyle={styles.startBtnImage}
+            resizeMode="stretch"
+          ></ImageBackground>
+          {/* <Text style={styles.tapHintText}>👆 TAP TO START</Text> */}
+        </Animated.View>
+        {/* <Text style={styles.idleHint}>
         Fly into the <Text style={{ color: C.green }}>green words</Text> — avoid
         the <Text style={{ color: C.red }}>red ones!</Text>
-      </Text>
-    </View>
+      </Text> */}
+      </View>
+    </ImageBackground>
   );
 }
 
@@ -1425,8 +1456,19 @@ const styles = StyleSheet.create({
     textShadowOffset: { width: 0, height: 0 },
     textShadowRadius: 10,
   },
+  startBtnBg: {
+    width: 150,
+    height: 150,
+    justifyContent: "center",
+    alignItems: "center",
+  },
+
+  startBtnImage: {
+    borderRadius: 40,
+  },
   tapHint: {
-    backgroundColor: C.teal,
+    //  backgroundColor: C.teal,
+    marginTop: "120%",
     borderRadius: 30,
     paddingHorizontal: 36,
     paddingVertical: 16,

@@ -149,14 +149,14 @@ export const MOCK_LEVEL_GAME_CONFIGS = {
       //   ],
       // },
       {
-        gameId: GAME_IDS.SPIN_WHEEL,
+        gameId: GAME_IDS.SUPER_HERO_MISSION,
         storyGroupIndex: 1,
-        gameData: [{ words: ["fast", "slow", "heavy", "light"] }],
+        gameData: [{ words: ["before", "after", "first", "last"] }],
       },
       {
-        gameId: GAME_IDS.SCENE_DETECTIVE,
+        gameId: GAME_IDS.POLICE_PURSUIT,
         storyGroupIndex: 2,
-        gameData: [{ words: ["fast", "slow", "heavy", "light"] }],
+        gameData: [{ words: ["above", "below", "inside", "outside"] }],
       },
     ],
     coinShopConfig: {
@@ -197,14 +197,14 @@ export const MOCK_LEVEL_GAME_CONFIGS = {
     levelNumber: 3,
     games: [
       {
-        gameId: GAME_IDS.POLICE_PURSUIT,
+        gameId: GAME_IDS.SPIN_WHEEL,
         storyGroupIndex: 1,
-        gameData: [{ words: ["above", "below", "inside", "outside"] }],
+        gameData: [{ words: ["fast", "slow", "heavy", "light"] }],
       },
       {
-        gameId: GAME_IDS.SUPER_HERO_MISSION,
+        gameId: GAME_IDS.SCENE_DETECTIVE,
         storyGroupIndex: 2,
-        gameData: [{ words: ["before", "after", "first", "last"] }],
+        gameData: [{ words: ["fast", "slow", "heavy", "light"] }],
       },
     ],
     coinShopConfig: {

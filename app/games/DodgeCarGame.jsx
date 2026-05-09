@@ -12,6 +12,7 @@ import {
 } from "react-native";
 import { Audio } from "expo-av";
 import { useRouter } from "expo-router";
+import { ImageBackground } from "react-native";
 
 const { width: SW, height: SH } = Dimensions.get("window");
 const STATUS_H =
@@ -512,7 +513,11 @@ function IdleOverlay({ onStart, onExit }) {
   }, []);
 
   return (
-    <View style={styles.overlayCenter} pointerEvents="box-none">
+    <ImageBackground
+      source={require("../../assets/games/dodge-car/cover.jpg")}
+      resizeMode="stretch"
+      style={StyleSheet.absoluteFill}
+    >
       {/* Exit button — top-left corner */}
       <TouchableOpacity
         style={styles.idleExitBtn}
@@ -522,27 +527,44 @@ function IdleOverlay({ onStart, onExit }) {
       >
         <Text style={styles.exitTxt}>✕</Text>
       </TouchableOpacity>
-
-      <Text style={styles.idleTitle}>Dodge the Car!</Text>
-      <Text style={styles.idleSubtitle}>🐱 Don't get hit!</Text>
-      <View style={styles.idleHintBox}>
-        <Text style={styles.idleHintRow}>⬅️ Tap LEFT to move left</Text>
-        <Text style={styles.idleHintRow}>➡️ Tap RIGHT to move right</Text>
-        <Text style={styles.idleHintRow}>🟢 Touch green words for coins!</Text>
-        <Text style={styles.idleHintRow}>
-          🚗 Speed &amp; lanes increase over time
-        </Text>
+      <View
+        style={{
+          justifyContent: "center",
+          alignItems: "center",
+          marginTop: "135%",
+        }}
+        pointerEvents="box-none"
+      >
+        {/* <Text style={styles.idleTitle}>Dodge the Car!</Text>
+        <Text style={styles.idleSubtitle}>🐱 Don't get hit!</Text>
+        <View style={styles.idleHintBox}>
+          <Text style={styles.idleHintRow}>⬅️ Tap LEFT to move left</Text>
+          <Text style={styles.idleHintRow}>➡️ Tap RIGHT to move right</Text>
+          <Text style={styles.idleHintRow}>
+            🟢 Touch green words for coins!
+          </Text>
+          <Text style={styles.idleHintRow}>
+            🚗 Speed &amp; lanes increase over time
+          </Text>
+        </View> */}
+        <Animated.View style={{ transform: [{ scale: pulse }], width: "72%" }}>
+          <TouchableOpacity
+            style={styles.tapHint}
+            onPress={onStart}
+            activeOpacity={0.85}
+          >
+            <ImageBackground
+              source={require("../../assets/games/dodge-car/play.png")}
+              style={styles.startBtnBg}
+              imageStyle={styles.startBtnImage}
+              resizeMode="stretch"
+            >
+              {/* <Text style={st.greenBtnTextStart}>🦕 START!</Text> */}
+            </ImageBackground>
+          </TouchableOpacity>
+        </Animated.View>
       </View>
-      <Animated.View style={{ transform: [{ scale: pulse }], width: "72%" }}>
-        <TouchableOpacity
-          style={styles.tapHint}
-          onPress={onStart}
-          activeOpacity={0.85}
-        >
-          <Text style={styles.tapHintText}>▶ TAP TO START</Text>
-        </TouchableOpacity>
-      </Animated.View>
-    </View>
+    </ImageBackground>
   );
 }
 
@@ -1768,6 +1790,16 @@ const styles = StyleSheet.create({
     textShadowOffset: { width: 0, height: 0 },
     textShadowRadius: 10,
   },
+  startBtnBg: {
+    width: 230,
+    height: 150,
+    justifyContent: "center",
+    alignItems: "center",
+  },
+
+  startBtnImage: {
+    borderRadius: 40,
+  },
   idleHintBox: {
     backgroundColor: "rgba(0,0,0,0.35)",
     borderRadius: 16,
@@ -1781,12 +1813,12 @@ const styles = StyleSheet.create({
   },
   idleHintRow: { fontSize: 14, color: C.textSec, lineHeight: 22 },
   tapHint: {
-    backgroundColor: C.teal,
+    // backgroundColor: C.teal,
     borderRadius: 30,
     paddingHorizontal: 36,
     paddingVertical: 16,
     alignItems: "center",
-    shadowColor: C.teal,
+    shadowColor: "#e09d01",
     shadowOffset: { width: 0, height: 0 },
     shadowOpacity: 0.7,
     shadowRadius: 18,

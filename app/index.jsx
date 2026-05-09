@@ -139,7 +139,8 @@ const SplashScreen = () => {
           if (isLogout) {
             router.replace("/features/login/login");
           } else {
-            router.replace("/features/home");
+            //  router.replace("/features/home");
+            router.replace("/games/SceneDetectiveGame");
           }
         }
       }

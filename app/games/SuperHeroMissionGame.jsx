@@ -34,6 +34,17 @@ import {
 } from "react-native";
 import { Audio } from "expo-av";
 import { useRouter } from "expo-router";
+import { font, pad, radius, size } from "../theme/tokens";
+import * as Speech from "expo-speech";
+import { Image } from "react-native";
+import * as Device from "expo-device";
+import { Dimensions } from "react-native";
+import { ImageBackground } from "react-native";
+
+const { width: SW, height: SH } = Dimensions.get("window");
+
+const isTablet =
+  Device.deviceType === Device.DeviceType.TABLET || Math.min(SW, SH) >= 768;
 
 // ─── SCREEN / LAYOUT ─────────────────────────────────────────────────────────
 const STATUS_H =
@@ -75,6 +86,10 @@ const POINTS_MISSED = -3;
 // Round timer
 const ROUND_SECONDS = 90;
 
+const CARD_W = isTablet ? Math.min(SW * 0.65, 700) : SW - 32;
+
+const CARD_H = isTablet ? Math.min(SH * 0.75, 800) : undefined; // let it grow naturally on mobile
+
 // ─── COLORS ───────────────────────────────────────────────────────────────────
 const C = {
   bg: "#08081a",
@@ -106,6 +121,24 @@ const C = {
   textSec: "#B0BEC5",
   textMuted: "#546E7A",
   white: "#FFFFFF",
+};
+
+// ─── Expo- Male Voice ───────────────────────────────────────────────────────────────────
+const getMaleVoice = async () => {
+  const voices = await Speech.getAvailableVoicesAsync();
+
+  // Debug: see all voices
+  console.log(voices);
+
+  // Try to find a male English voice
+  const maleVoice = voices.find(
+    (v) =>
+      v.language.startsWith("en") &&
+      (v.name.toLowerCase().includes("male") ||
+        v.identifier.toLowerCase().includes("male")),
+  );
+
+  return maleVoice?.identifier;
 };
 
 // ─── ROUNDS ───────────────────────────────────────────────────────────────────
@@ -267,6 +300,17 @@ const ROUNDS = [
   },
 ];
 
+//////////////////// expo speaking///////////
+const speakBriefing = async () => {
+  const voice = await getMaleVoice();
+
+  Speech.speak("Blast the building with size words! Big, tall, huge!", {
+    voice: voice, // may be undefined if not found
+    pitch: 0.8, // lower pitch = more masculine tone
+    rate: 0.9,
+  });
+};
+
 // ─── HELPERS ─────────────────────────────────────────────────────────────────
 let _uid = 0;
 const uid = () => _uid++;
@@ -304,7 +348,7 @@ function makeCloud(sw, sh, startOffscreen = true) {
 }
 
 function makeBuilding(sw, sh, word, isTarget, startOffscreen = true) {
-  const bw = BUILDING_W_MIN + Math.random() * (BUILDING_W_MAX - BUILDING_W_MIN);
+  const bw = Math.max(BUILDING_W_MIN, word.length * 11 + 32);
   const bh = sh * (0.32 + Math.random() * 0.22); // 32%–54% of screen height
   return {
     id: uid(),
@@ -474,7 +518,7 @@ function SuperHero({ x, y }) {
           left: 10,
           top: 18,
           gap: 6,
-          backgroundColor: "pink",
+          // backgroundColor: "pink",
         }}
       >
         <View
@@ -1003,7 +1047,7 @@ function ScrollingBuilding({ b, sw, sh, onTap }) {
         position: "absolute",
         left: b.x,
         top: b.y,
-        width: b.w,
+        width: b.w, // here i want building size according to words:  b.word.length
         height: b.h,
         zIndex: 50,
       }}
@@ -1101,7 +1145,7 @@ function ScrollingBuilding({ b, sw, sh, onTap }) {
       >
         <Text
           style={{
-            fontSize: Math.min(15, 120 / b.word.length),
+            fontSize: Math.min(font.lg, 120 / b.word.length),
             fontWeight: "900",
             color: C.white,
             letterSpacing: 0.3,
@@ -1217,7 +1261,7 @@ function Notif({ text, color, icon, sw, sh, onDone }) {
         <Text style={{ fontSize: 24, marginBottom: 3 }}>{icon}</Text>
         <Text
           style={{
-            fontSize: 14,
+            fontSize: font.lg,
             fontWeight: "900",
             color,
             textAlign: "center",
@@ -1262,6 +1306,14 @@ function Hud({ round, timeLeft, score, onExit, badgeScale }) {
 // ─── IDLE OVERLAY ─────────────────────────────────────────────────────────────
 function IdleOverlay({ onStart, onExit, sw, sh }) {
   const pulse = useRef(new Animated.Value(1)).current;
+  const floatAnim = useRef(new Animated.Value(0)).current;
+  const scaleAnim = useRef(new Animated.Value(1)).current;
+  const introSound = useRef(null);
+  const laserSound = useRef(null);
+  const heroWidth = isTablet ? SW * 0.3 : 190;
+  const heroHeight = isTablet
+    ? SH * 0.25 // 👈 key fix (use screen height)
+    : 200;
   useEffect(() => {
     Animated.loop(
       Animated.sequence([
@@ -1279,9 +1331,89 @@ function IdleOverlay({ onStart, onExit, sw, sh }) {
       ]),
     ).start();
   }, []);
+  useEffect(() => {
+    let isMounted = true;
 
+    const loadAndPlayIntro = async () => {
+      try {
+        const { sound } = await Audio.Sound.createAsync(
+          require("../../assets/sounds/game/super-hero-mission/intro.mp3"),
+        );
+
+        if (!isMounted) {
+          await sound.unloadAsync();
+          return;
+        }
+
+        introSound.current = sound;
+        await sound.playAsync();
+      } catch (e) {
+        console.log("Intro sound error", e);
+      }
+    };
+
+    loadAndPlayIntro();
+
+    return () => {
+      isMounted = false;
+      introSound.current?.unloadAsync();
+      laserSound.current?.unloadAsync();
+    };
+  }, []);
+  useEffect(() => {
+    const loadLaser = async () => {
+      try {
+        const { sound } = await Audio.Sound.createAsync(
+          require("../../assets/sounds/game/super-hero-mission/laser.mp3"),
+        );
+        laserSound.current = sound;
+      } catch (e) {
+        console.log("Laser load error", e);
+      }
+    };
+
+    loadLaser();
+  }, []);
+
+  useEffect(() => {
+    // Float up/down
+    Animated.loop(
+      Animated.sequence([
+        Animated.timing(floatAnim, {
+          toValue: -10,
+          duration: 800,
+          useNativeDriver: true,
+        }),
+        Animated.timing(floatAnim, {
+          toValue: 0,
+          duration: 800,
+          useNativeDriver: true,
+        }),
+      ]),
+    ).start();
+
+    // Scale (breathing effect)
+    Animated.loop(
+      Animated.sequence([
+        Animated.timing(scaleAnim, {
+          toValue: 1.05,
+          duration: 800,
+          useNativeDriver: true,
+        }),
+        Animated.timing(scaleAnim, {
+          toValue: 1,
+          duration: 800,
+          useNativeDriver: true,
+        }),
+      ]),
+    ).start();
+  }, []);
   return (
-    <View style={st.overlayBg}>
+    <ImageBackground
+      source={require("../../assets/games/super-hero-mission/intro.jpg")}
+      style={st.overlayBg}
+      resizeMode="stretch"
+    >
       <TouchableOpacity
         style={st.topExit}
         onPress={onExit}
@@ -1290,34 +1422,62 @@ function IdleOverlay({ onStart, onExit, sw, sh }) {
       >
         <Text style={st.exitTxt}>✕</Text>
       </TouchableOpacity>
-      <Text style={st.idleTitle}>⚡ Super Hero{"\n"}Mission!</Text>
-      <Text style={st.idleSubtitle}>Word Strike Force</Text>
-      <Text style={st.idleHint}>
-        Your hero flies through the city.{"\n"}
-        Buildings scroll past with words on top.{"\n"}
-        <Text style={{ color: C.teal, fontWeight: "700" }}>Tap</Text> a building
-        to fire your laser!{"\n"}
-        Blast the{" "}
-        <Text style={{ color: C.green, fontWeight: "700" }}>right words</Text> —
-        avoid the wrong ones!
-      </Text>
-      <Animated.View style={{ transform: [{ scale: pulse }] }}>
-        <TouchableOpacity
-          style={st.redBtn}
-          onPress={onStart}
-          activeOpacity={0.85}
-        >
-          <Text style={st.redBtnText}>⚡ START MISSION</Text>
-        </TouchableOpacity>
-      </Animated.View>
-    </View>
+      <View style={{ alignItems: "center", width: "100%" }}>
+        <View style={{ marginTop: "25%", alignItems: "center" }}>
+          <Animated.Image
+            source={require("../../assets/games/super-hero-mission/super-hero.png")}
+            style={{
+              width: heroWidth,
+              height: heroHeight,
+              resizeMode: "contain",
+
+              // 👇 animations go here
+              transform: [{ translateY: floatAnim }, { scale: scaleAnim }],
+
+              // 👇 glow effect goes here
+              shadowColor: "#00E5FF",
+              shadowOpacity: 0.8,
+              shadowRadius: 12,
+              elevation: 10,
+              //  backgroundColor: "pink",
+            }}
+          />
+          <Animated.View style={{ transform: [{ scale: pulse }] }}>
+            <TouchableOpacity
+              style={st.redBtn}
+              onPress={async () => {
+                try {
+                  await introSound.current?.stopAsync();
+
+                  if (laserSound.current) {
+                    await laserSound.current.setPositionAsync(0);
+                    await laserSound.current.playAsync();
+                  }
+                } catch (e) {}
+
+                setTimeout(() => {
+                  onStart();
+                }, 800);
+              }}
+              activeOpacity={0.85}
+            >
+              <Text style={st.redBtnText}>⚡ START MISSION</Text>
+            </TouchableOpacity>
+          </Animated.View>
+        </View>
+      </View>
+    </ImageBackground>
   );
 }
-
+const buildSpeechText = (round) => {
+  const sample = round.targetWords.slice(0, 3).join(", ");
+  return `Blast the buildings with ${round.category} words! ${sample}!`;
+};
 // ─── MISSION BRIEFING ─────────────────────────────────────────────────────────
 function MissionBriefing({ round, onStart, onExit }) {
   const slide = useRef(new Animated.Value(60)).current;
   const fade = useRef(new Animated.Value(0)).current;
+  const laserSound = useRef(null);
   useEffect(() => {
     Animated.parallel([
       Animated.spring(slide, {
@@ -1332,58 +1492,118 @@ function MissionBriefing({ round, onStart, onExit }) {
       }),
     ]).start();
   }, []);
+  useEffect(() => {
+    const speak = async () => {
+      const voices = await Speech.getAvailableVoicesAsync();
 
+      const maleVoice = voices.find(
+        (v) =>
+          v.language.startsWith("en") &&
+          (v.name.toLowerCase().includes("male") ||
+            v.identifier.toLowerCase().includes("male")),
+      );
+
+      Speech.speak(buildSpeechText(round), {
+        voice: maleVoice?.identifier,
+        pitch: 0.8,
+        rate: 0.9,
+      });
+    };
+
+    speak();
+
+    return () => {
+      Speech.stop();
+    };
+  }, [round]);
+
+  useEffect(() => {
+    let mounted = true;
+
+    const loadLaser = async () => {
+      try {
+        const { sound } = await Audio.Sound.createAsync(
+          require("../../assets/sounds/game/super-hero-mission/laser.mp3"),
+        );
+        laserSound.current = sound;
+      } catch (e) {
+        console.log("Laser load error", e);
+      }
+    };
+
+    loadLaser();
+  }, []);
   return (
-    <View style={st.overlayBg}>
-      <TouchableOpacity
-        style={st.topExit}
-        onPress={onExit}
-        activeOpacity={0.8}
-        hitSlop={{ top: 14, bottom: 14, left: 14, right: 14 }}
-      >
-        <Text style={st.exitTxt}>✕</Text>
-      </TouchableOpacity>
-      <Animated.View
-        style={[st.card, { transform: [{ translateY: slide }], opacity: fade }]}
-      >
-        <View style={st.classifiedHeader}>
-          <Text style={st.classifiedTxt}>📋 MISSION BRIEFING</Text>
-        </View>
-        <View style={st.roundBadge}>
-          <Text style={st.roundBadgeText}>
-            Mission {round.id} of {ROUNDS.length}
-          </Text>
-        </View>
-        <Text style={{ fontSize: 40, marginBottom: 6 }}>{round.emoji}</Text>
-        <Text style={st.cardTitle}>{round.category} Words</Text>
-        <Text style={st.cardDesc}>{round.briefing}</Text>
-        <Text
-          style={{
-            color: C.textSec,
-            fontSize: 11,
-            fontWeight: "700",
-            marginBottom: 8,
-            letterSpacing: 1,
-          }}
-        >
-          TARGET WORDS:
-        </Text>
-        <View style={st.chipRow}>
-          {round.targetWords.slice(0, 8).map((w) => (
-            <View key={w} style={st.chip}>
-              <Text style={st.chipText}>{w}</Text>
-            </View>
-          ))}
-        </View>
+    <ImageBackground
+      source={require("../../assets/games/super-hero-mission/intro.jpg")}
+      style={st.overlayBg}
+      resizeMode="cover"
+    >
+      <View style={st.lightoverlayBg}>
         <TouchableOpacity
-          style={[st.redBtn, { width: "100%" }]}
-          onPress={onStart}
-          activeOpacity={0.85}
+          style={st.topExit}
+          onPress={onExit}
+          activeOpacity={0.8}
+          hitSlop={{ top: 14, bottom: 14, left: 14, right: 14 }}
         >
-          <Text style={st.redBtnText}>🚀 Launch Mission!</Text>
+          <Text style={st.exitTxt}>✕</Text>
         </TouchableOpacity>
-      </Animated.View>
-    </View>
+        <Animated.View
+          style={[
+            st.card,
+            { transform: [{ translateY: slide }], opacity: fade },
+          ]}
+        >
+          <View style={st.classifiedHeader}>
+            <Text style={st.classifiedTxt}>📋 MISSION BRIEFING</Text>
+          </View>
+          <View style={st.roundBadge}>
+            <Text style={st.roundBadgeText}>
+              Mission {round.id} of {ROUNDS.length}
+            </Text>
+          </View>
+          <Text style={{ fontSize: 40, marginBottom: 6 }}>{round.emoji}</Text>
+          <Text style={st.cardTitle}>{round.category} Words</Text>
+          <Text style={st.cardDesc}>{round.briefing}</Text>
+          <Text
+            style={{
+              color: C.textSec,
+              fontSize: font.md,
+              fontWeight: "700",
+              marginBottom: 8,
+              letterSpacing: 1,
+            }}
+          >
+            TARGET WORDS:
+          </Text>
+          <View style={st.chipRow}>
+            {round.targetWords.slice(0, 8).map((w) => (
+              <View key={w} style={st.chip}>
+                <Text style={st.chipText}>{w}</Text>
+              </View>
+            ))}
+          </View>
+          <TouchableOpacity
+            style={[st.redBtn, { width: "100%" }]}
+            onPress={async () => {
+              try {
+                if (laserSound?.current) {
+                  await laserSound.current.setPositionAsync(0);
+                  await laserSound.current.playAsync();
+                }
+              } catch (e) {}
+
+              setTimeout(() => {
+                onStart();
+              }, 700);
+            }}
+            activeOpacity={0.85}
+          >
+            <Text style={st.redBtnText}>🚀 Launch Mission!</Text>
+          </TouchableOpacity>
+        </Animated.View>
+      </View>
+    </ImageBackground>
   );
 }
 
@@ -1466,7 +1686,7 @@ function ResultOverlay({ score, caught, missed, isLast, onNext, onExit }) {
             <Animated.Text
               key={i}
               style={[
-                { fontSize: 30 },
+                { fontSize: font.xl },
                 i >= stars && { opacity: 0.15 },
                 { transform: [{ scale: s }] },
               ]}
@@ -1730,7 +1950,10 @@ export default function SuperHeroMissionGame({ onExit }) {
         await Audio.setAudioModeAsync({ playsInSilentModeIOS: true });
       } catch (_) {}
       for (const [ref, asset] of [
-        [sndCorrect, require("../../assets/sounds/game/correct-hit.mp3")],
+        [
+          sndCorrect,
+          require("../../assets/sounds/game/super-hero-mission/laser.mp3"),
+        ],
         [sndWrong, require("../../assets/sounds/game/wrong-hit.mp3")],
         [sndWin, require("../../assets/sounds/game/win.mp3")],
         [sndLose, require("../../assets/sounds/game/lose.mp3")],
@@ -1748,6 +1971,33 @@ export default function SuperHeroMissionGame({ onExit }) {
         r.current?.unloadAsync();
         r.current = null;
       });
+    };
+  }, []);
+  const laserSound = useRef(null);
+  useEffect(() => {
+    let mounted = true;
+
+    const loadLaser = async () => {
+      try {
+        const { sound } = await Audio.Sound.createAsync(
+          require("../../assets/sounds/game/super-hero-mission/laser.mp3"),
+        );
+
+        if (mounted) {
+          laserSound.current = sound;
+        } else {
+          sound.unloadAsync();
+        }
+      } catch (e) {
+        console.log("Laser load error", e);
+      }
+    };
+
+    loadLaser();
+
+    return () => {
+      mounted = false;
+      laserSound.current?.unloadAsync();
     };
   }, []);
 
@@ -1813,8 +2063,7 @@ export default function SuperHeroMissionGame({ onExit }) {
       let nextX = sw * 0.6;
       for (let i = 0; i < 3 && i < queueItems.length; i++) {
         const item = queueItems[i];
-        const bw =
-          BUILDING_W_MIN + Math.random() * (BUILDING_W_MAX - BUILDING_W_MIN);
+        const bw = Math.max(BUILDING_W_MIN, item.word.length * 11 + 32);
         const bh = sh * (0.32 + Math.random() * 0.22);
         initialBuildings.push({
           id: uid(),
@@ -1871,8 +2120,7 @@ export default function SuperHeroMissionGame({ onExit }) {
     if (rightmost < sw + 20 && queueIdxRef.current < queueRef.current.length) {
       const item = queueRef.current[queueIdxRef.current];
       queueIdxRef.current++;
-      const bw =
-        BUILDING_W_MIN + Math.random() * (BUILDING_W_MAX - BUILDING_W_MIN);
+      const bw = Math.max(BUILDING_W_MIN, item.word.length * 11 + 32);
       const bh = sh * (0.32 + Math.random() * 0.22);
       const spawnX = Math.max(rightmost + BUILDING_GAP, sw + 40);
       visible.push({
@@ -2125,140 +2373,143 @@ export default function SuperHeroMissionGame({ onExit }) {
   return (
     <View style={st.root}>
       {/* ── Sky background ── */}
-      <View
-        style={[StyleSheet.absoluteFill, { backgroundColor: C.bg }]}
-        pointerEvents="none"
-      />
-      <View
-        style={[
-          StyleSheet.absoluteFill,
-          {
-            backgroundColor: "transparent",
-            borderBottomWidth: sh * 0.45,
-            borderBottomColor: "rgba(13,13,40,0.55)",
-            borderTopWidth: 0,
-          },
-        ]}
-        pointerEvents="none"
-      />
-
-      {/* Stars */}
-      <View style={StyleSheet.absoluteFill} pointerEvents="none">
-        {Array.from({ length: 35 }, (_, i) => (
+      <ImageBackground
+        source={require("../../assets/games/super-hero-mission/game-back.jpg")}
+        resizeMode="stretch"
+        style={StyleSheet.absoluteFill}
+      >
+        <View pointerEvents="none" />
+        <View
+          style={[
+            StyleSheet.absoluteFill,
+            {
+              backgroundColor: "transparent",
+              borderBottomWidth: sh * 0.45,
+              borderBottomColor: "rgba(13,13,40,0.55)",
+              borderTopWidth: 0,
+            },
+          ]}
+          pointerEvents="none"
+        />
+        {/* 
+        {/* Stars */}
+        <View style={StyleSheet.absoluteFill} pointerEvents="none">
+          {/* {Array.from({ length: 35 }, (_, i) => (
+            <View
+              key={i}
+              style={{
+                position: "absolute",
+                left: (i * 113 + 17) % sw,
+                top: (i * 53 + 9) % (sh * 0.45),
+                width: i % 5 === 0 ? 3 : 2,
+                height: i % 5 === 0 ? 3 : 2,
+                borderRadius: 2,
+                backgroundColor:
+                  i % 7 === 0 ? C.yellow : "rgba(255,255,255,0.7)",
+                opacity: 0.4 + (i % 4) * 0.15,
+              }}
+            />
+          ))} */}
+          {/* Moon */}
           <View
-            key={i}
             style={{
               position: "absolute",
-              left: (i * 113 + 17) % sw,
-              top: (i * 53 + 9) % (sh * 0.45),
-              width: i % 5 === 0 ? 3 : 2,
-              height: i % 5 === 0 ? 3 : 2,
-              borderRadius: 2,
-              backgroundColor: i % 7 === 0 ? C.yellow : "rgba(255,255,255,0.7)",
-              opacity: 0.4 + (i % 4) * 0.15,
+              top: sh * 0.05,
+              right: sw * 0.08,
+              width: 30,
+              height: 30,
+              borderRadius: 15,
+              backgroundColor: "#FFF9E3",
+              shadowColor: "#FFF9E3",
+              shadowOffset: { width: 0, height: 0 },
+              shadowOpacity: 0.9,
+              shadowRadius: 16,
+              elevation: 6,
             }}
           />
-        ))}
-        {/* Moon */}
-        <View
-          style={{
-            position: "absolute",
-            top: sh * 0.05,
-            right: sw * 0.08,
-            width: 30,
-            height: 30,
-            borderRadius: 15,
-            backgroundColor: "#FFF9E3",
-            shadowColor: "#FFF9E3",
-            shadowOffset: { width: 0, height: 0 },
-            shadowOpacity: 0.9,
-            shadowRadius: 16,
-            elevation: 6,
-          }}
-        />
-      </View>
-
-      {/* ── Scrolling clouds ── */}
-      {clouds.map((c) => (
-        <CloudShape key={c.id} x={c.x} y={c.y} w={c.w} h={c.h} />
-      ))}
-
-      {/* ── Scrolling buildings with word panels ── */}
-      {buildings.map((b) => (
-        <ScrollingBuilding
-          key={b.id}
-          b={b}
-          sw={sw}
-          sh={sh}
-          onTap={isPlaying ? handleBuildingTap : () => {}}
-        />
-      ))}
-
-      {/* ── Ground ── */}
-      <GroundStripe sw={sw} sh={sh} offsetX={groundX} />
-
-      {/* ── Superhero (fixed position) ── */}
-      {(isPlaying || phase === "idle" || phase === "briefing") && (
-        <SuperHero x={HERO_X} y={HERO_Y} />
-      )}
-
-      {/* ── Laser beam ── */}
-      {laser && (
-        <LaserBeam
-          key={laser.id}
-          fromX={laser.fromX}
-          fromY={laser.fromY}
-          toX={laser.toX}
-          toY={laser.toY}
-          onArrived={() => {}}
-        />
-      )}
-
-      {/* ── Comic flash ── */}
-      {flash && (
-        <ComicFlash
-          key={flash.id}
-          cx={flash.cx}
-          topY={flash.topY}
-          isCorrect={flash.isCorrect}
-          onDone={() => setFlash(null)}
-        />
-      )}
-
-      {/* ── Flying stars ── */}
-      {stars.map((s) => (
-        <FlyingStar
-          key={s.id}
-          startX={s.startX}
-          startY={s.startY}
-          endX={s.endX}
-          endY={s.endY}
-          delay={s.delay}
-          onDone={() => setStars((prev) => prev.filter((x) => x.id !== s.id))}
-        />
-      ))}
-
-      {/* ── HUD ── */}
-      {isPlaying && (
-        <Hud
-          round={round}
-          timeLeft={timeLeft}
-          score={score}
-          onExit={handleExit}
-          badgeScale={badgeScale}
-        />
-      )}
-
-      {/* ── Hint bar ── */}
-      {isPlaying && (
-        <View
-          style={[st.tapBar, { left: sw * 0.07, right: sw * 0.07 }]}
-          pointerEvents="none"
-        >
-          <Text style={st.tapBarText}>👆 TAP A BUILDING TO BLAST IT!</Text>
         </View>
-      )}
 
+        {/* ── Scrolling clouds ── */}
+        {clouds.map((c) => (
+          <CloudShape key={c.id} x={c.x} y={c.y} w={c.w} h={c.h} />
+        ))}
+
+        {/* ── Scrolling buildings with word panels ── */}
+        {buildings.map((b) => (
+          <ScrollingBuilding
+            key={b.id}
+            b={b}
+            sw={sw}
+            sh={sh}
+            onTap={isPlaying ? handleBuildingTap : () => {}}
+          />
+        ))}
+
+        {/* ── Ground ── */}
+        <GroundStripe sw={sw} sh={sh} offsetX={groundX} />
+
+        {/* ── Superhero (fixed position) ── */}
+        {(isPlaying || phase === "idle" || phase === "briefing") && (
+          <SuperHero x={HERO_X} y={HERO_Y} />
+        )}
+
+        {/* ── Laser beam ── */}
+        {laser && (
+          <LaserBeam
+            key={laser.id}
+            fromX={laser.fromX}
+            fromY={laser.fromY}
+            toX={laser.toX}
+            toY={laser.toY}
+            onArrived={() => {}}
+          />
+        )}
+
+        {/* ── Comic flash ── */}
+        {flash && (
+          <ComicFlash
+            key={flash.id}
+            cx={flash.cx}
+            topY={flash.topY}
+            isCorrect={flash.isCorrect}
+            onDone={() => setFlash(null)}
+          />
+        )}
+
+        {/* ── Flying stars ── */}
+        {stars.map((s) => (
+          <FlyingStar
+            key={s.id}
+            startX={s.startX}
+            startY={s.startY}
+            endX={s.endX}
+            endY={s.endY}
+            delay={s.delay}
+            onDone={() => setStars((prev) => prev.filter((x) => x.id !== s.id))}
+          />
+        ))}
+
+        {/* ── HUD ── */}
+        {isPlaying && (
+          <Hud
+            round={round}
+            timeLeft={timeLeft}
+            score={score}
+            onExit={handleExit}
+            badgeScale={badgeScale}
+          />
+        )}
+
+        {/* ── Hint bar ── */}
+        {isPlaying && (
+          <View
+            style={[st.tapBar, { left: sw * 0.07, right: sw * 0.07 }]}
+            pointerEvents="none"
+          >
+            <Text style={st.tapBarText}>👆 TAP A BUILDING TO BLAST IT!</Text>
+          </View>
+        )}
+      </ImageBackground>
       {/* ── Phase overlays ── */}
       {phase === "idle" && (
         <IdleOverlay
@@ -2266,6 +2517,7 @@ export default function SuperHeroMissionGame({ onExit }) {
           onExit={handleExit}
           sw={sw}
           sh={sh}
+          laserSound={laserSound}
         />
       )}
       {phase === "briefing" && (
@@ -2273,6 +2525,7 @@ export default function SuperHeroMissionGame({ onExit }) {
           round={round}
           onStart={handleStartRound}
           onExit={handleExit}
+          laserSound={laserSound}
         />
       )}
       {phase === "result" && lastResult && (
@@ -2310,7 +2563,7 @@ export default function SuperHeroMissionGame({ onExit }) {
 
 // ─── STYLES ───────────────────────────────────────────────────────────────────
 const st = StyleSheet.create({
-  root: { flex: 1, backgroundColor: C.bg, overflow: "hidden" },
+  root: { flex: 1, overflow: "hidden" },
 
   hud: {
     position: "absolute",
@@ -2389,53 +2642,73 @@ const st = StyleSheet.create({
   overlayBg: {
     ...StyleSheet.absoluteFillObject,
     backgroundColor: "rgba(8,8,26,0.93)",
+
+    alignItems: "center",
+    justifyContent: "center",
+    zIndex: 400,
+    paddingHorizontal: 22,
+  },
+  lightoverlayBg: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: "rgba(8, 8, 26, 0.82)",
     alignItems: "center",
     justifyContent: "center",
     zIndex: 400,
     paddingHorizontal: 22,
   },
   idleTitle: {
-    fontSize: 38,
+    fontSize: font.h1 + 4,
     fontWeight: "900",
-    color: C.teal,
+    color: "rgba(22, 39, 39, 0.88)",
     letterSpacing: 0.5,
     textAlign: "center",
-    textShadowColor: "rgba(0,188,212,0.6)",
-    textShadowOffset: { width: 0, height: 0 },
-    textShadowRadius: 18,
-    marginBottom: 6,
+    textShadowColor: "rgba(22, 44, 47, 0.34)",
+    textShadowOffset: { width: 1, height: 1 },
+    textShadowRadius: 25,
+    marginBottom: pad.md,
   },
   idleSubtitle: {
-    fontSize: 13,
+    fontSize: font.xl,
     fontWeight: "700",
-    color: C.yellow,
+    color: "#FFD54F",
     letterSpacing: 2,
-    marginBottom: 18,
-    textAlign: "center",
+    marginBottom: pad.xxxl,
+    paddingHorizontal: 5,
+    // textAlign: "center",
+    textShadowColor: "rgba(93, 89, 47, 0.82)",
+    textShadowOffset: { width: 0, height: 0 },
+    textShadowRadius: 25,
+    backgroundColor: "black",
   },
   idleHint: {
-    fontSize: 14,
-    color: C.textSec,
+    fontSize: font.xl,
+    color: "#171f24",
+    fontWeight: 600,
     textAlign: "center",
-    lineHeight: 22,
-    marginBottom: 28,
+    lineHeight: 26,
+    marginBottom: pad.xxxl,
     paddingHorizontal: 8,
   },
 
   card: {
-    width: "100%",
-    maxWidth: 420,
+    width: isTablet ? SW * 0.7 : "100%", // 👈 expand on tablet
+    maxWidth: isTablet ? 720 : 420, // 👈 bigger cap for iPad
+    minHeight: isTablet ? SH * 0.6 : undefined,
     backgroundColor: "rgba(10,14,36,0.98)",
-    borderRadius: 28,
+    borderRadius: isTablet ? 36 : 28, // 👈 slightly larger radius
+
     borderWidth: 1.5,
     borderColor: C.tealBorder,
-    padding: 24,
+
+    padding: isTablet ? 32 : 24, // 👈 more breathing space
+
     alignItems: "center",
+
     shadowColor: C.teal,
     shadowOffset: { width: 0, height: 0 },
     shadowOpacity: 0.3,
-    shadowRadius: 24,
-    elevation: 10,
+    shadowRadius: isTablet ? 32 : 24, // 👈 stronger glow
+    elevation: isTablet ? 16 : 10,
   },
   classifiedHeader: {
     width: "100%",
@@ -2445,10 +2718,10 @@ const st = StyleSheet.create({
     borderColor: C.tealBorder,
     paddingVertical: 10,
     alignItems: "center",
-    marginBottom: 12,
+    marginBottom: pad.md,
   },
   classifiedTxt: {
-    fontSize: 12,
+    fontSize: font.xl,
     fontWeight: "900",
     color: C.teal,
     letterSpacing: 2,
@@ -2460,29 +2733,29 @@ const st = StyleSheet.create({
     borderColor: C.redBorder,
     paddingHorizontal: 14,
     paddingVertical: 3,
-    marginBottom: 10,
+    marginBottom: pad.lg,
   },
-  roundBadgeText: { color: C.red, fontWeight: "700", fontSize: 12 },
+  roundBadgeText: { color: C.red, fontWeight: "700", fontSize: font.xl },
   cardTitle: {
-    fontSize: 22,
+    fontSize: font.xxl,
     fontWeight: "900",
     color: "#FFF",
-    marginBottom: 8,
+    marginBottom: pad.md,
     textAlign: "center",
   },
   cardDesc: {
-    fontSize: 13,
+    fontSize: font.lg,
     color: C.textSec,
     textAlign: "center",
-    lineHeight: 20,
-    marginBottom: 14,
+    lineHeight: 24,
+    marginBottom: pad.lg,
   },
   chipRow: {
     flexDirection: "row",
     flexWrap: "wrap",
     gap: 6,
     justifyContent: "center",
-    marginBottom: 18,
+    marginBottom: pad.xl,
   },
   chip: {
     backgroundColor: C.tealDim,
@@ -2492,13 +2765,13 @@ const st = StyleSheet.create({
     paddingHorizontal: 10,
     paddingVertical: 3,
   },
-  chipText: { color: C.teal, fontWeight: "800", fontSize: 12 },
+  chipText: { color: C.teal, fontWeight: "800", fontSize: font.lg },
 
   redBtn: {
     backgroundColor: C.red,
     borderRadius: 30,
     paddingHorizontal: 36,
-    paddingVertical: 15,
+    paddingVertical: pad.lg,
     alignItems: "center",
     shadowColor: C.red,
     shadowOffset: { width: 0, height: 0 },
@@ -2507,7 +2780,7 @@ const st = StyleSheet.create({
     elevation: 10,
   },
   redBtnText: {
-    fontSize: 17,
+    fontSize: font.xxl,
     fontWeight: "900",
     color: "#FFF",
     letterSpacing: 0.5,
@@ -2583,7 +2856,7 @@ const st = StyleSheet.create({
     letterSpacing: 1.5,
     marginBottom: 4,
   },
-  statVal: { fontSize: 24, fontWeight: "900", color: C.yellow },
+  statVal: { fontSize: font.lg, fontWeight: "900", color: C.yellow },
   goldBtn: {
     width: "100%",
     borderRadius: 28,
@@ -2597,7 +2870,7 @@ const st = StyleSheet.create({
     elevation: 8,
   },
   goldBtnText: {
-    fontSize: 16,
+    fontSize: font.lg,
     fontWeight: "900",
     color: C.bg,
     letterSpacing: 0.4,
@@ -2611,5 +2884,5 @@ const st = StyleSheet.create({
     borderWidth: 1,
     borderColor: "rgba(255,255,255,0.12)",
   },
-  secondaryBtnText: { fontSize: 14, fontWeight: "700", color: C.textSec },
+  secondaryBtnText: { fontSize: font.lg, fontWeight: "700", color: C.textSec },
 });

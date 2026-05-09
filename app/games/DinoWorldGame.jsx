@@ -39,6 +39,7 @@ import {
 import { Video, ResizeMode } from "expo-av";
 import { Audio } from "expo-av";
 import { useRouter } from "expo-router";
+import { ImageBackground } from "react-native";
 
 // ─── LAYOUT ───────────────────────────────────────────────────────────────────
 const STATUS_H =
@@ -745,7 +746,11 @@ function IdleOverlay({ onStart, onExit }) {
     ).start();
   }, []);
   return (
-    <View style={st.overlayBg}>
+    <ImageBackground
+      source={require("../../assets/games/dino-world/cover.jpg")}
+      resizeMode="stretch"
+      style={StyleSheet.absoluteFill}
+    >
       <TouchableOpacity
         style={st.topExit}
         onPress={onExit}
@@ -754,8 +759,15 @@ function IdleOverlay({ onStart, onExit }) {
       >
         <Text style={st.exitTxt}>✕</Text>
       </TouchableOpacity>
-      <Text style={st.idleTitle}>🦕 Dino World!</Text>
-      <Text style={st.idleSubtitle}>Egg Catch Adventure</Text>
+      <View
+        style={{
+          alignItems: "center",
+          justifyContent: "center",
+          marginTop: "160%",
+        }}
+      >
+        {/* <Text style={st.idleTitle}>🦕 Dino World!</Text> */}
+        {/* <Text style={st.idleSubtitle}>Egg Catch Adventure</Text>
       <Text style={st.idleHint}>
         Help the dino catch the right eggs!{"\n"}
         Tap <Text style={{ color: "#69F0AE", fontWeight: "700" }}>
@@ -764,17 +776,21 @@ function IdleOverlay({ onStart, onExit }) {
         or <Text style={{ color: "#69F0AE", fontWeight: "700" }}>RIGHT ▶</Text>{" "}
         to steer.{"\n"}
         Catch eggs whose words match the category!
-      </Text>
-      <Animated.View style={{ transform: [{ scale: pulse }] }}>
-        <TouchableOpacity
-          style={st.greenBtn}
-          onPress={onStart}
-          activeOpacity={0.85}
-        >
-          <Text style={st.greenBtnText}>🦕 START!</Text>
-        </TouchableOpacity>
-      </Animated.View>
-    </View>
+      </Text> */}
+        <Animated.View style={{ transform: [{ scale: pulse }] }}>
+          <TouchableOpacity onPress={onStart} activeOpacity={0.85}>
+            <ImageBackground
+              source={require("../../assets/games/dino-world/start.png")}
+              style={st.startBtnBg}
+              imageStyle={st.startBtnImage}
+              resizeMode="stretch"
+            >
+              {/* <Text style={st.greenBtnTextStart}>🦕 START!</Text> */}
+            </ImageBackground>
+          </TouchableOpacity>
+        </Animated.View>
+      </View>
+    </ImageBackground>
   );
 }
 
@@ -1548,7 +1564,7 @@ export default function DinoWorldGame({ onExit }) {
       ))}
 
       {/* ── Dino sprite (PNG sprite sheet, transparent background) ── */}
-      {(isPlaying || phase === "idle" || phase === "briefing") && (
+      {(isPlaying || phase === "briefing") && (
         <DinoSprite x={dinoX} y={DINO_Y} dir={dinoDir} />
       )}
 
@@ -1856,6 +1872,26 @@ const st = StyleSheet.create({
     elevation: 10,
     borderWidth: 2,
     borderColor: "#69F0AE",
+  },
+  startBtnBg: {
+    width: 230,
+    height: 150,
+    justifyContent: "center",
+    alignItems: "center",
+  },
+
+  startBtnImage: {
+    borderRadius: 40,
+  },
+
+  greenBtnTextStart: {
+    color: "#fff",
+    fontSize: 22,
+    fontWeight: "900",
+    letterSpacing: 1,
+    textShadowColor: "rgba(0,0,0,0.35)",
+    textShadowOffset: { width: 0, height: 2 },
+    textShadowRadius: 4,
   },
   greenBtnText: {
     fontSize: 18,

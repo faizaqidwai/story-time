@@ -24,7 +24,8 @@ import {
 } from "react-native";
 import { Audio } from "expo-av";
 import { useRouter } from "expo-router";
-
+import { ImageBackground } from "react-native";
+import { font, pad, radius, size } from "../../theme/tokens";
 // ─── STATIC CONFIG ────────────────────────────────────────────────────────────
 const STATUS_H = Platform.OS === "ios" ? 54 : 28;
 
@@ -619,25 +620,37 @@ function IdleOverlay({ onStart }) {
     ).start();
   }, []);
   return (
-    <View style={st.overlay}>
-      <Text style={st.idleTitle}>🐒 Monkey Fishing</Text>
-      <Text style={st.idleSubtitle}>Word Edition</Text>
-      <Text style={st.idleHint}>
-        A fish jumps from the water with a word.{"\n"}
-        <Text style={{ color: C.green, fontWeight: "700" }}>Tap</Text> when the
-        word matches!{"\n"}
-        Wrong words = <Text style={{ color: C.red }}>lose points</Text>.
-      </Text>
-      <Animated.View style={{ transform: [{ scale: pulse }] }}>
-        <TouchableOpacity
-          style={st.primaryBtn}
-          onPress={onStart}
-          activeOpacity={0.85}
-        >
-          <Text style={st.primaryBtnText}>▶ START FISHING</Text>
-        </TouchableOpacity>
-      </Animated.View>
-    </View>
+    <ImageBackground
+      source={require("../../../assets/games/monkey-fishing/cover.jpg")}
+      resizeMode="stretch"
+      style={StyleSheet.absoluteFill}
+    >
+      <View
+        style={{
+          alignItems: "center",
+          justifyContent: "center",
+          marginTop: "160%",
+        }}
+      >
+        {/* <Text style={st.idleTitle}>🐒 Monkey Fishing</Text>
+        <Text style={st.idleSubtitle}>Word Edition</Text>
+        <Text style={st.idleHint}>
+          A fish jumps from the water with a word.{"\n"}
+          <Text style={{ color: C.green, fontWeight: "700" }}>Tap</Text> when
+          the word matches!{"\n"}
+          Wrong words = <Text style={{ color: C.red }}>lose points</Text>.
+        </Text> */}
+        <Animated.View style={{ transform: [{ scale: pulse }] }}>
+          <TouchableOpacity
+            style={st.primaryBtn}
+            onPress={onStart}
+            activeOpacity={0.85}
+          >
+            <Text style={st.primaryBtnText}>▶ Play</Text>
+          </TouchableOpacity>
+        </Animated.View>
+      </View>
+    </ImageBackground>
   );
 }
 
@@ -672,7 +685,7 @@ function InstructionOverlay({ round, onStart }) {
         <Text style={{ fontSize: 44, marginBottom: 4 }}>{round.emoji}</Text>
         <Text style={st.cardTitle}>{round.category}</Text>
         <Text style={st.cardDesc}>{round.instruction}</Text>
-        <Text style={{ color: C.textSec, fontSize: 12, marginBottom: 8 }}>
+        <Text style={{ color: C.textSec, fontSize: font.xl, marginBottom: 8 }}>
           Words to catch:
         </Text>
         <View style={st.chipRow}>
@@ -1324,18 +1337,20 @@ export default function MonkeyFishingGame({ onExit }) {
     <TouchableWithoutFeedback onPress={isPlaying ? handleTap : undefined}>
       <View style={st.root}>
         {/* ── Background image scaled to fill screen height, centred ── */}
-        <Image
-          source={require("../../../assets/games/monkey-fishing/base-image-no-string.jpeg")}
-          style={{
-            position: "absolute",
-            left: co.imgLeft,
-            top: 0,
-            width: co.imgW,
-            height: co.imgH,
-            zIndex: 1,
-          }}
-          resizeMode="stretch"
-        />
+        {phase !== "idle" && (
+          <Image
+            source={require("../../../assets/games/monkey-fishing/base-image-no-string.jpeg")}
+            style={{
+              position: "absolute",
+              left: co.imgLeft,
+              top: 0,
+              width: co.imgW,
+              height: co.imgH,
+              zIndex: 1,
+            }}
+            resizeMode="stretch"
+          />
+        )}
 
         {/* Subtle tint for readability */}
         <View
@@ -1752,7 +1767,7 @@ const st = StyleSheet.create({
     borderRadius: 28,
     borderWidth: 1.5,
     borderColor: C.tealBorder,
-    padding: 26,
+    padding: 22,
     alignItems: "center",
     shadowColor: C.teal,
     shadowOffset: { width: 0, height: 0 },
@@ -1769,27 +1784,27 @@ const st = StyleSheet.create({
     paddingVertical: 4,
     marginBottom: 14,
   },
-  roundBadgeText: { color: C.teal, fontWeight: "700", fontSize: 12 },
+  roundBadgeText: { color: C.teal, fontWeight: "700", fontSize: font.lg },
   cardTitle: {
-    fontSize: 24,
+    fontSize: font.h3,
     fontWeight: "900",
     color: C.white,
-    marginBottom: 8,
+    marginBottom: pad.lg,
     textAlign: "center",
   },
   cardDesc: {
-    fontSize: 14,
+    fontSize: font.lg,
     color: C.textSec,
     textAlign: "center",
     lineHeight: 21,
-    marginBottom: 14,
+    marginBottom: pad.xl,
   },
   chipRow: {
     flexDirection: "row",
     flexWrap: "wrap",
     gap: 6,
     justifyContent: "center",
-    marginBottom: 18,
+    marginBottom: pad.xxl,
   },
   chip: {
     backgroundColor: C.tealDim,
@@ -1799,24 +1814,26 @@ const st = StyleSheet.create({
     paddingHorizontal: 12,
     paddingVertical: 4,
   },
-  chipText: { color: C.teal, fontWeight: "800", fontSize: 13 },
+  chipText: { color: C.teal, fontWeight: "800", fontSize: font.lg },
 
   primaryBtn: {
-    backgroundColor: C.teal,
+    backgroundColor: "#FBC91A",
     borderRadius: 30,
-    paddingHorizontal: 36,
-    paddingVertical: 15,
+    paddingHorizontal: 25,
+    paddingVertical: 20,
     alignItems: "center",
     shadowColor: C.teal,
     shadowOffset: { width: 0, height: 0 },
     shadowOpacity: 0.6,
     shadowRadius: 16,
     elevation: 10,
+    borderColor: "#673208",
+    borderWidth: 5,
   },
   primaryBtnText: {
-    fontSize: 17,
+    fontSize: font.h3,
     fontWeight: "900",
-    color: C.bg,
+    color: "#673208",
     letterSpacing: 0.5,
   },
 });

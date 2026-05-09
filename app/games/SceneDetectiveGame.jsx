@@ -25,7 +25,7 @@ import {
 import { useRouter } from "expo-router";
 import { Audio } from "expo-av";
 import { font, pad, radius, size } from "../theme/tokens";
-
+import { ImageBackground } from "react-native";
 const { width: SW, height: SH } = Dimensions.get("window");
 
 const MAX_WRONG = 4; // 4 wrong taps = round over
@@ -102,7 +102,7 @@ const C = {
   bg: "#0d0d1a",
   surface: "#1a1a2e",
   card: "#1e1e35",
-  purple: "#7C3AED",
+  purple: "#b085f5",
   purpleLight: "#A855F7",
   purpleDim: "rgba(124,58,237,0.2)",
   gold: "#F59E0B",
@@ -649,6 +649,25 @@ export default function SceneDetectiveGame() {
     });
   }, []);
 
+  // detective-start on mount
+  useEffect(() => {
+    playSoundTracked(SOUNDS.detectiveStart).then((fn) => {
+      stopNarrationRef.current = fn;
+    });
+  }, []);
+
+  // ← ADD HERE
+  useEffect(() => {
+    if (screen !== "start") return;
+    const t = setTimeout(() => {
+      playSound(SOUNDS.sparkle);
+      setupRound(0);
+      setSceneIndex(0);
+      setScreen("round_intro");
+    }, 60000);
+    return () => clearTimeout(t);
+  }, [screen]);
+
   const fadeAnim = useRef(new Animated.Value(0)).current;
   const slideAnim = useRef(new Animated.Value(40)).current;
   const scorePopAnim = useRef(new Animated.Value(0)).current;
@@ -909,66 +928,80 @@ export default function SceneDetectiveGame() {
   // ─────────────────────────────────────────────────────────────
   if (screen === "start") {
     return (
-      <View style={styles.root}>
-        <StatusBar barStyle="light-content" />
-        <Animated.View
-          style={[
-            styles.centered,
-            { opacity: fadeAnim, transform: [{ translateY: slideAnim }] },
-          ]}
-        >
-          <View style={styles.startMagnifier}>
-            <Text style={{ fontSize: 80 }}>🔍</Text>
-          </View>
-          <MiniDetective size={80} />
-          <Text style={styles.startTitle}>Scene{"\n"}Detective</Text>
-          <Text style={styles.startSubtitle}>
-            Look closely at each scene and tap the words that describe what you
-            really see!
-          </Text>
-          <View style={styles.startBadgesRow}>
-            {["👁️ Observe", "💬 Describe", "🏆 Score"].map((b) => (
-              <View key={b} style={styles.startBadge}>
-                <Text style={styles.startBadgeText}>{b}</Text>
-              </View>
-            ))}
-          </View>
-          <View style={styles.startInfoBox}>
-            <Text style={styles.startInfoText}>
-              ✅ Tap correct words →{" "}
-              <Text style={{ color: C.gold }}>+15 points</Text>
-            </Text>
-            <Text style={styles.startInfoText}>
-              ❌ Wrong word → <Text style={{ color: C.red }}>-5 points</Text>
-            </Text>
-            <Text style={styles.startInfoText}>
-              🎯 Find all clues →{" "}
-              <Text style={{ color: C.gold }}>+20 bonus!</Text>
-            </Text>
-            <Text style={styles.startInfoText}>
-              💀 {MAX_WRONG} wrong taps →{" "}
-              <Text style={{ color: C.red }}>round ends!</Text>
-            </Text>
-          </View>
-          <TouchableOpacity
-            style={styles.primaryBtn}
-            onPress={() => {
-              playSound(SOUNDS.sparkle);
-              setupRound(0);
-              setSceneIndex(0);
-              setScreen("round_intro");
-            }}
+      <ImageBackground
+        source={require("../../assets/games/scene-detective/cover.jpg")}
+        resizeMode="stretch"
+        style={StyleSheet.absoluteFill}
+      >
+        <View style={{ flex: 1 }}>
+          <StatusBar barStyle="light-content" />
+          <Animated.View
+            style={[
+              styles.centered,
+              { opacity: fadeAnim, transform: [{ translateY: slideAnim }] },
+            ]}
           >
-            <Text style={styles.primaryBtnText}>🕵️ Start Investigating</Text>
-          </TouchableOpacity>
-          <TouchableOpacity
-            style={styles.closeBtn}
-            onPress={() => router.back()}
-          >
-            <Text style={styles.closeBtnText}>✕ Close</Text>
-          </TouchableOpacity>
-        </Animated.View>
-      </View>
+            <View style={styles.startMagnifier}>
+              <Text style={{ fontSize: 80 }}>🔍</Text>
+            </View>
+            {/* <MiniDetective size={80} />
+            <Text style={styles.startTitle}>Scene{"\n"}Detective</Text>
+            <Text style={styles.startSubtitle}>
+              Look closely at each scene and tap the words that describe what
+              you really see!
+            </Text> */}
+            {/* <View style={styles.startBadgesRow}>
+              {["👁️ Observe", "💬 Describe", "🏆 Score"].map((b) => (
+                <View key={b} style={styles.startBadge}>
+                  <Text style={styles.startBadgeText}>{b}</Text>
+                </View>
+              ))}
+            </View>
+            <View style={styles.startInfoBox}>
+              <Text style={styles.startInfoText}>
+                ✅ Tap correct words →{" "}
+                <Text style={{ color: C.gold }}>+15 points</Text>
+              </Text>
+              <Text style={styles.startInfoText}>
+                ❌ Wrong word → <Text style={{ color: C.red }}>-5 points</Text>
+              </Text>
+              <Text style={styles.startInfoText}>
+                🎯 Find all clues →{" "}
+                <Text style={{ color: C.gold }}>+20 bonus!</Text>
+              </Text>
+              <Text style={styles.startInfoText}>
+                💀 {MAX_WRONG} wrong taps →{" "}
+                <Text style={{ color: C.red }}>round ends!</Text>
+              </Text>
+            </View> */}
+            {/* <TouchableOpacity
+              style={{ marginTop: "115%" }}
+              onPress={() => {
+                playSound(SOUNDS.sparkle);
+                setupRound(0);
+                setSceneIndex(0);
+                setScreen("round_intro");
+              }}
+            >
+              <ImageBackground
+                source={require("../../assets/games/scene-detective/play.png")}
+                style={styles.startBtnBg}
+                imageStyle={styles.startBtnImage}
+                resizeMode="stretch"
+              >
+                {/* <Text style={st.greenBtnTextStart}>🦕 START!</Text> 
+              </ImageBackground>
+            </TouchableOpacity> */}
+
+            <TouchableOpacity
+              style={styles.closeBtn}
+              onPress={() => router.back()}
+            >
+              <Text style={styles.closeBtnText}>✕ Close</Text>
+            </TouchableOpacity>
+          </Animated.View>
+        </View>
+      </ImageBackground>
     );
   }
 
@@ -1973,6 +2006,16 @@ const styles = StyleSheet.create({
     marginBottom: 12,
   },
   primaryBtnText: { color: "#fff", fontSize: font.xxl, fontWeight: "900" },
+  startBtnBg: {
+    width: 180,
+    height: 180,
+    justifyContent: "center",
+    alignItems: "center",
+  },
+
+  startBtnImage: {
+    borderRadius: 40,
+  },
   closeBtn: { padding: 12 },
   closeBtnText: { color: C.textMuted, fontSize: font.md, fontWeight: "600" },
 });
