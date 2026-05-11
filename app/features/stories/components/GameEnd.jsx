@@ -245,14 +245,7 @@ function WinCard({
               style={[styles.btn, styles.btnPrimary]}
               onPress={onBadge}
             >
-              <Text style={styles.btnPrimaryText}>
-                <ExpoImage
-                  source={require("../../../../assets/img/coin.png")}
-                  style={styles.coinIcon}
-                  contentFit="contain"
-                />
-                Collect Coins!
-              </Text>
+              <Text style={styles.btnPrimaryText}>Collect Coins!</Text>
             </Pressable>
           </Animated.View>
         ) : (

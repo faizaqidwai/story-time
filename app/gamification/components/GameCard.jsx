@@ -30,16 +30,16 @@ import { GAME_ANIMATIONS } from "../constants/gameAnimations";
 import ScratchCover from "./ScratchCover";
 import GAME_COVERS from "../constants/gameCoverImages";
 
-const TEAL   = "#00BCD4";
+const TEAL = "#00BCD4";
 const YELLOW = "#FFD54F";
-const DARK   = "#08081a";
+const DARK = "#08081a";
 
 const CARD_W = isTablet ? 220 : 160;
 const CARD_H = isTablet ? 270 : 200;
 
 // 72% of card height is the cover image, 28% is the text footer
 const COVER_RATIO = 0.72;
-const COVER_H  = Math.round(CARD_H * COVER_RATIO);
+const COVER_H = Math.round(CARD_H * COVER_RATIO);
 const FOOTER_H = CARD_H - COVER_H;
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -48,15 +48,39 @@ const FOOTER_H = CARD_H - COVER_H;
 function GenericIcon({ icon }) {
   const bounceAnim = useRef(new Animated.Value(0)).current;
   useEffect(() => {
-    Animated.loop(Animated.sequence([
-      Animated.timing(bounceAnim, { toValue: -6, duration: 600, easing: Easing.inOut(Easing.sin), useNativeDriver: true }),
-      Animated.timing(bounceAnim, { toValue: 0,  duration: 600, easing: Easing.inOut(Easing.sin), useNativeDriver: true }),
-    ])).start();
+    Animated.loop(
+      Animated.sequence([
+        Animated.timing(bounceAnim, {
+          toValue: -6,
+          duration: 600,
+          easing: Easing.inOut(Easing.sin),
+          useNativeDriver: true,
+        }),
+        Animated.timing(bounceAnim, {
+          toValue: 0,
+          duration: 600,
+          easing: Easing.inOut(Easing.sin),
+          useNativeDriver: true,
+        }),
+      ]),
+    ).start();
   }, []);
   const containerH = isTablet ? 100 : 72;
   return (
-    <View style={{ alignItems: "center", justifyContent: "center", height: containerH, flex: 1 }}>
-      <Animated.Text style={{ fontSize: isTablet ? 52 : 38, transform: [{ translateY: bounceAnim }] }}>
+    <View
+      style={{
+        alignItems: "center",
+        justifyContent: "center",
+        height: containerH,
+        flex: 1,
+      }}
+    >
+      <Animated.Text
+        style={{
+          fontSize: isTablet ? 52 : 38,
+          transform: [{ translateY: bounceAnim }],
+        }}
+      >
         {icon ?? "🎮"}
       </Animated.Text>
     </View>
@@ -76,9 +100,29 @@ function ScratchDots({ count }) {
   );
 }
 const dotS = StyleSheet.create({
-  row: { flexDirection: "row", gap: isTablet ? 8 : 6, marginTop: pad.xs, justifyContent: "flex-start" },
-  dot: { width: isTablet ? 10 : 8, height: isTablet ? 10 : 8, borderRadius: isTablet ? 5 : 4, backgroundColor: "rgba(255,255,255,0.2)", borderWidth: 1, borderColor: "rgba(255,255,255,0.35)" },
-  dotFilled: { backgroundColor: TEAL, borderColor: TEAL, shadowColor: TEAL, shadowOffset: { width: 0, height: 0 }, shadowOpacity: 0.9, shadowRadius: 4, elevation: 4 },
+  row: {
+    flexDirection: "row",
+    gap: isTablet ? 8 : 6,
+    marginTop: pad.xs,
+    justifyContent: "flex-start",
+  },
+  dot: {
+    width: isTablet ? 10 : 8,
+    height: isTablet ? 10 : 8,
+    borderRadius: isTablet ? 5 : 4,
+    backgroundColor: "rgba(255,255,255,0.2)",
+    borderWidth: 1,
+    borderColor: "rgba(255,255,255,0.35)",
+  },
+  dotFilled: {
+    backgroundColor: TEAL,
+    borderColor: TEAL,
+    shadowColor: TEAL,
+    shadowOffset: { width: 0, height: 0 },
+    shadowOpacity: 0.9,
+    shadowRadius: 4,
+    elevation: 4,
+  },
 });
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -87,11 +131,24 @@ const dotS = StyleSheet.create({
 function usePulse(active) {
   const anim = useRef(new Animated.Value(1)).current;
   useEffect(() => {
-    if (!active) { anim.setValue(1); return; }
-    const loop = Animated.loop(Animated.sequence([
-      Animated.timing(anim, { toValue: 1.06, duration: 700, useNativeDriver: true }),
-      Animated.timing(anim, { toValue: 0.96, duration: 700, useNativeDriver: true }),
-    ]));
+    if (!active) {
+      anim.setValue(1);
+      return;
+    }
+    const loop = Animated.loop(
+      Animated.sequence([
+        Animated.timing(anim, {
+          toValue: 1.06,
+          duration: 700,
+          useNativeDriver: true,
+        }),
+        Animated.timing(anim, {
+          toValue: 0.96,
+          duration: 700,
+          useNativeDriver: true,
+        }),
+      ]),
+    );
     loop.start();
     return () => loop.stop();
   }, [active]);
@@ -110,11 +167,15 @@ function CoverSection({ coverSource, gradient, icon, gameId, isLocked }) {
     const MiniComponent = GAME_ANIMATIONS[gameId];
     return (
       <View style={[s.coverFallback, { height: COVER_H }]}>
-        <View style={[StyleSheet.absoluteFillObject, { backgroundColor: g1 }]} />
+        <View
+          style={[StyleSheet.absoluteFillObject, { backgroundColor: g1 }]}
+        />
         <View style={[s.gradientTop, { backgroundColor: g0 }]} />
         <View style={s.circle1} />
         <View style={s.circle2} />
-        <View style={{ flex: 1, alignItems: "center", justifyContent: "center" }}>
+        <View
+          style={{ flex: 1, alignItems: "center", justifyContent: "center" }}
+        >
           {MiniComponent ? <MiniComponent /> : <GenericIcon icon={icon} />}
         </View>
       </View>
@@ -131,7 +192,7 @@ function CoverSection({ coverSource, gradient, icon, gameId, isLocked }) {
         cachePolicy="memory-disk"
       />
       {/* Thin gradient scrim at bottom so footer edge blends */}
-      <View style={s.coverScrim} />
+      {/* <View style={s.coverScrim} /> */}
       {/* Extra dark tint when card is locked */}
       {isLocked && <View style={s.lockTint} />}
     </View>
@@ -142,7 +203,8 @@ function CoverSection({ coverSource, gradient, icon, gameId, isLocked }) {
 // GAME CARD
 // ─────────────────────────────────────────────────────────────────────────────
 export default function GameCard({ slot }) {
-  const { openLockedModal, openUnlockModal, startPlay, canAffordPlay } = useGamification();
+  const { openLockedModal, openUnlockModal, startPlay, canAffordPlay } =
+    useGamification();
   const {
     status,
     storiesCompletedInGroup,
@@ -153,28 +215,43 @@ export default function GameCard({ slot }) {
     accentColor,
   } = slot;
 
-  const effectivelyRevealed = status === GAME_STATUS.LOCKED && storiesCompletedInGroup >= 3;
-  const isLocked   = status === GAME_STATUS.LOCKED && !effectivelyRevealed;
+  const effectivelyRevealed =
+    status === GAME_STATUS.LOCKED && storiesCompletedInGroup >= 3;
+  const isLocked = status === GAME_STATUS.LOCKED && !effectivelyRevealed;
   const isRevealed = status === GAME_STATUS.REVEALED || effectivelyRevealed;
   const isUnlocked = status === GAME_STATUS.UNLOCKED;
 
   const scaleAnim = useRef(new Animated.Value(1)).current;
   const pulseAnim = usePulse(isRevealed);
 
-  const pressIn  = () => Animated.spring(scaleAnim, { toValue: 0.95, friction: 5, tension: 200, useNativeDriver: true }).start();
-  const pressOut = () => Animated.spring(scaleAnim, { toValue: 1,    friction: 5, tension: 200, useNativeDriver: true }).start();
+  const pressIn = () =>
+    Animated.spring(scaleAnim, {
+      toValue: 0.95,
+      friction: 5,
+      tension: 200,
+      useNativeDriver: true,
+    }).start();
+  const pressOut = () =>
+    Animated.spring(scaleAnim, {
+      toValue: 1,
+      friction: 5,
+      tension: 200,
+      useNativeDriver: true,
+    }).start();
 
   const handlePress = () => {
-    if (isLocked)   openLockedModal(gameId, storiesCompletedInGroup);
+    if (isLocked) openLockedModal(gameId, storiesCompletedInGroup);
     if (isRevealed) openUnlockModal(gameId);
     if (isUnlocked) startPlay(gameId);
   };
 
-  const acc         = accentColor ?? YELLOW;
+  const acc = accentColor ?? YELLOW;
   const coverSource = GAME_COVERS[gameId] ?? null;
 
   return (
-    <Animated.View style={{ transform: [{ scale: scaleAnim }], marginRight: pad.sm }}>
+    <Animated.View
+      style={{ transform: [{ scale: scaleAnim }], marginRight: pad.sm }}
+    >
       <TouchableOpacity
         activeOpacity={1}
         onPress={handlePress}
@@ -183,7 +260,9 @@ export default function GameCard({ slot }) {
         style={s.card}
       >
         {/* ── Dark card base ── */}
-        <View style={[StyleSheet.absoluteFillObject, { backgroundColor: DARK }]} />
+        <View
+          style={[StyleSheet.absoluteFillObject, { backgroundColor: DARK }]}
+        />
 
         {/* ── TOP: cover image or animated fallback ── */}
         <CoverSection
@@ -208,13 +287,15 @@ export default function GameCard({ slot }) {
           {isLocked && <ScratchDots count={storiesCompletedInGroup} />}
 
           {isRevealed && (
-            <Animated.View style={{ transform: [{ scale: pulseAnim }], marginTop: 2 }}>
+            <Animated.View
+              style={{ transform: [{ scale: pulseAnim }], marginTop: 2 }}
+            >
               <TouchableOpacity
                 style={[s.unlockBtn, { backgroundColor: acc }]}
                 onPress={() => openUnlockModal(gameId)}
                 activeOpacity={0.85}
               >
-                <Text style={s.unlockBtnText}>Unlock  💎 9</Text>
+                <Text style={s.unlockBtnText}>Unlock 💎 9</Text>
               </TouchableOpacity>
             </Animated.View>
           )}
@@ -256,29 +337,31 @@ export default function GameCard({ slot }) {
 // ─────────────────────────────────────────────────────────────────────────────
 const s = StyleSheet.create({
   card: {
-    width:         CARD_W,
-    height:        CARD_H,
-    borderRadius:  radius.xl,
-    overflow:      "hidden",
-    elevation:     10,
-    shadowColor:   "#00BCD4",
-    shadowOffset:  { width: 0, height: 6 },
+    width: CARD_W,
+    height: CARD_H,
+    borderRadius: radius.xl,
+    overflow: "hidden",
+    elevation: 10,
+    shadowColor: "#00BCD4",
+    shadowOffset: { width: 0, height: 6 },
     shadowOpacity: 0.35,
-    shadowRadius:  12,
+    shadowRadius: 12,
   },
 
   // ── Cover: image path ─────────────────────────────────────────────────────
   coverWrap: {
-    width:    "100%",
+    width: "100%",
     overflow: "hidden",
   },
   coverScrim: {
-    position:        "absolute",
-    left: 0, right: 0, bottom: 0,
-    height:          32,
+    position: "absolute",
+    left: 0,
+    right: 0,
+    bottom: 0,
+    height: 32,
     // Linear gradient effect via layered opacity
     backgroundColor: DARK,
-    opacity:         0.6,
+    opacity: 0.6,
   },
   lockTint: {
     ...StyleSheet.absoluteFillObject,
@@ -287,123 +370,133 @@ const s = StyleSheet.create({
 
   // ── Cover: fallback (no image) ────────────────────────────────────────────
   coverFallback: {
-    width:    "100%",
+    width: "100%",
     overflow: "hidden",
   },
   gradientTop: {
-    position:     "absolute",
-    top: 0, left: 0, right: 0,
-    height:       "65%",
+    position: "absolute",
+    top: 0,
+    left: 0,
+    right: 0,
+    height: "65%",
     borderRadius: radius.xl,
-    opacity:      0.9,
+    opacity: 0.9,
   },
   circle1: {
-    position:        "absolute",
-    width:           130, height: 130,
-    borderRadius:    65,
-    top: -30, right: -30,
+    position: "absolute",
+    width: 130,
+    height: 130,
+    borderRadius: 65,
+    top: -30,
+    right: -30,
     backgroundColor: "rgba(255,255,255,0.07)",
   },
   circle2: {
-    position:        "absolute",
-    width:           80, height: 80,
-    borderRadius:    40,
-    bottom: 0, left: -20,
+    position: "absolute",
+    width: 80,
+    height: 80,
+    borderRadius: 40,
+    bottom: 0,
+    left: -20,
     backgroundColor: "rgba(255,255,255,0.05)",
   },
 
   // ── Badge ─────────────────────────────────────────────────────────────────
   badge: {
-    position:       "absolute",
-    top: 10, right: 10,
-    width:          isTablet ? 44 : 32,
-    height:         isTablet ? 44 : 32,
-    borderRadius:   isTablet ? 22 : 16,
-    alignItems:     "center",
+    position: "absolute",
+    top: 10,
+    right: 10,
+    width: isTablet ? 44 : 32,
+    height: isTablet ? 44 : 32,
+    borderRadius: isTablet ? 22 : 16,
+    alignItems: "center",
     justifyContent: "center",
-    elevation:      6,
-    zIndex:         5,
-    shadowColor:    "#000",
-    shadowOffset:   { width: 0, height: 2 },
-    shadowOpacity:  0.5,
-    shadowRadius:   4,
+    elevation: 6,
+    zIndex: 5,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.5,
+    shadowRadius: 4,
   },
   badgeText: {
-    fontSize:   font.sm,
-    color:      DARK,
+    fontSize: font.sm,
+    color: DARK,
     marginLeft: 2,
   },
 
   // ── Footer ────────────────────────────────────────────────────────────────
   footer: {
-    width:             "100%",
-    backgroundColor:   DARK,
+    width: "100%",
+    backgroundColor: DARK,
     paddingHorizontal: pad.sm,
-    paddingTop:        6,
-    paddingBottom:     6,
-    justifyContent:    "center",
+    paddingTop: 6,
+    paddingBottom: 6,
+    justifyContent: "center",
   },
   title: {
-    fontSize:         font.md,
-    fontWeight:       "700",
-    color:            "#fff",
-    letterSpacing:    0.2,
-    textShadowColor:  "rgba(0,0,0,0.4)",
+    fontSize: font.md,
+    fontWeight: "700",
+    color: "#fff",
+    letterSpacing: 0.2,
+    textShadowColor: "rgba(0,0,0,0.4)",
     textShadowOffset: { width: 0, height: 1 },
     textShadowRadius: 4,
   },
   subtitle: {
-    fontSize:  font.s,
-    color:     "rgba(255,255,255,0.7)",
+    fontSize: font.s,
+    color: "rgba(255,255,255,0.7)",
     marginTop: 1,
   },
   coinRow: {
     flexDirection: "row",
-    alignItems:    "center",
-    gap:           4,
-    marginTop:     2,
+    alignItems: "center",
+    gap: 4,
+    marginTop: 2,
   },
   coinImg: {
-    width:  isTablet ? 20 : 16,
+    width: isTablet ? 20 : 16,
     height: isTablet ? 20 : 16,
   },
   unlockBtn: {
-    borderRadius:      radius.pill,
-    paddingVertical:   isTablet ? 6 : 4,
+    borderRadius: radius.pill,
+    paddingVertical: isTablet ? 6 : 4,
     paddingHorizontal: isTablet ? 12 : 8,
-    alignItems:        "center",
-    alignSelf:         "flex-start",
-    marginTop:         2,
+    alignItems: "center",
+    alignSelf: "flex-start",
+    marginTop: 2,
   },
   unlockBtnText: {
-    fontSize:      font.s,
-    fontWeight:    "700",
-    color:         DARK,
+    fontSize: font.s,
+    fontWeight: "700",
+    color: DARK,
     letterSpacing: 0.2,
   },
 
   // ── Accent bar ────────────────────────────────────────────────────────────
   accentBar: {
     position: "absolute",
-    bottom: 0, left: 0, right: 0,
-    height:   3,
-    opacity:  0.8,
-    zIndex:   2,
+    bottom: 0,
+    left: 0,
+    right: 0,
+    height: 3,
+    opacity: 0.8,
+    zIndex: 2,
   },
 
   // ── Low coins badge ───────────────────────────────────────────────────────
   lowCoinsBadge: {
-    position:          "absolute",
-    top: pad.s, left: pad.s,
-    backgroundColor:   "rgba(255,100,60,0.88)",
-    borderRadius:      radius.xs,
+    position: "absolute",
+    top: pad.s,
+    left: pad.s,
+    backgroundColor: "rgba(255,100,60,0.88)",
+    borderRadius: radius.xs,
     paddingHorizontal: pad.xs,
-    paddingVertical:   2,
-    zIndex:            5,
+    paddingVertical: 2,
+    zIndex: 5,
   },
   lowCoinsText: {
-    fontSize:   font.xs,
+    fontSize: font.xs,
     fontWeight: "700",
-    color:      "#fff",
+    color: "#fff",
   },
 });
