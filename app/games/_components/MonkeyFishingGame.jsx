@@ -1,15 +1,20 @@
 /**
  * MonkeyFishingGame.jsx
  *
- * - useWindowDimensions() for all screen coordinates → works on iPhone + iPad
- * - Image scaled to fill screen height, centred horizontally (overflow hidden)
- * - All game coordinates computed as fractions of live screen dimensions
- * - Rod tip corrected to upper-left tip of fishing rod stick
- * - dismissRef pattern prevents double-spawn end glitch
- * - Dark theme overlays matching FlappyWordGame
+ * CHANGES FROM PREVIOUS VERSION:
+ *   ✅ ROUNDS renamed to FALLBACK_ROUNDS
+ *   ✅ gameDataJson read from route params via useLocalSearchParams
+ *   ✅ rounds resolved at component level via useMemo (falls back to FALLBACK_ROUNDS)
+ *   ✅ totalRounds derived from rounds.length
+ *   ✅ All ROUNDS[x] references replaced with rounds[x]
+ *   ✅ All ROUNDS.length references replaced with totalRounds
+ *   ✅ InstructionOverlay receives totalRounds as prop
+ *   ✅ startRound reads from rounds (resolved), not ROUNDS (hardcoded)
+ *   ✅ handleNext uses totalRounds
+ *   ✅ All other game logic, physics, and UI unchanged
  */
 
-import React, { useState, useEffect, useRef, useCallback } from "react";
+import React, { useState, useEffect, useRef, useCallback, useMemo } from "react";
 import {
   View,
   Text,
@@ -23,27 +28,21 @@ import {
   useWindowDimensions,
 } from "react-native";
 import { Audio } from "expo-av";
-import { useRouter } from "expo-router";
+import { useRouter, useLocalSearchParams } from "expo-router";
+import { ImageBackground } from "react-native";
+import { font, pad, radius, size } from "../../theme/tokens";
 
-// ─── STATIC CONFIG ────────────────────────────────────────────────────────────
 const STATUS_H = Platform.OS === "ios" ? 54 : 28;
+const IMG_ASPECT = 3 / 4;
 
-// Image source aspect ratio (portrait 3:4)
-const IMG_ASPECT = 3 / 4; // width / height
-
-// All game positions as fractions of SCREEN width/height.
-// Calibrated from iPhone 17 screenshot (608×1229px, logical 393×852pt).
-// Because these are screen fractions (not image fractions), they scale
-// correctly to any device — the image fills the screen at the same ratio.
 const F = {
-  rodTipX: 0.156, // 15.6% of screen width
-  rodTipY: 0.252, // 25.2% of screen height
-  fishX: 0.132, // 13.2% of screen width  (lake centre)
-  waterY: 0.545, // 54.5% of screen height (water surface)
-  fishPeak: 0.244, // 24.4% of screen height (top of jump arc)
+  rodTipX: 0.156,
+  rodTipY: 0.252,
+  fishX: 0.132,
+  waterY: 0.545,
+  fishPeak: 0.244,
 };
 
-// ─── COLORS ───────────────────────────────────────────────────────────────────
 const C = {
   bg: "#08081a",
   teal: "#00BCD4",
@@ -64,7 +63,6 @@ const C = {
   textMuted: "#546E7A",
 };
 
-// ─── GAME CONFIG ─────────────────────────────────────────────────────────────
 const POINTS_CORRECT = 10;
 const POINTS_WRONG = -5;
 const POINTS_MISSED = -3;
@@ -74,162 +72,50 @@ const JUMP_DOWN_MS = 700;
 const PAUSE_BETWEEN = 1400;
 const ROUND_SECONDS = 60;
 
-// ─── ROUNDS ──────────────────────────────────────────────────────────────────
-const ROUNDS = [
+// ─── FALLBACK ROUNDS ──────────────────────────────────────────────────────────
+// Used when no gameDataJson is passed or backend has no data for this level.
+// The component reads from `rounds` (resolved at runtime) — never from this
+// constant directly — so wiring backend data requires zero other changes.
+const FALLBACK_ROUNDS = [
   {
     id: 1,
     category: "Size",
     emoji: "📏",
-    instruction:
-      'Catch fish with SIZE words!\n"big", "small", "tall" — words that describe size.',
-    targetWords: [
-      "big",
-      "small",
-      "tall",
-      "short",
-      "huge",
-      "tiny",
-      "wide",
-      "narrow",
-      "large",
-      "little",
-    ],
-    distractWords: [
-      "happy",
-      "run",
-      "blue",
-      "jump",
-      "fast",
-      "loud",
-      "sweet",
-      "cold",
-      "sing",
-      "red",
-    ],
+    instruction: 'Catch fish with SIZE words!\n"big", "small", "tall" — words that describe size.',
+    targetWords: ["big","small","tall","short","huge","tiny","wide","narrow","large","little"],
+    distractWords: ["happy","run","blue","jump","fast","loud","sweet","cold","sing","red"],
   },
   {
     id: 2,
     category: "Colors",
     emoji: "🌈",
-    instruction:
-      'Catch fish with COLOR words!\n"red", "blue", "green" are color words.',
-    targetWords: [
-      "red",
-      "blue",
-      "green",
-      "yellow",
-      "pink",
-      "purple",
-      "orange",
-      "black",
-      "white",
-      "brown",
-    ],
-    distractWords: [
-      "big",
-      "run",
-      "loud",
-      "jump",
-      "happy",
-      "slow",
-      "soft",
-      "round",
-      "shiny",
-      "cold",
-    ],
+    instruction: 'Catch fish with COLOR words!\n"red", "blue", "green" are color words.',
+    targetWords: ["red","blue","green","yellow","pink","purple","orange","black","white","brown"],
+    distractWords: ["big","run","loud","jump","happy","slow","soft","round","shiny","cold"],
   },
   {
     id: 3,
     category: "Animals",
     emoji: "🐾",
-    instruction:
-      "Catch fish with ANIMAL words!\nDog, cat, lion — animal names.",
-    targetWords: [
-      "dog",
-      "cat",
-      "lion",
-      "tiger",
-      "bird",
-      "frog",
-      "bear",
-      "wolf",
-      "duck",
-      "fish",
-    ],
-    distractWords: [
-      "apple",
-      "run",
-      "blue",
-      "table",
-      "happy",
-      "fast",
-      "jump",
-      "cloud",
-      "red",
-      "warm",
-    ],
+    instruction: "Catch fish with ANIMAL words!\nDog, cat, lion — animal names.",
+    targetWords: ["dog","cat","lion","tiger","bird","frog","bear","wolf","duck","fish"],
+    distractWords: ["apple","run","blue","table","happy","fast","jump","cloud","red","warm"],
   },
   {
     id: 4,
     category: "Feelings",
     emoji: "💛",
-    instruction:
-      'Catch fish with FEELING words!\n"happy", "sad", "angry" — how we feel.',
-    targetWords: [
-      "happy",
-      "sad",
-      "angry",
-      "scared",
-      "excited",
-      "tired",
-      "proud",
-      "silly",
-      "calm",
-      "brave",
-    ],
-    distractWords: [
-      "dog",
-      "green",
-      "run",
-      "table",
-      "big",
-      "cloud",
-      "fast",
-      "apple",
-      "blue",
-      "swim",
-    ],
+    instruction: 'Catch fish with FEELING words!\n"happy", "sad", "angry" — how we feel.',
+    targetWords: ["happy","sad","angry","scared","excited","tired","proud","silly","calm","brave"],
+    distractWords: ["dog","green","run","table","big","cloud","fast","apple","blue","swim"],
   },
   {
     id: 5,
     category: "Actions",
     emoji: "⚡",
-    instruction:
-      'Catch fish with ACTION words!\n"run", "jump", "swim" — things we do.',
-    targetWords: [
-      "run",
-      "jump",
-      "swim",
-      "fly",
-      "sing",
-      "dance",
-      "eat",
-      "sleep",
-      "climb",
-      "read",
-    ],
-    distractWords: [
-      "big",
-      "red",
-      "dog",
-      "table",
-      "happy",
-      "cloud",
-      "apple",
-      "blue",
-      "shiny",
-      "soft",
-    ],
+    instruction: 'Catch fish with ACTION words!\n"run", "jump", "swim" — things we do.',
+    targetWords: ["run","jump","swim","fly","sing","dance","eat","sleep","climb","read"],
+    distractWords: ["big","red","dog","table","happy","cloud","apple","blue","shiny","soft"],
   },
 ];
 
@@ -245,15 +131,10 @@ const shuffle = (arr) => {
 
 const buildQueue = (round) =>
   shuffle([
-    ...shuffle(round.targetWords)
-      .slice(0, 10)
-      .map((w) => ({ word: w, isTarget: true })),
-    ...shuffle(round.distractWords)
-      .slice(0, 10)
-      .map((w) => ({ word: w, isTarget: false })),
+    ...shuffle(round.targetWords).slice(0, 10).map((w) => ({ word: w, isTarget: true })),
+    ...shuffle(round.distractWords).slice(0, 10).map((w) => ({ word: w, isTarget: false })),
   ]);
 
-// Derive all live coordinates from screen dimensions
 function coords(sw, sh) {
   return {
     rodTipX: sw * F.rodTipX,
@@ -261,7 +142,6 @@ function coords(sw, sh) {
     fishX: sw * F.fishX,
     waterY: sh * F.waterY,
     fishPeak: sh * F.fishPeak,
-    // Image sizing: scale to fill height, centre horizontally
     imgW: sh * IMG_ASPECT,
     imgH: sh,
     imgLeft: (sw - sh * IMG_ASPECT) / 2,
@@ -304,36 +184,13 @@ function FlyingCoin({ startX, startY, endX, endY, delay, onDone }) {
     Animated.sequence([
       Animated.delay(delay),
       Animated.parallel([
-        Animated.timing(op, {
-          toValue: 1,
-          duration: 60,
-          useNativeDriver: true,
-        }),
-        Animated.spring(sc, {
-          toValue: 1,
-          friction: 5,
-          tension: 80,
-          useNativeDriver: true,
-        }),
-        Animated.timing(ax, {
-          toValue: endX,
-          duration: 480,
-          easing: Easing.out(Easing.quad),
-          useNativeDriver: true,
-        }),
-        Animated.timing(ay, {
-          toValue: endY,
-          duration: 480,
-          easing: Easing.out(Easing.quad),
-          useNativeDriver: true,
-        }),
+        Animated.timing(op, { toValue: 1, duration: 60, useNativeDriver: true }),
+        Animated.spring(sc, { toValue: 1, friction: 5, tension: 80, useNativeDriver: true }),
+        Animated.timing(ax, { toValue: endX, duration: 480, easing: Easing.out(Easing.quad), useNativeDriver: true }),
+        Animated.timing(ay, { toValue: endY, duration: 480, easing: Easing.out(Easing.quad), useNativeDriver: true }),
       ]),
     ]).start(() =>
-      Animated.timing(op, {
-        toValue: 0,
-        duration: 80,
-        useNativeDriver: true,
-      }).start(onDone),
+      Animated.timing(op, { toValue: 0, duration: 80, useNativeDriver: true }).start(onDone),
     );
   }, []);
 
@@ -341,18 +198,9 @@ function FlyingCoin({ startX, startY, endX, endY, delay, onDone }) {
     <Animated.View
       pointerEvents="none"
       style={{
-        position: "absolute",
-        top: 0,
-        left: 0,
-        width: 22,
-        height: 22,
-        borderRadius: 11,
-        backgroundColor: C.yellow,
-        borderWidth: 2,
-        borderColor: "#FFB300",
-        alignItems: "center",
-        justifyContent: "center",
-        zIndex: 999,
+        position: "absolute", top: 0, left: 0, width: 22, height: 22, borderRadius: 11,
+        backgroundColor: C.yellow, borderWidth: 2, borderColor: "#FFB300",
+        alignItems: "center", justifyContent: "center", zIndex: 999,
         opacity: op,
         transform: [{ translateX: ax }, { translateY: ay }, { scale: sc }],
       }}
@@ -363,17 +211,7 @@ function FlyingCoin({ startX, startY, endX, endY, delay, onDone }) {
 }
 
 // ─── FISH ─────────────────────────────────────────────────────────────────────
-// dismissRef: parent writes a dismiss() fn here; fish sets it to null after calling.
-// This prevents onGone firing after a correct tap.
-function Fish({
-  word,
-  isTarget,
-  C: coord,
-  onPeak,
-  onGone,
-  onYChange,
-  dismissRef,
-}) {
+function Fish({ word, isTarget, C: coord, onPeak, onGone, onYChange, dismissRef }) {
   const fishAnim = useRef(new Animated.Value(coord.waterY)).current;
   const rotAnim = useRef(new Animated.Value(-20)).current;
   const opAnim = useRef(new Animated.Value(1)).current;
@@ -381,107 +219,59 @@ function Fish({
   const fallStarted = useRef(false);
   const fallAnim = useRef(null);
 
-  // Register dismiss function
   useEffect(() => {
     if (dismissRef) {
       dismissRef.current = () => {
         fishAnim.stopAnimation();
         rotAnim.stopAnimation();
         if (fallAnim.current) fallAnim.current.stop();
-        Animated.timing(opAnim, {
-          toValue: 0,
-          duration: 150,
-          useNativeDriver: true,
-        }).start();
+        Animated.timing(opAnim, { toValue: 0, duration: 150, useNativeDriver: true }).start();
         dismissRef.current = null;
       };
     }
-    return () => {
-      if (dismissRef) dismissRef.current = null;
-    };
+    return () => { if (dismissRef) dismissRef.current = null; };
   }, []);
 
-  // Track Y position for string drawing
   useEffect(() => {
     const id = fishAnim.addListener(({ value }) => onYChange(value));
     return () => fishAnim.removeListener(id);
   }, []);
 
-  // Jump animation
   useEffect(() => {
     Animated.parallel([
-      Animated.timing(fishAnim, {
-        toValue: coord.fishPeak,
-        duration: JUMP_UP_MS,
-        easing: Easing.out(Easing.quad),
-        useNativeDriver: true,
-      }),
-      Animated.timing(rotAnim, {
-        toValue: -22,
-        duration: JUMP_UP_MS,
-        useNativeDriver: true,
-      }),
+      Animated.timing(fishAnim, { toValue: coord.fishPeak, duration: JUMP_UP_MS, easing: Easing.out(Easing.quad), useNativeDriver: true }),
+      Animated.timing(rotAnim, { toValue: -22, duration: JUMP_UP_MS, useNativeDriver: true }),
     ]).start(({ finished }) => {
       if (!finished) return;
-      if (!peakFired.current) {
-        peakFired.current = true;
-        onPeak();
-      }
-
+      if (!peakFired.current) { peakFired.current = true; onPeak(); }
       setTimeout(() => {
         if (fallStarted.current) return;
         fallStarted.current = true;
         const anim = Animated.parallel([
-          Animated.timing(fishAnim, {
-            toValue: coord.waterY + 80,
-            duration: JUMP_DOWN_MS,
-            easing: Easing.in(Easing.quad),
-            useNativeDriver: true,
-          }),
-          Animated.timing(rotAnim, {
-            toValue: 22,
-            duration: JUMP_DOWN_MS,
-            useNativeDriver: true,
-          }),
-          Animated.timing(opAnim, {
-            toValue: 0,
-            duration: 200,
-            delay: JUMP_DOWN_MS - 200,
-            useNativeDriver: true,
-          }),
+          Animated.timing(fishAnim, { toValue: coord.waterY + 80, duration: JUMP_DOWN_MS, easing: Easing.in(Easing.quad), useNativeDriver: true }),
+          Animated.timing(rotAnim, { toValue: 22, duration: JUMP_DOWN_MS, useNativeDriver: true }),
+          Animated.timing(opAnim, { toValue: 0, duration: 200, delay: JUMP_DOWN_MS - 200, useNativeDriver: true }),
         ]);
         fallAnim.current = anim;
-        // Only fire onGone if not already dismissed
-        anim.start(({ finished: f }) => {
-          if (f) onGone();
-        });
+        anim.start(({ finished: f }) => { if (f) onGone(); });
       }, HANG_MS);
     });
   }, []);
 
-  const rotate = rotAnim.interpolate({
-    inputRange: [-22, 0, 22],
-    outputRange: ["-22deg", "0deg", "22deg"],
-  });
+  const rotate = rotAnim.interpolate({ inputRange: [-22, 0, 22], outputRange: ["-22deg", "0deg", "22deg"] });
 
   return (
     <Animated.View
       pointerEvents="none"
       style={{
-        position: "absolute",
-        left: coord.fishX - 44,
-        top: 0,
-        width: 88,
-        alignItems: "center",
-        zIndex: 80,
+        position: "absolute", left: coord.fishX - 44, top: 0, width: 88,
+        alignItems: "center", zIndex: 80,
         transform: [{ translateY: fishAnim }, { rotate }],
         opacity: opAnim,
       }}
     >
       <View style={st.wordBubble}>
-        <Text style={st.wordText} adjustsFontSizeToFit numberOfLines={1}>
-          {word}
-        </Text>
+        <Text style={st.wordText} adjustsFontSizeToFit numberOfLines={1}>{word}</Text>
       </View>
       <Text style={{ fontSize: 46, lineHeight: 50 }}>🐟</Text>
     </Animated.View>
@@ -495,26 +285,11 @@ function Splash({ C: coord, onDone }) {
   useEffect(() => {
     Animated.parallel([
       Animated.spring(sc, { toValue: 1.8, friction: 4, useNativeDriver: true }),
-      Animated.timing(op, {
-        toValue: 0,
-        duration: 500,
-        delay: 80,
-        useNativeDriver: true,
-      }),
+      Animated.timing(op, { toValue: 0, duration: 500, delay: 80, useNativeDriver: true }),
     ]).start(onDone);
   }, []);
   return (
-    <Animated.View
-      pointerEvents="none"
-      style={{
-        position: "absolute",
-        left: coord.fishX - 28,
-        top: coord.waterY - 20,
-        opacity: op,
-        transform: [{ scale: sc }],
-        zIndex: 70,
-      }}
-    >
+    <Animated.View pointerEvents="none" style={{ position: "absolute", left: coord.fishX - 28, top: coord.waterY - 20, opacity: op, transform: [{ scale: sc }], zIndex: 70 }}>
       <Text style={{ fontSize: 30 }}>💦</Text>
     </Animated.View>
   );
@@ -527,17 +302,8 @@ function CatchMsg({ text, color, sw, sh, onDone }) {
   useEffect(() => {
     Animated.sequence([
       Animated.parallel([
-        Animated.spring(sc, {
-          toValue: 1,
-          friction: 4,
-          tension: 80,
-          useNativeDriver: true,
-        }),
-        Animated.timing(op, {
-          toValue: 1,
-          duration: 180,
-          useNativeDriver: true,
-        }),
+        Animated.spring(sc, { toValue: 1, friction: 4, tension: 80, useNativeDriver: true }),
+        Animated.timing(op, { toValue: 1, duration: 180, useNativeDriver: true }),
       ]),
       Animated.delay(850),
       Animated.timing(op, { toValue: 0, duration: 240, useNativeDriver: true }),
@@ -547,20 +313,10 @@ function CatchMsg({ text, color, sw, sh, onDone }) {
     <Animated.View
       pointerEvents="none"
       style={{
-        position: "absolute",
-        left: sw * 0.06,
-        right: sw * 0.06,
-        top: sh * 0.33,
-        backgroundColor: "rgba(0,0,0,0.85)",
-        borderRadius: 22,
-        borderWidth: 1.5,
-        borderColor: "rgba(255,255,255,0.15)",
-        paddingVertical: 16,
-        paddingHorizontal: 20,
-        alignItems: "center",
-        zIndex: 300,
-        opacity: op,
-        transform: [{ scale: sc }],
+        position: "absolute", left: sw * 0.06, right: sw * 0.06, top: sh * 0.33,
+        backgroundColor: "rgba(0,0,0,0.85)", borderRadius: 22, borderWidth: 1.5,
+        borderColor: "rgba(255,255,255,0.15)", paddingVertical: 16, paddingHorizontal: 20,
+        alignItems: "center", zIndex: 300, opacity: op, transform: [{ scale: sc }],
       }}
     >
       <Text style={[st.catchMsgText, { color }]}>{text}</Text>
@@ -572,25 +328,14 @@ function CatchMsg({ text, color, sw, sh, onDone }) {
 function Hud({ round, timeLeft, score, onExit, badgeScale }) {
   return (
     <View style={st.hud}>
-      <TouchableOpacity
-        style={st.exitBtn}
-        onPress={onExit}
-        activeOpacity={0.8}
-        hitSlop={{ top: 14, bottom: 14, left: 14, right: 14 }}
-      >
+      <TouchableOpacity style={st.exitBtn} onPress={onExit} activeOpacity={0.8} hitSlop={{ top: 14, bottom: 14, left: 14, right: 14 }}>
         <Text style={st.exitTxt}>✕</Text>
       </TouchableOpacity>
       <View style={st.hudCenter}>
-        <Text style={st.hudCat}>
-          {round.emoji} {round.category}
-        </Text>
-        <Text style={[st.hudTime, timeLeft <= 10 && { color: C.red }]}>
-          {timeLeft}s
-        </Text>
+        <Text style={st.hudCat}>{round.emoji} {round.category}</Text>
+        <Text style={[st.hudTime, timeLeft <= 10 && { color: C.red }]}>{timeLeft}s</Text>
       </View>
-      <Animated.View
-        style={[st.scorePill, { transform: [{ scale: badgeScale }] }]}
-      >
+      <Animated.View style={[st.scorePill, { transform: [{ scale: badgeScale }] }]}>
         <Text style={st.scoreTxt}>🪙 {score}</Text>
       </Animated.View>
     </View>
@@ -603,90 +348,52 @@ function IdleOverlay({ onStart }) {
   useEffect(() => {
     Animated.loop(
       Animated.sequence([
-        Animated.timing(pulse, {
-          toValue: 1.08,
-          duration: 650,
-          easing: Easing.inOut(Easing.sin),
-          useNativeDriver: true,
-        }),
-        Animated.timing(pulse, {
-          toValue: 1,
-          duration: 650,
-          easing: Easing.inOut(Easing.sin),
-          useNativeDriver: true,
-        }),
+        Animated.timing(pulse, { toValue: 1.08, duration: 650, easing: Easing.inOut(Easing.sin), useNativeDriver: true }),
+        Animated.timing(pulse, { toValue: 1, duration: 650, useNativeDriver: true }),
       ]),
     ).start();
   }, []);
   return (
-    <View style={st.overlay}>
-      <Text style={st.idleTitle}>🐒 Monkey Fishing</Text>
-      <Text style={st.idleSubtitle}>Word Edition</Text>
-      <Text style={st.idleHint}>
-        A fish jumps from the water with a word.{"\n"}
-        <Text style={{ color: C.green, fontWeight: "700" }}>Tap</Text> when the
-        word matches!{"\n"}
-        Wrong words = <Text style={{ color: C.red }}>lose points</Text>.
-      </Text>
-      <Animated.View style={{ transform: [{ scale: pulse }] }}>
-        <TouchableOpacity
-          style={st.primaryBtn}
-          onPress={onStart}
-          activeOpacity={0.85}
-        >
-          <Text style={st.primaryBtnText}>▶ START FISHING</Text>
-        </TouchableOpacity>
-      </Animated.View>
-    </View>
+    <ImageBackground source={require("../../../assets/games/monkey-fishing/cover.jpg")} resizeMode="stretch" style={StyleSheet.absoluteFill}>
+      <View style={{ alignItems: "center", justifyContent: "center", marginTop: "160%" }}>
+        <Animated.View style={{ transform: [{ scale: pulse }] }}>
+          <TouchableOpacity style={st.primaryBtn} onPress={onStart} activeOpacity={0.85}>
+            <Text style={st.primaryBtnText}>▶ Play</Text>
+          </TouchableOpacity>
+        </Animated.View>
+      </View>
+    </ImageBackground>
   );
 }
 
 // ─── INSTRUCTION OVERLAY ──────────────────────────────────────────────────────
-function InstructionOverlay({ round, onStart }) {
+// Now receives totalRounds as prop instead of reading ROUNDS.length
+function InstructionOverlay({ round, totalRounds, onStart }) {
   const slide = useRef(new Animated.Value(50)).current;
   const fade = useRef(new Animated.Value(0)).current;
   useEffect(() => {
     Animated.parallel([
-      Animated.spring(slide, {
-        toValue: 0,
-        friction: 5,
-        useNativeDriver: true,
-      }),
-      Animated.timing(fade, {
-        toValue: 1,
-        duration: 280,
-        useNativeDriver: true,
-      }),
+      Animated.spring(slide, { toValue: 0, friction: 5, useNativeDriver: true }),
+      Animated.timing(fade, { toValue: 1, duration: 280, useNativeDriver: true }),
     ]).start();
   }, []);
   return (
     <View style={st.overlay}>
-      <Animated.View
-        style={[st.card, { transform: [{ translateY: slide }], opacity: fade }]}
-      >
+      <Animated.View style={[st.card, { transform: [{ translateY: slide }], opacity: fade }]}>
         <View style={st.roundBadge}>
-          <Text style={st.roundBadgeText}>
-            Round {round.id} of {ROUNDS.length}
-          </Text>
+          {/* totalRounds prop replaces hardcoded ROUNDS.length */}
+          <Text style={st.roundBadgeText}>Round {round.id} of {totalRounds}</Text>
         </View>
         <Text style={{ fontSize: 44, marginBottom: 4 }}>{round.emoji}</Text>
         <Text style={st.cardTitle}>{round.category}</Text>
         <Text style={st.cardDesc}>{round.instruction}</Text>
-        <Text style={{ color: C.textSec, fontSize: 12, marginBottom: 8 }}>
-          Words to catch:
-        </Text>
+        <Text style={{ color: C.textSec, fontSize: font.xl, marginBottom: 8 }}>Words to catch:</Text>
         <View style={st.chipRow}>
           {round.targetWords.slice(0, 8).map((w) => (
-            <View key={w} style={st.chip}>
-              <Text style={st.chipText}>{w}</Text>
-            </View>
+            <View key={w} style={st.chip}><Text style={st.chipText}>{w}</Text></View>
           ))}
         </View>
-        <TouchableOpacity
-          style={[st.primaryBtn, { width: "100%" }]}
-          onPress={onStart}
-          activeOpacity={0.85}
-        >
+        <TouchableOpacity style={[st.primaryBtn, { width: "100%" }]} onPress={onStart} activeOpacity={0.85}>
           <Text style={st.primaryBtnText}>🎣 Start Fishing!</Text>
         </TouchableOpacity>
       </Animated.View>
@@ -694,7 +401,8 @@ function InstructionOverlay({ round, onStart }) {
   );
 }
 
-// ─── RESULT OVERLAY (DodgeCar style — black + gold) ──────────────────────────
+// ─── RESULT OVERLAY ───────────────────────────────────────────────────────────
+// isLast is pre-computed and passed as prop — no ROUNDS reference here
 function ResultOverlay({ score, caught, missed, isLast, onNext, onExit }) {
   const sc = useRef(new Animated.Value(0.6)).current;
   const op = useRef(new Animated.Value(0)).current;
@@ -705,28 +413,17 @@ function ResultOverlay({ score, caught, missed, isLast, onNext, onExit }) {
 
   const stars = caught >= 8 ? 3 : caught >= 5 ? 2 : 1;
   const emoji = stars === 3 ? "🏆" : stars === 2 ? "⭐" : "🐟";
-  const title =
-    stars === 3 ? "Amazing!" : stars === 2 ? "Good Job!" : "Keep Trying!";
+  const title = stars === 3 ? "Amazing!" : stars === 2 ? "Good Job!" : "Keep Trying!";
 
   useEffect(() => {
     Animated.parallel([
-      Animated.spring(sc, {
-        toValue: 1,
-        friction: 4,
-        tension: 60,
-        useNativeDriver: true,
-      }),
+      Animated.spring(sc, { toValue: 1, friction: 4, tension: 60, useNativeDriver: true }),
       Animated.timing(op, { toValue: 1, duration: 300, useNativeDriver: true }),
     ]).start();
     const starDelay = (val, delay) =>
       Animated.sequence([
         Animated.delay(delay),
-        Animated.spring(val, {
-          toValue: 1,
-          friction: 3,
-          tension: 120,
-          useNativeDriver: true,
-        }),
+        Animated.spring(val, { toValue: 1, friction: 3, tension: 120, useNativeDriver: true }),
       ]).start();
     starDelay(star1, 300);
     starDelay(star2, 480);
@@ -734,80 +431,33 @@ function ResultOverlay({ score, caught, missed, isLast, onNext, onExit }) {
     Animated.loop(
       Animated.sequence([
         Animated.delay(800),
-        Animated.timing(shimX, {
-          toValue: 300,
-          duration: 1400,
-          easing: Easing.inOut(Easing.quad),
-          useNativeDriver: true,
-        }),
-        Animated.timing(shimX, {
-          toValue: -200,
-          duration: 0,
-          useNativeDriver: true,
-        }),
+        Animated.timing(shimX, { toValue: 300, duration: 1400, easing: Easing.inOut(Easing.quad), useNativeDriver: true }),
+        Animated.timing(shimX, { toValue: -200, duration: 0, useNativeDriver: true }),
       ]),
     ).start();
   }, []);
 
   return (
     <View style={st.overlayBg}>
-      <Animated.View
-        style={[st.resultCard, { opacity: op, transform: [{ scale: sc }] }]}
-      >
-        {/* Gold banner with shimmer */}
+      <Animated.View style={[st.resultCard, { opacity: op, transform: [{ scale: sc }] }]}>
         <View style={st.resultBanner}>
-          <Animated.View
-            pointerEvents="none"
-            style={[st.resultShimmer, { transform: [{ translateX: shimX }] }]}
-          />
-          <Text style={st.resultBannerText}>
-            {emoji} {title}
-          </Text>
+          <Animated.View pointerEvents="none" style={[st.resultShimmer, { transform: [{ translateX: shimX }] }]} />
+          <Text style={st.resultBannerText}>{emoji} {title}</Text>
         </View>
-        {/* Stars */}
         <View style={st.starsRow}>
           {[star1, star2, star3].map((s, i) => (
-            <Animated.Text
-              key={i}
-              style={[
-                st.starEmoji,
-                i >= stars && { opacity: 0.2 },
-                { transform: [{ scale: s }] },
-              ]}
-            >
-              ⭐
-            </Animated.Text>
+            <Animated.Text key={i} style={[st.starEmoji, i >= stars && { opacity: 0.2 }, { transform: [{ scale: s }] }]}>⭐</Animated.Text>
           ))}
         </View>
-        {/* Stats */}
         <View style={st.statRow}>
-          <View style={st.statPill}>
-            <Text style={st.statLabel}>CAUGHT</Text>
-            <Text style={[st.statVal, { color: C.green }]}>{caught}</Text>
-          </View>
-          <View style={st.statPill}>
-            <Text style={st.statLabel}>MISSED</Text>
-            <Text style={[st.statVal, { color: C.red }]}>{missed}</Text>
-          </View>
-          <View style={st.statPill}>
-            <Text style={st.statLabel}>SCORE</Text>
-            <Text style={[st.statVal, { color: C.yellow }]}>{score}</Text>
-          </View>
+          <View style={st.statPill}><Text style={st.statLabel}>CAUGHT</Text><Text style={[st.statVal, { color: C.green }]}>{caught}</Text></View>
+          <View style={st.statPill}><Text style={st.statLabel}>MISSED</Text><Text style={[st.statVal, { color: C.red }]}>{missed}</Text></View>
+          <View style={st.statPill}><Text style={st.statLabel}>SCORE</Text><Text style={[st.statVal, { color: C.yellow }]}>{score}</Text></View>
         </View>
-        <TouchableOpacity
-          style={[st.resultBtn, { marginBottom: 10 }]}
-          onPress={onNext}
-          activeOpacity={0.85}
-        >
-          <Text style={st.resultBtnText}>
-            {isLast ? "🎉 Final Score!" : "➡  Next Round"}
-          </Text>
+        <TouchableOpacity style={[st.resultBtn, { marginBottom: 10 }]} onPress={onNext} activeOpacity={0.85}>
+          <Text style={st.resultBtnText}>{isLast ? "🎉 Final Score!" : "➡  Next Round"}</Text>
         </TouchableOpacity>
-        <TouchableOpacity
-          style={st.secondaryBtn}
-          onPress={onExit}
-          activeOpacity={0.75}
-        >
+        <TouchableOpacity style={st.secondaryBtn} onPress={onExit} activeOpacity={0.75}>
           <Text style={st.secondaryBtnText}>✕ Exit Game</Text>
         </TouchableOpacity>
       </Animated.View>
@@ -815,14 +465,9 @@ function ResultOverlay({ score, caught, missed, isLast, onNext, onExit }) {
   );
 }
 
-// ─── FINAL OVERLAY (DodgeCar win style — black + gold) ───────────────────────
+// ─── FINAL OVERLAY ────────────────────────────────────────────────────────────
 function FinalOverlay({ totalScore, onRestart, onExit }) {
-  const grade =
-    totalScore >= 200
-      ? "Master Fisher! 🏆"
-      : totalScore >= 120
-        ? "Great Fisher! 🌟"
-        : "Keep Practicing! 🐟";
+  const grade = totalScore >= 200 ? "Master Fisher! 🏆" : totalScore >= 120 ? "Great Fisher! 🌟" : "Keep Practicing! 🐟";
   const sc = useRef(new Animated.Value(0.5)).current;
   const op = useRef(new Animated.Value(0)).current;
   const pulse = useRef(new Animated.Value(1)).current;
@@ -833,23 +478,13 @@ function FinalOverlay({ totalScore, onRestart, onExit }) {
 
   useEffect(() => {
     Animated.parallel([
-      Animated.spring(sc, {
-        toValue: 1,
-        friction: 4,
-        tension: 60,
-        useNativeDriver: true,
-      }),
+      Animated.spring(sc, { toValue: 1, friction: 4, tension: 60, useNativeDriver: true }),
       Animated.timing(op, { toValue: 1, duration: 300, useNativeDriver: true }),
     ]).start();
     const starDelay = (val, delay) =>
       Animated.sequence([
         Animated.delay(delay),
-        Animated.spring(val, {
-          toValue: 1,
-          friction: 3,
-          tension: 120,
-          useNativeDriver: true,
-        }),
+        Animated.spring(val, { toValue: 1, friction: 3, tension: 120, useNativeDriver: true }),
       ]).start();
     starDelay(star1, 300);
     starDelay(star2, 480);
@@ -857,107 +492,43 @@ function FinalOverlay({ totalScore, onRestart, onExit }) {
     Animated.loop(
       Animated.sequence([
         Animated.delay(800),
-        Animated.timing(shimX, {
-          toValue: 300,
-          duration: 1400,
-          easing: Easing.inOut(Easing.quad),
-          useNativeDriver: true,
-        }),
-        Animated.timing(shimX, {
-          toValue: -200,
-          duration: 0,
-          useNativeDriver: true,
-        }),
+        Animated.timing(shimX, { toValue: 300, duration: 1400, easing: Easing.inOut(Easing.quad), useNativeDriver: true }),
+        Animated.timing(shimX, { toValue: -200, duration: 0, useNativeDriver: true }),
       ]),
     ).start();
     Animated.loop(
       Animated.sequence([
-        Animated.timing(pulse, {
-          toValue: 1.06,
-          duration: 700,
-          useNativeDriver: true,
-        }),
-        Animated.timing(pulse, {
-          toValue: 0.96,
-          duration: 700,
-          useNativeDriver: true,
-        }),
+        Animated.timing(pulse, { toValue: 1.06, duration: 700, useNativeDriver: true }),
+        Animated.timing(pulse, { toValue: 0.96, duration: 700, useNativeDriver: true }),
       ]),
     ).start();
   }, []);
 
   return (
     <View style={st.overlayBg}>
-      <Animated.View
-        style={[
-          st.resultCard,
-          st.finalCard,
-          { opacity: op, transform: [{ scale: sc }] },
-        ]}
-      >
-        {/* Gold shimmer banner */}
+      <Animated.View style={[st.resultCard, st.finalCard, { opacity: op, transform: [{ scale: sc }] }]}>
         <View style={[st.resultBanner, st.finalBanner]}>
-          <Animated.View
-            pointerEvents="none"
-            style={[st.resultShimmer, { transform: [{ translateX: shimX }] }]}
-          />
-          <Text style={[st.resultBannerText, { fontSize: 24 }]}>
-            🎣 Game Complete!
-          </Text>
+          <Animated.View pointerEvents="none" style={[st.resultShimmer, { transform: [{ translateX: shimX }] }]} />
+          <Text style={[st.resultBannerText, { fontSize: 24 }]}>🎣 Game Complete!</Text>
         </View>
-        {/* Stars */}
         <View style={st.starsRow}>
           {[star1, star2, star3].map((s, i) => (
-            <Animated.Text
-              key={i}
-              style={[st.starEmoji, { transform: [{ scale: s }] }]}
-            >
-              ⭐
-            </Animated.Text>
+            <Animated.Text key={i} style={[st.starEmoji, { transform: [{ scale: s }] }]}>⭐</Animated.Text>
           ))}
         </View>
-        <Text
-          style={{
-            color: C.yellow,
-            fontSize: 15,
-            fontWeight: "700",
-            marginBottom: 8,
-            textAlign: "center",
-          }}
-        >
-          {grade}
-        </Text>
-        {/* Score */}
+        <Text style={{ color: C.yellow, fontSize: 15, fontWeight: "700", marginBottom: 8, textAlign: "center" }}>{grade}</Text>
         <View style={st.statRow}>
           <View style={[st.statPill, st.finalPill]}>
             <Text style={st.statLabel}>TOTAL SCORE</Text>
-            <Text style={[st.statVal, { color: C.yellow, fontSize: 32 }]}>
-              {totalScore}
-            </Text>
+            <Text style={[st.statVal, { color: C.yellow, fontSize: 32 }]}>{totalScore}</Text>
           </View>
         </View>
-        <Animated.View
-          style={{
-            transform: [{ scale: pulse }],
-            width: "100%",
-            marginBottom: 10,
-          }}
-        >
-          <TouchableOpacity
-            style={[st.resultBtn, st.finalBtn]}
-            onPress={onRestart}
-            activeOpacity={0.85}
-          >
-            <Text style={[st.resultBtnText, { color: C.bg }]}>
-              🔄 Play Again!
-            </Text>
+        <Animated.View style={{ transform: [{ scale: pulse }], width: "100%", marginBottom: 10 }}>
+          <TouchableOpacity style={[st.resultBtn, st.finalBtn]} onPress={onRestart} activeOpacity={0.85}>
+            <Text style={[st.resultBtnText, { color: C.bg }]}>🔄 Play Again!</Text>
           </TouchableOpacity>
         </Animated.View>
-        <TouchableOpacity
-          style={st.secondaryBtn}
-          onPress={onExit}
-          activeOpacity={0.75}
-        >
+        <TouchableOpacity style={st.secondaryBtn} onPress={onExit} activeOpacity={0.75}>
           <Text style={st.secondaryBtnText}>✕ Exit Game</Text>
         </TouchableOpacity>
       </Animated.View>
@@ -968,10 +539,37 @@ function FinalOverlay({ totalScore, onRestart, onExit }) {
 // ─── ROOT COMPONENT ───────────────────────────────────────────────────────────
 export default function MonkeyFishingGame({ onExit }) {
   const router = useRouter();
-
-  // ── Live screen dimensions — works on any device / orientation ────────────
   const { width: sw, height: sh } = useWindowDimensions();
-  const co = coords(sw, sh); // recomputed on every resize
+  const co = coords(sw, sh);
+
+  // ── Resolve rounds from route params ──────────────────────────────────────
+  // gameDataJson is passed by GamificationContext.startPlay via router.push params.
+  // Backend shape: array of round objects matching FALLBACK_ROUNDS structure.
+  // Falls back to FALLBACK_ROUNDS when absent or invalid.
+  const { gameDataJson } = useLocalSearchParams();
+
+  const rounds = useMemo(() => {
+    try {
+      if (!gameDataJson) return FALLBACK_ROUNDS;
+      const parsed = JSON.parse(gameDataJson);
+      if (
+        Array.isArray(parsed) &&
+        parsed.length > 0 &&
+        Array.isArray(parsed[0]?.targetWords) &&
+        parsed[0].targetWords.length > 0
+      ) {
+        console.log("[MonkeyFishingGame] using backend rounds, count:", parsed.length);
+        return parsed;
+      }
+      console.log("[MonkeyFishingGame] invalid shape — using fallback");
+      return FALLBACK_ROUNDS;
+    } catch (_) {
+      return FALLBACK_ROUNDS;
+    }
+  }, [gameDataJson]);
+
+  // Derived constant — replaces all ROUNDS.length references
+  const totalRounds = rounds.length;
 
   // ── Game state ────────────────────────────────────────────────────────────
   const [phase, setPhase] = useState("idle");
@@ -1008,34 +606,18 @@ export default function MonkeyFishingGame({ onExit }) {
   const spawnRef = useRef(null);
   const coinIdRef = useRef(0);
   const dismissFishRef = useRef(null);
-  const spawnScheduled = useRef(false); // prevents double-spawn race condition
-  const coRef = useRef(co); // always-current coords for closures
+  const spawnScheduled = useRef(false);
+  const coRef = useRef(co);
   const badgeScale = useRef(new Animated.Value(1)).current;
   const badgePosRef = useRef({ x: sw - 55, y: STATUS_H + 12 });
 
-  // Keep refs current
-  useEffect(() => {
-    coRef.current = co;
-    badgePosRef.current.x = sw - 55;
-  }, [sw, sh]);
-  useEffect(() => {
-    scoreRef.current = score;
-  }, [score]);
-  useEffect(() => {
-    caughtRef.current = caught;
-  }, [caught]);
-  useEffect(() => {
-    missedRef.current = missed;
-  }, [missed]);
-  useEffect(() => {
-    atPeakRef.current = atPeak;
-  }, [atPeak]);
-  useEffect(() => {
-    tappedRef.current = tapped;
-  }, [tapped]);
-  useEffect(() => {
-    fishVisRef.current = fishVisible;
-  }, [fishVisible]);
+  useEffect(() => { coRef.current = co; badgePosRef.current.x = sw - 55; }, [sw, sh]);
+  useEffect(() => { scoreRef.current = score; }, [score]);
+  useEffect(() => { caughtRef.current = caught; }, [caught]);
+  useEffect(() => { missedRef.current = missed; }, [missed]);
+  useEffect(() => { atPeakRef.current = atPeak; }, [atPeak]);
+  useEffect(() => { tappedRef.current = tapped; }, [tapped]);
+  useEffect(() => { fishVisRef.current = fishVisible; }, [fishVisible]);
 
   // ── Sounds ────────────────────────────────────────────────────────────────
   const sndCorrect = useRef(null);
@@ -1046,9 +628,7 @@ export default function MonkeyFishingGame({ onExit }) {
   useEffect(() => {
     let alive = true;
     (async () => {
-      try {
-        await Audio.setAudioModeAsync({ playsInSilentModeIOS: true });
-      } catch (_) {}
+      try { await Audio.setAudioModeAsync({ playsInSilentModeIOS: true }); } catch (_) {}
       for (const [ref, asset] of [
         [sndCorrect, require("../../../assets/sounds/game/correct-hit.mp3")],
         [sndWrong, require("../../../assets/sounds/game/wrong-hit.mp3")],
@@ -1065,32 +645,19 @@ export default function MonkeyFishingGame({ onExit }) {
     return () => {
       alive = false;
       [sndCorrect, sndWrong, sndWin, sndLose].forEach((r) => {
-        r.current?.unloadAsync();
-        r.current = null;
+        r.current?.unloadAsync(); r.current = null;
       });
     };
   }, []);
 
   const playSound = (r) => {
-    try {
-      r.current?.setPositionAsync(0).then(() => r.current?.playAsync());
-    } catch (_) {}
+    try { r.current?.setPositionAsync(0).then(() => r.current?.playAsync()); } catch (_) {}
   };
 
   const pulseBadge = () => {
     Animated.sequence([
-      Animated.spring(badgeScale, {
-        toValue: 1.4,
-        friction: 3,
-        tension: 200,
-        useNativeDriver: true,
-      }),
-      Animated.spring(badgeScale, {
-        toValue: 1,
-        friction: 4,
-        tension: 200,
-        useNativeDriver: true,
-      }),
+      Animated.spring(badgeScale, { toValue: 1.4, friction: 3, tension: 200, useNativeDriver: true }),
+      Animated.spring(badgeScale, { toValue: 1, friction: 4, tension: 200, useNativeDriver: true }),
     ]).start();
   };
 
@@ -1098,10 +665,8 @@ export default function MonkeyFishingGame({ onExit }) {
     const bp = badgePosRef.current;
     const coins = Array.from({ length: 5 }, (_, i) => ({
       id: coinIdRef.current++,
-      startX: fx - 11,
-      startY: fy - 11,
-      endX: bp.x,
-      endY: bp.y,
+      startX: fx - 11, startY: fy - 11,
+      endX: bp.x, endY: bp.y,
       delay: i * 55,
     }));
     setCoinsAnim((prev) => [...prev, ...coins]);
@@ -1114,69 +679,48 @@ export default function MonkeyFishingGame({ onExit }) {
     phaseRef.current = "result";
     clearInterval(clockRef.current);
     clearTimeout(spawnRef.current);
-    if (dismissFishRef.current) {
-      dismissFishRef.current();
-      dismissFishRef.current = null;
-    }
+    if (dismissFishRef.current) { dismissFishRef.current(); dismissFishRef.current = null; }
     setFishVisible(false);
     fishVisRef.current = false;
     setShowString(false);
     setAtPeak(false);
-    setLastResult({
-      score: scoreRef.current,
-      caught: caughtRef.current,
-      missed: missedRef.current,
-    });
+    setLastResult({ score: scoreRef.current, caught: caughtRef.current, missed: missedRef.current });
     setPhase("result");
     playSound(scoreRef.current >= 0 ? sndWin : sndLose);
   }, []);
 
   const spawnFish = useCallback(() => {
     if (phaseRef.current !== "playing") return;
-    spawnScheduled.current = false; // reset guard — new fish cycle begins
+    spawnScheduled.current = false;
     const idx = queueIdxRef.current;
-    if (idx >= queueRef.current.length) {
-      endRound();
-      return;
-    }
+    if (idx >= queueRef.current.length) { endRound(); return; }
     const fish = queueRef.current[idx];
     queueIdxRef.current = idx + 1;
     setQueueIdx(idx + 1);
     setCurrentFish(fish);
-    setTapped(false);
-    tappedRef.current = false;
-    setAtPeak(false);
-    atPeakRef.current = false;
+    setTapped(false); tappedRef.current = false;
+    setAtPeak(false); atPeakRef.current = false;
     setShowString(false);
     setFishY(coRef.current.waterY);
-    setFishVisible(true);
-    fishVisRef.current = true;
+    setFishVisible(true); fishVisRef.current = true;
   }, [endRound]);
 
   const handlePeak = useCallback(() => {
-    setAtPeak(true);
-    atPeakRef.current = true;
+    setAtPeak(true); atPeakRef.current = true;
   }, []);
 
   const handleFishGone = useCallback(() => {
-    if (!fishVisRef.current) return; // already handled by correct tap
-    setFishVisible(false);
-    fishVisRef.current = false;
-    setAtPeak(false);
-    atPeakRef.current = false;
+    if (!fishVisRef.current) return;
+    setFishVisible(false); fishVisRef.current = false;
+    setAtPeak(false); atPeakRef.current = false;
     setShowString(false);
     setShowSplash(true);
     const fish = queueRef.current[queueIdxRef.current - 1];
     if (fish?.isTarget && !tappedRef.current) {
       setScore((p) => p + POINTS_MISSED);
       setMissed((p) => p + 1);
-      setCatchMsg({
-        id: Date.now(),
-        text: `💨 Missed! ${POINTS_MISSED}`,
-        color: C.red,
-      });
+      setCatchMsg({ id: Date.now(), text: `💨 Missed! ${POINTS_MISSED}`, color: C.red });
     }
-    // Guard: only schedule one spawn per fish cycle
     if (spawnScheduled.current) return;
     spawnScheduled.current = true;
     spawnRef.current = setTimeout(spawnFish, PAUSE_BETWEEN);
@@ -1185,8 +729,7 @@ export default function MonkeyFishingGame({ onExit }) {
   const handleTap = useCallback(() => {
     if (phaseRef.current !== "playing") return;
     if (!atPeakRef.current || tappedRef.current || !fishVisRef.current) return;
-    tappedRef.current = true;
-    setTapped(true);
+    tappedRef.current = true; setTapped(true);
     const fish = queueRef.current[queueIdxRef.current - 1];
     if (!fish) return;
 
@@ -1197,23 +740,13 @@ export default function MonkeyFishingGame({ onExit }) {
       setShowString(true);
       const c = coRef.current;
       spawnCoins(c.fishX, c.fishPeak + 20);
-      setCatchMsg({
-        id: Date.now(),
-        text: `🎣 Caught it! +${POINTS_CORRECT}`,
-        color: C.green,
-      });
+      setCatchMsg({ id: Date.now(), text: `🎣 Caught it! +${POINTS_CORRECT}`, color: C.green });
       setTimeout(() => {
-        if (dismissFishRef.current) {
-          dismissFishRef.current();
-          dismissFishRef.current = null;
-        }
-        setFishVisible(false);
-        fishVisRef.current = false;
-        setAtPeak(false);
-        atPeakRef.current = false;
+        if (dismissFishRef.current) { dismissFishRef.current(); dismissFishRef.current = null; }
+        setFishVisible(false); fishVisRef.current = false;
+        setAtPeak(false); atPeakRef.current = false;
         setShowString(false);
         setShowSplash(true);
-        // Guard: only schedule one spawn per fish cycle
         if (!spawnScheduled.current) {
           spawnScheduled.current = true;
           spawnRef.current = setTimeout(spawnFish, PAUSE_BETWEEN);
@@ -1222,17 +755,14 @@ export default function MonkeyFishingGame({ onExit }) {
     } else {
       setScore((p) => p + POINTS_WRONG);
       playSound(sndWrong);
-      setCatchMsg({
-        id: Date.now(),
-        text: `❌ Wrong! ${POINTS_WRONG}`,
-        color: C.red,
-      });
+      setCatchMsg({ id: Date.now(), text: `❌ Wrong! ${POINTS_WRONG}`, color: C.red });
     }
   }, [spawnFish]);
 
+  // ── startRound reads from resolved `rounds` — not FALLBACK_ROUNDS ────────
   const startRound = useCallback(
     (idx) => {
-      const round = ROUNDS[idx];
+      const round = rounds[idx]; // ← resolved rounds, not FALLBACK_ROUNDS
       const q = buildQueue(round);
       queueRef.current = q;
       queueIdxRef.current = 0;
@@ -1258,16 +788,13 @@ export default function MonkeyFishingGame({ onExit }) {
       clearInterval(clockRef.current);
       clockRef.current = setInterval(() => {
         setTimeLeft((t) => {
-          if (t <= 1) {
-            endRound();
-            return 0;
-          }
+          if (t <= 1) { endRound(); return 0; }
           return t - 1;
         });
       }, 1000);
       spawnRef.current = setTimeout(spawnFish, 900);
     },
-    [endRound, spawnFish],
+    [endRound, spawnFish, rounds], // `rounds` in deps — always fresh
   );
 
   const handleStartGame = () => {
@@ -1276,10 +803,13 @@ export default function MonkeyFishingGame({ onExit }) {
     phaseRef.current = "instruction";
     setPhase("instruction");
   };
+
   const handleStartRound = () => startRound(roundIndex);
+
   const handleNext = () => {
     const ns = lastResult?.score ?? 0;
-    if (roundIndex + 1 >= ROUNDS.length) {
+    // Uses totalRounds (derived from resolved rounds) — not hardcoded ROUNDS.length
+    if (roundIndex + 1 >= totalRounds) {
       setTotalScore((t) => t + ns);
       phaseRef.current = "final";
       setPhase("final");
@@ -1291,72 +821,51 @@ export default function MonkeyFishingGame({ onExit }) {
       setPhase("instruction");
     }
   };
+
   const handleRestart = () => {
     setRoundIndex(0);
     setTotalScore(0);
     phaseRef.current = "idle";
     setPhase("idle");
   };
+
   const handleExit = useCallback(() => {
     clearInterval(clockRef.current);
     clearTimeout(spawnRef.current);
-    if (dismissFishRef.current) {
-      dismissFishRef.current();
-      dismissFishRef.current = null;
-    }
+    if (dismissFishRef.current) { dismissFishRef.current(); dismissFishRef.current = null; }
     phaseRef.current = "idle";
     if (typeof onExit === "function") onExit();
     else router.back();
   }, [onExit]);
 
-  useEffect(
-    () => () => {
-      clearInterval(clockRef.current);
-      clearTimeout(spawnRef.current);
-    },
-    [],
-  );
+  useEffect(() => () => {
+    clearInterval(clockRef.current);
+    clearTimeout(spawnRef.current);
+  }, []);
 
   const isPlaying = phase === "playing";
-  const round = ROUNDS[roundIndex];
+  // round reads from resolved `rounds` — not the module-level FALLBACK_ROUNDS
+  const round = rounds[roundIndex];
 
   return (
     <TouchableWithoutFeedback onPress={isPlaying ? handleTap : undefined}>
       <View style={st.root}>
-        {/* ── Background image scaled to fill screen height, centred ── */}
-        <Image
-          source={require("../../../assets/games/monkey-fishing/base-image-no-string.jpeg")}
-          style={{
-            position: "absolute",
-            left: co.imgLeft,
-            top: 0,
-            width: co.imgW,
-            height: co.imgH,
-            zIndex: 1,
-          }}
-          resizeMode="stretch"
-        />
+        {phase !== "idle" && (
+          <Image
+            source={require("../../../assets/games/monkey-fishing/base-image-no-string.jpeg")}
+            style={{ position: "absolute", left: co.imgLeft, top: 0, width: co.imgW, height: co.imgH, zIndex: 1 }}
+            resizeMode="stretch"
+          />
+        )}
 
-        {/* Subtle tint for readability */}
-        <View
-          style={[
-            StyleSheet.absoluteFillObject,
-            { backgroundColor: "rgba(0,0,0,0.06)", zIndex: 2 },
-          ]}
-          pointerEvents="none"
-        />
+        <View style={[StyleSheet.absoluteFillObject, { backgroundColor: "rgba(0,0,0,0.06)", zIndex: 2 }]} pointerEvents="none" />
 
-        {/* ── Fishing string ── */}
         {isPlaying && showString && (
-          <View
-            style={[StyleSheet.absoluteFillObject, { zIndex: 62 }]}
-            pointerEvents="none"
-          >
+          <View style={[StyleSheet.absoluteFillObject, { zIndex: 62 }]} pointerEvents="none">
             <FishingString C={co} fishY={fishY} />
           </View>
         )}
 
-        {/* ── Fish ── */}
         {isPlaying && fishVisible && currentFish && (
           <Fish
             key={`fish-${queueIdx}`}
@@ -1370,100 +879,55 @@ export default function MonkeyFishingGame({ onExit }) {
           />
         )}
 
-        {/* ── Splash ── */}
         {showSplash && <Splash C={co} onDone={() => setShowSplash(false)} />}
 
-        {/* ── Catch message ── */}
         {catchMsg && (
-          <CatchMsg
-            key={catchMsg.id}
-            text={catchMsg.text}
-            color={catchMsg.color}
-            sw={sw}
-            sh={sh}
-            onDone={() => setCatchMsg(null)}
-          />
+          <CatchMsg key={catchMsg.id} text={catchMsg.text} color={catchMsg.color} sw={sw} sh={sh} onDone={() => setCatchMsg(null)} />
         )}
 
-        {/* ── Flying coins ── */}
         {coinsAnim.map((c) => (
-          <FlyingCoin
-            key={c.id}
-            startX={c.startX}
-            startY={c.startY}
-            endX={c.endX}
-            endY={c.endY}
-            delay={c.delay}
-            onDone={() =>
-              setCoinsAnim((prev) => prev.filter((x) => x.id !== c.id))
-            }
-          />
+          <FlyingCoin key={c.id} startX={c.startX} startY={c.startY} endX={c.endX} endY={c.endY} delay={c.delay}
+            onDone={() => setCoinsAnim((prev) => prev.filter((x) => x.id !== c.id))} />
         ))}
 
-        {/* ── HUD ── */}
-        {isPlaying && (
-          <Hud
-            round={round}
-            timeLeft={timeLeft}
-            score={score}
-            onExit={handleExit}
-            badgeScale={badgeScale}
-          />
-        )}
+        {isPlaying && <Hud round={round} timeLeft={timeLeft} score={score} onExit={handleExit} badgeScale={badgeScale} />}
 
-        {/* ── Tap hint bar ── */}
         {isPlaying && (
           <View
-            style={[
-              st.tapBar,
-              { left: sw * 0.07, right: sw * 0.07 },
-              atPeak && !tapped && st.tapBarActive,
-            ]}
+            style={[st.tapBar, { left: sw * 0.07, right: sw * 0.07 }, atPeak && !tapped && st.tapBarActive]}
             pointerEvents="none"
           >
-            <Text
-              style={[st.tapBarText, atPeak && !tapped && st.tapBarTextActive]}
-            >
-              {!fishVisible
-                ? "🐟 Get ready..."
-                : !atPeak
-                  ? "🎣 Get ready to tap!"
-                  : "👆 TAP NOW!"}
+            <Text style={[st.tapBarText, atPeak && !tapped && st.tapBarTextActive]}>
+              {!fishVisible ? "🐟 Get ready..." : !atPeak ? "🎣 Get ready to tap!" : "👆 TAP NOW!"}
             </Text>
           </View>
         )}
 
-        {/* ── Phase overlays ── */}
         {phase === "idle" && <IdleOverlay onStart={handleStartGame} />}
+
         {phase === "instruction" && (
-          <InstructionOverlay round={round} onStart={handleStartRound} />
+          // totalRounds passed as prop — InstructionOverlay no longer touches FALLBACK_ROUNDS
+          <InstructionOverlay round={round} totalRounds={totalRounds} onStart={handleStartRound} />
         )}
+
         {phase === "result" && lastResult && (
+          // isLast computed from totalRounds — not hardcoded ROUNDS.length
           <ResultOverlay
             score={lastResult.score}
             caught={lastResult.caught}
             missed={lastResult.missed}
-            isLast={roundIndex + 1 >= ROUNDS.length}
+            isLast={roundIndex + 1 >= totalRounds}
             onNext={handleNext}
             onExit={handleExit}
           />
         )}
+
         {phase === "final" && (
-          <FinalOverlay
-            totalScore={totalScore}
-            onRestart={handleRestart}
-            onExit={handleExit}
-          />
+          <FinalOverlay totalScore={totalScore} onRestart={handleRestart} onExit={handleExit} />
         )}
 
-        {/* ── Exit button on non-playing screens ── */}
         {(phase === "idle" || phase === "instruction") && (
-          <TouchableOpacity
-            style={st.topExit}
-            onPress={handleExit}
-            activeOpacity={0.8}
-            hitSlop={{ top: 14, bottom: 14, left: 14, right: 14 }}
-          >
+          <TouchableOpacity style={st.topExit} onPress={handleExit} activeOpacity={0.8} hitSlop={{ top: 14, bottom: 14, left: 14, right: 14 }}>
             <Text style={st.exitTxt}>✕</Text>
           </TouchableOpacity>
         )}
@@ -1473,350 +937,52 @@ export default function MonkeyFishingGame({ onExit }) {
 }
 
 // ─── STYLES ───────────────────────────────────────────────────────────────────
-// No SW/SH references here — all dimension-dependent values computed inline above.
 const st = StyleSheet.create({
   root: { flex: 1, backgroundColor: "#000", overflow: "hidden" },
-
-  hud: {
-    position: "absolute",
-    top: STATUS_H + 6,
-    left: 0,
-    right: 0,
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    paddingHorizontal: 14,
-    zIndex: 200,
-  },
-  exitBtn: {
-    width: 38,
-    height: 38,
-    borderRadius: 19,
-    backgroundColor: "rgba(0,0,0,0.6)",
-    borderWidth: 1.5,
-    borderColor: "rgba(255,255,255,0.28)",
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  topExit: {
-    position: "absolute",
-    top: STATUS_H + 12,
-    right: 14,
-    zIndex: 500,
-    width: 38,
-    height: 38,
-    borderRadius: 19,
-    backgroundColor: "rgba(0,0,0,0.65)",
-    borderWidth: 1.5,
-    borderColor: "rgba(255,255,255,0.3)",
-    alignItems: "center",
-    justifyContent: "center",
-  },
+  hud: { position: "absolute", top: STATUS_H + 6, left: 0, right: 0, flexDirection: "row", justifyContent: "space-between", alignItems: "center", paddingHorizontal: 14, zIndex: 200 },
+  exitBtn: { width: 38, height: 38, borderRadius: 19, backgroundColor: "rgba(0,0,0,0.6)", borderWidth: 1.5, borderColor: "rgba(255,255,255,0.28)", alignItems: "center", justifyContent: "center" },
+  topExit: { position: "absolute", top: STATUS_H + 12, right: 14, zIndex: 500, width: 38, height: 38, borderRadius: 19, backgroundColor: "rgba(0,0,0,0.65)", borderWidth: 1.5, borderColor: "rgba(255,255,255,0.3)", alignItems: "center", justifyContent: "center" },
   exitTxt: { color: "#B0BEC5", fontSize: 15, fontWeight: "700" },
   hudCenter: { alignItems: "center", flex: 1 },
-  hudCat: {
-    fontSize: 14,
-    fontWeight: "800",
-    color: C.teal,
-    letterSpacing: 0.3,
-  },
+  hudCat: { fontSize: 14, fontWeight: "800", color: C.teal, letterSpacing: 0.3 },
   hudTime: { fontSize: 22, fontWeight: "900", color: "#FFF", lineHeight: 26 },
-  scorePill: {
-    backgroundColor: C.yellowDim,
-    borderRadius: 20,
-    borderWidth: 1.5,
-    borderColor: C.yellowBorder,
-    paddingHorizontal: 14,
-    paddingVertical: 6,
-    minWidth: 70,
-    alignItems: "center",
-  },
+  scorePill: { backgroundColor: C.yellowDim, borderRadius: 20, borderWidth: 1.5, borderColor: C.yellowBorder, paddingHorizontal: 14, paddingVertical: 6, minWidth: 70, alignItems: "center" },
   scoreTxt: { fontSize: 14, fontWeight: "900", color: C.yellow },
-
-  wordBubble: {
-    minWidth: 90,
-    maxWidth: 130,
-    paddingHorizontal: 14,
-    paddingVertical: 9,
-    borderRadius: 50,
-    borderWidth: 2.5,
-    backgroundColor: "rgba(255,255,255,0.95)",
-    borderColor: "rgba(255,255,255,0.6)",
-    alignItems: "center",
-    justifyContent: "center",
-    marginBottom: 4,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 3 },
-    shadowOpacity: 0.35,
-    shadowRadius: 6,
-    elevation: 10,
-  },
-  wordText: {
-    fontSize: 17,
-    fontWeight: "900",
-    color: "#1a1a2e",
-    textAlign: "center",
-    letterSpacing: 0.4,
-  },
-
+  wordBubble: { minWidth: 90, maxWidth: 130, paddingHorizontal: 14, paddingVertical: 9, borderRadius: 50, borderWidth: 2.5, backgroundColor: "rgba(255,255,255,0.95)", borderColor: "rgba(255,255,255,0.6)", alignItems: "center", justifyContent: "center", marginBottom: 4, shadowColor: "#000", shadowOffset: { width: 0, height: 3 }, shadowOpacity: 0.35, shadowRadius: 6, elevation: 10 },
+  wordText: { fontSize: 17, fontWeight: "900", color: "#1a1a2e", textAlign: "center", letterSpacing: 0.4 },
   catchMsgText: { fontSize: 22, fontWeight: "900", textAlign: "center" },
-
-  tapBar: {
-    position: "absolute",
-    bottom: 34,
-    backgroundColor: "rgba(0,0,0,0.72)",
-    borderRadius: 30,
-    paddingVertical: 14,
-    alignItems: "center",
-    zIndex: 150,
-    borderWidth: 1.5,
-    borderColor: "rgba(255,255,255,0.12)",
-  },
-  tapBarActive: {
-    backgroundColor: "rgba(0,188,212,0.92)",
-    borderColor: C.teal,
-  },
-  tapBarText: {
-    color: "#FFF",
-    fontSize: 16,
-    fontWeight: "700",
-    letterSpacing: 0.5,
-  },
+  tapBar: { position: "absolute", bottom: 34, backgroundColor: "rgba(0,0,0,0.72)", borderRadius: 30, paddingVertical: 14, alignItems: "center", zIndex: 150, borderWidth: 1.5, borderColor: "rgba(255,255,255,0.12)" },
+  tapBarActive: { backgroundColor: "rgba(0,188,212,0.92)", borderColor: C.teal },
+  tapBarText: { color: "#FFF", fontSize: 16, fontWeight: "700", letterSpacing: 0.5 },
   tapBarTextActive: { color: "#08081a", fontWeight: "900" },
-
-  overlay: {
-    ...StyleSheet.absoluteFillObject,
-    backgroundColor: "rgba(8,8,26,0.91)",
-    alignItems: "center",
-    justifyContent: "center",
-    zIndex: 400,
-    paddingHorizontal: 24,
-  },
-
-  // Dark full-screen overlay background (DodgeCar style)
-  overlayBg: {
-    ...StyleSheet.absoluteFillObject,
-    backgroundColor: "rgba(8,8,26,0.88)",
-    alignItems: "center",
-    justifyContent: "center",
-    zIndex: 400,
-    paddingHorizontal: 20,
-  },
-
-  // Result card — black base, gold border
-  resultCard: {
-    width: "100%",
-    maxWidth: 400,
-    backgroundColor: "rgba(255,255,255,0.05)",
-    borderRadius: 28,
-    borderWidth: 1.5,
-    borderColor: "rgba(255,213,79,0.45)",
-    padding: 24,
-    alignItems: "center",
-    shadowColor: C.yellow,
-    shadowOffset: { width: 0, height: 0 },
-    shadowOpacity: 0.25,
-    shadowRadius: 24,
-    elevation: 10,
-  },
-  finalCard: {
-    borderColor: "rgba(255,213,79,0.6)",
-    shadowOpacity: 0.4,
-  },
-
-  // Gold shimmer banner (matches DodgeCar WinOverlay)
-  resultBanner: {
-    width: "100%",
-    borderRadius: 14,
-    overflow: "hidden",
-    backgroundColor: "rgba(255,213,79,0.12)",
-    borderWidth: 1.5,
-    borderColor: "rgba(255,213,79,0.5)",
-    paddingVertical: 14,
-    alignItems: "center",
-    marginBottom: 14,
-  },
-  finalBanner: {
-    backgroundColor: "rgba(255,213,79,0.15)",
-    borderColor: "rgba(255,213,79,0.7)",
-  },
-  resultShimmer: {
-    position: "absolute",
-    top: 0,
-    bottom: 0,
-    width: 80,
-    backgroundColor: "rgba(255,255,255,0.18)",
-    transform: [{ skewX: "-18deg" }],
-  },
-  resultBannerText: {
-    fontSize: 22,
-    fontWeight: "900",
-    color: C.yellow,
-    letterSpacing: 1,
-    textShadowColor: "rgba(255,213,79,0.6)",
-    textShadowOffset: { width: 0, height: 0 },
-    textShadowRadius: 10,
-  },
-
-  // Stars row
+  overlay: { ...StyleSheet.absoluteFillObject, backgroundColor: "rgba(8,8,26,0.91)", alignItems: "center", justifyContent: "center", zIndex: 400, paddingHorizontal: 24 },
+  overlayBg: { ...StyleSheet.absoluteFillObject, backgroundColor: "rgba(8,8,26,0.88)", alignItems: "center", justifyContent: "center", zIndex: 400, paddingHorizontal: 20 },
+  resultCard: { width: "100%", maxWidth: 400, backgroundColor: "rgba(255,255,255,0.05)", borderRadius: 28, borderWidth: 1.5, borderColor: "rgba(255,213,79,0.45)", padding: 24, alignItems: "center", shadowColor: C.yellow, shadowOffset: { width: 0, height: 0 }, shadowOpacity: 0.25, shadowRadius: 24, elevation: 10 },
+  finalCard: { borderColor: "rgba(255,213,79,0.6)", shadowOpacity: 0.4 },
+  resultBanner: { width: "100%", borderRadius: 14, overflow: "hidden", backgroundColor: "rgba(255,213,79,0.12)", borderWidth: 1.5, borderColor: "rgba(255,213,79,0.5)", paddingVertical: 14, alignItems: "center", marginBottom: 14 },
+  finalBanner: { backgroundColor: "rgba(255,213,79,0.15)", borderColor: "rgba(255,213,79,0.7)" },
+  resultShimmer: { position: "absolute", top: 0, bottom: 0, width: 80, backgroundColor: "rgba(255,255,255,0.18)", transform: [{ skewX: "-18deg" }] },
+  resultBannerText: { fontSize: 22, fontWeight: "900", color: C.yellow, letterSpacing: 1, textShadowColor: "rgba(255,213,79,0.6)", textShadowOffset: { width: 0, height: 0 }, textShadowRadius: 10 },
   starsRow: { flexDirection: "row", gap: 10, marginBottom: 12 },
   starEmoji: { fontSize: 34 },
-
-  // Stats
   statRow: { flexDirection: "row", gap: 10, marginBottom: 20, width: "100%" },
-  statPill: {
-    flex: 1,
-    backgroundColor: "rgba(255,213,79,0.07)",
-    borderRadius: 14,
-    borderWidth: 1,
-    borderColor: "rgba(255,213,79,0.3)",
-    padding: 12,
-    alignItems: "center",
-  },
-  finalPill: {
-    backgroundColor: "rgba(255,213,79,0.1)",
-    borderColor: "rgba(255,213,79,0.5)",
-  },
-  statLabel: {
-    fontSize: 9,
-    fontWeight: "900",
-    color: C.textMuted,
-    letterSpacing: 1.5,
-    marginBottom: 4,
-  },
+  statPill: { flex: 1, backgroundColor: "rgba(255,213,79,0.07)", borderRadius: 14, borderWidth: 1, borderColor: "rgba(255,213,79,0.3)", padding: 12, alignItems: "center" },
+  finalPill: { backgroundColor: "rgba(255,213,79,0.1)", borderColor: "rgba(255,213,79,0.5)" },
+  statLabel: { fontSize: 9, fontWeight: "900", color: C.textMuted, letterSpacing: 1.5, marginBottom: 4 },
   statVal: { fontSize: 26, fontWeight: "900", color: C.yellow },
-
-  // Result action button — gold
-  resultBtn: {
-    width: "100%",
-    borderRadius: 28,
-    paddingVertical: 15,
-    alignItems: "center",
-    backgroundColor: C.yellow,
-    shadowColor: C.yellow,
-    shadowOffset: { width: 0, height: 0 },
-    shadowOpacity: 0.55,
-    shadowRadius: 12,
-    elevation: 8,
-  },
+  resultBtn: { width: "100%", borderRadius: 28, paddingVertical: 15, alignItems: "center", backgroundColor: C.yellow, shadowColor: C.yellow, shadowOffset: { width: 0, height: 0 }, shadowOpacity: 0.55, shadowRadius: 12, elevation: 8 },
   finalBtn: { backgroundColor: C.yellow },
-  resultBtnText: {
-    fontSize: 16,
-    fontWeight: "900",
-    color: C.bg,
-    letterSpacing: 0.4,
-  },
-  secondaryBtn: {
-    width: "100%",
-    borderRadius: 28,
-    paddingVertical: 13,
-    alignItems: "center",
-    backgroundColor: "rgba(255,255,255,0.05)",
-    borderWidth: 1,
-    borderColor: "rgba(255,255,255,0.12)",
-  },
+  resultBtnText: { fontSize: 16, fontWeight: "900", color: C.bg, letterSpacing: 0.4 },
+  secondaryBtn: { width: "100%", borderRadius: 28, paddingVertical: 13, alignItems: "center", backgroundColor: "rgba(255,255,255,0.05)", borderWidth: 1, borderColor: "rgba(255,255,255,0.12)" },
   secondaryBtnText: { fontSize: 14, fontWeight: "700", color: C.textSec },
-
-  idleTitle: {
-    fontSize: 36,
-    fontWeight: "900",
-    color: C.teal,
-    letterSpacing: 0.5,
-    textAlign: "center",
-    textShadowColor: "rgba(0,188,212,0.5)",
-    textShadowOffset: { width: 0, height: 0 },
-    textShadowRadius: 14,
-    marginBottom: 4,
-  },
-  idleSubtitle: {
-    fontSize: 16,
-    fontWeight: "700",
-    color: C.yellow,
-    letterSpacing: 2,
-    marginBottom: 24,
-    textAlign: "center",
-  },
-  idleHint: {
-    fontSize: 15,
-    color: C.textSec,
-    textAlign: "center",
-    lineHeight: 23,
-    marginBottom: 32,
-    paddingHorizontal: 8,
-  },
-
-  card: {
-    width: "100%",
-    maxWidth: 420,
-    backgroundColor: "rgba(255,255,255,0.05)",
-    borderRadius: 28,
-    borderWidth: 1.5,
-    borderColor: C.tealBorder,
-    padding: 26,
-    alignItems: "center",
-    shadowColor: C.teal,
-    shadowOffset: { width: 0, height: 0 },
-    shadowOpacity: 0.2,
-    shadowRadius: 24,
-    elevation: 10,
-  },
-  roundBadge: {
-    backgroundColor: C.tealDim,
-    borderRadius: 20,
-    borderWidth: 1,
-    borderColor: C.tealBorder,
-    paddingHorizontal: 16,
-    paddingVertical: 4,
-    marginBottom: 14,
-  },
-  roundBadgeText: { color: C.teal, fontWeight: "700", fontSize: 12 },
-  cardTitle: {
-    fontSize: 24,
-    fontWeight: "900",
-    color: C.white,
-    marginBottom: 8,
-    textAlign: "center",
-  },
-  cardDesc: {
-    fontSize: 14,
-    color: C.textSec,
-    textAlign: "center",
-    lineHeight: 21,
-    marginBottom: 14,
-  },
-  chipRow: {
-    flexDirection: "row",
-    flexWrap: "wrap",
-    gap: 6,
-    justifyContent: "center",
-    marginBottom: 18,
-  },
-  chip: {
-    backgroundColor: C.tealDim,
-    borderColor: C.tealBorder,
-    borderWidth: 1.5,
-    borderRadius: 14,
-    paddingHorizontal: 12,
-    paddingVertical: 4,
-  },
-  chipText: { color: C.teal, fontWeight: "800", fontSize: 13 },
-
-  primaryBtn: {
-    backgroundColor: C.teal,
-    borderRadius: 30,
-    paddingHorizontal: 36,
-    paddingVertical: 15,
-    alignItems: "center",
-    shadowColor: C.teal,
-    shadowOffset: { width: 0, height: 0 },
-    shadowOpacity: 0.6,
-    shadowRadius: 16,
-    elevation: 10,
-  },
-  primaryBtnText: {
-    fontSize: 17,
-    fontWeight: "900",
-    color: C.bg,
-    letterSpacing: 0.5,
-  },
+  card: { width: "100%", maxWidth: 420, backgroundColor: "rgba(255,255,255,0.05)", borderRadius: 28, borderWidth: 1.5, borderColor: C.tealBorder, padding: 22, alignItems: "center", shadowColor: C.teal, shadowOffset: { width: 0, height: 0 }, shadowOpacity: 0.2, shadowRadius: 24, elevation: 10 },
+  roundBadge: { backgroundColor: C.tealDim, borderRadius: 20, borderWidth: 1, borderColor: C.tealBorder, paddingHorizontal: 16, paddingVertical: 4, marginBottom: 14 },
+  roundBadgeText: { color: C.teal, fontWeight: "700", fontSize: font.lg },
+  cardTitle: { fontSize: font.h3, fontWeight: "900", color: C.white, marginBottom: pad.lg, textAlign: "center" },
+  cardDesc: { fontSize: font.lg, color: C.textSec, textAlign: "center", lineHeight: 21, marginBottom: pad.xl },
+  chipRow: { flexDirection: "row", flexWrap: "wrap", gap: 6, justifyContent: "center", marginBottom: pad.xxl },
+  chip: { backgroundColor: C.tealDim, borderColor: C.tealBorder, borderWidth: 1.5, borderRadius: 14, paddingHorizontal: 12, paddingVertical: 4 },
+  chipText: { color: C.teal, fontWeight: "800", fontSize: font.lg },
+  primaryBtn: { backgroundColor: "#FBC91A", borderRadius: 30, paddingHorizontal: 25, paddingVertical: 20, alignItems: "center", shadowColor: C.teal, shadowOffset: { width: 0, height: 0 }, shadowOpacity: 0.6, shadowRadius: 16, elevation: 10, borderColor: "#673208", borderWidth: 5 },
+  primaryBtnText: { fontSize: font.h3, fontWeight: "900", color: "#673208", letterSpacing: 0.5 },
 });

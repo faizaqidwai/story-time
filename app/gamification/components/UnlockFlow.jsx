@@ -2,22 +2,10 @@
  * UnlockFlow.jsx
  * app/gamification/components/UnlockFlow.jsx
  *
- * Self-contained unlock animation used in two places:
- *   - UnlockModal        (existing game unlock from home screen)
- *   - StoryFinishOverlay (after scratch fully reveals on story 3/6)
- *
- * Renders three panels:
- *   "confirm"   — wallet box + game card box, Cancel + Unlock buttons
- *   "animating" — 9 diamonds fly from wallet to game card with counters
- *   "done"      — game card slides to center + grows, Play Now button
- *
- * Props:
- *   slot       — game slot object { gameId, name, gradient, icon, ... }
- *   diamonds   — current profile diamond balance
- *   onPlay     — called when user taps Play Now (after animation)
- *   onCancel   — called when user taps Cancel
- *   confirmUnlock — called when diamonds animation completes (fires unlock logic)
- *   containerWidth — width of the parent container (for coordinate math)
+ * CHANGES FROM PREVIOUS VERSION:
+ *   ✅ MiniGameCard now shows the game's cover image when available
+ *   ✅ Falls back to original animated-icon design when no cover exists
+ *   ✅ All animation logic, diamond flight, panel transitions unchanged
  */
 
 import React, { useRef, useEffect, useState, useCallback } from "react";
@@ -35,6 +23,7 @@ import { FONTS } from "../../theme";
 import { font, pad, radius } from "../../theme/tokens";
 import { GAME_ANIMATIONS } from "../constants/gameAnimations";
 import ExpandedGameCard from "./ExpandedGameCard";
+import GAME_COVERS from "../constants/gameCoverImages";
 
 const { width: SW } = Dimensions.get("window");
 
@@ -49,152 +38,91 @@ const C = {
   textMuted: "#7a9aaa",
 };
 
-const COST = 9;
+const COST        = 9;
 const DIAMOND_CNT = 9;
 
-// Layout — same geometry as UnlockModal
 const CARD_PADDING = 22;
-const ICON_BOX = 100;
-const ARROW_ZONE = 56;
-const GAP = 8;
-const MODAL_W = Math.min(SW * 0.91, 420);
-const CONTENT_W = MODAL_W - CARD_PADDING * 2;
-const ROW_TOTAL = ICON_BOX + GAP + ARROW_ZONE + GAP + ICON_BOX;
-const ROW_LEFT_X = (CONTENT_W - ROW_TOTAL) / 2;
+const ICON_BOX     = 100;
+const ARROW_ZONE   = 56;
+const GAP          = 8;
+const MODAL_W      = Math.min(SW * 0.91, 420);
+const CONTENT_W    = MODAL_W - CARD_PADDING * 2;
+const ROW_TOTAL    = ICON_BOX + GAP + ARROW_ZONE + GAP + ICON_BOX;
+const ROW_LEFT_X   = (CONTENT_W - ROW_TOTAL) / 2;
 const WALLET_CTR_X = ROW_LEFT_X + ICON_BOX / 2;
-const GAME_CTR_X =
-  ROW_LEFT_X + ICON_BOX + GAP + ARROW_ZONE + GAP + ICON_BOX / 2;
-// Offset from center of content area to game card position
+const GAME_CTR_X   = ROW_LEFT_X + ICON_BOX + GAP + ARROW_ZONE + GAP + ICON_BOX / 2;
 const GAME_CARD_START_X = GAME_CTR_X - CONTENT_W / 2;
 
 // ─────────────────────────────────────────────────────────────────────────────
-// FLYING DIAMOND — arc trajectory same as BadgePopup coins
+// FLYING DIAMOND (unchanged)
 // ─────────────────────────────────────────────────────────────────────────────
 function FlyingDiamond({ fromX, fromY, toX, toY, delay, onLand }) {
   const progress = useRef(new Animated.Value(0)).current;
-  const op = useRef(new Animated.Value(0)).current;
-  const sc = useRef(new Animated.Value(0.6)).current;
+  const op       = useRef(new Animated.Value(0)).current;
+  const sc       = useRef(new Animated.Value(0.6)).current;
 
-  const translateX = progress.interpolate({
-    inputRange: [0, 1],
-    outputRange: [fromX - 14, toX - 14],
-  });
-  const peakY = Math.min(fromY, toY) - 110;
-  const translateY = progress.interpolate({
-    inputRange: [0, 0.4, 1],
-    outputRange: [fromY - 14, peakY, toY - 14],
-    extrapolate: "clamp",
-  });
+  const translateX = progress.interpolate({ inputRange: [0, 1], outputRange: [fromX - 14, toX - 14] });
+  const peakY      = Math.min(fromY, toY) - 110;
+  const translateY = progress.interpolate({ inputRange: [0, 0.4, 1], outputRange: [fromY - 14, peakY, toY - 14], extrapolate: "clamp" });
 
   useEffect(() => {
     const duration = 620 + Math.random() * 180;
     Animated.sequence([
       Animated.delay(delay),
       Animated.parallel([
-        Animated.timing(op, {
-          toValue: 1,
-          duration: 80,
-          useNativeDriver: true,
-        }),
-        Animated.spring(sc, {
-          toValue: 1,
-          friction: 6,
-          tension: 80,
-          useNativeDriver: true,
-        }),
-        Animated.timing(progress, {
-          toValue: 1,
-          duration,
-          easing: Easing.inOut(Easing.quad),
-          useNativeDriver: true,
-        }),
+        Animated.timing(op,       { toValue: 1, duration: 80, useNativeDriver: true }),
+        Animated.spring(sc,       { toValue: 1, friction: 6, tension: 80, useNativeDriver: true }),
+        Animated.timing(progress, { toValue: 1, duration, easing: Easing.inOut(Easing.quad), useNativeDriver: true }),
       ]),
     ]).start(() => {
-      Animated.timing(op, {
-        toValue: 0,
-        duration: 100,
-        useNativeDriver: true,
-      }).start();
+      Animated.timing(op, { toValue: 0, duration: 100, useNativeDriver: true }).start();
       onLand?.();
     });
   }, []);
 
   return (
-    <Animated.View
-      style={{
-        position: "absolute",
-        top: 0,
-        left: 0,
-        width: 28,
-        height: 28,
-        opacity: op,
-        zIndex: 400,
-        pointerEvents: "none",
-        transform: [{ translateX }, { translateY }, { scale: sc }],
-      }}
-    >
-      <ExpoImage
-        source={require("../../../assets/img/diamond.png")}
-        style={{ width: 28, height: 28 }}
-        contentFit="contain"
-        cachePolicy="memory-disk"
-      />
+    <Animated.View style={{ position: "absolute", top: 0, left: 0, width: 28, height: 28, opacity: op, zIndex: 400, pointerEvents: "none", transform: [{ translateX }, { translateY }, { scale: sc }] }}>
+      <ExpoImage source={require("../../../assets/img/diamond.png")} style={{ width: 28, height: 28 }} contentFit="contain" cachePolicy="memory-disk" />
     </Animated.View>
   );
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// MINI GAME CARD — inside destination box during animation
+// MINI GAME CARD
+// Shows cover image full-bleed when available; falls back to animated icon.
 // ─────────────────────────────────────────────────────────────────────────────
 function MiniGameCard({ slot, size = ICON_BOX }) {
-  const gradient = slot?.gradient ?? ["#00BCD4", "#0097A7"];
-  const MiniAnim = slot?.gameId ? GAME_ANIMATIONS[slot.gameId] : null;
+  const gradient    = slot?.gradient ?? ["#00BCD4", "#0097A7"];
+  const MiniAnim    = slot?.gameId ? GAME_ANIMATIONS[slot.gameId] : null;
+  const coverSource = slot?.gameId ? (GAME_COVERS[slot.gameId] ?? null) : null;
+
   return (
-    <View
-      style={{
-        width: size,
-        height: size,
-        borderRadius: radius.lg,
-        overflow: "hidden",
-      }}
-    >
-      <View
-        style={[
-          StyleSheet.absoluteFillObject,
-          { backgroundColor: gradient[1] },
-        ]}
-      />
-      <View
-        style={[
-          StyleSheet.absoluteFillObject,
-          { backgroundColor: gradient[0], height: "60%", opacity: 0.9 },
-        ]}
-      />
-      <View
-        style={{
-          position: "absolute",
-          width: 80,
-          height: 80,
-          borderRadius: 40,
-          top: -20,
-          right: -20,
-          backgroundColor: "rgba(255,255,255,0.07)",
-        }}
-      />
-      <View
-        style={{
-          ...StyleSheet.absoluteFillObject,
-          alignItems: "center",
-          justifyContent: "center",
-          transform: [{ scale: 0.55 }],
-        }}
-      >
-        {MiniAnim ? (
-          <MiniAnim />
-        ) : (
-          <Text style={{ fontSize: 32 }}>{slot?.icon ?? "🎮"}</Text>
-        )}
-      </View>
+    <View style={{ width: size, height: size, borderRadius: radius.lg, overflow: "hidden" }}>
+      {coverSource ? (
+        // ── COVER IMAGE ─────────────────────────────────────────────────
+        <>
+          <ExpoImage
+            source={coverSource}
+            style={StyleSheet.absoluteFillObject}
+            contentFit="cover"
+            cachePolicy="memory-disk"
+          />
+          {/* Very subtle dark overlay — keeps it feeling like a card, not a raw photo */}
+          <View style={{ ...StyleSheet.absoluteFillObject, backgroundColor: "rgba(8,8,26,0.12)" }} />
+        </>
+      ) : (
+        // ── FALLBACK: original animated-icon design ──────────────────────
+        <>
+          <View style={[StyleSheet.absoluteFillObject, { backgroundColor: gradient[1] }]} />
+          <View style={[StyleSheet.absoluteFillObject, { backgroundColor: gradient[0], height: "60%", opacity: 0.9 }]} />
+          <View style={{ position: "absolute", width: 80, height: 80, borderRadius: 40, top: -20, right: -20, backgroundColor: "rgba(255,255,255,0.07)" }} />
+          <View style={{ ...StyleSheet.absoluteFillObject, alignItems: "center", justifyContent: "center", transform: [{ scale: 0.55 }] }}>
+            {MiniAnim
+              ? <MiniAnim />
+              : <Text style={{ fontSize: 32 }}>{slot?.icon ?? "🎮"}</Text>}
+          </View>
+        </>
+      )}
     </View>
   );
 }
@@ -202,93 +130,50 @@ function MiniGameCard({ slot, size = ICON_BOX }) {
 // ─────────────────────────────────────────────────────────────────────────────
 // UNLOCK FLOW
 // ─────────────────────────────────────────────────────────────────────────────
-export default function UnlockFlow({
-  slot,
-  diamonds,
-  onPlay,
-  onCancel,
-  confirmUnlock,
-}) {
+export default function UnlockFlow({ slot, diamonds, onPlay, onCancel, confirmUnlock }) {
   const canAfford = diamonds >= COST;
 
-  const [panel, setPanel] = useState("confirm");
-  const [walletCount, setWalletCount] = useState(diamonds);
-  const [gameCount, setGameCount] = useState(0);
-  const [flyingDiamonds, setFlyingDiamonds] = useState([]);
-  const landedRef = useRef(0);
-  const rowLayoutRef = useRef(null); // container-relative layout of the row
-  const containerRef = useRef(null); // ref to the outer container View
+  const [panel, setPanel]                   = useState("confirm");
+  const [walletCount, setWalletCount]         = useState(diamonds);
+  const [gameCount, setGameCount]             = useState(0);
+  const [flyingDiamonds, setFlyingDiamonds]   = useState([]);
+  const landedRef       = useRef(0);
+  const rowLayoutRef    = useRef(null);
+  const containerRef    = useRef(null);
 
-  const walletScale = useRef(new Animated.Value(0)).current;
-  const gameScale = useRef(new Animated.Value(0)).current;
-  const walletPulse = useRef(new Animated.Value(1)).current;
-  const walletShakeX = useRef(new Animated.Value(0)).current;
-  const rowOp = useRef(new Animated.Value(0)).current;
+  const walletScale     = useRef(new Animated.Value(0)).current;
+  const gameScale       = useRef(new Animated.Value(0)).current;
+  const walletPulse     = useRef(new Animated.Value(1)).current;
+  const walletShakeX    = useRef(new Animated.Value(0)).current;
+  const rowOp           = useRef(new Animated.Value(0)).current;
   const walletPulseLoop = useRef(null);
 
-  // Pop in boxes on mount
   useEffect(() => {
     Animated.parallel([
-      Animated.spring(walletScale, {
-        toValue: 1,
-        friction: 5,
-        tension: 70,
-        useNativeDriver: true,
-      }),
-      Animated.spring(gameScale, {
-        toValue: 1,
-        friction: 5,
-        tension: 70,
-        useNativeDriver: true,
-      }),
-      Animated.timing(rowOp, {
-        toValue: 1,
-        duration: 300,
-        useNativeDriver: true,
-      }),
+      Animated.spring(walletScale, { toValue: 1, friction: 5, tension: 70, useNativeDriver: true }),
+      Animated.spring(gameScale,   { toValue: 1, friction: 5, tension: 70, useNativeDriver: true }),
+      Animated.timing(rowOp,       { toValue: 1, duration: 300, useNativeDriver: true }),
     ]).start(() => {
-      walletPulseLoop.current = Animated.loop(
-        Animated.sequence([
-          Animated.timing(walletPulse, {
-            toValue: 1.12,
-            duration: 420,
-            easing: Easing.inOut(Easing.sin),
-            useNativeDriver: true,
-          }),
-          Animated.timing(walletPulse, {
-            toValue: 1.0,
-            duration: 420,
-            easing: Easing.inOut(Easing.sin),
-            useNativeDriver: true,
-          }),
-        ]),
-      );
+      walletPulseLoop.current = Animated.loop(Animated.sequence([
+        Animated.timing(walletPulse, { toValue: 1.12, duration: 420, easing: Easing.inOut(Easing.sin), useNativeDriver: true }),
+        Animated.timing(walletPulse, { toValue: 1.0,  duration: 420, easing: Easing.inOut(Easing.sin), useNativeDriver: true }),
+      ]));
       walletPulseLoop.current.start();
     });
     return () => walletPulseLoop.current?.stop();
   }, []);
 
-  // ── Spawn diamonds ────────────────────────────────────────────────────────
   const spawnDiamonds = useCallback(() => {
     if (!rowLayoutRef.current || !containerRef.current) return;
-    // Measure container in screen coords, subtract row's screen Y to get
-    // container-relative Y. FlyingDiamond is absolute inside the container.
     containerRef.current.measure((cx, cy, cw, ch, cpx, cpy) => {
-      const rpy = rowLayoutRef.current?.rowPageY ?? cpy + 120;
+      const rpy  = rowLayoutRef.current?.rowPageY ?? cpy + 120;
       const rowY = rpy - cpy + ICON_BOX / 2;
       const fromX = WALLET_CTR_X + CARD_PADDING;
-      const toX = GAME_CTR_X + CARD_PADDING;
+      const toX   = GAME_CTR_X   + CARD_PADDING;
 
-      setFlyingDiamonds(
-        Array.from({ length: DIAMOND_CNT }, (_, i) => ({
-          id: i,
-          fromX,
-          fromY: rowY,
-          toX,
-          toY: rowY,
-          delay: i * 140,
-        })),
-      );
+      setFlyingDiamonds(Array.from({ length: DIAMOND_CNT }, (_, i) => ({
+        id: i, fromX, fromY: rowY, toX, toY: rowY, delay: i * 140,
+      })));
 
       let wCount = diamonds;
       const wInterval = setInterval(() => {
@@ -309,21 +194,9 @@ export default function UnlockFlow({
   const handleCoinLand = useCallback(() => {
     landedRef.current += 1;
     Animated.sequence([
-      Animated.timing(walletShakeX, {
-        toValue: 6,
-        duration: 45,
-        useNativeDriver: true,
-      }),
-      Animated.timing(walletShakeX, {
-        toValue: -6,
-        duration: 45,
-        useNativeDriver: true,
-      }),
-      Animated.timing(walletShakeX, {
-        toValue: 0,
-        duration: 45,
-        useNativeDriver: true,
-      }),
+      Animated.timing(walletShakeX, { toValue: 6,  duration: 45, useNativeDriver: true }),
+      Animated.timing(walletShakeX, { toValue: -6, duration: 45, useNativeDriver: true }),
+      Animated.timing(walletShakeX, { toValue: 0,  duration: 45, useNativeDriver: true }),
     ]).start();
 
     if (landedRef.current === DIAMOND_CNT) {
@@ -331,11 +204,8 @@ export default function UnlockFlow({
       confirmUnlock?.(slot.gameId);
       setTimeout(() => {
         setFlyingDiamonds([]);
-        Animated.timing(rowOp, {
-          toValue: 0,
-          duration: 250,
-          useNativeDriver: true,
-        }).start(() => setPanel("done"));
+        Animated.timing(rowOp, { toValue: 0, duration: 250, useNativeDriver: true })
+          .start(() => setPanel("done"));
       }, 400);
     }
   }, [confirmUnlock]);
@@ -349,65 +219,36 @@ export default function UnlockFlow({
 
   return (
     <View style={fl.container} ref={containerRef}>
-      {/* Flying diamonds — absolutely positioned inside this container */}
       {flyingDiamonds.map((d) => (
         <FlyingDiamond key={d.id} {...d} onLand={handleCoinLand} />
       ))}
 
-      {/* Header */}
       <Text style={fl.heading}>
         {panel === "done" ? "🎉 Game Unlocked!" : "💎 Unlock This Game"}
       </Text>
       <Text style={fl.subHeading}>
-        {panel === "confirm" &&
-          (canAfford
-            ? `Spend ${COST} 💎 to unlock forever`
-            : "Not enough diamonds")}
+        {panel === "confirm"   && (canAfford ? `Spend ${COST} 💎 to unlock forever` : "Not enough diamonds")}
         {panel === "animating" && "Transferring diamonds..."}
-        {panel === "done" && "Play anytime — game is yours!"}
+        {panel === "done"      && "Play anytime — game is yours!"}
       </Text>
       <View style={fl.divider} />
 
-      {/* Confirm / Animating panels */}
       {(panel === "confirm" || panel === "animating") && (
         <Animated.View style={{ opacity: rowOp, width: "100%" }}>
           <View
             style={fl.rewardRow}
             onLayout={(e) => {
               e.target.measure((x, y, w, h, pageX, pageY) => {
-                rowLayoutRef.current = {
-                  ...rowLayoutRef.current,
-                  rowPageY: pageY,
-                };
+                rowLayoutRef.current = { ...rowLayoutRef.current, rowPageY: pageY };
               });
             }}
           >
             {/* Wallet */}
             <View style={fl.iconCol}>
-              <Animated.View
-                style={[
-                  fl.iconBox,
-                  fl.walletBox,
-                  {
-                    transform: [
-                      { scale: Animated.multiply(walletScale, walletPulse) },
-                    ],
-                  },
-                ]}
-              >
-                <ExpoImage
-                  source={require("../../../assets/img/bag.png")}
-                  style={fl.boxImage}
-                  contentFit="contain"
-                  cachePolicy="memory-disk"
-                />
+              <Animated.View style={[fl.iconBox, fl.walletBox, { transform: [{ scale: Animated.multiply(walletScale, walletPulse) }] }]}>
+                <ExpoImage source={require("../../../assets/img/bag.png")} style={fl.boxImage} contentFit="contain" cachePolicy="memory-disk" />
                 <View style={fl.walletCounter}>
-                  <ExpoImage
-                    source={require("../../../assets/img/diamond.png")}
-                    style={fl.counterIcon}
-                    contentFit="contain"
-                    cachePolicy="memory-disk"
-                  />
+                  <ExpoImage source={require("../../../assets/img/diamond.png")} style={fl.counterIcon} contentFit="contain" cachePolicy="memory-disk" />
                   <Text style={fl.walletCounterText}>{walletCount}</Text>
                 </View>
               </Animated.View>
@@ -417,41 +258,18 @@ export default function UnlockFlow({
             {/* Arrow trail */}
             <View style={fl.arrowTrail}>
               {[0, 1, 2].map((i) => (
-                <Text
-                  key={i}
-                  style={[
-                    fl.arrowChar,
-                    { opacity: panel === "animating" ? 1 : 0.3 },
-                  ]}
-                >
-                  ›
-                </Text>
+                <Text key={i} style={[fl.arrowChar, { opacity: panel === "animating" ? 1 : 0.3 }]}>›</Text>
               ))}
             </View>
 
-            {/* Game card */}
+            {/* Game card — cover image when available */}
             <View style={fl.iconCol}>
-              <Animated.View
-                style={[
-                  fl.iconBox,
-                  {
-                    transform: [
-                      { scale: gameScale },
-                      { translateX: walletShakeX },
-                    ],
-                  },
-                ]}
-              >
+              <Animated.View style={[fl.iconBox, { transform: [{ scale: gameScale }, { translateX: walletShakeX }] }]}>
                 <MiniGameCard slot={slot} size={ICON_BOX} />
                 {gameCount > 0 && (
                   <View style={fl.gameCounter}>
                     <Text style={fl.gameCounterText}>+{gameCount}</Text>
-                    <ExpoImage
-                      source={require("../../../assets/img/diamond.png")}
-                      style={fl.counterIcon}
-                      contentFit="contain"
-                      cachePolicy="memory-disk"
-                    />
+                    <ExpoImage source={require("../../../assets/img/diamond.png")} style={fl.counterIcon} contentFit="contain" cachePolicy="memory-disk" />
                   </View>
                 )}
               </Animated.View>
@@ -459,217 +277,63 @@ export default function UnlockFlow({
             </View>
           </View>
 
-          {/* Confirm buttons */}
           {panel === "confirm" && (
             <View style={fl.btnRow}>
-              <TouchableOpacity
-                style={fl.cancelBtn}
-                onPress={onCancel}
-                activeOpacity={0.8}
-              >
+              <TouchableOpacity style={fl.cancelBtn} onPress={onCancel} activeOpacity={0.8}>
                 <Text style={fl.cancelBtnText}>Cancel</Text>
               </TouchableOpacity>
               {canAfford ? (
-                <TouchableOpacity
-                  style={fl.confirmBtn}
-                  onPress={handleConfirmTap}
-                  activeOpacity={0.85}
-                >
+                <TouchableOpacity style={fl.confirmBtn} onPress={handleConfirmTap} activeOpacity={0.85}>
                   <Text style={fl.confirmBtnText}>Unlock 💎 {COST}</Text>
                 </TouchableOpacity>
               ) : (
                 <View style={fl.cantAffordBox}>
-                  <Text style={fl.cantAffordText}>
-                    Need {COST - diamonds} more 💎
-                  </Text>
+                  <Text style={fl.cantAffordText}>Need {COST - diamonds} more 💎</Text>
                 </View>
               )}
             </View>
           )}
 
           {panel === "animating" && (
-            <Text style={fl.animatingHint}>
-              ✨ Transferring {COST} diamonds...
-            </Text>
+            <Text style={fl.animatingHint}>✨ Transferring {COST} diamonds...</Text>
           )}
         </Animated.View>
       )}
 
-      {/* Done panel */}
       {panel === "done" && (
-        <ExpandedGameCard
-          slot={slot}
-          onPlay={onPlay}
-          onDismiss={onCancel}
-          startX={GAME_CARD_START_X}
-        />
+        <ExpandedGameCard slot={slot} onPlay={onPlay} onDismiss={onCancel} startX={GAME_CARD_START_X} />
       )}
     </View>
   );
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// STYLES
+// STYLES (unchanged from original)
 // ─────────────────────────────────────────────────────────────────────────────
 const fl = StyleSheet.create({
-  container: { width: "100%", alignItems: "center", position: "relative" },
-  heading: {
-    fontFamily: FONTS.bold,
-    fontSize: font.xl,
-    color: C.textPri,
-    textAlign: "center",
-    letterSpacing: 0.3,
-    marginBottom: pad.xs,
-    textShadowColor: C.purpleGlow,
-    textShadowOffset: { width: 0, height: 0 },
-    textShadowRadius: 10,
-  },
-  subHeading: {
-    fontFamily: FONTS.regular,
-    fontSize: font.md,
-    color: C.textMuted,
-    textAlign: "center",
-    marginBottom: pad.sm,
-  },
-  divider: {
-    width: "100%",
-    height: 1,
-    backgroundColor: "rgba(179,157,219,0.2)",
-    marginBottom: pad.md,
-  },
-  rewardRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-    gap: GAP,
-    paddingVertical: pad.xs,
-  },
-  iconCol: { alignItems: "center", gap: pad.s },
-  iconBox: {
-    width: ICON_BOX,
-    height: ICON_BOX,
-    borderRadius: radius.xl,
-    alignItems: "center",
-    justifyContent: "center",
-    overflow: "visible",
-  },
-  walletBox: {
-    backgroundColor: "rgba(179,157,219,0.12)",
-    borderWidth: 2,
-    borderColor: C.purpleBorder,
-  },
-  boxImage: { width: ICON_BOX * 0.72, height: ICON_BOX * 0.72 },
-  iconLabel: {
-    fontFamily: FONTS.bold,
-    fontSize: font.s,
-    color: C.textMuted,
-    letterSpacing: 1.1,
-    textTransform: "uppercase",
-  },
-  walletCounter: {
-    position: "absolute",
-    top: -14,
-    left: -10,
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 3,
-    backgroundColor: "rgba(8,8,26,0.95)",
-    borderRadius: radius.pill,
-    borderWidth: 1.5,
-    borderColor: C.purpleBorder,
-    paddingHorizontal: pad.s,
-    paddingVertical: 3,
-    zIndex: 10,
-  },
-  walletCounterText: {
-    fontFamily: FONTS.bold,
-    fontSize: font.lg,
-    color: C.purple,
-  },
-  gameCounter: {
-    position: "absolute",
-    top: -14,
-    right: -10,
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 3,
-    backgroundColor: "rgba(8,8,26,0.95)",
-    borderRadius: radius.pill,
-    borderWidth: 1.5,
-    borderColor: C.yellowBorder,
-    paddingHorizontal: pad.s,
-    paddingVertical: 3,
-    zIndex: 10,
-  },
-  gameCounterText: {
-    fontFamily: FONTS.bold,
-    fontSize: font.lg,
-    color: C.yellow,
-  },
-  counterIcon: { width: 18, height: 18 },
-  arrowTrail: {
-    flexDirection: "row",
-    alignItems: "center",
-    marginBottom: 18,
-    gap: -2,
-    width: ARROW_ZONE,
-    justifyContent: "center",
-  },
-  arrowChar: { fontFamily: FONTS.bold, fontSize: font.h3, color: C.purple },
-  btnRow: {
-    flexDirection: "row",
-    gap: pad.sm,
-    marginTop: pad.lg,
-    width: "100%",
-  },
-  cancelBtn: {
-    flex: 1,
-    paddingVertical: pad.sm,
-    borderRadius: radius.pill,
-    borderWidth: 1.5,
-    borderColor: "rgba(255,255,255,0.18)",
-    backgroundColor: "rgba(255,255,255,0.05)",
-    alignItems: "center",
-  },
-  cancelBtnText: {
-    fontFamily: FONTS.bold,
-    fontSize: font.md,
-    color: "rgba(255,255,255,0.55)",
-  },
-  confirmBtn: {
-    flex: 1.5,
-    paddingVertical: pad.sm,
-    borderRadius: radius.pill,
-    borderWidth: 1.5,
-    borderColor: C.purpleBorder,
-    backgroundColor: "rgba(179,157,219,0.15)",
-    alignItems: "center",
-  },
-  confirmBtnText: {
-    fontFamily: FONTS.bold,
-    fontSize: font.md,
-    color: C.purple,
-  },
-  cantAffordBox: {
-    flex: 1.5,
-    paddingVertical: pad.sm,
-    borderRadius: radius.pill,
-    borderWidth: 1.5,
-    borderColor: "rgba(239,83,80,0.4)",
-    backgroundColor: "rgba(239,83,80,0.1)",
-    alignItems: "center",
-  },
-  cantAffordText: {
-    fontFamily: FONTS.bold,
-    fontSize: font.md,
-    color: "#EF5350",
-  },
-  animatingHint: {
-    fontFamily: FONTS.light,
-    fontSize: font.md,
-    color: C.textMuted,
-    textAlign: "center",
-    marginTop: pad.lg,
-    fontStyle: "italic",
-  },
+  container:         { width: "100%", alignItems: "center", position: "relative" },
+  heading:           { fontFamily: FONTS.bold, fontSize: font.xl, color: C.textPri, textAlign: "center", letterSpacing: 0.3, marginBottom: pad.xs, textShadowColor: C.purpleGlow, textShadowOffset: { width: 0, height: 0 }, textShadowRadius: 10 },
+  subHeading:        { fontFamily: FONTS.regular, fontSize: font.md, color: C.textMuted, textAlign: "center", marginBottom: pad.sm },
+  divider:           { width: "100%", height: 1, backgroundColor: "rgba(179,157,219,0.2)", marginBottom: pad.md },
+  rewardRow:         { flexDirection: "row", alignItems: "center", justifyContent: "center", gap: GAP, paddingVertical: pad.xs },
+  iconCol:           { alignItems: "center", gap: pad.s },
+  iconBox:           { width: ICON_BOX, height: ICON_BOX, borderRadius: radius.xl, alignItems: "center", justifyContent: "center", overflow: "visible" },
+  walletBox:         { backgroundColor: "rgba(179,157,219,0.12)", borderWidth: 2, borderColor: C.purpleBorder },
+  boxImage:          { width: ICON_BOX * 0.72, height: ICON_BOX * 0.72 },
+  iconLabel:         { fontFamily: FONTS.bold, fontSize: font.s, color: C.textMuted, letterSpacing: 1.1, textTransform: "uppercase" },
+  walletCounter:     { position: "absolute", top: -14, left: -10, flexDirection: "row", alignItems: "center", gap: 3, backgroundColor: "rgba(8,8,26,0.95)", borderRadius: radius.pill, borderWidth: 1.5, borderColor: C.purpleBorder, paddingHorizontal: pad.s, paddingVertical: 3, zIndex: 10 },
+  walletCounterText: { fontFamily: FONTS.bold, fontSize: font.lg, color: C.purple },
+  gameCounter:       { position: "absolute", top: -14, right: -10, flexDirection: "row", alignItems: "center", gap: 3, backgroundColor: "rgba(8,8,26,0.95)", borderRadius: radius.pill, borderWidth: 1.5, borderColor: C.yellowBorder, paddingHorizontal: pad.s, paddingVertical: 3, zIndex: 10 },
+  gameCounterText:   { fontFamily: FONTS.bold, fontSize: font.lg, color: C.yellow },
+  counterIcon:       { width: 18, height: 18 },
+  arrowTrail:        { flexDirection: "row", alignItems: "center", marginBottom: 18, gap: -2, width: ARROW_ZONE, justifyContent: "center" },
+  arrowChar:         { fontFamily: FONTS.bold, fontSize: font.h3, color: C.purple },
+  btnRow:            { flexDirection: "row", gap: pad.sm, marginTop: pad.lg, width: "100%" },
+  cancelBtn:         { flex: 1, paddingVertical: pad.sm, borderRadius: radius.pill, borderWidth: 1.5, borderColor: "rgba(255,255,255,0.18)", backgroundColor: "rgba(255,255,255,0.05)", alignItems: "center" },
+  cancelBtnText:     { fontFamily: FONTS.bold, fontSize: font.md, color: "rgba(255,255,255,0.55)" },
+  confirmBtn:        { flex: 1.5, paddingVertical: pad.sm, borderRadius: radius.pill, borderWidth: 1.5, borderColor: C.purpleBorder, backgroundColor: "rgba(179,157,219,0.15)", alignItems: "center" },
+  confirmBtnText:    { fontFamily: FONTS.bold, fontSize: font.md, color: C.purple },
+  cantAffordBox:     { flex: 1.5, paddingVertical: pad.sm, borderRadius: radius.pill, borderWidth: 1.5, borderColor: "rgba(239,83,80,0.4)", backgroundColor: "rgba(239,83,80,0.1)", alignItems: "center" },
+  cantAffordText:    { fontFamily: FONTS.bold, fontSize: font.md, color: "#EF5350" },
+  animatingHint:     { fontFamily: FONTS.light, fontSize: font.md, color: C.textMuted, textAlign: "center", marginTop: pad.lg, fontStyle: "italic" },
 });

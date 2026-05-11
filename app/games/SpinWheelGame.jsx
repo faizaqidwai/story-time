@@ -1,25 +1,29 @@
 /**
  * SpinWheelGame.jsx — Captain Flipo's Flip Wheel
- * Word Opposites game with pirate theme.
  *
- * Assets:
- *   assets/games/spinwheel/parrot_idle.png
- *   assets/games/spinwheel/parrot_spin.png
- *   assets/games/spinwheel/parrot_correct.png
- *   assets/games/spinwheel/parrot_wrong.png
- *   assets/games/spinwheel/ship_bg.jpg
- *   assets/games/spinwheel/wheel_center.png
- *   assets/sounds/game/spinwheel/spin.mp3
- *   assets/sounds/game/spinwheel/tick.mp3
- *   assets/sounds/game/spinwheel/correct.mp3
- *   assets/sounds/game/spinwheel/wrong.mp3
- *   assets/sounds/game/spinwheel/win.mp3
- *   assets/sounds/game/spinwheel/start.mp3
- *   assets/sounds/game/spinwheel/pirate-start.mp3
- *   assets/sounds/button.mp3
+ * CHANGES FROM PREVIOUS VERSION:
+ *   ✅ gameDataJson read from route params via useLocalSearchParams
+ *   ✅ ROUNDS renamed to FALLBACK_ROUNDS
+ *   ✅ rounds resolved inside component via useMemo (falls back to FALLBACK_ROUNDS)
+ *   ✅ totalRounds derived from rounds.length
+ *   ✅ All ROUNDS[x] references → rounds[x]
+ *   ✅ All ROUNDS.length references → totalRounds
+ *   ✅ round / pair derived from resolved rounds
+ *   ✅ FinalCard receives rounds prop for breakdown labels
+ *   ✅ handleNextRound uses totalRounds
+ *   ✅ playing screen header uses totalRounds
+ *   ✅ round_result isLast uses totalRounds
+ *   ✅ All game logic, wheel physics, animations, and UI unchanged
+ *
+ * Backend shape for gameData["level_N"]:
+ *   [
+ *     { difficulty: 1, label: "Sailor",    pairs: [{ word, opposite, distractors[] }] },
+ *     { difficulty: 2, label: "Deckhand",  pairs: [...] },
+ *     ...
+ *   ]
  */
 
-import React, { useState, useRef, useEffect, useCallback } from "react";
+import React, { useState, useRef, useEffect, useCallback, useMemo } from "react";
 import {
   View,
   Text,
@@ -33,18 +37,14 @@ import {
   SafeAreaView,
   ImageBackground,
 } from "react-native";
-import { useRouter } from "expo-router";
+import { useRouter, useLocalSearchParams } from "expo-router";
 import { Audio } from "expo-av";
 import * as Speech from "expo-speech";
 import { font, pad } from "../theme/tokens";
-//import { font, pad, radius, size } from "./theme/tokens";
 
 const { width: SW, height: SH } = Dimensions.get("window");
 const WHEEL_SIZE = Math.min(SW * 0.8, 310);
 
-// ─────────────────────────────────────────────────────────────
-// COLORS
-// ─────────────────────────────────────────────────────────────
 const C = {
   bg: "#0a1628",
   woodDark: "#78350f",
@@ -69,127 +69,59 @@ const C = {
   border: "rgba(245,158,11,0.2)",
 };
 
-// ─────────────────────────────────────────────────────────────
-// WORD DATA
-// ─────────────────────────────────────────────────────────────
-const ROUNDS = [
+// ─── FALLBACK ROUNDS ──────────────────────────────────────────────────────────
+// Used when no gameDataJson is passed or backend has no data for this level.
+// The component reads from `rounds` (resolved at runtime) — never from this
+// constant directly — so wiring backend data requires zero other changes.
+//
+// Backend shape for gameData["level_N"]:
+//   [
+//     { difficulty: 1, label: "Sailor",   pairs: [{word, opposite, distractors:[]}] },
+//     { difficulty: 2, label: "Deckhand", pairs: [...] },
+//   ]
+const FALLBACK_ROUNDS = [
   {
-    difficulty: 1,
-    label: "Sailor",
+    difficulty: 1, label: "Sailor",
     pairs: [
-      { word: "HOT", opposite: "COLD", distractors: ["WARM", "WET", "DARK"] },
-      {
-        word: "BIG",
-        opposite: "SMALL",
-        distractors: ["TALL", "HEAVY", "ROUND"],
-      },
-      { word: "FAST", opposite: "SLOW", distractors: ["LONG", "LOUD", "SOFT"] },
+      { word: "HOT",  opposite: "COLD",  distractors: ["WARM", "WET", "DARK"] },
+      { word: "BIG",  opposite: "SMALL", distractors: ["TALL", "HEAVY", "ROUND"] },
+      { word: "FAST", opposite: "SLOW",  distractors: ["LONG", "LOUD", "SOFT"] },
     ],
   },
   {
-    difficulty: 2,
-    label: "Deckhand",
+    difficulty: 2, label: "Deckhand",
     pairs: [
-      {
-        word: "HAPPY",
-        opposite: "SAD",
-        distractors: ["MAD", "TIRED", "BORED"],
-      },
-      {
-        word: "CLEAN",
-        opposite: "DIRTY",
-        distractors: ["SHINY", "DUSTY", "MESSY"],
-      },
-      {
-        word: "BRAVE",
-        opposite: "SCARED",
-        distractors: ["STRONG", "PROUD", "SILLY"],
-      },
+      { word: "HAPPY", opposite: "SAD",   distractors: ["MAD", "TIRED", "BORED"] },
+      { word: "CLEAN", opposite: "DIRTY", distractors: ["SHINY", "DUSTY", "MESSY"] },
+      { word: "BRAVE", opposite: "SCARED",distractors: ["STRONG", "PROUD", "SILLY"] },
     ],
   },
   {
-    difficulty: 3,
-    label: "First Mate",
+    difficulty: 3, label: "First Mate",
     pairs: [
-      {
-        word: "ANCIENT",
-        opposite: "MODERN",
-        distractors: ["BROKEN", "RUSTY", "HEAVY"],
-      },
-      {
-        word: "EXPAND",
-        opposite: "SHRINK",
-        distractors: ["STRETCH", "FLATTEN", "TWIST"],
-      },
-      {
-        word: "GENEROUS",
-        opposite: "GREEDY",
-        distractors: ["NERVOUS", "CAREFUL", "HONEST"],
-      },
+      { word: "ANCIENT",   opposite: "MODERN",  distractors: ["BROKEN", "RUSTY", "HEAVY"] },
+      { word: "EXPAND",    opposite: "SHRINK",  distractors: ["STRETCH", "FLATTEN", "TWIST"] },
+      { word: "GENEROUS",  opposite: "GREEDY",  distractors: ["NERVOUS", "CAREFUL", "HONEST"] },
     ],
   },
   {
-    difficulty: 4,
-    label: "Captain",
+    difficulty: 4, label: "Captain",
     pairs: [
-      {
-        word: "OPTIMISTIC",
-        opposite: "PESSIMISTIC",
-        distractors: ["REALISTIC", "ENERGETIC", "CREATIVE"],
-      },
-      {
-        word: "ACCELERATE",
-        opposite: "DECELERATE",
-        distractors: ["NAVIGATE", "EVAPORATE", "CELEBRATE"],
-      },
-      {
-        word: "CONSTRUCT",
-        opposite: "DEMOLISH",
-        distractors: ["ACCOMPLISH", "DISTINGUISH", "ESTABLISH"],
-      },
+      { word: "OPTIMISTIC",  opposite: "PESSIMISTIC", distractors: ["REALISTIC", "ENERGETIC", "CREATIVE"] },
+      { word: "ACCELERATE",  opposite: "DECELERATE",  distractors: ["NAVIGATE", "EVAPORATE", "CELEBRATE"] },
+      { word: "CONSTRUCT",   opposite: "DEMOLISH",    distractors: ["ACCOMPLISH", "DISTINGUISH", "ESTABLISH"] },
     ],
   },
 ];
 
 // Decorative word pool for wheel segments
 const WHEEL_POOL = [
-  "HOT",
-  "BIG",
-  "FAST",
-  "HAPPY",
-  "LOUD",
-  "CLEAN",
-  "BRAVE",
-  "OLD",
-  "SOFT",
-  "COLD",
-  "SMALL",
-  "SLOW",
-  "SAD",
-  "QUIET",
-  "DIRTY",
-  "NEW",
-  "HARD",
-  "DARK",
-  "LIGHT",
-  "FULL",
-  "EMPTY",
-  "ROUGH",
-  "SHARP",
-  "WIDE",
-  "THIN",
-  "NEAR",
-  "FAR",
-  "RICH",
-  "POOR",
-  "WILD",
-  "WEAK",
-  "SWEET",
+  "HOT","BIG","FAST","HAPPY","LOUD","CLEAN","BRAVE","OLD","SOFT","COLD",
+  "SMALL","SLOW","SAD","QUIET","DIRTY","NEW","HARD","DARK","LIGHT","FULL",
+  "EMPTY","ROUGH","SHARP","WIDE","THIN","NEAR","FAR","RICH","POOR","WILD",
+  "WEAK","SWEET",
 ];
 
-// ─────────────────────────────────────────────────────────────
-// HELPERS
-// ─────────────────────────────────────────────────────────────
 function shuffle(arr) {
   const a = [...arr];
   for (let i = a.length - 1; i > 0; i--) {
@@ -199,18 +131,12 @@ function shuffle(arr) {
   return a;
 }
 
-// 8 wheel segments: question word at slot 0, 7 random fillers
 function makeSegments(questionWord) {
-  const fillers = shuffle(WHEEL_POOL.filter((w) => w !== questionWord)).slice(
-    0,
-    7,
-  );
+  const fillers = shuffle(WHEEL_POOL.filter((w) => w !== questionWord)).slice(0, 7);
   return [questionWord, ...fillers];
 }
 
-// ─────────────────────────────────────────────────────────────
-// SOUND HELPERS
-// ─────────────────────────────────────────────────────────────
+// ─── SOUND HELPERS ────────────────────────────────────────────────────────────
 const SFX = {
   spin: require("../../assets/sounds/game/spinwheel/spin.mp3"),
   tick: require("../../assets/sounds/game/spinwheel/tick.mp3"),
@@ -229,14 +155,11 @@ async function playSound(file, volume = 1.0) {
     await Audio.setAudioModeAsync({ playsInSilentModeIOS: true });
     const { sound } = await Audio.Sound.createAsync(file);
     await sound.setVolumeAsync(volume);
-    sound.setOnPlaybackStatusUpdate((s) => {
-      if (s.didJustFinish) sound.unloadAsync();
-    });
+    sound.setOnPlaybackStatusUpdate((s) => { if (s.didJustFinish) sound.unloadAsync(); });
     await sound.playAsync();
   } catch (_) {}
 }
 
-// Returns a stop() function
 async function playSoundTracked(file, volume = 1.0) {
   let snd = null;
   try {
@@ -244,117 +167,54 @@ async function playSoundTracked(file, volume = 1.0) {
     const { sound } = await Audio.Sound.createAsync(file);
     snd = sound;
     await sound.setVolumeAsync(volume);
-    sound.setOnPlaybackStatusUpdate((s) => {
-      if (s.didJustFinish) sound.unloadAsync();
-    });
+    sound.setOnPlaybackStatusUpdate((s) => { if (s.didJustFinish) sound.unloadAsync(); });
     await sound.playAsync();
   } catch (_) {}
   return async () => {
     if (snd) {
-      try {
-        await snd.stopAsync();
-        await snd.unloadAsync();
-      } catch (_) {}
+      try { await snd.stopAsync(); await snd.unloadAsync(); } catch (_) {}
       snd = null;
     }
   };
 }
 
-// ─────────────────────────────────────────────────────────────
-// FLOATING STAR
-// ─────────────────────────────────────────────────────────────
+// ─── FLOATING STAR ────────────────────────────────────────────────────────────
 function FloatingStar({ startX, startY, endX, endY, delay, onDone }) {
   const ax = useRef(new Animated.Value(startX)).current;
   const ay = useRef(new Animated.Value(startY)).current;
   const op = useRef(new Animated.Value(0)).current;
   const sc = useRef(new Animated.Value(0.3)).current;
-
   useEffect(() => {
     Animated.sequence([
       Animated.delay(delay),
       Animated.parallel([
-        Animated.timing(op, {
-          toValue: 1,
-          duration: 80,
-          useNativeDriver: true,
-        }),
-        Animated.spring(sc, {
-          toValue: 1.2,
-          friction: 4,
-          tension: 100,
-          useNativeDriver: true,
-        }),
-        Animated.timing(ax, {
-          toValue: endX,
-          duration: 520,
-          easing: Easing.out(Easing.cubic),
-          useNativeDriver: true,
-        }),
-        Animated.timing(ay, {
-          toValue: endY,
-          duration: 520,
-          easing: Easing.out(Easing.cubic),
-          useNativeDriver: true,
-        }),
+        Animated.timing(op, { toValue: 1, duration: 80, useNativeDriver: true }),
+        Animated.spring(sc, { toValue: 1.2, friction: 4, tension: 100, useNativeDriver: true }),
+        Animated.timing(ax, { toValue: endX, duration: 520, easing: Easing.out(Easing.cubic), useNativeDriver: true }),
+        Animated.timing(ay, { toValue: endY, duration: 520, easing: Easing.out(Easing.cubic), useNativeDriver: true }),
       ]),
-    ]).start(() =>
-      Animated.timing(op, {
-        toValue: 0,
-        duration: 120,
-        useNativeDriver: true,
-      }).start(onDone),
-    );
+    ]).start(() => Animated.timing(op, { toValue: 0, duration: 120, useNativeDriver: true }).start(onDone));
   }, []);
-
   return (
-    <Animated.View
-      pointerEvents="none"
-      style={{
-        position: "absolute",
-        top: 0,
-        left: 0,
-        width: 28,
-        height: 28,
-        alignItems: "center",
-        justifyContent: "center",
-        zIndex: 999,
-        opacity: op,
-        transform: [{ translateX: ax }, { translateY: ay }, { scale: sc }],
-      }}
-    >
+    <Animated.View pointerEvents="none" style={{ position: "absolute", top: 0, left: 0, width: 28, height: 28, alignItems: "center", justifyContent: "center", zIndex: 999, opacity: op, transform: [{ translateX: ax }, { translateY: ay }, { scale: sc }] }}>
       <Text style={{ fontSize: 22 }}>⭐</Text>
     </Animated.View>
   );
 }
 
-// ─────────────────────────────────────────────────────────────
-// SPIN WHEEL
-// 4 spokes at 0°,45°,90°,135° → 8 sectors of 45° each
-// Words placed at the MIDPOINT of each sector (between spokes)
-// ─────────────────────────────────────────────────────────────
+// ─── SPIN WHEEL ───────────────────────────────────────────────────────────────
 function SpinWheel({ rotateAnim, segments, revealed }) {
   const S = WHEEL_SIZE;
   const r = S / 2;
   const sw = 9;
-
-  // Glow pulse for the question word slot (index 0) when revealed
   const glowAnim = useRef(new Animated.Value(0)).current;
+
   useEffect(() => {
     if (revealed) {
       Animated.loop(
         Animated.sequence([
-          Animated.timing(glowAnim, {
-            toValue: 1,
-            duration: 500,
-            easing: Easing.inOut(Easing.sin),
-            useNativeDriver: false,
-          }),
-          Animated.timing(glowAnim, {
-            toValue: 0,
-            duration: 500,
-            easing: Easing.inOut(Easing.sin),
-            useNativeDriver: false,
-          }),
+          Animated.timing(glowAnim, { toValue: 1, duration: 500, easing: Easing.inOut(Easing.sin), useNativeDriver: false }),
+          Animated.timing(glowAnim, { toValue: 0, duration: 500, easing: Easing.inOut(Easing.sin), useNativeDriver: false }),
         ]),
       ).start();
     } else {
@@ -364,93 +224,13 @@ function SpinWheel({ rotateAnim, segments, revealed }) {
   }, [revealed]);
 
   return (
-    <View
-      style={{
-        width: S + 24,
-        height: S + 24,
-        alignItems: "center",
-        justifyContent: "center",
-        //  backgroundColor: "pink",
-      }}
-    >
-      {/* Glow ring */}
-      <View
-        style={{
-          position: "absolute",
-          width: S + 24,
-          height: S + 24,
-          borderRadius: (S + 24) / 2,
-          borderWidth: 3,
-          borderColor: "rgba(245,158,11,0.35)",
-          shadowColor: C.gold,
-          shadowOffset: { width: 0, height: 0 },
-          shadowOpacity: 0.7,
-          shadowRadius: 22,
-          elevation: 10,
-        }}
-      />
-
-      {/* Rotating wheel */}
-      <Animated.View
-        style={{
-          width: S,
-          height: S,
-          borderRadius: r,
-          backgroundColor: C.woodDark,
-          borderWidth: 8,
-          borderColor: C.rim,
-          alignItems: "center",
-          justifyContent: "center",
-          overflow: "hidden",
-          transform: [
-            {
-              rotate: rotateAnim.interpolate({
-                inputRange: [0, 1],
-                outputRange: ["0deg", "360deg"],
-                extrapolate: "extend",
-              }),
-            },
-          ],
-          shadowColor: "#000",
-          shadowOffset: { width: 0, height: 6 },
-          shadowOpacity: 0.55,
-          shadowRadius: 12,
-          elevation: 14,
-        }}
-      >
-        {/* Inner rim */}
-        <View
-          style={{
-            position: "absolute",
-            width: S - 30,
-            height: S - 30,
-            borderRadius: (S - 30) / 2,
-            borderWidth: 2,
-            borderColor: C.woodLight,
-          }}
-        />
-
-        {/* 4 SPOKES — each is a rectangle rotated through the center */}
+    <View style={{ width: S + 24, height: S + 24, alignItems: "center", justifyContent: "center" }}>
+      <View style={{ position: "absolute", width: S + 24, height: S + 24, borderRadius: (S + 24) / 2, borderWidth: 3, borderColor: "rgba(245,158,11,0.35)", shadowColor: C.gold, shadowOffset: { width: 0, height: 0 }, shadowOpacity: 0.7, shadowRadius: 22, elevation: 10 }} />
+      <Animated.View style={{ width: S, height: S, borderRadius: r, backgroundColor: C.woodDark, borderWidth: 8, borderColor: C.rim, alignItems: "center", justifyContent: "center", overflow: "hidden", transform: [{ rotate: rotateAnim.interpolate({ inputRange: [0, 1], outputRange: ["0deg", "360deg"], extrapolate: "extend" }) }], shadowColor: "#000", shadowOffset: { width: 0, height: 6 }, shadowOpacity: 0.55, shadowRadius: 12, elevation: 14 }}>
+        <View style={{ position: "absolute", width: S - 30, height: S - 30, borderRadius: (S - 30) / 2, borderWidth: 2, borderColor: C.woodLight }} />
         {[0, 45, 90, 135].map((angle) => (
-          <View
-            key={`sp${angle}`}
-            style={{
-              position: "absolute",
-              width: sw,
-              height: S - 36,
-              backgroundColor: C.spoke,
-              borderRadius: sw / 2,
-              transform: [{ rotate: `${angle}deg` }],
-              shadowColor: "#000",
-              shadowOffset: { width: 1, height: 1 },
-              shadowOpacity: 0.5,
-              shadowRadius: 2,
-              elevation: 4,
-            }}
-          />
+          <View key={`sp${angle}`} style={{ position: "absolute", width: sw, height: S - 36, backgroundColor: C.spoke, borderRadius: sw / 2, transform: [{ rotate: `${angle}deg` }], shadowColor: "#000", shadowOffset: { width: 1, height: 1 }, shadowOpacity: 0.5, shadowRadius: 2, elevation: 4 }} />
         ))}
-
-        {/* 8 WORDS — one per sector, centred between the two bounding spokes */}
         {segments.map((word, i) => {
           const midDeg = i * 45 + 22.5 - 90;
           const midRad = (midDeg * Math.PI) / 180;
@@ -458,126 +238,30 @@ function SpinWheel({ rotateAnim, segments, revealed }) {
           const cx = r + dist * Math.cos(midRad);
           const cy = r + dist * Math.sin(midRad);
           const textRot = midDeg + 90;
-          const isQ = i === 0 && revealed; // only highlight AFTER reveal
-
-          const wordColor = isQ
-            ? glowAnim.interpolate({
-                inputRange: [0, 1],
-                outputRange: ["#FFFFFF", "#FFD700"],
-              })
-            : C.goldLight;
-          const wordSize = isQ ? font.md : font.sm;
-
+          const isQ = i === 0 && revealed;
+          const wordColor = isQ ? glowAnim.interpolate({ inputRange: [0, 1], outputRange: ["#FFFFFF", "#FFD700"] }) : C.goldLight;
           return (
-            <View
-              key={`w${i}`}
-              style={{
-                position: "absolute",
-                width: 80,
-                height: 24,
-                left: cx - 40,
-                top: cy - 12,
-                alignItems: "center",
-                justifyContent: "center",
-                transform: [{ rotate: `${textRot}deg` }],
-              }}
-            >
+            <View key={`w${i}`} style={{ position: "absolute", width: 80, height: 24, left: cx - 40, top: cy - 12, alignItems: "center", justifyContent: "center", transform: [{ rotate: `${textRot}deg` }] }}>
               {isQ ? (
-                <Animated.Text
-                  numberOfLines={1}
-                  style={{
-                    color: wordColor,
-                    fontSize: wordSize,
-                    fontWeight: "900",
-                    letterSpacing: 0.8,
-                    textShadowColor: "rgba(255,215,0,0.9)",
-                    textShadowOffset: { width: 0, height: 0 },
-                    textShadowRadius: 8,
-                  }}
-                >
-                  {word}
-                </Animated.Text>
+                <Animated.Text numberOfLines={1} style={{ color: wordColor, fontSize: font.md, fontWeight: "900", letterSpacing: 0.8, textShadowColor: "rgba(255,215,0,0.9)", textShadowOffset: { width: 0, height: 0 }, textShadowRadius: 8 }}>{word}</Animated.Text>
               ) : (
-                <Text
-                  numberOfLines={1}
-                  style={{
-                    color: C.goldLight,
-                    fontSize: font.sm,
-                    fontWeight: "900",
-                    letterSpacing: 0.8,
-                    textShadowColor: "rgba(0,0,0,0.95)",
-                    textShadowOffset: { width: 0, height: 1 },
-                    textShadowRadius: 4,
-                  }}
-                >
-                  {word}
-                </Text>
+                <Text numberOfLines={1} style={{ color: C.goldLight, fontSize: font.sm, fontWeight: "900", letterSpacing: 0.8, textShadowColor: "rgba(0,0,0,0.95)", textShadowOffset: { width: 0, height: 1 }, textShadowRadius: 4 }}>{word}</Text>
               )}
             </View>
           );
         })}
-
-        {/* Center hub */}
-        <View
-          style={{
-            width: 50,
-            height: 50,
-            borderRadius: 25,
-            backgroundColor: C.gold,
-            borderWidth: 4,
-            borderColor: C.woodDark,
-            alignItems: "center",
-            justifyContent: "center",
-            shadowColor: C.gold,
-            shadowOffset: { width: 0, height: 0 },
-            shadowOpacity: 1,
-            shadowRadius: 10,
-            elevation: 16,
-            zIndex: 10,
-          }}
-        >
-          <Image
-            source={require("../../assets/games/spinwheel/wheel_center.png")}
-            style={{ width: 34, height: 34 }}
-            resizeMode="contain"
-            onError={() => {}}
-          />
+        <View style={{ width: 50, height: 50, borderRadius: 25, backgroundColor: C.gold, borderWidth: 4, borderColor: C.woodDark, alignItems: "center", justifyContent: "center", shadowColor: C.gold, shadowOffset: { width: 0, height: 0 }, shadowOpacity: 1, shadowRadius: 10, elevation: 16, zIndex: 10 }}>
+          <Image source={require("../../assets/games/spinwheel/wheel_center.png")} style={{ width: 34, height: 34 }} resizeMode="contain" onError={() => {}} />
         </View>
       </Animated.View>
-
-      {/* Pointer arrow at top */}
-      <View
-        style={{
-          position: "absolute",
-          top: 0,
-          alignSelf: "center",
-          zIndex: 20,
-        }}
-      >
-        <View
-          style={{
-            width: 0,
-            height: 0,
-            borderLeftWidth: 13,
-            borderRightWidth: 13,
-            borderTopWidth: 26,
-            borderLeftColor: "transparent",
-            borderRightColor: "transparent",
-            borderTopColor: C.coral,
-            shadowColor: C.coral,
-            shadowOffset: { width: 0, height: 0 },
-            shadowOpacity: 1,
-            shadowRadius: 10,
-          }}
-        />
+      <View style={{ position: "absolute", top: 0, alignSelf: "center", zIndex: 20 }}>
+        <View style={{ width: 0, height: 0, borderLeftWidth: 13, borderRightWidth: 13, borderTopWidth: 26, borderLeftColor: "transparent", borderRightColor: "transparent", borderTopColor: C.coral, shadowColor: C.coral, shadowOffset: { width: 0, height: 0 }, shadowOpacity: 1, shadowRadius: 10 }} />
       </View>
     </View>
   );
 }
 
-// ─────────────────────────────────────────────────────────────
-// PARROT MASCOT
-// ─────────────────────────────────────────────────────────────
+// ─── PARROT ───────────────────────────────────────────────────────────────────
 const PARROT_IMGS = {
   idle: require("../../assets/games/spinwheel/parrot_idle.png"),
   spin: require("../../assets/games/spinwheel/parrot_spin.png"),
@@ -589,209 +273,133 @@ function Parrot({ expression = "idle", size = 90 }) {
   const bob = useRef(new Animated.Value(0)).current;
   const scale = useRef(new Animated.Value(1)).current;
   const loop = useRef(null);
-
   useEffect(() => {
     loop.current?.stop();
     if (expression === "idle") {
-      loop.current = Animated.loop(
-        Animated.sequence([
-          Animated.timing(bob, {
-            toValue: -5,
-            duration: 900,
-            easing: Easing.inOut(Easing.sin),
-            useNativeDriver: true,
-          }),
-          Animated.timing(bob, {
-            toValue: 0,
-            duration: 900,
-            easing: Easing.inOut(Easing.sin),
-            useNativeDriver: true,
-          }),
-        ]),
-      );
+      loop.current = Animated.loop(Animated.sequence([
+        Animated.timing(bob, { toValue: -5, duration: 900, easing: Easing.inOut(Easing.sin), useNativeDriver: true }),
+        Animated.timing(bob, { toValue: 0, duration: 900, easing: Easing.inOut(Easing.sin), useNativeDriver: true }),
+      ]));
       loop.current.start();
     } else if (expression === "spin") {
-      loop.current = Animated.loop(
-        Animated.sequence([
-          Animated.timing(bob, {
-            toValue: -9,
-            duration: 200,
-            useNativeDriver: true,
-          }),
-          Animated.timing(bob, {
-            toValue: 3,
-            duration: 200,
-            useNativeDriver: true,
-          }),
-        ]),
-      );
+      loop.current = Animated.loop(Animated.sequence([
+        Animated.timing(bob, { toValue: -9, duration: 200, useNativeDriver: true }),
+        Animated.timing(bob, { toValue: 3, duration: 200, useNativeDriver: true }),
+      ]));
       loop.current.start();
     } else if (expression === "correct") {
       bob.setValue(0);
       Animated.sequence([
-        Animated.spring(scale, {
-          toValue: 1.22,
-          friction: 3,
-          tension: 200,
-          useNativeDriver: true,
-        }),
-        Animated.spring(scale, {
-          toValue: 1,
-          friction: 4,
-          useNativeDriver: true,
-        }),
+        Animated.spring(scale, { toValue: 1.22, friction: 3, tension: 200, useNativeDriver: true }),
+        Animated.spring(scale, { toValue: 1, friction: 4, useNativeDriver: true }),
       ]).start();
     } else if (expression === "wrong") {
       Animated.sequence([
-        Animated.timing(bob, {
-          toValue: 8,
-          duration: 70,
-          useNativeDriver: true,
-        }),
-        Animated.timing(bob, {
-          toValue: -8,
-          duration: 70,
-          useNativeDriver: true,
-        }),
-        Animated.timing(bob, {
-          toValue: 5,
-          duration: 70,
-          useNativeDriver: true,
-        }),
-        Animated.timing(bob, {
-          toValue: 0,
-          duration: 70,
-          useNativeDriver: true,
-        }),
+        Animated.timing(bob, { toValue: 8, duration: 70, useNativeDriver: true }),
+        Animated.timing(bob, { toValue: -8, duration: 70, useNativeDriver: true }),
+        Animated.timing(bob, { toValue: 5, duration: 70, useNativeDriver: true }),
+        Animated.timing(bob, { toValue: 0, duration: 70, useNativeDriver: true }),
       ]).start();
     }
     return () => loop.current?.stop();
   }, [expression]);
-
   return (
     <Animated.View style={{ transform: [{ translateY: bob }, { scale }] }}>
-      <Image
-        source={PARROT_IMGS[expression]}
-        style={{ width: size, height: size }}
-        resizeMode="contain"
-      />
+      <Image source={PARROT_IMGS[expression]} style={{ width: size, height: size }} resizeMode="contain" />
     </Animated.View>
   );
 }
 
-// ─────────────────────────────────────────────────────────────
-// ANSWER CHIP
-// ─────────────────────────────────────────────────────────────
+// ─── ANSWER CHIP ─────────────────────────────────────────────────────────────
 function AnswerChip({ word, state, onPress, disabled }) {
   const scaleA = useRef(new Animated.Value(1)).current;
   const shakeA = useRef(new Animated.Value(0)).current;
-
   const handlePress = () => {
     if (disabled || state !== "idle") return;
     Animated.sequence([
-      Animated.timing(scaleA, {
-        toValue: 0.9,
-        duration: 80,
-        useNativeDriver: true,
-      }),
-      Animated.spring(scaleA, {
-        toValue: 1,
-        friction: 4,
-        useNativeDriver: true,
-      }),
+      Animated.timing(scaleA, { toValue: 0.9, duration: 80, useNativeDriver: true }),
+      Animated.spring(scaleA, { toValue: 1, friction: 4, useNativeDriver: true }),
     ]).start();
     onPress(word);
   };
-
   useEffect(() => {
     if (state === "wrong") {
       Animated.sequence([
-        Animated.timing(shakeA, {
-          toValue: 10,
-          duration: 55,
-          useNativeDriver: true,
-        }),
-        Animated.timing(shakeA, {
-          toValue: -10,
-          duration: 55,
-          useNativeDriver: true,
-        }),
-        Animated.timing(shakeA, {
-          toValue: 6,
-          duration: 55,
-          useNativeDriver: true,
-        }),
-        Animated.timing(shakeA, {
-          toValue: 0,
-          duration: 55,
-          useNativeDriver: true,
-        }),
+        Animated.timing(shakeA, { toValue: 10, duration: 55, useNativeDriver: true }),
+        Animated.timing(shakeA, { toValue: -10, duration: 55, useNativeDriver: true }),
+        Animated.timing(shakeA, { toValue: 6, duration: 55, useNativeDriver: true }),
+        Animated.timing(shakeA, { toValue: 0, duration: 55, useNativeDriver: true }),
       ]).start();
     }
   }, [state]);
-
-  let bg = "rgba(255,255,255,0.07)";
-  let border = "rgba(245,158,11,0.35)";
-  let color = C.text;
-  if (state === "correct") {
-    bg = C.greenDim;
-    border = C.greenBorder;
-    color = "#34D399";
-  }
-  if (state === "wrong") {
-    bg = C.coralDim;
-    border = C.coralBorder;
-    color = "#FCA5A5";
-  }
-
+  let bg = "rgba(255,255,255,0.07)", border = "rgba(245,158,11,0.35)", color = C.text;
+  if (state === "correct") { bg = C.greenDim; border = C.greenBorder; color = "#34D399"; }
+  if (state === "wrong")   { bg = C.coralDim; border = C.coralBorder; color = "#FCA5A5"; }
   return (
-    <Animated.View
-      style={{
-        flex: 1,
-        transform: [{ scale: scaleA }, { translateX: shakeA }],
-      }}
-    >
-      <TouchableOpacity
-        onPress={handlePress}
-        disabled={disabled}
-        activeOpacity={0.8}
-        style={[styles.chip, { backgroundColor: bg, borderColor: border }]}
-      >
+    <Animated.View style={{ flex: 1, transform: [{ scale: scaleA }, { translateX: shakeA }] }}>
+      <TouchableOpacity onPress={handlePress} disabled={disabled} activeOpacity={0.8} style={[styles.chip, { backgroundColor: bg, borderColor: border }]}>
         <Text style={[styles.chipText, { color }]}>{word}</Text>
         {state === "correct" && <Text style={{ fontSize: 14 }}>✓</Text>}
-        {state === "wrong" && <Text style={{ fontSize: 14 }}>✗</Text>}
+        {state === "wrong"   && <Text style={{ fontSize: 14 }}>✗</Text>}
       </TouchableOpacity>
     </Animated.View>
   );
 }
 
-// ─────────────────────────────────────────────────────────────
-// DIFFICULTY ANCHORS
-// ─────────────────────────────────────────────────────────────
+// ─── DIFFICULTY ANCHORS ───────────────────────────────────────────────────────
 function DiffStars({ level }) {
   return (
     <View style={{ flexDirection: "row", gap: 3 }}>
       {[1, 2, 3, 4].map((i) => (
-        <Text key={i} style={{ fontSize: 12, opacity: i <= level ? 1 : 0.2 }}>
-          ⚓
-        </Text>
+        <Text key={i} style={{ fontSize: 12, opacity: i <= level ? 1 : 0.2 }}>⚓</Text>
       ))}
     </View>
   );
 }
 
-// ─────────────────────────────────────────────────────────────
-// MAIN GAME
-// ─────────────────────────────────────────────────────────────
+// ─── MAIN GAME ────────────────────────────────────────────────────────────────
 export default function SpinWheelGame() {
   const router = useRouter();
 
+  // ── Resolve rounds from route params ──────────────────────────────────────
+  // gameDataJson is passed by GamificationContext.startPlay via router.push params.
+  // Backend shape: array of round objects matching FALLBACK_ROUNDS structure.
+  // Validator: parsed[0].pairs[0].opposite must be a non-empty string.
+  // Falls back to FALLBACK_ROUNDS when absent or invalid.
+  const { gameDataJson } = useLocalSearchParams();
+
+  const rounds = useMemo(() => {
+    try {
+      if (!gameDataJson) return FALLBACK_ROUNDS;
+      const parsed = JSON.parse(gameDataJson);
+      if (
+        Array.isArray(parsed) &&
+        parsed.length > 0 &&
+        Array.isArray(parsed[0]?.pairs) &&
+        parsed[0].pairs.length > 0 &&
+        typeof parsed[0].pairs[0]?.opposite === "string" &&
+        parsed[0].pairs[0].opposite.length > 0
+      ) {
+        console.log("[SpinWheelGame] using backend rounds, count:", parsed.length);
+        return parsed;
+      }
+      console.log("[SpinWheelGame] invalid shape — using fallback");
+      return FALLBACK_ROUNDS;
+    } catch (_) {
+      return FALLBACK_ROUNDS;
+    }
+  }, [gameDataJson]);
+
+  // Derived constant — replaces all ROUNDS.length references
+  const totalRounds = rounds.length;
+
+  // ── State ─────────────────────────────────────────────────
   const [screen, setScreen] = useState("start");
   const [roundIndex, setRoundIndex] = useState(0);
   const [pairIndex, setPairIndex] = useState(0);
   const [spinning, setSpinning] = useState(false);
   const [hasSpun, setHasSpun] = useState(false);
-  const [revealed, setRevealed] = useState(false); // true after word glow + speech
+  const [revealed, setRevealed] = useState(false);
   const [answerStates, setAnswerStates] = useState({});
   const [answered, setAnswered] = useState(false);
   const [parrot, setParrot] = useState("idle");
@@ -815,10 +423,11 @@ export default function SpinWheelGame() {
   // Intro sound cancel
   const introStop = useRef(null);
 
-  const round = ROUNDS[roundIndex];
+  // round / pair read from resolved `rounds` — not FALLBACK_ROUNDS
+  const round = rounds[roundIndex];
   const pair = round?.pairs[pairIndex];
 
-  // ── Reset choices + segments when pair changes
+  // ── Reset choices + segments when pair changes ────────────────────────────
   useEffect(() => {
     if (!pair) return;
     setChoices(shuffle([pair.opposite, ...pair.distractors]));
@@ -826,14 +435,13 @@ export default function SpinWheelGame() {
     setRevealed(false);
   }, [roundIndex, pairIndex]);
 
-  // ── Intro sound sequence (stoppable)
+  // ── Intro sound sequence ──────────────────────────────────────────────────
   useEffect(() => {
     let cancelled = false;
     const t = setTimeout(async () => {
       if (cancelled) return;
       const stop = await playSoundTracked(SFX.pirateStart);
       introStop.current = stop;
-      // Wait up to 5s for pirate-start to finish
       await new Promise((r) => setTimeout(r, 5000));
       if (cancelled) return;
       introStop.current = null;
@@ -847,34 +455,21 @@ export default function SpinWheelGame() {
     };
   }, []);
 
-  // ── Cleanup on unmount
-  useEffect(
-    () => () => {
-      if (spinTimer.current) clearTimeout(spinTimer.current);
-      introStop.current?.();
-      Speech.stop();
-    },
-    [],
-  );
+  // ── Cleanup on unmount ────────────────────────────────────────────────────
+  useEffect(() => () => {
+    if (spinTimer.current) clearTimeout(spinTimer.current);
+    introStop.current?.();
+    Speech.stop();
+  }, []);
 
-  // ── Badge pulse
+  // ── Badge pulse ───────────────────────────────────────────────────────────
   const pulseBadge = () => {
     Animated.sequence([
-      Animated.spring(badgeScale, {
-        toValue: 1.4,
-        friction: 3,
-        tension: 200,
-        useNativeDriver: true,
-      }),
-      Animated.spring(badgeScale, {
-        toValue: 1,
-        friction: 4,
-        useNativeDriver: true,
-      }),
+      Animated.spring(badgeScale, { toValue: 1.4, friction: 3, tension: 200, useNativeDriver: true }),
+      Animated.spring(badgeScale, { toValue: 1, friction: 4, useNativeDriver: true }),
     ]).start();
   };
 
-  // ── Spawn 5 floating stars
   const spawnStars = (fromX, fromY) => {
     const stars = Array.from({ length: 5 }, (_, i) => ({
       id: starIdRef.current++,
@@ -888,74 +483,49 @@ export default function SpinWheelGame() {
     setTimeout(pulseBadge, 380);
   };
 
-  const removeStar = (id) =>
-    setFloatingStars((p) => p.filter((s) => s.id !== id));
+  const removeStar = (id) => setFloatingStars((p) => p.filter((s) => s.id !== id));
 
-  // ── SPIN
+  // ── SPIN ──────────────────────────────────────────────────────────────────
   const handleSpin = () => {
     if (spinning || answered) return;
     if (spinTimer.current) clearTimeout(spinTimer.current);
-
     playSound(SFX.button);
     playSound(SFX.spin);
     setSpinning(true);
     setHasSpun(false);
     setRevealed(false);
     setParrot("spin");
-
     const turns = 4 + Math.floor(Math.random() * 4);
-
-    // Sector 0 (question word) is centred at 22.5° past the top.
-    // The pointer sits at 0°. To land the word CENTRE under the pointer
-    // we need the wheel to stop at exactly -22.5° offset from a full turn,
-    // i.e. the fractional part of totalRot should be (360-22.5)/360 = 0.9375
-    // so that sector-0 midpoint faces straight up.
     const currentFrac = totalRot.current % 1;
-    const targetFrac = (360 - 22.5) / 360; // 0.9375
+    const targetFrac = (360 - 22.5) / 360;
     let extraFrac = targetFrac - currentFrac;
-    if (extraFrac <= 0) extraFrac += 1; // always move forward
+    if (extraFrac <= 0) extraFrac += 1;
     const target = totalRot.current + turns + extraFrac;
     totalRot.current = target;
     const duration = 2800 + turns * 150;
-
-    Animated.timing(rotateAnim, {
-      toValue: target,
-      duration,
-      easing: Easing.out(Easing.cubic),
-      useNativeDriver: false,
-    }).start();
-
+    Animated.timing(rotateAnim, { toValue: target, duration, easing: Easing.out(Easing.cubic), useNativeDriver: false }).start();
     spinTimer.current = setTimeout(async () => {
       spinTimer.current = null;
       setSpinning(false);
       setHasSpun(true);
       setParrot("idle");
       playSound(SFX.tick);
-
       await new Promise((r) => setTimeout(r, 300));
       setRevealed(true);
       playSound(SFX.reveal);
-
       await new Promise((r) => setTimeout(r, 1500));
       const wordToSpeak = pair?.word;
-      if (wordToSpeak) {
-        Speech.speak(wordToSpeak, {
-          language: "en-US",
-          pitch: 1.0,
-          rate: 0.85,
-        });
-      }
+      if (wordToSpeak) Speech.speak(wordToSpeak, { language: "en-US", pitch: 1.0, rate: 0.85 });
     }, duration + 60);
   };
 
-  // ── ANSWER
+  // ── ANSWER ────────────────────────────────────────────────────────────────
   const handleAnswer = (word) => {
     if (!hasSpun || answered || spinning) return;
     const correct = word === pair.opposite;
     setAnswerStates({ [word]: correct ? "correct" : "wrong" });
     setAnswered(true);
     setParrot(correct ? "correct" : "wrong");
-
     if (correct) {
       playSound(SFX.correct);
       const pts = 10 + round.difficulty * 5;
@@ -963,40 +533,33 @@ export default function SpinWheelGame() {
       spawnStars(SW / 2, SH * 0.72);
     } else {
       playSound(SFX.wrong);
-      setTimeout(() => {
-        setAnswerStates({ [word]: "wrong", [pair.opposite]: "correct" });
-      }, 600);
+      setTimeout(() => { setAnswerStates({ [word]: "wrong", [pair.opposite]: "correct" }); }, 600);
     }
-
     const newResults = [...pairResults, correct];
     setPairResults(newResults);
-
-    setTimeout(
-      () => {
-        const nextPair = pairIndex + 1;
-        if (nextPair < round.pairs.length) {
-          setPairIndex(nextPair);
-          setAnswered(false);
-          setHasSpun(false);
-          setAnswerStates({});
-          setParrot("idle");
-        } else {
-          const correctCount = newResults.filter(Boolean).length;
-          const stars = correctCount === 3 ? 3 : correctCount === 2 ? 2 : 1;
-          setRoundScores((rs) => [...rs, stars]);
-          playSound(stars >= 2 ? SFX.win : SFX.lose);
-          setScreen("round_result");
-        }
-      },
-      correct ? 1400 : 2000,
-    );
+    setTimeout(() => {
+      const nextPair = pairIndex + 1;
+      if (nextPair < round.pairs.length) {
+        setPairIndex(nextPair);
+        setAnswered(false);
+        setHasSpun(false);
+        setAnswerStates({});
+        setParrot("idle");
+      } else {
+        const correctCount = newResults.filter(Boolean).length;
+        const stars = correctCount === 3 ? 3 : correctCount === 2 ? 2 : 1;
+        setRoundScores((rs) => [...rs, stars]);
+        playSound(stars >= 2 ? SFX.win : SFX.lose);
+        setScreen("round_result");
+      }
+    }, correct ? 1400 : 2000);
   };
 
-  // ── NEXT ROUND
+  // ── NEXT ROUND — uses totalRounds (derived from resolved rounds) ──────────
   const handleNextRound = () => {
     playSound(SFX.start);
     const next = roundIndex + 1;
-    if (next < ROUNDS.length) {
+    if (next < totalRounds) {
       setRoundIndex(next);
       setPairIndex(0);
       setPairResults([]);
@@ -1016,19 +579,13 @@ export default function SpinWheelGame() {
 
   if (screen === "start") {
     return (
-      <ImageBackground
-        source={require("../../assets/games/spinwheel/ship_bg.jpg")}
-        style={styles.root}
-        resizeMode="cover"
-      >
+      <ImageBackground source={require("../../assets/games/spinwheel/ship_bg.jpg")} style={styles.root} resizeMode="cover">
         <View style={styles.overlay} />
         <StatusBar barStyle="light-content" />
         <SafeAreaView style={styles.startWrap}>
           <Parrot expression="idle" size={180} />
           <Text style={styles.title}>Captain Flipo's{"\n"}Flip Wheel</Text>
-          <Text style={styles.subtitle}>
-            Spin the wheel — find the OPPOSITE!
-          </Text>
+          <Text style={styles.subtitle}>Spin the wheel — find the OPPOSITE!</Text>
           <View style={styles.rulesBox}>
             <Text style={styles.rulesTitle}>⚓ How to Play</Text>
             <Text style={styles.rulesRow}>🎡 Press SPIN to spin the wheel</Text>
@@ -1036,92 +593,56 @@ export default function SpinWheelGame() {
             <Text style={styles.rulesRow}>🔁 Tap its OPPOSITE below</Text>
             <Text style={styles.rulesRow}>📈 Gets harder each round!</Text>
           </View>
-          <TouchableOpacity
-            style={styles.goldBtn}
-            activeOpacity={0.85}
-            onPress={() => {
-              introStop.current?.();
-              introStop.current = null;
-              playSound(SFX.button);
-              setScreen("playing");
-            }}
-          >
+          <TouchableOpacity style={styles.goldBtn} activeOpacity={0.85} onPress={() => {
+            introStop.current?.();
+            introStop.current = null;
+            playSound(SFX.button);
+            setScreen("playing");
+          }}>
             <Text style={styles.goldBtnText}>⚓ Set Sail!</Text>
           </TouchableOpacity>
-          <TouchableOpacity
-            style={styles.closeRow}
-            onPress={() => router.back()}
-          >
+          <TouchableOpacity style={styles.closeRow} onPress={() => router.back()}>
             <Text style={styles.closeTxt}>✕ Close</Text>
           </TouchableOpacity>
         </SafeAreaView>
-        {floatingStars.map((s) => (
-          <FloatingStar key={s.id} {...s} onDone={() => removeStar(s.id)} />
-        ))}
+        {floatingStars.map((s) => <FloatingStar key={s.id} {...s} onDone={() => removeStar(s.id)} />)}
       </ImageBackground>
     );
   }
 
   if (screen === "playing") {
     return (
-      <ImageBackground
-        source={require("../../assets/games/spinwheel/ship_bg.jpg")}
-        style={styles.root}
-        resizeMode="cover"
-      >
+      <ImageBackground source={require("../../assets/games/spinwheel/ship_bg.jpg")} style={styles.root} resizeMode="cover">
         <View style={styles.overlay} />
         <StatusBar barStyle="light-content" />
 
         {/* HEADER */}
         <SafeAreaView style={styles.header}>
           <View style={styles.headerRow}>
-            <TouchableOpacity
-              style={styles.exitBtn}
-              onPress={() => router.back()}
-            >
+            <TouchableOpacity style={styles.exitBtn} onPress={() => router.back()}>
               <Text style={styles.exitTxt}>✕</Text>
             </TouchableOpacity>
             <View style={{ alignItems: "center", gap: 3 }}>
-              <Text style={styles.roundTxt}>
-                Round {roundIndex + 1} / {ROUNDS.length}
-              </Text>
+              {/* totalRounds replaces hardcoded ROUNDS.length */}
+              <Text style={styles.roundTxt}>Round {roundIndex + 1} / {totalRounds}</Text>
               <DiffStars level={round.difficulty} />
             </View>
-            <Animated.View
-              style={[
-                styles.scoreBadge,
-                { transform: [{ scale: badgeScale }] },
-              ]}
-              onLayout={(e) =>
-                e.target.measureInWindow((x, y, w, h) => {
-                  scoreBadgePos.current = {
-                    x: x + w / 2 - 14,
-                    y: y + h / 2 - 14,
-                  };
-                })
-              }
-            >
+            <Animated.View style={[styles.scoreBadge, { transform: [{ scale: badgeScale }] }]}
+              onLayout={(e) => e.target.measureInWindow((x, y, w, h) => {
+                scoreBadgePos.current = { x: x + w / 2 - 14, y: y + h / 2 - 14 };
+              })}>
               <Text style={styles.scoreTxt}>⭐ {score}</Text>
             </Animated.View>
           </View>
-          {/* Progress dots */}
           <View style={styles.dots}>
             {round.pairs.map((_, i) => (
-              <View
-                key={i}
-                style={[
-                  styles.dot,
-                  i < pairIndex && styles.dotDone,
-                  i === pairIndex && styles.dotActive,
-                ]}
-              />
+              <View key={i} style={[styles.dot, i < pairIndex && styles.dotDone, i === pairIndex && styles.dotActive]} />
             ))}
           </View>
         </SafeAreaView>
 
         {/* BODY */}
         <View style={{ flex: 1 }}>
-          {/* PARROT + BUBBLE */}
           <View style={styles.parrotRow}>
             <Parrot expression={parrot} size={120} />
             <View style={styles.bubble}>
@@ -1131,58 +652,30 @@ export default function SpinWheelGame() {
                   <Text style={styles.bubbleWord}>{pair?.word}</Text>
                 </>
               )}
-              {!hasSpun && !spinning && (
-                <Text style={styles.bubbleLabel}>
-                  🎡 {pairIndex === 0 ? "Spin to begin!" : "Spin again!"}
-                </Text>
-              )}
+              {!hasSpun && !spinning && <Text style={styles.bubbleLabel}>🎡 {pairIndex === 0 ? "Spin to begin!" : "Spin again!"}</Text>}
               {spinning && <Text style={styles.bubbleLabel}>Spinning… 🌀</Text>}
             </View>
           </View>
 
-          {/* WHEEL */}
           <View style={styles.wheelWrap}>
             <SpinWheel
               rotateAnim={rotateAnim}
-              segments={
-                segments.length === 8
-                  ? segments
-                  : makeSegments(pair?.word ?? "?")
-              }
+              segments={segments.length === 8 ? segments : makeSegments(pair?.word ?? "?")}
               revealed={revealed}
             />
           </View>
 
-          {/* BOTTOM — spin btn or answer chips */}
           <View style={styles.bottom}>
             {!hasSpun ? (
-              <TouchableOpacity
-                style={[styles.goldBtn, spinning && styles.goldBtnDisabled]}
-                onPress={handleSpin}
-                disabled={spinning}
-                activeOpacity={0.85}
-              >
-                <Text style={styles.goldBtnText}>
-                  {spinning ? "Spinning…" : "🎡 SPIN!"}
-                </Text>
+              <TouchableOpacity style={[styles.goldBtn, spinning && styles.goldBtnDisabled]} onPress={handleSpin} disabled={spinning} activeOpacity={0.85}>
+                <Text style={styles.goldBtnText}>{spinning ? "Spinning…" : "🎡 SPIN!"}</Text>
               </TouchableOpacity>
             ) : (
               <View style={styles.answersWrap}>
-                <Text style={styles.answersLabel}>
-                  Opposite of:{" "}
-                  <Text style={{ color: C.gold, fontWeight: "900" }}>
-                    {pair?.word}
-                  </Text>
-                </Text>
+                <Text style={styles.answersLabel}>Opposite of: <Text style={{ color: C.gold, fontWeight: "900" }}>{pair?.word}</Text></Text>
                 <View style={styles.chipsRow}>
                   {choices.map((word) => (
-                    <AnswerChip
-                      key={word}
-                      word={word}
-                      state={answerStates[word] || "idle"}
-                      onPress={handleAnswer}
-                      disabled={answered}
-                    />
+                    <AnswerChip key={word} word={word} state={answerStates[word] || "idle"} onPress={handleAnswer} disabled={answered} />
                   ))}
                 </View>
               </View>
@@ -1190,9 +683,7 @@ export default function SpinWheelGame() {
           </View>
         </View>
 
-        {floatingStars.map((s) => (
-          <FloatingStar key={s.id} {...s} onDone={() => removeStar(s.id)} />
-        ))}
+        {floatingStars.map((s) => <FloatingStar key={s.id} {...s} onDone={() => removeStar(s.id)} />)}
       </ImageBackground>
     );
   }
@@ -1202,11 +693,7 @@ export default function SpinWheelGame() {
     const isWin = stars >= 2;
     const correct = pairResults.filter(Boolean).length;
     return (
-      <ImageBackground
-        source={require("../../assets/games/spinwheel/ship_bg.jpg")}
-        style={styles.root}
-        resizeMode="cover"
-      >
+      <ImageBackground source={require("../../assets/games/spinwheel/ship_bg.jpg")} style={styles.root} resizeMode="cover">
         <View style={styles.overlay} />
         <StatusBar barStyle="light-content" />
         <View style={styles.overlayBg}>
@@ -1218,41 +705,24 @@ export default function SpinWheelGame() {
             correct={correct}
             total={round.pairs.length}
             score={score}
-            isLast={roundIndex + 1 >= ROUNDS.length}
+            // isLast computed from totalRounds — not hardcoded FALLBACK_ROUNDS.length
+            isLast={roundIndex + 1 >= totalRounds}
             onNext={handleNextRound}
           />
         </View>
-        {floatingStars.map((s) => (
-          <FloatingStar key={s.id} {...s} onDone={() => removeStar(s.id)} />
-        ))}
+        {floatingStars.map((s) => <FloatingStar key={s.id} {...s} onDone={() => removeStar(s.id)} />)}
       </ImageBackground>
     );
   }
 
   if (screen === "final") {
     const totalStars = roundScores.reduce((a, b) => a + b, 0);
-    const maxStars = ROUNDS.length * 3;
+    const maxStars = totalRounds * 3; // uses totalRounds — not FALLBACK_ROUNDS.length
     const isMaster = totalStars >= maxStars * 0.85;
-    const grade = isMaster
-      ? "Master Captain!"
-      : totalStars >= maxStars * 0.6
-        ? "First Mate!"
-        : totalStars >= maxStars * 0.4
-          ? "Deckhand!"
-          : "Sailor Trainee";
-    const gradeEmoji = isMaster
-      ? "🏴‍☠️"
-      : totalStars >= maxStars * 0.6
-        ? "🏆"
-        : totalStars >= maxStars * 0.4
-          ? "⚓"
-          : "🦜";
+    const grade = isMaster ? "Master Captain!" : totalStars >= maxStars * 0.6 ? "First Mate!" : totalStars >= maxStars * 0.4 ? "Deckhand!" : "Sailor Trainee";
+    const gradeEmoji = isMaster ? "🏴‍☠️" : totalStars >= maxStars * 0.6 ? "🏆" : totalStars >= maxStars * 0.4 ? "⚓" : "🦜";
     return (
-      <ImageBackground
-        source={require("../../assets/games/spinwheel/ship_bg.jpg")}
-        style={styles.root}
-        resizeMode="cover"
-      >
+      <ImageBackground source={require("../../assets/games/spinwheel/ship_bg.jpg")} style={styles.root} resizeMode="cover">
         <View style={styles.overlay} />
         <StatusBar barStyle="light-content" />
         <View style={styles.overlayBg}>
@@ -1263,18 +733,13 @@ export default function SpinWheelGame() {
             totalStars={totalStars}
             maxStars={maxStars}
             roundScores={roundScores}
+            // Pass resolved rounds so FinalCard can render breakdown labels correctly
+            rounds={rounds}
             onReplay={() => {
-              setRoundIndex(0);
-              setPairIndex(0);
-              setPairResults([]);
-              setRoundScores([]);
-              setScore(0);
-              setAnswered(false);
-              setHasSpun(false);
-              setAnswerStates({});
-              setParrot("idle");
-              totalRot.current = 0;
-              rotateAnim.setValue(0);
+              setRoundIndex(0); setPairIndex(0); setPairResults([]);
+              setRoundScores([]); setScore(0); setAnswered(false);
+              setHasSpun(false); setAnswerStates({}); setParrot("idle");
+              totalRot.current = 0; rotateAnim.setValue(0);
               setScreen("start");
             }}
             onExit={() => router.back()}
@@ -1288,145 +753,58 @@ export default function SpinWheelGame() {
 }
 
 // ─────────────────────────────────────────────────────────────
-// ROUND RESULT CARD
+// ROUND RESULT CARD — unchanged from original
 // ─────────────────────────────────────────────────────────────
-function RoundResultCard({
-  roundIndex,
-  label,
-  stars,
-  isWin,
-  correct,
-  total,
-  score,
-  isLast,
-  onNext,
-}) {
+function RoundResultCard({ roundIndex, label, stars, isWin, correct, total, score, isLast, onNext }) {
   const sc = useRef(new Animated.Value(0.65)).current;
   const op = useRef(new Animated.Value(0)).current;
   const s1 = useRef(new Animated.Value(0)).current;
   const s2 = useRef(new Animated.Value(0)).current;
   const s3 = useRef(new Animated.Value(0)).current;
   const shimX = useRef(new Animated.Value(-200)).current;
-
   useEffect(() => {
     Animated.parallel([
-      Animated.spring(sc, {
-        toValue: 1,
-        friction: 5,
-        tension: 60,
-        useNativeDriver: true,
-      }),
+      Animated.spring(sc, { toValue: 1, friction: 5, tension: 60, useNativeDriver: true }),
       Animated.timing(op, { toValue: 1, duration: 320, useNativeDriver: true }),
     ]).start();
-    [
-      [s1, 280],
-      [s2, 450],
-      [s3, 620],
-    ].forEach(([v, d]) =>
-      Animated.sequence([
-        Animated.delay(d),
-        Animated.spring(v, {
-          toValue: 1,
-          friction: 3,
-          tension: 130,
-          useNativeDriver: true,
-        }),
-      ]).start(),
+    [[s1, 280], [s2, 450], [s3, 620]].forEach(([v, d]) =>
+      Animated.sequence([Animated.delay(d), Animated.spring(v, { toValue: 1, friction: 3, tension: 130, useNativeDriver: true })]).start(),
     );
     if (isWin) {
-      Animated.loop(
-        Animated.sequence([
-          Animated.delay(700),
-          Animated.timing(shimX, {
-            toValue: 320,
-            duration: 1300,
-            easing: Easing.inOut(Easing.quad),
-            useNativeDriver: true,
-          }),
-          Animated.timing(shimX, {
-            toValue: -200,
-            duration: 0,
-            useNativeDriver: true,
-          }),
-        ]),
-      ).start();
+      Animated.loop(Animated.sequence([
+        Animated.delay(700),
+        Animated.timing(shimX, { toValue: 320, duration: 1300, easing: Easing.inOut(Easing.quad), useNativeDriver: true }),
+        Animated.timing(shimX, { toValue: -200, duration: 0, useNativeDriver: true }),
+      ])).start();
     }
   }, []);
-
   const ac = isWin ? C.gold : C.coral;
   const adim = isWin ? "rgba(245,158,11,0.12)" : "rgba(239,68,68,0.1)";
   const aborder = isWin ? "rgba(245,158,11,0.45)" : "rgba(239,68,68,0.35)";
-
   return (
-    <Animated.View
-      style={[
-        styles.card,
-        { borderColor: aborder, opacity: op, transform: [{ scale: sc }] },
-      ]}
-    >
-      <View
-        style={[styles.banner, { backgroundColor: adim, borderColor: aborder }]}
-      >
-        {isWin && (
-          <Animated.View
-            pointerEvents="none"
-            style={[styles.shimmer, { transform: [{ translateX: shimX }] }]}
-          />
-        )}
-        <Text style={[styles.bannerTxt, { color: ac }]}>
-          {isWin ? `🦜 Round ${roundIndex + 1} Complete!` : "💪 Keep Sailing!"}
-        </Text>
+    <Animated.View style={[styles.card, { borderColor: aborder, opacity: op, transform: [{ scale: sc }] }]}>
+      <View style={[styles.banner, { backgroundColor: adim, borderColor: aborder }]}>
+        {isWin && <Animated.View pointerEvents="none" style={[styles.shimmer, { transform: [{ translateX: shimX }] }]} />}
+        <Text style={[styles.bannerTxt, { color: ac }]}>{isWin ? `🦜 Round ${roundIndex + 1} Complete!` : "💪 Keep Sailing!"}</Text>
         <Text style={[styles.bannerSub, { color: ac }]}>{label} Rank</Text>
       </View>
       <View style={styles.starsRow}>
         {[s1, s2, s3].map((s, i) => (
-          <Animated.Text
-            key={i}
-            style={[
-              styles.starEmoji,
-              { transform: [{ scale: s }], opacity: i < stars ? s : 0.18 },
-            ]}
-          >
-            ⭐
-          </Animated.Text>
+          <Animated.Text key={i} style={[styles.starEmoji, { transform: [{ scale: s }], opacity: i < stars ? s : 0.18 }]}>⭐</Animated.Text>
         ))}
       </View>
       <View style={styles.pillRow}>
-        <View
-          style={[
-            styles.pill,
-            {
-              borderColor: "rgba(16,185,129,0.5)",
-              backgroundColor: "rgba(16,185,129,0.1)",
-            },
-          ]}
-        >
+        <View style={[styles.pill, { borderColor: "rgba(16,185,129,0.5)", backgroundColor: "rgba(16,185,129,0.1)" }]}>
           <Text style={styles.pillLabel}>CORRECT</Text>
-          <Text style={[styles.pillVal, { color: C.green }]}>
-            {correct}/{total}
-          </Text>
+          <Text style={[styles.pillVal, { color: C.green }]}>{correct}/{total}</Text>
         </View>
-        <View
-          style={[
-            styles.pill,
-            {
-              borderColor: "rgba(245,158,11,0.45)",
-              backgroundColor: "rgba(245,158,11,0.08)",
-            },
-          ]}
-        >
+        <View style={[styles.pill, { borderColor: "rgba(245,158,11,0.45)", backgroundColor: "rgba(245,158,11,0.08)" }]}>
           <Text style={styles.pillLabel}>SCORE</Text>
           <Text style={[styles.pillVal, { color: C.gold }]}>{score}</Text>
         </View>
       </View>
-      <TouchableOpacity
-        style={[styles.goldBtn, { marginTop: 4 }]}
-        onPress={onNext}
-        activeOpacity={0.85}
-      >
-        <Text style={styles.goldBtnText}>
-          {isLast ? "See Final Score 🏆" : "Next Round →"}
-        </Text>
+      <TouchableOpacity style={[styles.goldBtn, { marginTop: 4 }]} onPress={onNext} activeOpacity={0.85}>
+        <Text style={styles.goldBtnText}>{isLast ? "See Final Score 🏆" : "Next Round →"}</Text>
       </TouchableOpacity>
     </Animated.View>
   );
@@ -1434,17 +812,10 @@ function RoundResultCard({
 
 // ─────────────────────────────────────────────────────────────
 // FINAL CARD
+// Now receives `rounds` prop so it reads labels from resolved data
+// instead of the module-level FALLBACK_ROUNDS constant.
 // ─────────────────────────────────────────────────────────────
-function FinalCard({
-  grade,
-  gradeEmoji,
-  score,
-  totalStars,
-  maxStars,
-  roundScores,
-  onReplay,
-  onExit,
-}) {
+function FinalCard({ grade, gradeEmoji, score, totalStars, maxStars, roundScores, rounds, onReplay, onExit }) {
   const sc = useRef(new Animated.Value(0.6)).current;
   const op = useRef(new Animated.Value(0)).current;
   const shimX = useRef(new Animated.Value(-200)).current;
@@ -1453,136 +824,58 @@ function FinalCard({
     useRef(new Animated.Value(0)).current,
     useRef(new Animated.Value(0)).current,
   ];
-
   useEffect(() => {
     Animated.parallel([
-      Animated.spring(sc, {
-        toValue: 1,
-        friction: 4,
-        tension: 55,
-        useNativeDriver: true,
-      }),
+      Animated.spring(sc, { toValue: 1, friction: 4, tension: 55, useNativeDriver: true }),
       Animated.timing(op, { toValue: 1, duration: 300, useNativeDriver: true }),
     ]).start();
     stars.forEach((s, i) =>
-      Animated.sequence([
-        Animated.delay(300 + i * 150),
-        Animated.spring(s, {
-          toValue: 1,
-          friction: 3,
-          tension: 120,
-          useNativeDriver: true,
-        }),
-      ]).start(),
+      Animated.sequence([Animated.delay(300 + i * 150), Animated.spring(s, { toValue: 1, friction: 3, tension: 120, useNativeDriver: true })]).start(),
     );
-    Animated.loop(
-      Animated.sequence([
-        Animated.delay(900),
-        Animated.timing(shimX, {
-          toValue: 320,
-          duration: 1400,
-          easing: Easing.inOut(Easing.quad),
-          useNativeDriver: true,
-        }),
-        Animated.timing(shimX, {
-          toValue: -200,
-          duration: 0,
-          useNativeDriver: true,
-        }),
-      ]),
-    ).start();
+    Animated.loop(Animated.sequence([
+      Animated.delay(900),
+      Animated.timing(shimX, { toValue: 320, duration: 1400, easing: Easing.inOut(Easing.quad), useNativeDriver: true }),
+      Animated.timing(shimX, { toValue: -200, duration: 0, useNativeDriver: true }),
+    ])).start();
   }, []);
-
   const filled = Math.round((totalStars / maxStars) * 3);
-
   return (
-    <Animated.View
-      style={[
-        styles.card,
-        styles.finalCard,
-        { opacity: op, transform: [{ scale: sc }] },
-      ]}
-    >
+    <Animated.View style={[styles.card, styles.finalCard, { opacity: op, transform: [{ scale: sc }] }]}>
       <View style={styles.finalBanner}>
-        <Animated.View
-          pointerEvents="none"
-          style={[styles.shimmer, { transform: [{ translateX: shimX }] }]}
-        />
+        <Animated.View pointerEvents="none" style={[styles.shimmer, { transform: [{ translateX: shimX }] }]} />
         <Text style={styles.finalEmoji}>{gradeEmoji}</Text>
         <Text style={styles.finalGrade}>{grade.toUpperCase()}</Text>
       </View>
       <View style={styles.starsRow}>
         {stars.map((s, i) => (
-          <Animated.Text
-            key={i}
-            style={[
-              styles.starEmoji,
-              { transform: [{ scale: s }], opacity: i < filled ? s : 0.18 },
-            ]}
-          >
-            ⭐
-          </Animated.Text>
+          <Animated.Text key={i} style={[styles.starEmoji, { transform: [{ scale: s }], opacity: i < filled ? s : 0.18 }]}>⭐</Animated.Text>
         ))}
       </View>
       <View style={styles.pillRow}>
-        <View
-          style={[
-            styles.pill,
-            {
-              borderColor: "rgba(245,158,11,0.5)",
-              backgroundColor: "rgba(245,158,11,0.08)",
-            },
-          ]}
-        >
+        <View style={[styles.pill, { borderColor: "rgba(245,158,11,0.5)", backgroundColor: "rgba(245,158,11,0.08)" }]}>
           <Text style={styles.pillLabel}>SCORE</Text>
           <Text style={[styles.pillVal, { color: C.gold }]}>{score}</Text>
         </View>
-        <View
-          style={[
-            styles.pill,
-            {
-              borderColor: "rgba(6,182,212,0.45)",
-              backgroundColor: "rgba(6,182,212,0.08)",
-            },
-          ]}
-        >
+        <View style={[styles.pill, { borderColor: "rgba(6,182,212,0.45)", backgroundColor: "rgba(6,182,212,0.08)" }]}>
           <Text style={styles.pillLabel}>STARS</Text>
-          <Text style={[styles.pillVal, { color: C.teal }]}>
-            ⭐ {totalStars}/{maxStars}
-          </Text>
+          <Text style={[styles.pillVal, { color: C.teal }]}>⭐ {totalStars}/{maxStars}</Text>
         </View>
       </View>
       <View style={styles.breakdown}>
         {roundScores.map((s, i) => (
           <View key={i} style={styles.breakdownRow}>
-            <Text style={styles.breakdownLabel}>
-              ⚓ Round {i + 1} — {ROUNDS[i].label}
-            </Text>
+            {/* rounds[i] reads from the resolved array — not FALLBACK_ROUNDS[i] */}
+            <Text style={styles.breakdownLabel}>⚓ Round {i + 1} — {rounds[i]?.label ?? `Round ${i + 1}`}</Text>
             <View style={{ flexDirection: "row", gap: 3 }}>
-              {[1, 2, 3].map((n) => (
-                <Text
-                  key={n}
-                  style={{ fontSize: 13, opacity: n <= s ? 1 : 0.18 }}
-                >
-                  ⭐
-                </Text>
-              ))}
+              {[1, 2, 3].map((n) => <Text key={n} style={{ fontSize: 13, opacity: n <= s ? 1 : 0.18 }}>⭐</Text>)}
             </View>
           </View>
         ))}
       </View>
-      <TouchableOpacity
-        style={[styles.goldBtn, { marginTop: 4 }]}
-        onPress={onReplay}
-        activeOpacity={0.85}
-      >
+      <TouchableOpacity style={[styles.goldBtn, { marginTop: 4 }]} onPress={onReplay} activeOpacity={0.85}>
         <Text style={styles.goldBtnText}>🎡 Play Again</Text>
       </TouchableOpacity>
-      <TouchableOpacity
-        style={styles.secBtn}
-        onPress={onExit}
-        activeOpacity={0.75}
-      >
+      <TouchableOpacity style={styles.secBtn} onPress={onExit} activeOpacity={0.75}>
         <Text style={styles.secBtnTxt}>✕ Exit</Text>
       </TouchableOpacity>
     </Animated.View>
@@ -1590,321 +883,63 @@ function FinalCard({
 }
 
 // ─────────────────────────────────────────────────────────────
-// STYLES
+// STYLES — unchanged from original
 // ─────────────────────────────────────────────────────────────
 const styles = StyleSheet.create({
   root: { flex: 1, backgroundColor: C.bg },
-  overlay: {
-    ...StyleSheet.absoluteFillObject,
-    backgroundColor: "rgba(10,22,40,0.72)",
-  },
-  overlayBg: {
-    ...StyleSheet.absoluteFillObject,
-    backgroundColor: "rgba(8,8,26,0.84)",
-    alignItems: "center",
-    justifyContent: "center",
-    zIndex: 300,
-  },
-
-  // Start
-  startWrap: {
-    flex: 1,
-    alignItems: "center",
-    justifyContent: "center",
-    paddingHorizontal: pad.md,
-  },
-  title: {
-    fontSize: font.h1,
-    fontWeight: "900",
-    color: C.gold,
-    textAlign: "center",
-    marginTop: 10,
-    lineHeight: 42,
-    textShadowColor: "rgba(245,158,11,0.4)",
-    textShadowOffset: { width: 0, height: 0 },
-    textShadowRadius: 12,
-  },
-  subtitle: {
-    color: C.textSec,
-    fontSize: font.xl,
-    textAlign: "center",
-    marginTop: 8,
-    marginBottom: 18,
-    lineHeight: 24,
-  },
-  rulesBox: {
-    backgroundColor: "rgba(10,22,40,0.9)",
-    borderRadius: 18,
-    borderWidth: 1.5,
-    borderColor: C.goldBorder,
-    padding: 16,
-    width: "90%",
-    gap: 8,
-    marginBottom: 22,
-    marginLeft: 20,
-    marginRight: 20,
-  },
-  rulesTitle: {
-    color: C.gold,
-    fontWeight: "900",
-    fontSize: font.xl,
-    marginBottom: 2,
-  },
+  overlay: { ...StyleSheet.absoluteFillObject, backgroundColor: "rgba(10,22,40,0.72)" },
+  overlayBg: { ...StyleSheet.absoluteFillObject, backgroundColor: "rgba(8,8,26,0.84)", alignItems: "center", justifyContent: "center", zIndex: 300 },
+  startWrap: { flex: 1, alignItems: "center", justifyContent: "center", paddingHorizontal: pad.md },
+  title: { fontSize: font.h1, fontWeight: "900", color: C.gold, textAlign: "center", marginTop: 10, lineHeight: 42, textShadowColor: "rgba(245,158,11,0.4)", textShadowOffset: { width: 0, height: 0 }, textShadowRadius: 12 },
+  subtitle: { color: C.textSec, fontSize: font.xl, textAlign: "center", marginTop: 8, marginBottom: 18, lineHeight: 24 },
+  rulesBox: { backgroundColor: "rgba(10,22,40,0.9)", borderRadius: 18, borderWidth: 1.5, borderColor: C.goldBorder, padding: 16, width: "90%", gap: 8, marginBottom: 22, marginLeft: 20, marginRight: 20 },
+  rulesTitle: { color: C.gold, fontWeight: "900", fontSize: font.xl, marginBottom: 2 },
   rulesRow: { color: C.textSec, fontSize: font.lg, lineHeight: 22 },
   closeRow: { padding: 12 },
-  closeTxt: {
-    color: "#b1bbc9",
-    fontSize: font.md,
-    fontWeight: "600",
-    textAlign: "center",
-  },
-
-  // Header
-  header: {
-    backgroundColor: "rgba(10,22,40,0.88)",
-    borderBottomWidth: 1,
-    borderBottomColor: C.border,
-    paddingHorizontal: 16,
-    paddingBottom: 8,
-  },
-  headerRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    paddingTop: 8,
-    paddingBottom: 6,
-  },
-  exitBtn: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    backgroundColor: "rgba(255,255,255,0.07)",
-    borderWidth: 1,
-    borderColor: "rgba(255,255,255,0.13)",
-    alignItems: "center",
-    justifyContent: "center",
-  },
+  closeTxt: { color: "#b1bbc9", fontSize: font.md, fontWeight: "600", textAlign: "center" },
+  header: { backgroundColor: "rgba(10,22,40,0.88)", borderBottomWidth: 1, borderBottomColor: C.border, paddingHorizontal: 16, paddingBottom: 8 },
+  headerRow: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", paddingTop: 8, paddingBottom: 6 },
+  exitBtn: { width: 36, height: 36, borderRadius: 18, backgroundColor: "rgba(255,255,255,0.07)", borderWidth: 1, borderColor: "rgba(255,255,255,0.13)", alignItems: "center", justifyContent: "center" },
   exitTxt: { fontSize: 13, color: "#bbc5d2", fontWeight: "700" },
   roundTxt: { color: C.text, fontWeight: "800", fontSize: font.xl },
-  scoreBadge: {
-    backgroundColor: C.goldDim,
-    borderRadius: 14,
-    paddingHorizontal: 12,
-    paddingVertical: 5,
-    borderWidth: 1.5,
-    borderColor: C.goldBorder,
-  },
+  scoreBadge: { backgroundColor: C.goldDim, borderRadius: 14, paddingHorizontal: 12, paddingVertical: 5, borderWidth: 1.5, borderColor: C.goldBorder },
   scoreTxt: { color: C.goldLight, fontSize: font.lg, fontWeight: "900" },
-  dots: {
-    flexDirection: "row",
-    gap: 8,
-    justifyContent: "center",
-    paddingVertical: 6,
-  },
-  dot: {
-    width: 10,
-    height: 10,
-    borderRadius: 5,
-    backgroundColor: "rgba(255,255,255,0.15)",
-  },
+  dots: { flexDirection: "row", gap: 8, justifyContent: "center", paddingVertical: 6 },
+  dot: { width: 10, height: 10, borderRadius: 5, backgroundColor: "rgba(255,255,255,0.15)" },
   dotActive: { width: 28, backgroundColor: C.gold },
   dotDone: { backgroundColor: C.green },
-
-  // Parrot + bubble
-  parrotRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    paddingHorizontal: 16,
-    paddingTop: 8,
-    paddingBottom: 4,
-    gap: 10,
-  },
-  bubble: {
-    flex: 1,
-    backgroundColor: "rgba(10,22,40,0.9)",
-    borderRadius: 16,
-    borderWidth: 1.5,
-    borderColor: C.goldBorder,
-    padding: 12,
-    gap: 3,
-  },
+  parrotRow: { flexDirection: "row", alignItems: "center", paddingHorizontal: 16, paddingTop: 8, paddingBottom: 4, gap: 10 },
+  bubble: { flex: 1, backgroundColor: "rgba(10,22,40,0.9)", borderRadius: 16, borderWidth: 1.5, borderColor: C.goldBorder, padding: 12, gap: 3 },
   bubbleLabel: { color: C.textSec, fontSize: font.md, fontWeight: "600" },
-  bubbleWord: {
-    color: C.gold,
-    fontSize: font.h2,
-    fontWeight: "900",
-    letterSpacing: 1,
-  },
-
-  // Wheel
+  bubbleWord: { color: C.gold, fontSize: font.h2, fontWeight: "900", letterSpacing: 1 },
   wheelWrap: { alignItems: "center", justifyContent: "center" },
-
-  // Bottom area
-  bottom: {
-    flex: 1,
-    // justifyContent: "center",
-    paddingHorizontal: 16,
-    //  paddingBottom: 12,
-    //  backgroundColor: "pink",
-    paddingTop: pad.xxxxl,
-  },
+  bottom: { flex: 1, paddingHorizontal: 16, paddingTop: pad.xxxxl },
   answersWrap: { width: "100%" },
-  answersLabel: {
-    color: C.text,
-    fontSize: font.md,
-    fontWeight: "700",
-    textAlign: "center",
-    marginBottom: 10,
-    opacity: 0.85,
-  },
+  answersLabel: { color: C.text, fontSize: font.md, fontWeight: "700", textAlign: "center", marginBottom: 10, opacity: 0.85 },
   chipsRow: { flexDirection: "row", gap: 8 },
-  chip: {
-    paddingVertical: 14,
-    paddingHorizontal: 8,
-    borderRadius: 16,
-    borderWidth: 1.5,
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-    gap: 5,
-  },
-  chipText: {
-    color: C.text,
-    fontSize: font.xl,
-    fontWeight: "500",
-    textAlign: "center",
-  },
-
-  // Buttons
-  goldBtn: {
-    paddingVertical: 16,
-    borderRadius: 50,
-    backgroundColor: C.gold,
-    alignItems: "center",
-    shadowColor: C.gold,
-    shadowOffset: { width: 0, height: 6 },
-    shadowOpacity: 0.5,
-    shadowRadius: 14,
-    elevation: 10,
-    marginBottom: 4,
-  },
+  chip: { paddingVertical: 14, paddingHorizontal: 8, borderRadius: 16, borderWidth: 1.5, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 5 },
+  chipText: { color: C.text, fontSize: font.xl, fontWeight: "500", textAlign: "center" },
+  goldBtn: { paddingVertical: 16, borderRadius: 50, backgroundColor: C.gold, alignItems: "center", shadowColor: C.gold, shadowOffset: { width: 0, height: 6 }, shadowOpacity: 0.5, shadowRadius: 14, elevation: 10, marginBottom: 4 },
   goldBtnDisabled: { backgroundColor: "rgba(245,158,11,0.4)" },
-  goldBtnText: {
-    color: C.woodDark,
-    fontSize: font.h3,
-    fontWeight: "900",
-    letterSpacing: 0.5,
-    paddingHorizontal: pad.xl,
-  },
-  secBtn: {
-    width: "100%",
-    borderRadius: 28,
-    paddingVertical: 13,
-    alignItems: "center",
-    backgroundColor: "rgba(255,255,255,0.04)",
-    borderWidth: 1,
-    borderColor: "rgba(255,255,255,0.1)",
-    marginTop: 4,
-  },
+  goldBtnText: { color: C.woodDark, fontSize: font.h3, fontWeight: "900", letterSpacing: 0.5, paddingHorizontal: pad.xl },
+  secBtn: { width: "100%", borderRadius: 28, paddingVertical: 13, alignItems: "center", backgroundColor: "rgba(255,255,255,0.04)", borderWidth: 1, borderColor: "rgba(255,255,255,0.1)", marginTop: 4 },
   secBtnTxt: { fontSize: 14, fontWeight: "700", color: "#94A3B8" },
-
-  // Result / Final cards
-  card: {
-    width: SW * 0.9,
-    maxWidth: 420,
-    backgroundColor: "rgba(10,22,40,0.97)",
-    borderRadius: 28,
-    borderWidth: 1.5,
-    borderColor: C.goldBorder,
-    padding: 24,
-    alignItems: "center",
-    shadowColor: C.gold,
-    shadowOffset: { width: 0, height: 0 },
-    shadowOpacity: 0.3,
-    shadowRadius: 28,
-    elevation: 14,
-  },
+  card: { width: SW * 0.9, maxWidth: 420, backgroundColor: "rgba(10,22,40,0.97)", borderRadius: 28, borderWidth: 1.5, borderColor: C.goldBorder, padding: 24, alignItems: "center", shadowColor: C.gold, shadowOffset: { width: 0, height: 0 }, shadowOpacity: 0.3, shadowRadius: 28, elevation: 14 },
   finalCard: { borderColor: "rgba(245,158,11,0.55)" },
-  banner: {
-    width: "100%",
-    borderRadius: 14,
-    overflow: "hidden",
-    paddingVertical: 14,
-    alignItems: "center",
-    marginBottom: 16,
-    borderWidth: 1.5,
-    gap: 3,
-  },
+  banner: { width: "100%", borderRadius: 14, overflow: "hidden", paddingVertical: 14, alignItems: "center", marginBottom: 16, borderWidth: 1.5, gap: 3 },
   bannerTxt: { fontSize: 20, fontWeight: "900", letterSpacing: 0.5 },
-  bannerSub: {
-    fontSize: 11,
-    fontWeight: "700",
-    opacity: 0.8,
-    letterSpacing: 1,
-  },
-  shimmer: {
-    position: "absolute",
-    top: 0,
-    bottom: 0,
-    width: 80,
-    backgroundColor: "rgba(255,255,255,0.15)",
-    transform: [{ skewX: "-18deg" }],
-  },
-  finalBanner: {
-    width: "100%",
-    borderRadius: 14,
-    overflow: "hidden",
-    backgroundColor: "rgba(245,158,11,0.1)",
-    borderWidth: 1.5,
-    borderColor: "rgba(245,158,11,0.45)",
-    paddingVertical: 16,
-    alignItems: "center",
-    marginBottom: 14,
-    gap: 4,
-  },
+  bannerSub: { fontSize: 11, fontWeight: "700", opacity: 0.8, letterSpacing: 1 },
+  shimmer: { position: "absolute", top: 0, bottom: 0, width: 80, backgroundColor: "rgba(255,255,255,0.15)", transform: [{ skewX: "-18deg" }] },
+  finalBanner: { width: "100%", borderRadius: 14, overflow: "hidden", backgroundColor: "rgba(245,158,11,0.1)", borderWidth: 1.5, borderColor: "rgba(245,158,11,0.45)", paddingVertical: 16, alignItems: "center", marginBottom: 14, gap: 4 },
   finalEmoji: { fontSize: 40 },
-  finalGrade: {
-    fontSize: 22,
-    fontWeight: "900",
-    color: C.gold,
-    letterSpacing: 2,
-    textShadowColor: "rgba(245,158,11,0.6)",
-    textShadowOffset: { width: 0, height: 0 },
-    textShadowRadius: 10,
-  },
+  finalGrade: { fontSize: 22, fontWeight: "900", color: C.gold, letterSpacing: 2, textShadowColor: "rgba(245,158,11,0.6)", textShadowOffset: { width: 0, height: 0 }, textShadowRadius: 10 },
   starsRow: { flexDirection: "row", gap: 10, marginBottom: 16 },
   starEmoji: { fontSize: 36 },
   pillRow: { flexDirection: "row", gap: 10, marginBottom: 16, width: "100%" },
-  pill: {
-    flex: 1,
-    borderRadius: 14,
-    borderWidth: 1.5,
-    padding: 12,
-    alignItems: "center",
-    gap: 4,
-  },
-  pillLabel: {
-    fontSize: 9,
-    fontWeight: "900",
-    color: "#475569",
-    letterSpacing: 1.5,
-  },
+  pill: { flex: 1, borderRadius: 14, borderWidth: 1.5, padding: 12, alignItems: "center", gap: 4 },
+  pillLabel: { fontSize: 9, fontWeight: "900", color: "#475569", letterSpacing: 1.5 },
   pillVal: { fontSize: 22, fontWeight: "900" },
-  breakdown: {
-    width: "100%",
-    backgroundColor: "rgba(255,255,255,0.03)",
-    borderRadius: 14,
-    borderWidth: 1,
-    borderColor: "rgba(245,158,11,0.15)",
-    paddingHorizontal: 14,
-    paddingVertical: 10,
-    marginBottom: 16,
-    gap: 8,
-  },
-  breakdownRow: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-  },
+  breakdown: { width: "100%", backgroundColor: "rgba(255,255,255,0.03)", borderRadius: 14, borderWidth: 1, borderColor: "rgba(245,158,11,0.15)", paddingHorizontal: 14, paddingVertical: 10, marginBottom: 16, gap: 8 },
+  breakdownRow: { flexDirection: "row", justifyContent: "space-between", alignItems: "center" },
   breakdownLabel: { color: "#94A3B8", fontSize: 13, flex: 1 },
 });

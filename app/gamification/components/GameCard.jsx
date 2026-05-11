@@ -2,15 +2,13 @@
  * GameCard.jsx
  * app/gamification/components/GameCard.jsx
  *
- * Visual design matches the original GameCard in home.jsx exactly —
- * same decorative circles, same mini character animations (MiniBird,
- * MiniCat, MiniMonkey), same badge, same accent bar.
- *
- * Adds 4 gamification states on top:
- *   LOCKED     — scratch cover with progress dots, title shows "???"
- *   REVEALED   — full card visible, pulsing Unlock CTA
- *   UNLOCKED   — full card, "100 🪙 to play" subtitle
- *   UNLOCKED + low coins — "Need coins" badge top-left
+ * CHANGES FROM PREVIOUS VERSION:
+ *   ✅ Upper portion now shows the game's cover image full-bleed (no margins)
+ *   ✅ Lower footer reduced — just name + coins/unlock/dots row
+ *   ✅ Falls back to original animated-icon design for games with no cover
+ *      (spin_wheel, tressure_hunt return null from GAME_COVERS)
+ *   ✅ All gamification logic, states, scratch cover, low-coins badge unchanged
+ *   ✅ Cover image sourced from GAME_COVERS mapper (all requires are static)
  */
 
 import React, { useEffect, useRef } from "react";
@@ -30,6 +28,7 @@ import { GAME_STATUS } from "../GamificationEngine";
 import { useGamification } from "../GamificationContext";
 import { GAME_ANIMATIONS } from "../constants/gameAnimations";
 import ScratchCover from "./ScratchCover";
+import GAME_COVERS from "../constants/gameCoverImages";
 
 const TEAL   = "#00BCD4";
 const YELLOW = "#FFD54F";
@@ -38,8 +37,13 @@ const DARK   = "#08081a";
 const CARD_W = isTablet ? 220 : 160;
 const CARD_H = isTablet ? 270 : 200;
 
+// 72% of card height is the cover image, 28% is the text footer
+const COVER_RATIO = 0.72;
+const COVER_H  = Math.round(CARD_H * COVER_RATIO);
+const FOOTER_H = CARD_H - COVER_H;
+
 // ─────────────────────────────────────────────────────────────────────────────
-// GENERIC ICON FALLBACK — used when no animation is registered for a gameId
+// GENERIC ICON FALLBACK (unchanged from original)
 // ─────────────────────────────────────────────────────────────────────────────
 function GenericIcon({ icon }) {
   const bounceAnim = useRef(new Animated.Value(0)).current;
@@ -51,7 +55,7 @@ function GenericIcon({ icon }) {
   }, []);
   const containerH = isTablet ? 100 : 72;
   return (
-    <View style={{ alignItems: "center", justifyContent: "center", marginTop: 18, marginBottom: 6, height: containerH }}>
+    <View style={{ alignItems: "center", justifyContent: "center", height: containerH, flex: 1 }}>
       <Animated.Text style={{ fontSize: isTablet ? 52 : 38, transform: [{ translateY: bounceAnim }] }}>
         {icon ?? "🎮"}
       </Animated.Text>
@@ -60,7 +64,7 @@ function GenericIcon({ icon }) {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// SCRATCH PROGRESS DOTS
+// SCRATCH PROGRESS DOTS (unchanged)
 // ─────────────────────────────────────────────────────────────────────────────
 function ScratchDots({ count }) {
   return (
@@ -78,7 +82,7 @@ const dotS = StyleSheet.create({
 });
 
 // ─────────────────────────────────────────────────────────────────────────────
-// PULSE HOOK
+// PULSE HOOK (unchanged)
 // ─────────────────────────────────────────────────────────────────────────────
 function usePulse(active) {
   const anim = useRef(new Animated.Value(1)).current;
@@ -92,6 +96,46 @@ function usePulse(active) {
     return () => loop.stop();
   }, [active]);
   return anim;
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// COVER SECTION
+// Shows the full-bleed cover image, OR the original animated-icon fallback.
+// ─────────────────────────────────────────────────────────────────────────────
+function CoverSection({ coverSource, gradient, icon, gameId, isLocked }) {
+  if (!coverSource) {
+    // ── FALLBACK: original animated-icon design for games without a cover ──
+    const g0 = gradient?.[0] ?? TEAL;
+    const g1 = gradient?.[1] ?? "#1a1a2e";
+    const MiniComponent = GAME_ANIMATIONS[gameId];
+    return (
+      <View style={[s.coverFallback, { height: COVER_H }]}>
+        <View style={[StyleSheet.absoluteFillObject, { backgroundColor: g1 }]} />
+        <View style={[s.gradientTop, { backgroundColor: g0 }]} />
+        <View style={s.circle1} />
+        <View style={s.circle2} />
+        <View style={{ flex: 1, alignItems: "center", justifyContent: "center" }}>
+          {MiniComponent ? <MiniComponent /> : <GenericIcon icon={icon} />}
+        </View>
+      </View>
+    );
+  }
+
+  // ── COVER IMAGE ────────────────────────────────────────────────────────
+  return (
+    <View style={[s.coverWrap, { height: COVER_H }]}>
+      <ExpoImage
+        source={coverSource}
+        style={StyleSheet.absoluteFillObject}
+        contentFit="cover"
+        cachePolicy="memory-disk"
+      />
+      {/* Thin gradient scrim at bottom so footer edge blends */}
+      <View style={s.coverScrim} />
+      {/* Extra dark tint when card is locked */}
+      {isLocked && <View style={s.lockTint} />}
+    </View>
+  );
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -109,8 +153,6 @@ export default function GameCard({ slot }) {
     accentColor,
   } = slot;
 
-  // If storiesCompletedInGroup reached 3 but engine status didn't flip yet
-  // (e.g. onStoryComplete failed), treat as REVEALED so UI is correct
   const effectivelyRevealed = status === GAME_STATUS.LOCKED && storiesCompletedInGroup >= 3;
   const isLocked   = status === GAME_STATUS.LOCKED && !effectivelyRevealed;
   const isRevealed = status === GAME_STATUS.REVEALED || effectivelyRevealed;
@@ -128,16 +170,8 @@ export default function GameCard({ slot }) {
     if (isUnlocked) startPlay(gameId);
   };
 
-  const renderMini = () => {
-    const MiniComponent = GAME_ANIMATIONS[gameId];
-    if (MiniComponent) return <MiniComponent />;
-    // Fallback: bouncing emoji for games without a registered animation
-    return <GenericIcon icon={icon} />;
-  };
-
-  const g0  = gradient?.[0]   ?? TEAL;
-  const g1  = gradient?.[1]   ?? "#1a1a2e";
-  const acc = accentColor      ?? YELLOW;
+  const acc         = accentColor ?? YELLOW;
+  const coverSource = GAME_COVERS[gameId] ?? null;
 
   return (
     <Animated.View style={{ transform: [{ scale: scaleAnim }], marginRight: pad.sm }}>
@@ -148,38 +182,33 @@ export default function GameCard({ slot }) {
         onPressOut={pressOut}
         style={s.card}
       >
-        {/* ── Background ── */}
-        <View style={[StyleSheet.absoluteFillObject, { backgroundColor: g1 }]} />
-        <View style={[s.gradientTop, { backgroundColor: g0 }]} />
+        {/* ── Dark card base ── */}
+        <View style={[StyleSheet.absoluteFillObject, { backgroundColor: DARK }]} />
 
-        {/* ── Decorative circles — exact same as original ── */}
-        <View style={s.circle1} />
-        <View style={s.circle2} />
+        {/* ── TOP: cover image or animated fallback ── */}
+        <CoverSection
+          coverSource={coverSource}
+          gradient={gradient}
+          icon={icon}
+          gameId={gameId}
+          isLocked={isLocked}
+        />
 
-        {/* ── Top-right badge ── */}
+        {/* ── Lock / play badge — floats over the cover, top-right ── */}
         <View style={[s.badge, { backgroundColor: acc }]}>
-          <Text style={s.badgeText}>
-            {isLocked ? "🔒" : "▶"}
-          </Text>
+          <Text style={s.badgeText}>{isLocked ? "🔒" : "▶"}</Text>
         </View>
 
-        {/* ── Mini character — always rendered, covered by scratch when locked ── */}
-        {renderMini()}
-
-        {/* ── Bottom text block ── */}
-        <View style={s.textBlock}>
+        {/* ── FOOTER: name + secondary row ── */}
+        <View style={[s.footer, { height: FOOTER_H }]}>
           <Text style={s.title} numberOfLines={1}>
             {isLocked ? "???" : name}
           </Text>
 
-          {/* LOCKED: progress dots */}
-          {isLocked && (
-            <ScratchDots count={storiesCompletedInGroup} />
-          )}
+          {isLocked && <ScratchDots count={storiesCompletedInGroup} />}
 
-          {/* REVEALED: pulsing unlock button */}
           {isRevealed && (
-            <Animated.View style={{ transform: [{ scale: pulseAnim }], marginTop: 4 }}>
+            <Animated.View style={{ transform: [{ scale: pulseAnim }], marginTop: 2 }}>
               <TouchableOpacity
                 style={[s.unlockBtn, { backgroundColor: acc }]}
                 onPress={() => openUnlockModal(gameId)}
@@ -190,7 +219,6 @@ export default function GameCard({ slot }) {
             </Animated.View>
           )}
 
-          {/* UNLOCKED: subtitle */}
           {isUnlocked && (
             <View style={s.coinRow}>
               <ExpoImage
@@ -204,10 +232,10 @@ export default function GameCard({ slot }) {
           )}
         </View>
 
-        {/* ── Accent bar — exact same as original ── */}
+        {/* ── Accent bar ── */}
         <View style={[s.accentBar, { backgroundColor: acc }]} />
 
-        {/* ── Scratch cover — on top of everything, only when LOCKED ── */}
+        {/* ── Scratch cover ── */}
         {isLocked && storiesCompletedInGroup < 3 && (
           <ScratchCover storiesCompleted={storiesCompletedInGroup} />
         )}
@@ -238,10 +266,34 @@ const s = StyleSheet.create({
     shadowOpacity: 0.35,
     shadowRadius:  12,
   },
+
+  // ── Cover: image path ─────────────────────────────────────────────────────
+  coverWrap: {
+    width:    "100%",
+    overflow: "hidden",
+  },
+  coverScrim: {
+    position:        "absolute",
+    left: 0, right: 0, bottom: 0,
+    height:          32,
+    // Linear gradient effect via layered opacity
+    backgroundColor: DARK,
+    opacity:         0.6,
+  },
+  lockTint: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: "rgba(8,8,26,0.40)",
+  },
+
+  // ── Cover: fallback (no image) ────────────────────────────────────────────
+  coverFallback: {
+    width:    "100%",
+    overflow: "hidden",
+  },
   gradientTop: {
     position:     "absolute",
     top: 0, left: 0, right: 0,
-    height:       "60%",
+    height:       "65%",
     borderRadius: radius.xl,
     opacity:      0.9,
   },
@@ -256,34 +308,44 @@ const s = StyleSheet.create({
     position:        "absolute",
     width:           80, height: 80,
     borderRadius:    40,
-    bottom: 30, left: -20,
+    bottom: 0, left: -20,
     backgroundColor: "rgba(255,255,255,0.05)",
   },
+
+  // ── Badge ─────────────────────────────────────────────────────────────────
   badge: {
     position:       "absolute",
-    top: 12, right: 12,
+    top: 10, right: 10,
     width:          isTablet ? 44 : 32,
     height:         isTablet ? 44 : 32,
     borderRadius:   isTablet ? 22 : 16,
     alignItems:     "center",
     justifyContent: "center",
-    elevation:      4,
-    zIndex:         2,
+    elevation:      6,
+    zIndex:         5,
+    shadowColor:    "#000",
+    shadowOffset:   { width: 0, height: 2 },
+    shadowOpacity:  0.5,
+    shadowRadius:   4,
   },
   badgeText: {
-    fontFamily: FONTS.bold,
     fontSize:   font.sm,
     color:      DARK,
     marginLeft: 2,
   },
-  textBlock: {
+
+  // ── Footer ────────────────────────────────────────────────────────────────
+  footer: {
+    width:             "100%",
+    backgroundColor:   DARK,
     paddingHorizontal: pad.sm,
-    paddingBottom:     pad.sm,
-    marginTop:         "auto",
+    paddingTop:        6,
+    paddingBottom:     6,
+    justifyContent:    "center",
   },
   title: {
-    fontFamily:       FONTS.bold,
     fontSize:         font.md,
+    fontWeight:       "700",
     color:            "#fff",
     letterSpacing:    0.2,
     textShadowColor:  "rgba(0,0,0,0.4)",
@@ -291,16 +353,15 @@ const s = StyleSheet.create({
     textShadowRadius: 4,
   },
   subtitle: {
-    fontFamily: FONTS.light,
-    fontSize:   font.s,
-    color:      "rgba(255,255,255,0.7)",
-    marginTop:  2,
+    fontSize:  font.s,
+    color:     "rgba(255,255,255,0.7)",
+    marginTop: 1,
   },
   coinRow: {
-    flexDirection:  "row",
-    alignItems:     "center",
-    gap:            4,
-    marginTop:      2,
+    flexDirection: "row",
+    alignItems:    "center",
+    gap:           4,
+    marginTop:     2,
   },
   coinImg: {
     width:  isTablet ? 20 : 16,
@@ -308,24 +369,29 @@ const s = StyleSheet.create({
   },
   unlockBtn: {
     borderRadius:      radius.pill,
-    paddingVertical:   isTablet ? 8 : 6,
-    paddingHorizontal: isTablet ? 14 : 10,
+    paddingVertical:   isTablet ? 6 : 4,
+    paddingHorizontal: isTablet ? 12 : 8,
     alignItems:        "center",
     alignSelf:         "flex-start",
-    marginTop:         4,
+    marginTop:         2,
   },
   unlockBtnText: {
-    fontFamily:    FONTS.bold,
     fontSize:      font.s,
+    fontWeight:    "700",
     color:         DARK,
     letterSpacing: 0.2,
   },
+
+  // ── Accent bar ────────────────────────────────────────────────────────────
   accentBar: {
     position: "absolute",
     bottom: 0, left: 0, right: 0,
-    height:  3,
-    opacity: 0.8,
+    height:   3,
+    opacity:  0.8,
+    zIndex:   2,
   },
+
+  // ── Low coins badge ───────────────────────────────────────────────────────
   lowCoinsBadge: {
     position:          "absolute",
     top: pad.s, left: pad.s,
@@ -333,10 +399,11 @@ const s = StyleSheet.create({
     borderRadius:      radius.xs,
     paddingHorizontal: pad.xs,
     paddingVertical:   2,
+    zIndex:            5,
   },
   lowCoinsText: {
-    fontFamily: FONTS.bold,
     fontSize:   font.xs,
+    fontWeight: "700",
     color:      "#fff",
   },
 });

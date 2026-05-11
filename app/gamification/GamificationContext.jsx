@@ -41,6 +41,7 @@ import {
   unlockGame,
 } from "./GamificationEngine";
 import { getMockConfigForLevel } from "./constants/gameIds";
+import { resolveGameData } from "./utils/gameDataResolver";
 
 // ─── Toggle this to false once the real backend endpoint is ready ─────────────
 const USE_MOCK_CONFIG = false; // ← flip to true to use mock data during development
@@ -406,10 +407,28 @@ export function GamificationProvider({
 
       _fireBackgroundSync(profileId, levelNumber);
 
-      // Navigate to the game screen.
-      // gameData will be wired as a param in Step 10 when backend is ready.
-      // For now navigate directly so existing game screens open without crash.
-      router.push(slot.route);
+      // Resolve level-specific game data and pass it to the game screen.
+      // resolveGameData reads gameData["level_N"] from the slot, falling
+      // back to the closest lower level if the exact key is absent.
+      // The game receives it as a JSON string param and deserializes locally.
+      const levelGameData = resolveGameData(levelGames, gameId, levelNumber);
+
+      console.log(
+        "[Gamification] startPlay navigating to",
+        slot.route,
+        "with gameData for level",
+        levelNumber,
+        ":",
+        levelGameData ? "found" : "null (game will use fallback)",
+      );
+
+      router.push({
+        pathname: slot.route,
+        params: {
+          gameDataJson: levelGameData ? JSON.stringify(levelGameData) : "",
+          levelNumber: String(levelNumber),
+        },
+      });
     },
     [profileId, levelGames, onUpdateCoins, router, _fireBackgroundSync],
   );
