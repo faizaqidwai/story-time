@@ -25,12 +25,20 @@ import {
 import * as Speech from "expo-speech";
 import { FONTS } from "../../../theme";
 import { font, pad, radius, size } from "../../../theme/tokens";
+import * as Device from "expo-device";
 
+const isTablet =
+  Device.deviceType === Device.DeviceType.TABLET || Math.min(SW, SH) >= 768;
 const { width: SW, height: SH } = Dimensions.get("window");
 
 // Popup dimensions
-const POPUP_W = Math.min(SW - 40, 420);
-const POPUP_H = SH * 0.72;
+const POPUP_W = isTablet
+  ? Math.min(SW * 0.8, 820) // bigger width on iPad
+  : Math.min(SW - 40, 420);
+
+const POPUP_H = isTablet
+  ? SH * 0.9 // 👈 much better presence
+  : SH * 0.72;
 
 const C = {
   bg: "rgba(6,7,20,0.98)",
@@ -49,7 +57,10 @@ const C = {
   textSec: "#B0BEC5",
   textMuted: "#546E7A",
 };
-
+console.log("is tablet: " + isTablet);
+console.log("Device type:", Device.deviceType);
+console.log("Width:", SW, "Height:", SH);
+console.log("isTablet:", isTablet);
 // ─────────────────────────────────────────────────────────────────────────────
 // DOTS
 // ─────────────────────────────────────────────────────────────────────────────
@@ -244,6 +255,7 @@ const wS = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
     marginBottom: pad.md,
+    marginTop: pad.sm,
     shadowColor: C.teal,
     shadowOffset: { width: 0, height: 0 },
     shadowOpacity: 0.45,
@@ -323,7 +335,8 @@ const wS = StyleSheet.create({
     borderRadius: radius.md,
     borderWidth: 1,
     borderColor: "rgba(255,255,255,0.08)",
-    padding: pad.md,
+    padding: pad.lg,
+    marginTop: pad.lg,
   },
   explanationLabel: {
     fontFamily: FONTS.bold,
@@ -773,6 +786,7 @@ const s = StyleSheet.create({
     fontFamily: FONTS.bold,
     fontSize: font.lg,
     color: "#06070f",
+    // fontWeight: 700,
     letterSpacing: 0.3,
   },
 });
