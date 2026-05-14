@@ -19,9 +19,6 @@
       "buildNumber": "1",
       "supportsTablet": true,
       "infoPlist": {
-        "UIBackgroundModes": [
-          "audio"
-        ],
         "ITSAppUsesNonExemptEncryption": false
       }
     },
@@ -44,11 +41,7 @@
         "projectId": "dc042d77-0c1f-48a2-833e-7f0b8c1a88f4"
       }
     },
-    "plugins": [
-      "expo-router",
-      "expo-secure-store",
-      "expo-av"
-    ],
+    "plugins": ["expo-router", "expo-secure-store", "expo-av"],
     "owner": "faiza.qidwai"
   }
 }
