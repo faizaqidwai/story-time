@@ -9,3 +9,12 @@ export async function setUserAccountCredentials(email, password) {
 export async function fetchUserAccount() {
   return apiClient.get("/user/account");
 }
+
+/**
+ * Calls DELETE /user/account on the backend.
+ * Deletes all account data server-side.
+ * After this resolves, the caller is responsible for clearing local storage.
+ */
+export async function deleteUserAccount() {
+  return apiClient.delete("/user/account");
+}

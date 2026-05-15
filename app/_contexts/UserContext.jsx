@@ -11,8 +11,11 @@ import { getPrimaryUserAccountId } from "../services/identityStorage";
 import { APP_CONFIG } from "../config/appConfig";
 import mockProfile from "../data/mock-profile.json";
 import { checkAndClearStalePending } from "../services/levelProgressionService";
-import { setClearUserData, setClearIdentityRef } from "../services/apiClient";
-import { clearPrimaryUser as clearPrimaryUserAccountId } from "../services/identityStorage";
+import {
+  setClearUserData,
+  setClearAccountDataRef,
+} from "../services/apiClient";
+import { clearAccountData } from "../services/identityStorage";
 
 const UserContext = createContext();
 
@@ -37,45 +40,35 @@ export const UserProvider = ({ children }) => {
 
   const loadStoredData = async () => {
     try {
-      // Check if first time user
       const firstTimeFlag = await AsyncStorage.getItem(STORAGE_KEYS.FIRST_TIME);
-
-      // Load user account
       const storedUserAccount = await AsyncStorage.getItem(
         STORAGE_KEYS.USER_ACCOUNT,
       );
-
-      // Load profiles
       const storedProfiles = await AsyncStorage.getItem(STORAGE_KEYS.PROFILES);
       const primaryUserAccountId = await getPrimaryUserAccountId();
       console.log(JSON.stringify(primaryUserAccountId));
 
       if (!storedProfiles || storedProfiles === "[]") {
-        // Logout scenario - No profile exist but there is a primary user account id
         if (primaryUserAccountId) {
           setIsLogout(true);
           setProfiles([]);
         } else {
-          // First time user - no profiles exist
           setIsFirstTime(true);
           setProfiles([]);
         }
       } else {
-        // Existing user
         const parsedUserAccount = JSON.parse(storedUserAccount);
         const parsedProfiles = JSON.parse(storedProfiles);
         setUserAccount(parsedUserAccount);
         setProfiles(parsedProfiles);
         setIsFirstTime(false);
 
-        // Load current profile
         if (APP_CONFIG.MOCK_ENABLED) {
           setCurrentProfile(mockProfile);
         } else {
           const storedCurrentProfile = await AsyncStorage.getItem(
             STORAGE_KEYS.CURRENT_PROFILE,
           );
-
           if (storedCurrentProfile) {
             const parsedCurrentProfile = JSON.parse(storedCurrentProfile);
             setCurrentProfile(parsedCurrentProfile);
@@ -97,26 +90,20 @@ export const UserProvider = ({ children }) => {
         if (profile.id === profileId) {
           const updatedHistory = [...(profile.readingHistory || []), storyData];
           const updatedBadges = [...(profile.badges || [])];
-
-          // Check if this is their first story
           if (
             updatedHistory.length === 1 &&
             !updatedBadges.includes("first_story")
           ) {
             updatedBadges.push("first_story");
           }
-
           const updatedProfile = {
             ...profile,
             readingHistory: updatedHistory,
             badges: updatedBadges,
           };
-
-          // CRITICAL: Update currentProfile if this is the active profile
           if (currentProfile?.id === profileId) {
             setCurrentProfile(updatedProfile);
           }
-
           return updatedProfile;
         }
         return profile;
@@ -131,8 +118,6 @@ export const UserProvider = ({ children }) => {
         STORAGE_KEYS.CURRENT_PROFILE,
         JSON.stringify(profile),
       );
-      // If another device already progressed this profile's level, clear
-      // any stale pending-progression flag so the banner doesn't appear.
       await checkAndClearStalePending(profile.id, profile.playLevel ?? 1);
     } catch (error) {
       console.error("Error saving current profile:", error);
@@ -142,22 +127,16 @@ export const UserProvider = ({ children }) => {
   const setLoginUserAccount = async (userAccount) => {
     try {
       const loginProfile = userAccount.profiles[0];
-
-      // Write ALL storage in one batch first
       await AsyncStorage.multiSet([
         [STORAGE_KEYS.USER_ACCOUNT, JSON.stringify(userAccount)],
         [STORAGE_KEYS.PROFILES, JSON.stringify(userAccount.profiles)],
         [STORAGE_KEYS.CURRENT_PROFILE, JSON.stringify(loginProfile)],
         [STORAGE_KEYS.FIRST_TIME, "false"],
       ]);
-
-      // Check and clear stale pending (was inside selectProfile)
       await checkAndClearStalePending(
         loginProfile.id,
         loginProfile.playLevel ?? 1,
       );
-
-      // Batch ALL state updates in one render cycle — prevents multiple remounts
       const { unstable_batchedUpdates } = require("react-native");
       unstable_batchedUpdates(() => {
         setUserAccount(userAccount);
@@ -165,7 +144,6 @@ export const UserProvider = ({ children }) => {
         setCurrentProfile(loginProfile);
         setIsFirstTime(false);
       });
-
       return userAccount;
     } catch (error) {
       console.error("Error setting user account:", error);
@@ -193,8 +171,6 @@ export const UserProvider = ({ children }) => {
       const updatedProfiles = profiles.map((p) =>
         p.id === updatedProfile.id ? updatedProfile : p,
       );
-
-      // Batch both writes to AsyncStorage first
       const storageWrites = [
         [STORAGE_KEYS.PROFILES, JSON.stringify(updatedProfiles)],
       ];
@@ -205,9 +181,6 @@ export const UserProvider = ({ children }) => {
         ]);
       }
       await AsyncStorage.multiSet(storageWrites);
-
-      // Then batch both state updates together using unstable_batchedUpdates
-      // so React processes them in ONE render cycle instead of two
       const { unstable_batchedUpdates } = require("react-native");
       unstable_batchedUpdates(() => {
         setProfiles(updatedProfiles);
@@ -222,29 +195,20 @@ export const UserProvider = ({ children }) => {
 
   const deleteProfile = async (profileId) => {
     try {
-      // 🚨 1. Prevent deleting primary/default profile
       if (userAccount?.defaultProfileId === profileId) {
         throw new Error("PRIMARY_PROFILE_DELETE_NOT_ALLOWED");
       }
-
-      // 🚀 2. Call backend API
       await deleteProfileApi(profileId);
-
-      // 🧹 3. Remove profile locally
       const updatedProfiles = profiles.filter((p) => p.id !== profileId);
-
       setProfiles(updatedProfiles);
       await AsyncStorage.setItem(
         STORAGE_KEYS.PROFILES,
         JSON.stringify(updatedProfiles),
       );
-
-      // 🔁 4. If deleted profile was current profile
       if (currentProfile?.id === profileId) {
         const defaultProfile = updatedProfiles.find(
           (p) => p.id === userAccount?.defaultProfileId,
         );
-
         if (defaultProfile) {
           setCurrentProfile(defaultProfile);
           await AsyncStorage.setItem(
@@ -252,7 +216,6 @@ export const UserProvider = ({ children }) => {
             JSON.stringify(defaultProfile),
           );
         } else if (updatedProfiles.length > 0) {
-          // fallback safety
           setCurrentProfile(updatedProfiles[0]);
           await AsyncStorage.setItem(
             STORAGE_KEYS.CURRENT_PROFILE,
@@ -263,7 +226,6 @@ export const UserProvider = ({ children }) => {
           await AsyncStorage.removeItem(STORAGE_KEYS.CURRENT_PROFILE);
         }
       }
-
       return true;
     } catch (error) {
       console.error("Error deleting profile:", error);
@@ -273,10 +235,8 @@ export const UserProvider = ({ children }) => {
 
   const toggleFavorite = async (bookId) => {
     if (!currentProfile) return;
-
     const updatedProfile = { ...currentProfile };
     const isFavorite = updatedProfile.favorites.includes(bookId);
-
     if (isFavorite) {
       updatedProfile.favorites = updatedProfile.favorites.filter(
         (id) => id !== bookId,
@@ -284,13 +244,11 @@ export const UserProvider = ({ children }) => {
     } else {
       updatedProfile.favorites = [...updatedProfile.favorites, bookId];
     }
-
     await updateProfile(updatedProfile);
   };
 
   const addToReadingHistory = async (bookId) => {
     if (!currentProfile) return;
-
     const updatedProfile = { ...currentProfile };
     if (!updatedProfile.readingHistory.includes(bookId)) {
       updatedProfile.readingHistory = [
@@ -312,39 +270,51 @@ export const UserProvider = ({ children }) => {
       setProfiles([]);
       setCurrentProfile(null);
       setUserAccount(null);
-      setIsFirstTime(true);
+      // Determine isFirstTime based on whether a primary user still exists
+      // Primary user deleted → null → isFirstTime = true → registration
+      // Non-primary user deleted → ID still there → isFirstTime = false → login
+      const primaryUserAccountId = await getPrimaryUserAccountId();
+      setIsFirstTime(!primaryUserAccountId);
+      setIsLogout(!!primaryUserAccountId);
     } catch (error) {
       console.error("Error clearing data:", error);
     }
   };
 
-  // Wire logoutLocally() in apiClient to this context's clearAllData,
-  // and wire logoutAndClearIdentity() to clearPrimaryUserAccountId.
-  // Placed AFTER clearAllData is defined so the references are valid.
+  // ── Wire apiClient references ───────────────────────────────────────────
+  // setClearUserData → resets UserContext in-memory state (called after any logout/deletion)
+  //
+  // setClearAccountDataRef → targeted cleanup for a specific account.
+  // The closure captures `profiles` from state so clearAccountData always
+  // gets the correct profileIds for whoever is currently logged in.
+  // Re-registered whenever `profiles` changes so the profileIds are always fresh.
   useEffect(() => {
     setClearUserData(clearAllData);
-    setClearIdentityRef(clearPrimaryUserAccountId);
-  }, []);
+
+    setClearAccountDataRef(async (userAccountId) => {
+      // profiles from closure — always the current user's profiles
+      const profileIds = profiles.map((p) => p.id).filter(Boolean);
+      await clearAccountData(userAccountId, profileIds);
+      // Reset UserContext in-memory state after storage is cleared
+      await clearAllData();
+    });
+  }, [profiles]); // re-register when profiles change so closure is always fresh
 
   const setMockCurrentProfile = async () => {
     let storedCurrentProfile = await AsyncStorage.getItem(
       STORAGE_KEYS.CURRENT_PROFILE,
     );
     if (!storedCurrentProfile) {
-      // store mock profile in AsyncStorage
       await AsyncStorage.setItem(
         STORAGE_KEYS.CURRENT_PROFILE,
         JSON.stringify(mockProfile),
       );
-
-      // also add it to profiles list if empty
       if (!storedProfiles || storedProfiles === "[]") {
         await AsyncStorage.setItem(
           STORAGE_KEYS.PROFILES,
           JSON.stringify([mockProfile]),
         );
       }
-
       storedCurrentProfile = JSON.stringify(mockProfile);
       return storedCurrentProfile;
     }
@@ -371,6 +341,7 @@ export const UserProvider = ({ children }) => {
     }),
     [currentProfile, profiles, isLoading, isFirstTime, isLogout, userAccount],
   );
+
   return (
     <UserContext.Provider value={contextValue}>{children}</UserContext.Provider>
   );

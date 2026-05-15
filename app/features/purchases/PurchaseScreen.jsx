@@ -3,7 +3,7 @@
 import React, { useEffect, useRef, useState, useCallback } from "react";
 import {
   View, Text, StyleSheet, ScrollView, TouchableOpacity,
-  Animated, ActivityIndicator, Alert, Platform, StatusBar,
+  Animated, ActivityIndicator, Alert, Platform, StatusBar, Linking,
 } from "react-native";
 import { useRouter, useLocalSearchParams } from "expo-router";
 import { FONTS } from "../../theme";
@@ -19,6 +19,9 @@ import { fetchMySubscription } from "../../services/subscriptionService";
 
 const STATUS_BAR_HEIGHT =
   Platform.OS === "android" ? (StatusBar.currentHeight ?? 24) : 50;
+
+const PRIVACY_URL = "https://www.codeklusters.com/storytime/privacy";
+const TERMS_URL   = "https://www.apple.com/legal/internet-services/itunes/dev/stdeula/";
 
 const C = {
   bg: "#08081a",
@@ -359,6 +362,17 @@ export default function PurchaseScreen() {
             {Platform.OS === "ios" ? "Apple ID" : "Google Play"} account settings. No hidden fees.
           </Text>
 
+          {/* Legal links — required by Apple guideline 3.1.2(c) */}
+          <View style={styles.legalLinksRow}>
+            <TouchableOpacity onPress={() => Linking.openURL(PRIVACY_URL)} activeOpacity={0.7}>
+              <Text style={styles.legalLink}>Privacy Policy</Text>
+            </TouchableOpacity>
+            <Text style={styles.legalLinkSep}>·</Text>
+            <TouchableOpacity onPress={() => Linking.openURL(TERMS_URL)} activeOpacity={0.7}>
+              <Text style={styles.legalLink}>Terms of Use</Text>
+            </TouchableOpacity>
+          </View>
+
           <TouchableOpacity
             style={[styles.checkoutBtn, { backgroundColor: accentColor }, (!rcPackage || purchasing) && styles.checkoutBtnDisabled]}
             onPress={handleConfirm}
@@ -422,7 +436,10 @@ const styles = StyleSheet.create({
   totalLabel:         { fontFamily: FONTS.bold, fontSize: font.md, color: C.textSec },
   totalAmount:        { fontFamily: FONTS.bold, fontSize: font.h3, letterSpacing: -0.3 },
   totalCycle:         { fontFamily: FONTS.light, fontSize: font.sm, color: C.textMuted, marginTop: 4 },
-  policyNote:         { fontFamily: FONTS.light, fontSize: font.sm, color: C.textMuted, textAlign: "center", lineHeight: font.sm * 1.6, marginBottom: pad.lg, paddingHorizontal: pad.sm },
+  policyNote:         { fontFamily: FONTS.light, fontSize: font.sm, color: C.textMuted, textAlign: "center", lineHeight: font.sm * 1.6, marginBottom: pad.sm, paddingHorizontal: pad.sm },
+  legalLinksRow:      { flexDirection: "row", alignItems: "center", justifyContent: "center", gap: pad.sm, marginBottom: pad.lg },
+  legalLink:          { fontFamily: FONTS.regular, fontSize: font.sm, color: C.teal, textDecorationLine: "underline" },
+  legalLinkSep:       { fontFamily: FONTS.regular, fontSize: font.sm, color: C.textMuted },
   checkoutBtn:        { flexDirection: "row", alignItems: "center", justifyContent: "center", gap: pad.s, borderRadius: radius.pill, height: size.btnHeightLg, overflow: "hidden", shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.55, shadowRadius: 14, elevation: 10, marginBottom: pad.sm },
   checkoutBtnDisabled:{ opacity: 0.45 },
   btnShine:           { position: "absolute", top: 0, left: "14%", width: "38%", height: "52%", backgroundColor: "rgba(255,255,255,0.20)", borderRadius: 20, transform: [{ rotate: "-15deg" }] },

@@ -16,6 +16,11 @@ import { Audio } from "expo-av";
 import { useUser } from "./_contexts/UserContext";
 import { FONTS } from "./theme";
 import { useTheme } from "./_contexts/ThemeContext";
+import {
+  clearPrimaryUser,
+  getPrimaryUserAccountId,
+} from "./services/identityStorage";
+//clearPrimaryUser(); // Clear primary user on app start for testing purposes. Remove in production.
 
 const { width, height } = Dimensions.get("window");
 
@@ -24,7 +29,7 @@ const SplashScreen = () => {
   const { sizes } = useTheme();
   const sz = sizes.splash;
 
-  const { isFirstTime, isLoading, isLogout } = useUser();
+  const { isFirstTime, isLoading, isLogout, profiles } = useUser();
 
   const logoOp = useRef(new Animated.Value(0)).current;
   const logoScale = useRef(new Animated.Value(0.82)).current;
@@ -129,14 +134,15 @@ const SplashScreen = () => {
 
     const timer = setTimeout(async () => {
       if (!isLoading) {
-        if (isFirstTime) {
+        const primaryUserAccountId = await getPrimaryUserAccountId();
+        if (!primaryUserAccountId) {
           // CHANGE: fetchRegisterToken removed from here.
           // It is now called in AccountChoice when user taps "Create New Account".
           // This prevents the app from stalling on splash when offline.
           console.log("in index after register token");
           router.replace("/features/onboarding/IntroCarousel");
         } else {
-          if (isLogout) {
+          if (profiles.length === 0) {
             router.replace("/features/login/login");
           } else {
             router.replace("/features/home");
@@ -148,7 +154,7 @@ const SplashScreen = () => {
     return () => {
       clearTimeout(timer);
     };
-  }, [isLoading, isFirstTime]);
+  }, [isLoading, profiles]);
 
   const logoSize = width * sz.logoSizeRatio;
 

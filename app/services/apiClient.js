@@ -12,7 +12,7 @@
 //  • Dev-only request + response logging (controlled by ENABLE_LOGGING from .env)
 //  • Typed ApiError thrown on every failure
 //
-//  Auth error interception (new):
+//  Auth error interception:
 //  • TOKEN_EXPIRED (code 1002) → automatically calls POST /auth/token/refresh,
 //    saves the new token pair, then retries the original request once.
 //  • TOKEN_INVALID / REFRESH_TOKEN_EXPIRED / REFRESH_TOKEN_INVALID /
@@ -20,6 +20,10 @@
 //    → calls logoutLocally() silently — no error sheet/toast shown for these.
 //  • SESSIONS_LIMIT_REACHED (code 1009) → thrown normally so useApiCall
 //    shows it to the user.
+//
+//  ACCOUNT_NOT_FOUND interception:
+//  • Calls _clearAccountDataRef(userAccountId, profileIds) — targeted cleanup
+//    for only the account that was not found. Other users on the device are safe.
 //
 //  logoutLocally() is exported so account.jsx logout button can call it
 //  directly without duplicating the clear-storage + navigate logic.
@@ -41,7 +45,7 @@ import {
 } from "./tokenStorage";
 import { getPrimaryUserAccountId } from "./identityStorage";
 
-// ── Error code constants (mirror ServiceError codes on the backend) ────────
+// ── Error code constants ──────────────────────────────────────────────────
 const AUTH_ERROR_CODES = {
   TOKEN_EXPIRED: 1002,
   TOKEN_INVALID: 1003,
@@ -56,7 +60,6 @@ const ACCOUNT_ERROR_CODES = {
   ACCOUNT_NOT_FOUND: 2001,
 };
 
-// Codes that should immediately log the user out without showing an error UI.
 const FATAL_AUTH_CODES = new Set([
   AUTH_ERROR_CODES.TOKEN_INVALID,
   AUTH_ERROR_CODES.REFRESH_TOKEN_EXPIRED,
@@ -65,13 +68,22 @@ const FATAL_AUTH_CODES = new Set([
   AUTH_ERROR_CODES.ACTIVE_SESSION_NOT_FOUND,
 ]);
 
-// ── Navigation reference ───────────────────────────────────────────────────
+// ── Navigation + context references ──────────────────────────────────────
 let _navigationRef = null;
 let _clearUserData = null;
 let _notifyRef = null;
-let _clearIdentityRef = null; // set to clearPrimaryUserAccountId from identityStorage
+let _clearIdentityRef = null; // kept for backward compat but no longer used in ACCOUNT_NOT_FOUND flow
 
-// ── Refresh token mutex ────────────────────────────────────────────────────
+/**
+ * Registered by UserContext on mount.
+ * Signature: (userAccountId: string, profileIds: string[]) => Promise<void>
+ * Called with the exact userAccountId decoded from the JWT when
+ * ACCOUNT_NOT_FOUND is received — so cleanup is always targeted to the
+ * correct account, never to a different user on the same device.
+ */
+let _clearAccountDataRef = null;
+
+// ── Refresh token mutex ───────────────────────────────────────────────────
 let _refreshPromise = null;
 
 export function setNavigationRef(router) {
@@ -85,13 +97,22 @@ export function setNotifyRef(notify) {
 }
 export function setClearIdentityRef(fn) {
   _clearIdentityRef = fn;
+} // kept, no longer used internally
+
+/**
+ * Register the targeted account-data cleanup function from UserContext.
+ * Must be called at app startup (inside UserContext useEffect).
+ *
+ * @param {(userAccountId: string, profileIds: string[]) => Promise<void>} fn
+ */
+export function setClearAccountDataRef(fn) {
+  _clearAccountDataRef = fn;
 }
 
 /**
  * Clears all local auth state and navigates to login.
  * Called on fatal auth errors and by the logout button in account.jsx.
  * Safe to call even when there is no internet — it never touches the backend.
- * @param {string} [reason] - Optional message shown to user before redirecting.
  */
 export async function logoutLocally(reason) {
   try {
@@ -106,28 +127,81 @@ export async function logoutLocally(reason) {
 }
 
 /**
- * Like logoutLocally but ALSO clears the primaryUserAccountId.
- * Called when the account no longer exists in the database while the user
- * is already logged in (e.g. account deleted during testing).
- * After this, UserContext sees no primaryUserAccountId → isFirstTime = true
- * → SplashScreen routes to registration.
- * @param {string} [reason] - Optional message shown to user before redirecting.
+ * Targeted cleanup when ACCOUNT_NOT_FOUND is received from the backend.
+ *
+ * Decodes the userAccountId from the current access token so we know
+ * EXACTLY which account was not found — even if it is not the primary user.
+ * Passes that ID to _clearAccountDataRef which handles:
+ *  - Deleting only that account's AsyncStorage keys
+ *  - Clearing auth tokens
+ *  - Clearing primary identity ONLY if the deleted account == primary user
+ *
+ * Other accounts on the device are completely safe.
  */
-async function logoutAndClearIdentity(reason) {
+async function logoutAndClearIdentity(reason, requestBody = null) {
+  console.log("[logoutAndClearIdentity] CALLED");
   try {
+    console.log("[logoutAndClearIdentity] inside try");
     if (reason && _notifyRef) {
       _notifyRef.toast.error(reason);
       await new Promise((r) => setTimeout(r, 1200));
     }
-    await clearAuthTokens();
-    if (_clearIdentityRef) await _clearIdentityRef();
+
+    let userAccountId = null;
+    console.log("[logoutAndClearIdentity] getting access token");
+    try {
+      const accessToken = await getAccessToken();
+      console.log("[logoutAndClearIdentity] accessToken=", accessToken);
+      if (accessToken) {
+        const payload = _decodeJwtPayload(accessToken);
+        userAccountId = payload?.userId ?? null;
+      }
+    } catch (e) {
+      console.log("[logoutAndClearIdentity] token decode error=", e?.message);
+    }
+
+    console.log(
+      "[logoutAndClearIdentity] userAccountId from token=",
+      userAccountId,
+    );
+
+    if (!userAccountId && requestBody) {
+      const parsed =
+        typeof requestBody === "string" ? JSON.parse(requestBody) : requestBody;
+      userAccountId = parsed?.userAccountIdToken ?? null;
+      console.log(
+        "[logoutAndClearIdentity] userAccountId from body=",
+        userAccountId,
+      );
+    }
+
+    console.log(
+      "[logoutAndClearIdentity] _clearAccountDataRef=",
+      !!_clearAccountDataRef,
+    );
+
+    if (_clearAccountDataRef && userAccountId) {
+      console.log("[logoutAndClearIdentity] calling _clearAccountDataRef");
+      await _clearAccountDataRef(userAccountId);
+    } else {
+      console.log(
+        "[logoutAndClearIdentity] SKIPPED — clearAccountDataRef=",
+        !!_clearAccountDataRef,
+        "userAccountId=",
+        userAccountId,
+      );
+      await clearAuthTokens();
+    }
+
     if (_clearUserData) await _clearUserData();
-  } catch (_) {}
-  // Navigate to index (SplashScreen) so routing re-evaluates isFirstTime
+  } catch (e) {
+    console.log("[logoutAndClearIdentity] CAUGHT ERROR=", e?.message, e);
+  }
+
   if (_navigationRef) _navigationRef.replace("/");
 }
 
-// ── Retry config ───────────────────────────────────────────────────────────
+// ── Retry config ──────────────────────────────────────────────────────────
 const RETRYABLE_TYPES = new Set([
   ERROR_TYPE.NETWORK,
   ERROR_TYPE.TIMEOUT,
@@ -138,7 +212,7 @@ function sleep(ms) {
   return new Promise((r) => setTimeout(r, ms));
 }
 
-// ── Dev logging ────────────────────────────────────────────────────────────
+// ── Dev logging ───────────────────────────────────────────────────────────
 function logRequest(method, url, options) {
   if (!ENABLE_LOGGING) return;
   console.log(`\n▶ [API] ${method.toUpperCase()} ${url}`);
@@ -158,7 +232,7 @@ function logResponse(method, url, status, data, ms) {
   if (data) console.log("  Response:", data);
 }
 
-// ── Resolve Authorization header by token type ─────────────────────────────
+// ── Resolve Authorization header ──────────────────────────────────────────
 async function resolveAuthHeader(auth) {
   if (auth === "none") return {};
 
@@ -182,20 +256,11 @@ async function resolveAuthHeader(auth) {
   return { Authorization: `Bearer ${token}` };
 }
 
-// ── JWT payload decoder ────────────────────────────────────────────────────
-// Reads claims from the JWT without verifying signature.
-// Safe for client-side use — we only use it to read userId for comparison,
-// never for authentication decisions.
-// Uses pure JS base64 decoding — no atob dependency (not reliable in all
-// React Native versions).
+// ── JWT payload decoder ───────────────────────────────────────────────────
 function _decodeJwtPayload(token) {
   try {
     const base64 = token.split(".")[1].replace(/-/g, "+").replace(/_/g, "/");
-
-    // Pad to multiple of 4
     const padded = base64 + "==".slice(0, (4 - (base64.length % 4)) % 4);
-
-    // Pure JS base64 decode
     const chars =
       "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
     let bytes = "";
@@ -210,7 +275,6 @@ function _decodeJwtPayload(token) {
       if (b2 !== -1) bytes += String.fromCharCode(((b1 & 15) << 4) | (b2 >> 2));
       if (b3 !== -1) bytes += String.fromCharCode(((b2 & 3) << 6) | b3);
     }
-
     return JSON.parse(
       decodeURIComponent(
         bytes
@@ -227,17 +291,12 @@ function _decodeJwtPayload(token) {
 /**
  * Returns true if the currently logged-in user (from the access token)
  * is the same as the device's primary user (from identityStorage).
- * Used to decide whether ACCOUNT_NOT_FOUND should clear the primary identity
- * or just do a regular logout.
  */
 async function _isLoggedInUserPrimaryUser(requestBody) {
   try {
     const primaryUserAccountId = await getPrimaryUserAccountId();
     if (!primaryUserAccountId) return false;
 
-    // If no access token, this is a login attempt.
-    // The request body contains userAccountIdToken which is the userId
-    // the device is trying to authenticate — compare directly.
     const accessToken = await getAccessToken();
     if (!accessToken) {
       const requestingUserId = requestBody?.userAccountIdToken;
@@ -245,32 +304,22 @@ async function _isLoggedInUserPrimaryUser(requestBody) {
       return requestingUserId === primaryUserAccountId;
     }
 
-    // Logged-in case — decode userId from the access token and compare.
     const payload = _decodeJwtPayload(accessToken);
     return payload?.userId === primaryUserAccountId;
   } catch (_) {
-    // If we can't determine, default to safe option: don't clear primary identity
     return false;
   }
 }
 
-// ── Refresh token call ─────────────────────────────────────────────────────
-// Protected by a module-level promise mutex so that if multiple requests
-// expire at the same time, only ONE refresh call is made. All others wait
-// for it to resolve and then read the newly saved token from storage.
+// ── Refresh token call ────────────────────────────────────────────────────
 async function attemptTokenRefresh() {
-  // If a refresh is already in progress, wait for it instead of firing again
-  if (_refreshPromise) {
-    return _refreshPromise;
-  }
+  if (_refreshPromise) return _refreshPromise;
 
   _refreshPromise = (async () => {
     try {
       const refreshToken = await getRefreshToken();
       if (!refreshToken) {
-        console.warn(
-          "[API] No refresh token found in storage — cannot refresh.",
-        );
+        console.warn("[API] No refresh token found — cannot refresh.");
         return false;
       }
 
@@ -282,10 +331,7 @@ async function attemptTokenRefresh() {
       });
 
       if (!response.ok) {
-        console.warn(
-          "[API] Refresh token request failed with status:",
-          response.status,
-        );
+        console.warn("[API] Refresh failed with status:", response.status);
         return false;
       }
 
@@ -303,7 +349,6 @@ async function attemptTokenRefresh() {
       console.warn("[API] Refresh token call threw:", err);
       return false;
     } finally {
-      // Always clear the mutex so the next expiry can trigger a fresh refresh
       _refreshPromise = null;
     }
   })();
@@ -311,7 +356,7 @@ async function attemptTokenRefresh() {
   return _refreshPromise;
 }
 
-// ── Core request ───────────────────────────────────────────────────────────
+// ── Core request ──────────────────────────────────────────────────────────
 async function request(
   endpoint,
   {
@@ -321,7 +366,7 @@ async function request(
     timeout = REQUEST_TIMEOUT_MS_N,
     retries = RETRY_COUNT_N,
     headers: extraHeaders = {},
-    _isRetryAfterRefresh = false, // internal flag — prevents infinite refresh loops
+    _isRetryAfterRefresh = false,
   } = {},
 ) {
   const url = `${API_BASE_URL}${endpoint}`;
@@ -334,7 +379,6 @@ async function request(
     const startMs = Date.now();
 
     try {
-      // ── REQUEST INTERCEPTOR ──────────────────────────────────────────
       const authHeader = await resolveAuthHeader(auth);
 
       const fetchOptions = {
@@ -352,11 +396,9 @@ async function request(
 
       logRequest(method, url, fetchOptions);
 
-      // ── FETCH ────────────────────────────────────────────────────────
       const response = await fetch(url, fetchOptions);
       const durationMs = Date.now() - startMs;
 
-      // ── RESPONSE INTERCEPTOR ─────────────────────────────────────────
       let data = null;
       const contentType = response.headers.get("content-type") ?? "";
       if (contentType.includes("application/json")) {
@@ -369,7 +411,6 @@ async function request(
       logResponse(method, url, response.status, data, durationMs);
 
       if (!response.ok) {
-        // Defensively extract errorCode — handle both object and string responses
         let parsedData = data;
         if (typeof data === "string") {
           try {
@@ -394,8 +435,7 @@ async function request(
           );
         }
 
-        // ── AUTH ERROR INTERCEPTION ──────────────────────────────────
-
+        // ── TOKEN_EXPIRED → refresh and retry ────────────────────────────
         if (
           errorCode === AUTH_ERROR_CODES.TOKEN_EXPIRED &&
           !_isRetryAfterRefresh
@@ -419,7 +459,7 @@ async function request(
           }
         }
 
-        // Fatal auth codes → logout with message, return null
+        // ── Fatal auth codes → logout, no data wipe ──────────────────────
         if (FATAL_AUTH_CODES.has(errorCode)) {
           const reason =
             errorCode === AUTH_ERROR_CODES.SESSION_EXPIRED
@@ -431,31 +471,19 @@ async function request(
           return null;
         }
 
-        // ACCOUNT_NOT_FOUND while logged in → account was deleted from DB.
-        // Before clearing the primary identity we must check whether the
-        // currently logged-in user IS the primary device user or a different
-        // user who logged in with credentials.
-        //
-        // If the deleted account IS the primary user → clear identity → register
-        // If the deleted account is a DIFFERENT user  → just logout → login screen
-        // (primary user's identity must be preserved so they can still log in)
+        // ── ACCOUNT_NOT_FOUND → targeted cleanup for that specific account ─
         if (errorCode === ACCOUNT_ERROR_CODES.ACCOUNT_NOT_FOUND) {
-          const isDeletedUserPrimary = await _isLoggedInUserPrimaryUser(
-            typeof body === "string" ? JSON.parse(body) : body,
+          console.log(
+            "[apiClient] ACCOUNT_NOT_FOUND block reached, body=",
+            body,
           );
-          if (isDeletedUserPrimary) {
-            await logoutAndClearIdentity(
-              "Your account no longer exists. Please register again.",
-            );
-          } else {
-            await logoutLocally(
-              "Your account no longer exists. Please log in again.",
-            );
-          }
+          await logoutAndClearIdentity(
+            "Your account no longer exists. Please register again.",
+            body,
+          );
           return null;
         }
 
-        // All other errors → throw ApiError for useApiCall to handle normally
         throw new ApiError({
           message,
           errorType,
@@ -511,7 +539,7 @@ async function request(
   }
 }
 
-// ── Public API ─────────────────────────────────────────────────────────────
+// ── Public API ────────────────────────────────────────────────────────────
 export const apiClient = {
   get: (endpoint, options = {}) =>
     request(endpoint, { ...options, method: "GET" }),
@@ -525,7 +553,7 @@ export const apiClient = {
     request(endpoint, { ...options, method: "DELETE" }),
 };
 
-// ── Legacy shims ───────────────────────────────────────────────────────────
+// ── Legacy shims ──────────────────────────────────────────────────────────
 export async function apiFetch(endpoint, options = {}) {
   const method = options.method ?? "GET";
   const body = options.body ? JSON.parse(options.body) : undefined;

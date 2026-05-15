@@ -35,6 +35,7 @@ import { logoutLocally } from "../../services/apiClient";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import { font, pad, size } from "../../theme/tokens";
+import { performAccountDeletion } from "../../services/deleteAccountService";
 
 const { width: SW } = Dimensions.get("window");
 
@@ -588,12 +589,14 @@ const Account = () => {
     currentProfile,
     userAccount,
     setUserAccount,
+    clearAllData,
   } = useUser();
 
   const [emailInput, setEmailInput] = useState("");
   const [passwordInput, setPasswordInput] = useState("");
   const [isSavingEmail, setIsSavingEmail] = useState(false);
   const { planName, isFree, subscription } = useSubscription();
+  const clearUserData = null; // apiClient already has this registered at app root
 
   // ── Subscription active check ─────────────────────────────────────────────
   // When false: add, edit, delete profile operations are blocked
@@ -847,6 +850,42 @@ const Account = () => {
         },
       },
     ]);
+  };
+
+  const handleDeleteAccount = () => {
+    Alert.alert(
+      "Delete Account",
+      "This will permanently delete your account and all associated data including all child profiles, reading progress, and rewards. This action cannot be undone.",
+      [
+        { text: "Cancel", style: "cancel" },
+        {
+          text: "Delete Account",
+          style: "destructive",
+          onPress: () => {
+            // Second confirmation — Apple requires this for account deletion
+            Alert.alert(
+              "Are you absolutely sure?",
+              "All your data will be permanently erased. You will not be able to recover your account.",
+              [
+                { text: "Cancel", style: "cancel" },
+                {
+                  text: "Yes, Delete Everything",
+                  style: "destructive",
+                  onPress: async () => {
+                    await performAccountDeletion({
+                      userAccount,
+                      userAccountId: userAccount?.id,
+                      router,
+                      clearAllData, // ← see Change 3 below
+                    });
+                  },
+                },
+              ],
+            );
+          },
+        },
+      ],
+    );
   };
 
   const headerPaddingTop = Math.max(insets.top, 8);
@@ -1200,6 +1239,33 @@ const Account = () => {
       flexShrink: 0,
     },
     headerSpacer: { flex: 1 },
+    deleteAccountBtn: {
+      alignSelf: "center",
+      marginTop: pad.sm,
+      marginBottom: pad.sm,
+      paddingVertical: pad.xs,
+      paddingHorizontal: pad.md,
+    },
+    deleteAccountText: {
+      fontFamily: FONTS.regular,
+      fontSize: font.sm,
+      color: "rgba(255,80,80,0.45)",
+      textDecorationLine: "underline",
+      letterSpacing: 0.2,
+    },
+    // Replace planBadgeRow with planBadgeCol:
+    planBadgeCol: {
+      flexDirection: "column",
+      alignItems: "flex-end",
+      gap: 2,
+    },
+    accountIdLabel: {
+      fontFamily: FONTS.regular,
+      fontSize: 9,
+      color: C.textMuted,
+      letterSpacing: 0.5,
+      opacity: 0.6,
+    },
   });
 
   return (
@@ -1216,6 +1282,11 @@ const Account = () => {
           <View style={styles.headerSpacer} />
           <View style={styles.planBadgeRow}>
             <PlanBadge planName={planName} isFree={isFree} />
+            {!!userAccount?.id && (
+              <Text style={styles.accountIdLabel}>
+                ID: {userAccount.id.slice(-8).toUpperCase()}
+              </Text>
+            )}
           </View>
           <View style={styles.headerSpacer} />
         </View>
@@ -1401,6 +1472,14 @@ const Account = () => {
             >
               <Text style={styles.logoutIcon}>⏻</Text>
               <Text style={styles.logoutText}>Log Out</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={styles.deleteAccountBtn}
+              onPress={handleDeleteAccount}
+              activeOpacity={0.8}
+            >
+              <Text style={styles.deleteAccountText}>Delete Account</Text>
             </TouchableOpacity>
 
             <View style={{ height: 32 }} />
