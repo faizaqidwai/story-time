@@ -23,12 +23,19 @@
  *     options={{headerShown:false, animation:"slide_from_bottom", gestureEnabled:false}}/>
  */
 
-import React, { useState, useEffect, useRef, useCallback, useMemo } from "react";
+import React, {
+  useState,
+  useEffect,
+  useRef,
+  useCallback,
+  useMemo,
+} from "react";
 import {
   View,
   Text,
   Image,
   TouchableOpacity,
+  Pressable, // ← add Pressable
   StyleSheet,
   Animated,
   Easing,
@@ -40,6 +47,9 @@ import { Video, ResizeMode } from "expo-av";
 import { Audio } from "expo-av";
 import { useRouter, useLocalSearchParams } from "expo-router";
 import { ImageBackground } from "react-native";
+import { font, pad, radius, size } from "../theme/tokens";
+import { Ionicons } from "@expo/vector-icons";
+// Add Pressable to the import at the top:
 
 // ─── LAYOUT ───────────────────────────────────────────────────────────────────
 const STATUS_H =
@@ -53,7 +63,7 @@ const SPRITE_FRAMES = 15;
 const SPRITE_FW = 170;
 const SPRITE_FH = 208;
 const SPRITE_SHEET_W = 850;
-const SPRITE_SHEET_H = 624;
+const SPRITE_SHEET_H = 628;
 const SPRITE_FPS = 12;
 const SPRITE_INTERVAL_MS = Math.round(1000 / SPRITE_FPS);
 
@@ -105,40 +115,151 @@ const FALLBACK_ROUNDS = [
     category: "Size",
     emoji: "📏",
     briefing: 'Catch eggs with SIZE words!\n"big","small","tall" — size words.',
-    targetWords: ["big","small","tall","short","huge","tiny","wide","narrow","large","little"],
-    distractWords: ["happy","run","blue","jump","fast","loud","sweet","cold","sing","red"],
+    targetWords: [
+      "big",
+      "small",
+      "tall",
+      "short",
+      "huge",
+      "tiny",
+      "wide",
+      "narrow",
+      "large",
+      "little",
+    ],
+    distractWords: [
+      "happy",
+      "run",
+      "blue",
+      "jump",
+      "fast",
+      "loud",
+      "sweet",
+      "cold",
+      "sing",
+      "red",
+    ],
   },
   {
     id: 2,
     category: "Colors",
     emoji: "🌈",
     briefing: 'Catch eggs with COLOR words!\n"red","blue","green" — colors.',
-    targetWords: ["red","blue","green","yellow","pink","purple","orange","black","white","brown"],
-    distractWords: ["big","run","loud","jump","happy","slow","soft","round","shiny","cold"],
+    targetWords: [
+      "red",
+      "blue",
+      "green",
+      "yellow",
+      "pink",
+      "purple",
+      "orange",
+      "black",
+      "white",
+      "brown",
+    ],
+    distractWords: [
+      "big",
+      "run",
+      "loud",
+      "jump",
+      "happy",
+      "slow",
+      "soft",
+      "round",
+      "shiny",
+      "cold",
+    ],
   },
   {
     id: 3,
     category: "Animals",
     emoji: "🐾",
     briefing: "Catch eggs with ANIMAL words!\nDog, cat, lion — animal names.",
-    targetWords: ["dog","cat","lion","tiger","bird","frog","bear","wolf","duck","fish"],
-    distractWords: ["apple","run","blue","table","happy","fast","jump","cloud","red","warm"],
+    targetWords: [
+      "dog",
+      "cat",
+      "lion",
+      "tiger",
+      "bird",
+      "frog",
+      "bear",
+      "wolf",
+      "duck",
+      "fish",
+    ],
+    distractWords: [
+      "apple",
+      "run",
+      "blue",
+      "table",
+      "happy",
+      "fast",
+      "jump",
+      "cloud",
+      "red",
+      "warm",
+    ],
   },
   {
     id: 4,
     category: "Feelings",
     emoji: "💛",
-    briefing: 'Catch eggs with FEELING words!\n"happy","sad","brave" — feelings.',
-    targetWords: ["happy","sad","angry","scared","excited","tired","proud","silly","calm","brave"],
-    distractWords: ["dog","green","run","table","big","cloud","fast","apple","blue","swim"],
+    briefing:
+      'Catch eggs with FEELING words!\n"happy","sad","brave" — feelings.',
+    targetWords: [
+      "happy",
+      "sad",
+      "angry",
+      "scared",
+      "excited",
+      "tired",
+      "proud",
+      "silly",
+      "calm",
+      "brave",
+    ],
+    distractWords: [
+      "dog",
+      "green",
+      "run",
+      "table",
+      "big",
+      "cloud",
+      "fast",
+      "apple",
+      "blue",
+      "swim",
+    ],
   },
   {
     id: 5,
     category: "Actions",
     emoji: "⚡",
     briefing: 'Catch eggs with ACTION words!\n"run","jump","fly" — actions.',
-    targetWords: ["run","jump","swim","fly","sing","dance","eat","sleep","climb","read"],
-    distractWords: ["big","red","dog","table","happy","cloud","apple","blue","shiny","soft"],
+    targetWords: [
+      "run",
+      "jump",
+      "swim",
+      "fly",
+      "sing",
+      "dance",
+      "eat",
+      "sleep",
+      "climb",
+      "read",
+    ],
+    distractWords: [
+      "big",
+      "red",
+      "dog",
+      "table",
+      "happy",
+      "cloud",
+      "apple",
+      "blue",
+      "shiny",
+      "soft",
+    ],
   },
 ];
 
@@ -158,8 +279,12 @@ const shuffle = (a) => {
 // buildQ takes any round object — works with both backend and fallback data
 const buildQ = (round) =>
   shuffle([
-    ...shuffle(round.targetWords).slice(0, 10).map((w) => ({ word: w, isTarget: true })),
-    ...shuffle(round.distractWords).slice(0, 10).map((w) => ({ word: w, isTarget: false })),
+    ...shuffle(round.targetWords)
+      .slice(0, 10)
+      .map((w) => ({ word: w, isTarget: true })),
+    ...shuffle(round.distractWords)
+      .slice(0, 10)
+      .map((w) => ({ word: w, isTarget: false })),
   ]);
 
 // ─── PURE COMPONENTS (no rounds dependency — receive data via props) ──────────
@@ -179,10 +304,31 @@ function DinoSprite({ x, y, dir }) {
   const offsetX = -(col * DINO_W);
   const offsetY = -(row * DINO_H);
   return (
-    <View style={{ position: "absolute", left: x - DINO_W / 2, top: y - DINO_H, width: DINO_W, height: DINO_H, overflow: "hidden", zIndex: 80, transform: [{ scaleX: dir }] }}>
+    <View
+      style={{
+        position: "absolute",
+        left: x - DINO_W / 2,
+        top: y - DINO_H,
+        width: DINO_W,
+        height: DINO_H,
+        overflow: "hidden",
+        zIndex: 80,
+        transform: [{ scaleX: dir }],
+      }}
+    >
       <Image
         source={require("../../assets/games/dino-world/dino-sprite.png")}
-        style={{ width: SHEET_DISP_W, height: SHEET_DISP_H, marginLeft: offsetX, marginTop: offsetY }}
+        style={{
+          width: SHEET_DISP_W,
+          height: SHEET_DISP_H,
+          marginLeft: offsetX,
+          marginTop: offsetY,
+          // transform: [{ translateY: floatAnim }, { scale: scaleAnim }],
+          shadowColor: "#ffe600",
+          shadowOpacity: 0.8,
+          shadowRadius: 2,
+          elevation: 2,
+        }}
         resizeMode="stretch"
       />
     </View>
@@ -197,8 +343,17 @@ function EggSprite({ egg }) {
   useEffect(() => {
     loopRef.current = Animated.loop(
       Animated.sequence([
-        Animated.timing(wobble, { toValue: 1, duration: 380, easing: Easing.inOut(Easing.sin), useNativeDriver: true }),
-        Animated.timing(wobble, { toValue: -1, duration: 380, useNativeDriver: true }),
+        Animated.timing(wobble, {
+          toValue: 1,
+          duration: 380,
+          easing: Easing.inOut(Easing.sin),
+          useNativeDriver: true,
+        }),
+        Animated.timing(wobble, {
+          toValue: -1,
+          duration: 380,
+          useNativeDriver: true,
+        }),
       ]),
     );
     loopRef.current.start();
@@ -208,19 +363,97 @@ function EggSprite({ egg }) {
     if (egg.collected) {
       loopRef.current?.stop();
       Animated.parallel([
-        Animated.spring(sc, { toValue: 1.7, friction: 3, tension: 100, useNativeDriver: true }),
-        Animated.timing(op, { toValue: 0, duration: 300, useNativeDriver: true }),
+        Animated.spring(sc, {
+          toValue: 1.7,
+          friction: 3,
+          tension: 100,
+          useNativeDriver: true,
+        }),
+        Animated.timing(op, {
+          toValue: 0,
+          duration: 300,
+          useNativeDriver: true,
+        }),
       ]).start();
     }
   }, [egg.collected]);
-  const rotate = wobble.interpolate({ inputRange: [-1, 1], outputRange: ["-9deg", "9deg"] });
+  const rotate = wobble.interpolate({
+    inputRange: [-1, 1],
+    outputRange: ["-9deg", "9deg"],
+  });
   return (
-    <Animated.View pointerEvents="none" style={{ position: "absolute", left: egg.x - EGG_W / 2, top: egg.y, width: EGG_W, height: EGG_H, zIndex: 60, opacity: op, transform: [{ scale: sc }, { rotate }] }}>
-      <View style={{ flex: 1, backgroundColor: C.eggShell, borderRadius: EGG_W * 0.52, borderWidth: 3, borderColor: C.eggBorder, alignItems: "center", justifyContent: "center", shadowColor: C.eggBorder, shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.5, shadowRadius: 6, elevation: 8 }}>
-        <View style={{ position: "absolute", top: 8, left: 11, width: 18, height: 11, backgroundColor: "rgba(255,255,255,0.75)", borderRadius: 9, transform: [{ rotate: "-25deg" }] }} />
-        <View style={{ position: "absolute", top: 5, right: 10, width: 9, height: 9, borderRadius: 5, backgroundColor: "rgba(249,168,37,0.38)" }} />
-        <View style={{ position: "absolute", bottom: 8, left: 9, width: 7, height: 7, borderRadius: 4, backgroundColor: "rgba(249,168,37,0.28)" }} />
-        <Text style={{ fontSize: Math.min(15, 95 / Math.max(egg.word.length, 1)), fontWeight: "900", color: "#5D4037", textAlign: "center", letterSpacing: 0.2 }}>
+    <Animated.View
+      pointerEvents="none"
+      style={{
+        position: "absolute",
+        left: egg.x - EGG_W / 2,
+        top: egg.y,
+        width: EGG_W,
+        height: EGG_H,
+        zIndex: 60,
+        opacity: op,
+        transform: [{ scale: sc }, { rotate }],
+      }}
+    >
+      <View
+        style={{
+          flex: 1,
+          backgroundColor: C.eggShell,
+          borderRadius: EGG_W * 0.52,
+          borderWidth: 3,
+          borderColor: C.eggBorder,
+          alignItems: "center",
+          justifyContent: "center",
+          shadowColor: C.eggBorder,
+          shadowOffset: { width: 0, height: 4 },
+          shadowOpacity: 0.5,
+          shadowRadius: 6,
+          elevation: 8,
+        }}
+      >
+        <View
+          style={{
+            position: "absolute",
+            top: 8,
+            left: 11,
+            width: 18,
+            height: 11,
+            backgroundColor: "rgba(255,255,255,0.75)",
+            borderRadius: 9,
+            transform: [{ rotate: "-25deg" }],
+          }}
+        />
+        <View
+          style={{
+            position: "absolute",
+            top: 5,
+            right: 10,
+            width: 9,
+            height: 9,
+            borderRadius: 5,
+            backgroundColor: "rgba(249,168,37,0.38)",
+          }}
+        />
+        <View
+          style={{
+            position: "absolute",
+            bottom: 8,
+            left: 9,
+            width: 7,
+            height: 7,
+            borderRadius: 4,
+            backgroundColor: "rgba(249,168,37,0.28)",
+          }}
+        />
+        <Text
+          style={{
+            fontSize: Math.min(24, 95 / Math.max(egg.word.length, 1)),
+            fontWeight: "900",
+            color: "#5D4037",
+            textAlign: "center",
+            letterSpacing: 0.2,
+          }}
+        >
           {egg.word}
         </Text>
       </View>
@@ -233,12 +466,38 @@ function CatchBurst({ x, y, isCorrect, onDone }) {
   const op = useRef(new Animated.Value(1)).current;
   useEffect(() => {
     Animated.parallel([
-      Animated.spring(sc, { toValue: 2, friction: 3, tension: 80, useNativeDriver: true }),
-      Animated.sequence([Animated.delay(150), Animated.timing(op, { toValue: 0, duration: 280, useNativeDriver: true })]),
+      Animated.spring(sc, {
+        toValue: 2,
+        friction: 3,
+        tension: 80,
+        useNativeDriver: true,
+      }),
+      Animated.sequence([
+        Animated.delay(150),
+        Animated.timing(op, {
+          toValue: 0,
+          duration: 280,
+          useNativeDriver: true,
+        }),
+      ]),
     ]).start(onDone);
   }, []);
   return (
-    <Animated.View pointerEvents="none" style={{ position: "absolute", left: x - 36, top: y - 36, width: 72, height: 72, alignItems: "center", justifyContent: "center", zIndex: 200, opacity: op, transform: [{ scale: sc }] }}>
+    <Animated.View
+      pointerEvents="none"
+      style={{
+        position: "absolute",
+        left: x - 36,
+        top: y - 36,
+        width: 72,
+        height: 72,
+        alignItems: "center",
+        justifyContent: "center",
+        zIndex: 200,
+        opacity: op,
+        transform: [{ scale: sc }],
+      }}
+    >
       <Text style={{ fontSize: 40 }}>{isCorrect ? "🎉" : "💥"}</Text>
     </Animated.View>
   );
@@ -253,15 +512,52 @@ function FlyingStar({ startX, startY, endX, endY, delay, onDone }) {
     Animated.sequence([
       Animated.delay(delay),
       Animated.parallel([
-        Animated.timing(op, { toValue: 1, duration: 60, useNativeDriver: true }),
-        Animated.spring(sc, { toValue: 1, friction: 5, tension: 80, useNativeDriver: true }),
-        Animated.timing(ax, { toValue: endX, duration: 520, easing: Easing.out(Easing.quad), useNativeDriver: true }),
-        Animated.timing(ay, { toValue: endY, duration: 520, easing: Easing.out(Easing.quad), useNativeDriver: true }),
+        Animated.timing(op, {
+          toValue: 1,
+          duration: 60,
+          useNativeDriver: true,
+        }),
+        Animated.spring(sc, {
+          toValue: 1,
+          friction: 5,
+          tension: 80,
+          useNativeDriver: true,
+        }),
+        Animated.timing(ax, {
+          toValue: endX,
+          duration: 520,
+          easing: Easing.out(Easing.quad),
+          useNativeDriver: true,
+        }),
+        Animated.timing(ay, {
+          toValue: endY,
+          duration: 520,
+          easing: Easing.out(Easing.quad),
+          useNativeDriver: true,
+        }),
       ]),
-    ]).start(() => Animated.timing(op, { toValue: 0, duration: 80, useNativeDriver: true }).start(onDone));
+    ]).start(() =>
+      Animated.timing(op, {
+        toValue: 0,
+        duration: 80,
+        useNativeDriver: true,
+      }).start(onDone),
+    );
   }, []);
   return (
-    <Animated.View pointerEvents="none" style={{ position: "absolute", top: 0, left: 0, width: 26, height: 26, zIndex: 999, opacity: op, transform: [{ translateX: ax }, { translateY: ay }, { scale: sc }] }}>
+    <Animated.View
+      pointerEvents="none"
+      style={{
+        position: "absolute",
+        top: 0,
+        left: 0,
+        width: 26,
+        height: 26,
+        zIndex: 999,
+        opacity: op,
+        transform: [{ translateX: ax }, { translateY: ay }, { scale: sc }],
+      }}
+    >
       <Text style={{ fontSize: 22 }}>⭐</Text>
     </Animated.View>
   );
@@ -272,36 +568,123 @@ function Notif({ text, color, icon, sw, sh, onDone }) {
   const sc = useRef(new Animated.Value(0.6)).current;
   useEffect(() => {
     Animated.parallel([
-      Animated.spring(sc, { toValue: 1, friction: 4, tension: 80, useNativeDriver: true }),
+      Animated.spring(sc, {
+        toValue: 1,
+        friction: 4,
+        tension: 80,
+        useNativeDriver: true,
+      }),
       Animated.timing(op, { toValue: 1, duration: 180, useNativeDriver: true }),
     ]).start();
-    const t = setTimeout(() => Animated.timing(op, { toValue: 0, duration: 280, useNativeDriver: true }).start(onDone), 1500);
+    const t = setTimeout(
+      () =>
+        Animated.timing(op, {
+          toValue: 0,
+          duration: 280,
+          useNativeDriver: true,
+        }).start(onDone),
+      1500,
+    );
     return () => clearTimeout(t);
   }, []);
   return (
-    <Animated.View pointerEvents="none" style={{ position: "absolute", left: sw * 0.08, right: sw * 0.08, top: sh * 0.43, zIndex: 500, opacity: op, transform: [{ scale: sc }] }}>
-      <View style={{ backgroundColor: "rgba(5,20,5,0.97)", borderRadius: 20, borderWidth: 2.5, borderColor: color, paddingVertical: 14, paddingHorizontal: 20, alignItems: "center", shadowColor: color, shadowOffset: { width: 0, height: 0 }, shadowOpacity: 0.9, shadowRadius: 20, elevation: 14 }}>
+    <Animated.View
+      pointerEvents="none"
+      style={{
+        position: "absolute",
+        left: sw * 0.08,
+        right: sw * 0.08,
+        top: sh * 0.43,
+        zIndex: 500,
+        opacity: op,
+        transform: [{ scale: sc }],
+      }}
+    >
+      <View
+        style={{
+          backgroundColor: "rgba(5,20,5,0.97)",
+          borderRadius: 20,
+          borderWidth: 2.5,
+          borderColor: color,
+          paddingVertical: 14,
+          paddingHorizontal: 20,
+          alignItems: "center",
+          shadowColor: color,
+          shadowOffset: { width: 0, height: 0 },
+          shadowOpacity: 0.9,
+          shadowRadius: 20,
+          elevation: 14,
+        }}
+      >
         <Text style={{ fontSize: 26, marginBottom: 3 }}>{icon}</Text>
-        <Text style={{ fontSize: 15, fontWeight: "900", color, textAlign: "center" }}>{text}</Text>
+        <Text
+          style={{
+            fontSize: 15,
+            fontWeight: "900",
+            color,
+            textAlign: "center",
+          }}
+        >
+          {text}
+        </Text>
       </View>
     </Animated.View>
   );
 }
 
-function TapZones({ sw, sh, onLeft, onRight, active }) {
+// REPLACE the TapZones component:
+function TapZones({ sw, sh, onLeftStart, onRightStart, onStop, active }) {
   if (!active) return null;
   return (
     <>
-      <TouchableOpacity style={{ position: "absolute", left: 0, top: 0, width: sw / 2, height: sh, zIndex: 40 }} onPress={onLeft} activeOpacity={1}>
-        <View style={{ position: "absolute", left: 14, top: "50%", marginTop: -28, opacity: 0.3 }}>
+      <Pressable
+        style={{
+          position: "absolute",
+          left: 0,
+          top: 0,
+          width: sw / 2,
+          height: sh,
+          zIndex: 40,
+        }}
+        onPressIn={onLeftStart}
+        onPressOut={onStop}
+      >
+        <View
+          style={{
+            position: "absolute",
+            left: 14,
+            top: "50%",
+            marginTop: -28,
+            opacity: 0.3,
+          }}
+        >
           <Text style={{ fontSize: 38, color: "#FFF" }}>◀</Text>
         </View>
-      </TouchableOpacity>
-      <TouchableOpacity style={{ position: "absolute", right: 0, top: 0, width: sw / 2, height: sh, zIndex: 40 }} onPress={onRight} activeOpacity={1}>
-        <View style={{ position: "absolute", right: 14, top: "50%", marginTop: -28, opacity: 0.3 }}>
+      </Pressable>
+      <Pressable
+        style={{
+          position: "absolute",
+          right: 0,
+          top: 0,
+          width: sw / 2,
+          height: sh,
+          zIndex: 40,
+        }}
+        onPressIn={onRightStart}
+        onPressOut={onStop}
+      >
+        <View
+          style={{
+            position: "absolute",
+            right: 14,
+            top: "50%",
+            marginTop: -28,
+            opacity: 0.3,
+          }}
+        >
           <Text style={{ fontSize: 38, color: "#FFF" }}>▶</Text>
         </View>
-      </TouchableOpacity>
+      </Pressable>
     </>
   );
 }
@@ -309,16 +692,29 @@ function TapZones({ sw, sh, onLeft, onRight, active }) {
 function Hud({ round, timeLeft, score, onExit, badgeScale }) {
   return (
     <View style={st.hud}>
-      <TouchableOpacity style={st.exitBtn} onPress={onExit} activeOpacity={0.8} hitSlop={{ top: 14, bottom: 14, left: 14, right: 14 }}>
+      <TouchableOpacity
+        style={st.exitBtn}
+        onPress={onExit}
+        activeOpacity={0.8}
+        hitSlop={{ top: 14, bottom: 14, left: 14, right: 14 }}
+      >
         <Text style={st.exitTxt}>✕</Text>
       </TouchableOpacity>
       <View style={st.hudCenter}>
-        <Text style={st.hudCat}>{round.emoji} {round.category}</Text>
-        <Text style={[st.hudTime, timeLeft <= 10 && { color: C.red }]}>{timeLeft}s</Text>
+        <Text style={st.hudCat}>
+          {round.emoji} {round.category}
+        </Text>
       </View>
-      <Animated.View style={[st.scorePill, { transform: [{ scale: badgeScale }] }]}>
-        <Text style={st.scoreTxt}>⭐ {score}</Text>
-      </Animated.View>
+      <View style={{ alignItems: "center" }}>
+        <Animated.View
+          style={[st.scorePill, { transform: [{ scale: badgeScale }] }]}
+        >
+          <Text style={st.scoreTxt}>⭐ {score}</Text>
+        </Animated.View>
+        <Text style={[st.hudTime, timeLeft <= 10 && { color: C.red }]}>
+          {timeLeft}s
+        </Text>
+      </View>
     </View>
   );
 }
@@ -328,20 +724,49 @@ function IdleOverlay({ onStart, onExit }) {
   useEffect(() => {
     Animated.loop(
       Animated.sequence([
-        Animated.timing(pulse, { toValue: 1.08, duration: 650, easing: Easing.inOut(Easing.sin), useNativeDriver: true }),
-        Animated.timing(pulse, { toValue: 1, duration: 650, useNativeDriver: true }),
+        Animated.timing(pulse, {
+          toValue: 1.08,
+          duration: 650,
+          easing: Easing.inOut(Easing.sin),
+          useNativeDriver: true,
+        }),
+        Animated.timing(pulse, {
+          toValue: 1,
+          duration: 650,
+          useNativeDriver: true,
+        }),
       ]),
     ).start();
   }, []);
   return (
-    <ImageBackground source={require("../../assets/games/dino-world/cover.jpg")} resizeMode="stretch" style={StyleSheet.absoluteFill}>
-      <TouchableOpacity style={st.topExit} onPress={onExit} activeOpacity={0.8} hitSlop={{ top: 14, bottom: 14, left: 14, right: 14 }}>
+    <ImageBackground
+      source={require("../../assets/games/dino-world/cover.jpg")}
+      resizeMode="stretch"
+      style={StyleSheet.absoluteFill}
+    >
+      <TouchableOpacity
+        style={st.topExit}
+        onPress={onExit}
+        activeOpacity={0.8}
+        hitSlop={{ top: 14, bottom: 14, left: 14, right: 14 }}
+      >
         <Text style={st.exitTxt}>✕</Text>
       </TouchableOpacity>
-      <View style={{ alignItems: "center", justifyContent: "center", marginTop: "160%" }}>
+      <View
+        style={{
+          alignItems: "center",
+          justifyContent: "center",
+          marginTop: "160%",
+        }}
+      >
         <Animated.View style={{ transform: [{ scale: pulse }] }}>
           <TouchableOpacity onPress={onStart} activeOpacity={0.85}>
-            <ImageBackground source={require("../../assets/games/dino-world/start.png")} style={st.startBtnBg} imageStyle={st.startBtnImage} resizeMode="stretch" />
+            <ImageBackground
+              source={require("../../assets/games/dino-world/start.png")}
+              style={st.startBtnBg}
+              imageStyle={st.startBtnImage}
+              resizeMode="stretch"
+            />
           </TouchableOpacity>
         </Animated.View>
       </View>
@@ -355,24 +780,51 @@ function RoundBriefing({ round, totalRounds, onStart, onExit }) {
   const fade = useRef(new Animated.Value(0)).current;
   useEffect(() => {
     Animated.parallel([
-      Animated.spring(slide, { toValue: 0, friction: 5, useNativeDriver: true }),
-      Animated.timing(fade, { toValue: 1, duration: 280, useNativeDriver: true }),
+      Animated.spring(slide, {
+        toValue: 0,
+        friction: 5,
+        useNativeDriver: true,
+      }),
+      Animated.timing(fade, {
+        toValue: 1,
+        duration: 280,
+        useNativeDriver: true,
+      }),
     ]).start();
   }, []);
   return (
     <View style={st.overlayBg}>
-      <TouchableOpacity style={st.topExit} onPress={onExit} activeOpacity={0.8} hitSlop={{ top: 14, bottom: 14, left: 14, right: 14 }}>
+      <TouchableOpacity
+        style={st.topExit}
+        onPress={onExit}
+        activeOpacity={0.8}
+        hitSlop={{ top: 14, bottom: 14, left: 14, right: 14 }}
+      >
         <Text style={st.exitTxt}>✕</Text>
       </TouchableOpacity>
-      <Animated.View style={[st.card, { transform: [{ translateY: slide }], opacity: fade }]}>
+      <Animated.View
+        style={[st.card, { transform: [{ translateY: slide }], opacity: fade }]}
+      >
         <View style={st.roundHeader}>
           {/* totalRounds prop replaces hardcoded ROUNDS.length */}
-          <Text style={st.roundHeaderTxt}>🥚 ROUND {round.id} of {totalRounds}</Text>
+          <Text style={st.roundHeaderTxt}>
+            🥚 ROUND {round.id} of {totalRounds}
+          </Text>
         </View>
         <Text style={{ fontSize: 42, marginBottom: 6 }}>{round.emoji}</Text>
         <Text style={st.cardTitle}>{round.category} Words</Text>
         <Text style={st.cardDesc}>{round.briefing}</Text>
-        <Text style={{ color: C.textSec, fontSize: 11, fontWeight: "700", marginBottom: 8, letterSpacing: 1 }}>CATCH THESE EGGS:</Text>
+        <Text
+          style={{
+            color: C.textSec,
+            fontSize: 11,
+            fontWeight: "700",
+            marginBottom: 8,
+            letterSpacing: 1,
+          }}
+        >
+          CATCH THESE EGGS:
+        </Text>
         <View style={st.chipRow}>
           {round.targetWords.slice(0, 8).map((w) => (
             <View key={w} style={st.chip}>
@@ -380,7 +832,11 @@ function RoundBriefing({ round, totalRounds, onStart, onExit }) {
             </View>
           ))}
         </View>
-        <TouchableOpacity style={[st.greenBtn, { width: "100%" }]} onPress={onStart} activeOpacity={0.85}>
+        <TouchableOpacity
+          style={[st.greenBtn, { width: "100%" }]}
+          onPress={onStart}
+          activeOpacity={0.85}
+        >
           <Text style={st.greenBtnText}>🦕 GO!</Text>
         </TouchableOpacity>
       </Animated.View>
@@ -397,44 +853,108 @@ function ResultOverlay({ score, caught, missed, isLast, onNext, onExit }) {
   const s2 = useRef(new Animated.Value(0)).current;
   const s3 = useRef(new Animated.Value(0)).current;
   const stars = caught >= 8 ? 3 : caught >= 5 ? 2 : 1;
-  const title = stars === 3 ? "Egg Expert! 🏆" : stars === 2 ? "Nice Catch! ⭐" : "Keep Trying! 🥚";
+  const title =
+    stars === 3
+      ? "Egg Expert! 🏆"
+      : stars === 2
+        ? "Nice Catch! ⭐"
+        : "Keep Trying! 🥚";
   useEffect(() => {
     Animated.parallel([
-      Animated.spring(sc, { toValue: 1, friction: 4, tension: 60, useNativeDriver: true }),
+      Animated.spring(sc, {
+        toValue: 1,
+        friction: 4,
+        tension: 60,
+        useNativeDriver: true,
+      }),
       Animated.timing(op, { toValue: 1, duration: 300, useNativeDriver: true }),
     ]).start();
-    [[s1, 300], [s2, 480], [s3, 660]].forEach(([s, d]) =>
-      Animated.sequence([Animated.delay(d), Animated.spring(s, { toValue: 1, friction: 3, tension: 120, useNativeDriver: true })]).start(),
+    [
+      [s1, 300],
+      [s2, 480],
+      [s3, 660],
+    ].forEach(([s, d]) =>
+      Animated.sequence([
+        Animated.delay(d),
+        Animated.spring(s, {
+          toValue: 1,
+          friction: 3,
+          tension: 120,
+          useNativeDriver: true,
+        }),
+      ]).start(),
     );
     Animated.loop(
       Animated.sequence([
         Animated.delay(700),
-        Animated.timing(shimX, { toValue: 340, duration: 1400, easing: Easing.inOut(Easing.quad), useNativeDriver: true }),
-        Animated.timing(shimX, { toValue: -220, duration: 0, useNativeDriver: true }),
+        Animated.timing(shimX, {
+          toValue: 340,
+          duration: 1400,
+          easing: Easing.inOut(Easing.quad),
+          useNativeDriver: true,
+        }),
+        Animated.timing(shimX, {
+          toValue: -220,
+          duration: 0,
+          useNativeDriver: true,
+        }),
       ]),
     ).start();
   }, []);
   return (
     <View style={st.overlayBg}>
-      <Animated.View style={[st.resultCard, { opacity: op, transform: [{ scale: sc }] }]}>
+      <Animated.View
+        style={[st.resultCard, { opacity: op, transform: [{ scale: sc }] }]}
+      >
         <View style={st.resultBanner}>
-          <Animated.View pointerEvents="none" style={[st.resultShimmer, { transform: [{ translateX: shimX }] }]} />
+          <Animated.View
+            pointerEvents="none"
+            style={[st.resultShimmer, { transform: [{ translateX: shimX }] }]}
+          />
           <Text style={st.resultBannerText}>{title}</Text>
         </View>
         <View style={{ flexDirection: "row", gap: 10, marginBottom: 14 }}>
           {[s1, s2, s3].map((s, i) => (
-            <Animated.Text key={i} style={[{ fontSize: 30 }, i >= stars && { opacity: 0.15 }, { transform: [{ scale: s }] }]}>⭐</Animated.Text>
+            <Animated.Text
+              key={i}
+              style={[
+                { fontSize: 30 },
+                i >= stars && { opacity: 0.15 },
+                { transform: [{ scale: s }] },
+              ]}
+            >
+              ⭐
+            </Animated.Text>
           ))}
         </View>
         <View style={st.statRow}>
-          <View style={st.statPill}><Text style={st.statLabel}>CAUGHT</Text><Text style={[st.statVal, { color: C.green }]}>{caught}</Text></View>
-          <View style={st.statPill}><Text style={st.statLabel}>MISSED</Text><Text style={[st.statVal, { color: C.red }]}>{missed}</Text></View>
-          <View style={st.statPill}><Text style={st.statLabel}>SCORE</Text><Text style={[st.statVal, { color: C.yellow }]}>{score}</Text></View>
+          <View style={st.statPill}>
+            <Text style={st.statLabel}>CAUGHT</Text>
+            <Text style={[st.statVal, { color: C.green }]}>{caught}</Text>
+          </View>
+          <View style={st.statPill}>
+            <Text style={st.statLabel}>MISSED</Text>
+            <Text style={[st.statVal, { color: C.red }]}>{missed}</Text>
+          </View>
+          <View style={st.statPill}>
+            <Text style={st.statLabel}>SCORE</Text>
+            <Text style={[st.statVal, { color: C.yellow }]}>{score}</Text>
+          </View>
         </View>
-        <TouchableOpacity style={[st.goldBtn, { marginBottom: 10 }]} onPress={onNext} activeOpacity={0.85}>
-          <Text style={st.goldBtnText}>{isLast ? "🏆 Final Score!" : "🦕  Next Round"}</Text>
+        <TouchableOpacity
+          style={[st.goldBtn, { marginBottom: 10 }]}
+          onPress={onNext}
+          activeOpacity={0.85}
+        >
+          <Text style={st.goldBtnText}>
+            {isLast ? "🏆 Final Score!" : "🦕  Next Round"}
+          </Text>
         </TouchableOpacity>
-        <TouchableOpacity style={st.secondaryBtn} onPress={onExit} activeOpacity={0.75}>
+        <TouchableOpacity
+          style={st.secondaryBtn}
+          onPress={onExit}
+          activeOpacity={0.75}
+        >
           <Text style={st.secondaryBtnText}>✕ Exit Game</Text>
         </TouchableOpacity>
       </Animated.View>
@@ -443,7 +963,12 @@ function ResultOverlay({ score, caught, missed, isLast, onNext, onExit }) {
 }
 
 function FinalOverlay({ totalScore, onRestart, onExit }) {
-  const grade = totalScore >= 200 ? "Dino Champion! 🏆" : totalScore >= 120 ? "Egg Expert! 🌟" : "Baby Dino 🦕";
+  const grade =
+    totalScore >= 200
+      ? "Dino Champion! 🏆"
+      : totalScore >= 120
+        ? "Egg Expert! 🌟"
+        : "Baby Dino 🦕";
   const sc = useRef(new Animated.Value(0.5)).current;
   const op = useRef(new Animated.Value(0)).current;
   const pulse = useRef(new Animated.Value(1)).current;
@@ -453,51 +978,125 @@ function FinalOverlay({ totalScore, onRestart, onExit }) {
   const s3 = useRef(new Animated.Value(0)).current;
   useEffect(() => {
     Animated.parallel([
-      Animated.spring(sc, { toValue: 1, friction: 4, tension: 60, useNativeDriver: true }),
+      Animated.spring(sc, {
+        toValue: 1,
+        friction: 4,
+        tension: 60,
+        useNativeDriver: true,
+      }),
       Animated.timing(op, { toValue: 1, duration: 300, useNativeDriver: true }),
     ]).start();
-    [[s1, 300], [s2, 480], [s3, 660]].forEach(([s, d]) =>
-      Animated.sequence([Animated.delay(d), Animated.spring(s, { toValue: 1, friction: 3, tension: 120, useNativeDriver: true })]).start(),
+    [
+      [s1, 300],
+      [s2, 480],
+      [s3, 660],
+    ].forEach(([s, d]) =>
+      Animated.sequence([
+        Animated.delay(d),
+        Animated.spring(s, {
+          toValue: 1,
+          friction: 3,
+          tension: 120,
+          useNativeDriver: true,
+        }),
+      ]).start(),
     );
     Animated.loop(
       Animated.sequence([
         Animated.delay(700),
-        Animated.timing(shimX, { toValue: 340, duration: 1400, easing: Easing.inOut(Easing.quad), useNativeDriver: true }),
-        Animated.timing(shimX, { toValue: -220, duration: 0, useNativeDriver: true }),
+        Animated.timing(shimX, {
+          toValue: 340,
+          duration: 1400,
+          easing: Easing.inOut(Easing.quad),
+          useNativeDriver: true,
+        }),
+        Animated.timing(shimX, {
+          toValue: -220,
+          duration: 0,
+          useNativeDriver: true,
+        }),
       ]),
     ).start();
     Animated.loop(
       Animated.sequence([
-        Animated.timing(pulse, { toValue: 1.06, duration: 700, useNativeDriver: true }),
-        Animated.timing(pulse, { toValue: 0.96, duration: 700, useNativeDriver: true }),
+        Animated.timing(pulse, {
+          toValue: 1.06,
+          duration: 700,
+          useNativeDriver: true,
+        }),
+        Animated.timing(pulse, {
+          toValue: 0.96,
+          duration: 700,
+          useNativeDriver: true,
+        }),
       ]),
     ).start();
   }, []);
   return (
     <View style={st.overlayBg}>
-      <Animated.View style={[st.resultCard, st.finalCard, { opacity: op, transform: [{ scale: sc }] }]}>
+      <Animated.View
+        style={[
+          st.resultCard,
+          st.finalCard,
+          { opacity: op, transform: [{ scale: sc }] },
+        ]}
+      >
         <View style={[st.resultBanner, st.finalBanner]}>
-          <Animated.View pointerEvents="none" style={[st.resultShimmer, { transform: [{ translateX: shimX }] }]} />
+          <Animated.View
+            pointerEvents="none"
+            style={[st.resultShimmer, { transform: [{ translateX: shimX }] }]}
+          />
           <Text style={st.resultBannerText}>🏆 Game Complete!</Text>
         </View>
         <View style={{ flexDirection: "row", gap: 10, marginBottom: 10 }}>
           {[s1, s2, s3].map((s, i) => (
-            <Animated.Text key={i} style={{ fontSize: 32, transform: [{ scale: s }] }}>⭐</Animated.Text>
+            <Animated.Text
+              key={i}
+              style={{ fontSize: 32, transform: [{ scale: s }] }}
+            >
+              ⭐
+            </Animated.Text>
           ))}
         </View>
-        <Text style={{ color: C.yellow, fontSize: 15, fontWeight: "700", marginBottom: 14, textAlign: "center" }}>{grade}</Text>
+        <Text
+          style={{
+            color: C.yellow,
+            fontSize: 15,
+            fontWeight: "700",
+            marginBottom: 14,
+            textAlign: "center",
+          }}
+        >
+          {grade}
+        </Text>
         <View style={[st.statRow, { width: "100%" }]}>
           <View style={[st.statPill, st.totalPill]}>
             <Text style={st.statLabel}>TOTAL SCORE</Text>
-            <Text style={[st.statVal, { color: C.yellow, fontSize: 36 }]}>{totalScore}</Text>
+            <Text style={[st.statVal, { color: C.yellow, fontSize: 36 }]}>
+              {totalScore}
+            </Text>
           </View>
         </View>
-        <Animated.View style={{ transform: [{ scale: pulse }], width: "100%", marginBottom: 10 }}>
-          <TouchableOpacity style={st.goldBtn} onPress={onRestart} activeOpacity={0.85}>
+        <Animated.View
+          style={{
+            transform: [{ scale: pulse }],
+            width: "100%",
+            marginBottom: 10,
+          }}
+        >
+          <TouchableOpacity
+            style={st.goldBtn}
+            onPress={onRestart}
+            activeOpacity={0.85}
+          >
             <Text style={st.goldBtnText}>🦕 Play Again!</Text>
           </TouchableOpacity>
         </Animated.View>
-        <TouchableOpacity style={st.secondaryBtn} onPress={onExit} activeOpacity={0.75}>
+        <TouchableOpacity
+          style={st.secondaryBtn}
+          onPress={onExit}
+          activeOpacity={0.75}
+        >
           <Text style={st.secondaryBtnText}>✕ Exit Game</Text>
         </TouchableOpacity>
       </Animated.View>
@@ -521,10 +1120,15 @@ export default function DinoWorldGame({ onExit }) {
       const parsed = JSON.parse(gameDataJson);
       // Backend data is an array of round objects matching the FALLBACK_ROUNDS shape
       if (Array.isArray(parsed) && parsed.length > 0 && parsed[0].targetWords) {
-        console.log("[DinoWorldGame] using backend rounds, count:", parsed.length);
+        console.log(
+          "[DinoWorldGame] using backend rounds, count:",
+          parsed.length,
+        );
         return parsed;
       }
-      console.log("[DinoWorldGame] gameDataJson invalid shape — using fallback");
+      console.log(
+        "[DinoWorldGame] gameDataJson invalid shape — using fallback",
+      );
       return FALLBACK_ROUNDS;
     } catch (_) {
       return FALLBACK_ROUNDS;
@@ -590,11 +1194,19 @@ export default function DinoWorldGame({ onExit }) {
   const sndWrong = useRef(null);
   const sndWin = useRef(null);
   const sndLose = useRef(null);
+  const sndBg = useRef(null);
 
   useEffect(() => {
     let alive = true;
+
     (async () => {
-      try { await Audio.setAudioModeAsync({ playsInSilentModeIOS: true }); } catch (_) {}
+      try {
+        await Audio.setAudioModeAsync({
+          playsInSilentModeIOS: true,
+        });
+      } catch (_) {}
+
+      // sound effects
       for (const [r, a] of [
         [sndCorrect, require("../../assets/sounds/game/correct-hit.mp3")],
         [sndWrong, require("../../assets/sounds/game/wrong-hit.mp3")],
@@ -603,14 +1215,40 @@ export default function DinoWorldGame({ onExit }) {
       ]) {
         try {
           const { sound } = await Audio.Sound.createAsync(a);
-          if (alive) r.current = sound;
-          else sound.unloadAsync();
+
+          if (alive) {
+            r.current = sound;
+          } else {
+            sound.unloadAsync();
+          }
         } catch (_) {}
       }
+
+      // background music
+      try {
+        const { sound } = await Audio.Sound.createAsync(
+          require("../../assets/sounds/game/dino-world/dino-bg.mp3"),
+          {
+            shouldPlay: true,
+            isLooping: true,
+            volume: 0.15,
+          },
+        );
+
+        if (alive) {
+          sndBg.current = sound;
+        } else {
+          sound.unloadAsync();
+        }
+      } catch (e) {
+        console.log("bg music error", e);
+      }
     })();
+
     return () => {
       alive = false;
-      [sndCorrect, sndWrong, sndWin, sndLose].forEach((r) => {
+
+      [sndCorrect, sndWrong, sndWin, sndLose, sndBg].forEach((r) => {
         r.current?.unloadAsync();
         r.current = null;
       });
@@ -618,21 +1256,35 @@ export default function DinoWorldGame({ onExit }) {
   }, []);
 
   const playSound = (r) => {
-    try { r.current?.setPositionAsync(0).then(() => r.current?.playAsync()); } catch (_) {}
+    try {
+      r.current?.setPositionAsync(0).then(() => r.current?.playAsync());
+    } catch (_) {}
   };
 
   const pulseBadge = () => {
     Animated.sequence([
-      Animated.spring(badgeScale, { toValue: 1.45, friction: 3, tension: 200, useNativeDriver: true }),
-      Animated.spring(badgeScale, { toValue: 1, friction: 4, tension: 200, useNativeDriver: true }),
+      Animated.spring(badgeScale, {
+        toValue: 1.45,
+        friction: 3,
+        tension: 200,
+        useNativeDriver: true,
+      }),
+      Animated.spring(badgeScale, {
+        toValue: 1,
+        friction: 4,
+        tension: 200,
+        useNativeDriver: true,
+      }),
     ]).start();
   };
 
   const spawnStars = (x, y) => {
     const s = Array.from({ length: 6 }, (_, i) => ({
       id: starIdRef.current++,
-      startX: x - 13, startY: y - 13,
-      endX: BADGE_X, endY: BADGE_Y,
+      startX: x - 13,
+      startY: y - 13,
+      endX: BADGE_X,
+      endY: BADGE_Y,
       delay: i * 65,
     }));
     setStars((prev) => [...prev, ...s]);
@@ -640,19 +1292,33 @@ export default function DinoWorldGame({ onExit }) {
   };
 
   const stopAll = () => {
-    clearInterval(loopRef.current); loopRef.current = null;
-    clearInterval(clockRef.current); clockRef.current = null;
-    clearInterval(spawnTimRef.current); spawnTimRef.current = null;
+    clearInterval(loopRef.current);
+    loopRef.current = null;
+    clearInterval(clockRef.current);
+    clockRef.current = null;
+    clearInterval(spawnTimRef.current);
+    spawnTimRef.current = null;
   };
 
   const endRound = useCallback(() => {
     if (phaseRef.current !== "playing") return;
+
+    sndBg.current?.pauseAsync();
+
     phaseRef.current = "result";
     stopAll();
+
     eggsRef.current = [];
     setEggs([]);
-    setLastResult({ score: scoreRef.current, caught: caughtRef.current, missed: missedRef.current });
+
+    setLastResult({
+      score: scoreRef.current,
+      caught: caughtRef.current,
+      missed: missedRef.current,
+    });
+
     setPhase("result");
+
     playSound(scoreRef.current >= 0 ? sndWin : sndLose);
   }, []);
 
@@ -675,15 +1341,20 @@ export default function DinoWorldGame({ onExit }) {
     eggsRef.current = [...eggsRef.current, egg];
   };
 
+  // REPLACE with:
+  const moveRef = useRef(0); // -1 = left, 0 = still, 1 = right
+
   const tickFnRef = useRef(null);
   tickFnRef.current = () => {
     if (phaseRef.current !== "playing") return;
-    let nx = dinoXRef.current + dinoDirRef.current * DINO_SPEED;
-    const minX = DINO_W / 2;
-    const maxX = sw - DINO_W / 2;
-    if (nx >= maxX) { nx = maxX; dinoDirRef.current = -1; }
-    if (nx <= minX) { nx = minX; dinoDirRef.current = 1; }
-    dinoXRef.current = nx;
+    if (moveRef.current !== 0) {
+      let nx = dinoXRef.current + moveRef.current * DINO_SPEED;
+      const minX = DINO_W / 2;
+      const maxX = sw - DINO_W / 2;
+      nx = Math.max(minX, Math.min(maxX, nx));
+      dinoXRef.current = nx;
+      dinoDirRef.current = moveRef.current; // keep sprite facing the right way
+    }
 
     const dinoLeft = dinoXRef.current - DINO_W / 2 + 14;
     const dinoRight = dinoXRef.current + DINO_W / 2 - 14;
@@ -691,29 +1362,36 @@ export default function DinoWorldGame({ onExit }) {
     let correctCatch = null;
     let wrongCatch = null;
 
-    const nextEggs = eggsRef.current.map((egg) => {
-      if (egg.collected) return egg;
-      const ny = egg.y + egg.speed;
-      const eggLeft = egg.x - EGG_W / 2;
-      const eggRight = egg.x + EGG_W / 2;
-      const eggBot = ny + EGG_H;
-      const hitH = eggRight >= dinoLeft && eggLeft <= dinoRight;
-      const hitV = eggBot >= catchTop && ny <= DINO_Y + 10;
-      if (hitH && hitV) {
-        if (egg.isTarget) correctCatch = egg;
-        else wrongCatch = egg;
-        return { ...egg, y: ny, collected: true };
-      }
-      if (ny > sh + 10) {
-        if (egg.isTarget) {
-          scoreRef.current += PTS_MISSED;
-          missedRef.current++;
-          setNotif({ id: uid(), text: `💨 Egg escaped! ${PTS_MISSED}`, color: C.red, icon: "😢" });
+    const nextEggs = eggsRef.current
+      .map((egg) => {
+        if (egg.collected) return egg;
+        const ny = egg.y + egg.speed;
+        const eggLeft = egg.x - EGG_W / 2;
+        const eggRight = egg.x + EGG_W / 2;
+        const eggBot = ny + EGG_H;
+        const hitH = eggRight >= dinoLeft && eggLeft <= dinoRight;
+        const hitV = eggBot >= catchTop && ny <= DINO_Y + 10;
+        if (hitH && hitV) {
+          if (egg.isTarget) correctCatch = egg;
+          else wrongCatch = egg;
+          return { ...egg, y: ny, collected: true };
         }
-        return null;
-      }
-      return { ...egg, y: ny };
-    }).filter(Boolean);
+        if (ny > sh + 10) {
+          if (egg.isTarget) {
+            scoreRef.current += PTS_MISSED;
+            missedRef.current++;
+            setNotif({
+              id: uid(),
+              text: `💨 Egg escaped! ${PTS_MISSED}`,
+              color: C.red,
+              icon: "😢",
+            });
+          }
+          return null;
+        }
+        return { ...egg, y: ny };
+      })
+      .filter(Boolean);
 
     eggsRef.current = nextEggs;
 
@@ -721,22 +1399,43 @@ export default function DinoWorldGame({ onExit }) {
       scoreRef.current += PTS_CORRECT;
       caughtRef.current++;
       playSound(sndCorrect);
-      const bx = correctCatch.x, by = DINO_Y - DINO_H / 2;
+      const bx = correctCatch.x,
+        by = DINO_Y - DINO_H / 2;
       spawnStars(bx, by);
-      setBursts((prev) => [...prev, { id: burstIdRef.current++, x: bx, y: by, isCorrect: true }]);
-      setNotif({ id: uid(), text: `🎉 Great catch! +${PTS_CORRECT}`, color: C.green, icon: "🥚" });
+      setBursts((prev) => [
+        ...prev,
+        { id: burstIdRef.current++, x: bx, y: by, isCorrect: true },
+      ]);
+      setNotif({
+        id: uid(),
+        text: `🎉 Great catch! +${PTS_CORRECT}`,
+        color: C.green,
+        icon: "🥚",
+      });
     }
     if (wrongCatch) {
       scoreRef.current += PTS_WRONG;
       playSound(sndWrong);
-      const bx = wrongCatch.x, by = DINO_Y - DINO_H / 2;
-      setBursts((prev) => [...prev, { id: burstIdRef.current++, x: bx, y: by, isCorrect: false }]);
-      setNotif({ id: uid(), text: `❌ Wrong egg! ${PTS_WRONG}`, color: C.red, icon: "💥" });
+      const bx = wrongCatch.x,
+        by = DINO_Y - DINO_H / 2;
+      setBursts((prev) => [
+        ...prev,
+        { id: burstIdRef.current++, x: bx, y: by, isCorrect: false },
+      ]);
+      setNotif({
+        id: uid(),
+        text: `❌ Wrong egg! ${PTS_WRONG}`,
+        color: C.red,
+        icon: "💥",
+      });
     }
 
     const allSpawned = queueIdxRef.current >= queueRef.current.length;
     const noEggsLeft = eggsRef.current.filter((e) => !e.collected).length === 0;
-    if (allSpawned && noEggsLeft) { endRound(); return; }
+    if (allSpawned && noEggsLeft) {
+      endRound();
+      return;
+    }
     scheduleRender();
   };
 
@@ -769,6 +1468,7 @@ export default function DinoWorldGame({ onExit }) {
 
       phaseRef.current = "playing";
       setPhase("playing");
+      sndBg.current?.playAsync();
       stopAll();
 
       loopRef.current = setInterval(() => tickFnRef.current(), TICK_MS);
@@ -776,7 +1476,10 @@ export default function DinoWorldGame({ onExit }) {
       setTimeout(doSpawnEgg, 600);
       clockRef.current = setInterval(() => {
         setTimeLeft((t) => {
-          if (t <= 1) { endRound(); return 0; }
+          if (t <= 1) {
+            endRound();
+            return 0;
+          }
           return t - 1;
         });
       }, 1000);
@@ -786,8 +1489,20 @@ export default function DinoWorldGame({ onExit }) {
 
   useEffect(() => () => stopAll(), []);
 
-  const handleLeft = () => { dinoDirRef.current = -1; setDinoDir(-1); };
-  const handleRight = () => { dinoDirRef.current = 1; setDinoDir(1); };
+  // REPLACE with:
+  const handleLeftStart = () => {
+    moveRef.current = -1;
+    dinoDirRef.current = -1;
+    setDinoDir(-1);
+  };
+  const handleRightStart = () => {
+    moveRef.current = 1;
+    dinoDirRef.current = 1;
+    setDinoDir(1);
+  };
+  const handleMoveStop = () => {
+    moveRef.current = 0;
+  };
 
   const handleStartGame = () => {
     setRoundIndex(0);
@@ -837,41 +1552,136 @@ export default function DinoWorldGame({ onExit }) {
         source={require("../../assets/games/dino-world/bg.mp4")}
         style={StyleSheet.absoluteFillObject}
         resizeMode={ResizeMode.COVER}
-        shouldPlay isLooping isMuted rate={1.0}
+        shouldPlay
+        isLooping
+        isMuted
+        rate={1.0}
       />
-      <View style={[StyleSheet.absoluteFillObject, { backgroundColor: "rgba(0,0,0,0.15)", zIndex: 2 }]} pointerEvents="none" />
+      <View
+        style={[
+          StyleSheet.absoluteFillObject,
+          { backgroundColor: "rgba(0,0,0,0.15)", zIndex: 2 },
+        ]}
+        pointerEvents="none"
+      />
 
-      {eggs.map((egg) => <EggSprite key={egg.id} egg={egg} />)}
+      {eggs.map((egg) => (
+        <EggSprite key={egg.id} egg={egg} />
+      ))}
 
       {(isPlaying || phase === "briefing") && (
         <DinoSprite x={dinoX} y={DINO_Y} dir={dinoDir} />
       )}
 
       {bursts.map((b) => (
-        <CatchBurst key={b.id} x={b.x} y={b.y} isCorrect={b.isCorrect} onDone={() => setBursts((prev) => prev.filter((x) => x.id !== b.id))} />
+        <CatchBurst
+          key={b.id}
+          x={b.x}
+          y={b.y}
+          isCorrect={b.isCorrect}
+          onDone={() => setBursts((prev) => prev.filter((x) => x.id !== b.id))}
+        />
       ))}
 
       {stars.map((s) => (
-        <FlyingStar key={s.id} startX={s.startX} startY={s.startY} endX={s.endX} endY={s.endY} delay={s.delay} onDone={() => setStars((prev) => prev.filter((x) => x.id !== s.id))} />
+        <FlyingStar
+          key={s.id}
+          startX={s.startX}
+          startY={s.startY}
+          endX={s.endX}
+          endY={s.endY}
+          delay={s.delay}
+          onDone={() => setStars((prev) => prev.filter((x) => x.id !== s.id))}
+        />
       ))}
 
-      {notif && <Notif key={notif.id} text={notif.text} color={notif.color} icon={notif.icon} sw={sw} sh={sh} onDone={() => setNotif(null)} />}
-
-      {isPlaying && <Hud round={round} timeLeft={timeLeft} score={score} onExit={handleExit} badgeScale={badgeScale} />}
-
-      <TapZones sw={sw} sh={sh} onLeft={handleLeft} onRight={handleRight} active={isPlaying} />
+      {notif && (
+        <Notif
+          key={notif.id}
+          text={notif.text}
+          color={notif.color}
+          icon={notif.icon}
+          sw={sw}
+          sh={sh}
+          onDone={() => setNotif(null)}
+        />
+      )}
 
       {isPlaying && (
-        <View style={[st.tapBar, { left: sw * 0.06, right: sw * 0.06 }]} pointerEvents="none">
-          <Text style={st.tapBarText}>◀ Tap sides to steer the dino ▶</Text>
+        <Hud
+          round={round}
+          timeLeft={timeLeft}
+          score={score}
+          onExit={handleExit}
+          badgeScale={badgeScale}
+        />
+      )}
+
+      <TapZones
+        sw={sw}
+        sh={sh}
+        onLeftStart={handleLeftStart}
+        onRightStart={handleRightStart}
+        onStop={handleMoveStop}
+        active={isPlaying}
+      />
+
+      {isPlaying && (
+        <View
+          style={[
+            st.tapBar,
+            { left: sw * 0.06, right: sw * 0.06, flexDirection: "row" },
+          ]}
+        >
+          <Pressable
+            onPressIn={handleLeftStart}
+            onPressOut={handleMoveStop}
+            style={({ pressed }) => [
+              st.bigButton,
+              pressed && st.bigButtonPressed,
+            ]}
+          >
+            {({ pressed }) => (
+              <Ionicons
+                name="chevron-back"
+                size={36}
+                color={pressed ? "#FFD54F" : "#fefefe"}
+              />
+            )}
+          </Pressable>
+
+          <Pressable
+            onPressIn={handleRightStart}
+            onPressOut={handleMoveStop}
+            style={({ pressed }) => [
+              st.bigButton,
+              { right: 15, position: "absolute" },
+              pressed && st.bigButtonPressed,
+            ]}
+          >
+            {({ pressed }) => (
+              <Ionicons
+                name="chevron-forward"
+                size={36}
+                color={pressed ? "#FFD54F" : "#fefefe"}
+              />
+            )}
+          </Pressable>
         </View>
       )}
 
-      {phase === "idle" && <IdleOverlay onStart={handleStartGame} onExit={handleExit} />}
+      {phase === "idle" && (
+        <IdleOverlay onStart={handleStartGame} onExit={handleExit} />
+      )}
 
       {phase === "briefing" && (
         // totalRounds passed as prop — RoundBriefing no longer touches ROUNDS
-        <RoundBriefing round={round} totalRounds={totalRounds} onStart={handleStartRound} onExit={handleExit} />
+        <RoundBriefing
+          round={round}
+          totalRounds={totalRounds}
+          onStart={handleStartRound}
+          onExit={handleExit}
+        />
       )}
 
       {phase === "result" && lastResult && (
@@ -886,7 +1696,13 @@ export default function DinoWorldGame({ onExit }) {
         />
       )}
 
-      {phase === "final" && <FinalOverlay totalScore={totalScore} onRestart={handleRestart} onExit={handleExit} />}
+      {phase === "final" && (
+        <FinalOverlay
+          totalScore={totalScore}
+          onRestart={handleRestart}
+          onExit={handleExit}
+        />
+      )}
     </View>
   );
 }
@@ -894,43 +1710,306 @@ export default function DinoWorldGame({ onExit }) {
 // ─── STYLES ───────────────────────────────────────────────────────────────────
 const st = StyleSheet.create({
   root: { flex: 1, backgroundColor: C.bg, overflow: "hidden" },
-  hud: { position: "absolute", top: STATUS_H + 6, left: 0, right: 0, flexDirection: "row", justifyContent: "space-between", alignItems: "center", paddingHorizontal: 14, zIndex: 200 },
-  exitBtn: { width: 38, height: 38, borderRadius: 19, backgroundColor: "rgba(0,0,0,0.55)", borderWidth: 1.5, borderColor: "rgba(255,255,255,0.3)", alignItems: "center", justifyContent: "center" },
-  topExit: { position: "absolute", top: STATUS_H + 12, right: 14, zIndex: 500, width: 38, height: 38, borderRadius: 19, backgroundColor: "rgba(0,0,0,0.6)", borderWidth: 1.5, borderColor: "rgba(255,255,255,0.3)", alignItems: "center", justifyContent: "center" },
+  hud: {
+    position: "absolute",
+    top: STATUS_H + 6,
+    left: 0,
+    right: 0,
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    paddingHorizontal: 14,
+    zIndex: 200,
+  },
+  exitBtn: {
+    width: 38,
+    height: 38,
+    borderRadius: 19,
+    backgroundColor: "rgba(0,0,0,0.55)",
+    borderWidth: 1.5,
+    borderColor: "rgba(255,255,255,0.3)",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  topExit: {
+    position: "absolute",
+    top: STATUS_H + 12,
+    right: 14,
+    zIndex: 500,
+    width: 38,
+    height: 38,
+    borderRadius: 19,
+    backgroundColor: "rgba(0,0,0,0.6)",
+    borderWidth: 1.5,
+    borderColor: "rgba(255,255,255,0.3)",
+    alignItems: "center",
+    justifyContent: "center",
+  },
   exitTxt: { color: "#ECEFF1", fontSize: 15, fontWeight: "700" },
-  hudCenter: { alignItems: "center", flex: 1 },
-  hudCat: { fontSize: 14, fontWeight: "800", color: "#FFF", textShadowColor: "rgba(0,0,0,0.9)", textShadowOffset: { width: 0, height: 1 }, textShadowRadius: 4 },
-  hudTime: { fontSize: 22, fontWeight: "900", color: "#FFF", lineHeight: 26, textShadowColor: "rgba(0,0,0,0.9)", textShadowOffset: { width: 0, height: 1 }, textShadowRadius: 4 },
-  scorePill: { backgroundColor: "rgba(0,0,0,0.45)", borderRadius: 20, borderWidth: 1.5, borderColor: C.yellowBorder, paddingHorizontal: 14, paddingVertical: 6, minWidth: 70, alignItems: "center" },
-  scoreTxt: { fontSize: 14, fontWeight: "900", color: C.yellow, textShadowColor: "rgba(0,0,0,0.7)", textShadowOffset: { width: 0, height: 1 }, textShadowRadius: 3 },
-  tapBar: { position: "absolute", bottom: 28, backgroundColor: "rgba(0,0,0,0.55)", borderRadius: 28, paddingVertical: 10, alignItems: "center", zIndex: 150, borderWidth: 1.5, borderColor: "rgba(255,255,255,0.18)" },
-  tapBarText: { color: "rgba(255,255,255,0.9)", fontSize: 13, fontWeight: "700" },
-  overlayBg: { ...StyleSheet.absoluteFillObject, backgroundColor: "rgba(3,18,3,0.88)", alignItems: "center", justifyContent: "center", zIndex: 400, paddingHorizontal: 22 },
-  card: { width: "100%", maxWidth: 420, backgroundColor: "rgba(5,22,5,0.97)", borderRadius: 28, borderWidth: 1.5, borderColor: "rgba(105,240,174,0.4)", padding: 24, alignItems: "center", shadowColor: "#69F0AE", shadowOffset: { width: 0, height: 0 }, shadowOpacity: 0.25, shadowRadius: 24, elevation: 10 },
-  roundHeader: { width: "100%", backgroundColor: "rgba(105,240,174,0.12)", borderRadius: 10, borderWidth: 1, borderColor: "rgba(105,240,174,0.35)", paddingVertical: 10, alignItems: "center", marginBottom: 12 },
-  roundHeaderTxt: { fontSize: 12, fontWeight: "900", color: "#69F0AE", letterSpacing: 2 },
-  cardTitle: { fontSize: 22, fontWeight: "900", color: "#FFF", marginBottom: 8, textAlign: "center" },
-  cardDesc: { fontSize: 13, color: "#B2DFDB", textAlign: "center", lineHeight: 20, marginBottom: 14 },
-  chipRow: { flexDirection: "row", flexWrap: "wrap", gap: 6, justifyContent: "center", marginBottom: 18 },
-  chip: { backgroundColor: "rgba(105,240,174,0.12)", borderColor: "rgba(105,240,174,0.4)", borderWidth: 1.5, borderRadius: 14, paddingHorizontal: 10, paddingVertical: 3 },
-  chipText: { color: "#69F0AE", fontWeight: "800", fontSize: 12 },
-  greenBtn: { backgroundColor: "#2E7D32", borderRadius: 30, paddingHorizontal: 36, paddingVertical: 15, alignItems: "center", shadowColor: "#69F0AE", shadowOffset: { width: 0, height: 0 }, shadowOpacity: 0.7, shadowRadius: 16, elevation: 10, borderWidth: 2, borderColor: "#69F0AE" },
-  startBtnBg: { width: 230, height: 150, justifyContent: "center", alignItems: "center" },
+  hudCenter: {
+    alignItems: "center",
+    flex: 1,
+    marginTop: pad.md,
+    // backgroundColor: "pink",
+    width: "100%",
+  },
+  hudCat: {
+    fontSize: font.h1,
+    fontWeight: "800",
+    color: "#FFF",
+    textShadowColor: "rgba(0,0,0,0.9)",
+    textShadowOffset: { width: 0, height: 1 },
+    textShadowRadius: 4,
+  },
+  hudTime: {
+    fontSize: font.xxl,
+    fontWeight: "900",
+    color: "#FFF",
+    lineHeight: 26,
+    textShadowColor: "rgba(0,0,0,0.9)",
+    textShadowOffset: { width: 0, height: 1 },
+    textShadowRadius: 4,
+    marginTop: 5,
+  },
+  bigButtonPressed: {
+    backgroundColor: "rgba(255, 255, 255, 0.13)",
+    borderColor: "#FFD54F",
+    transform: [{ scale: 0.94 }],
+  },
+  scorePill: {
+    backgroundColor: "rgba(0,0,0,0.45)",
+    borderRadius: 20,
+    borderWidth: 1.5,
+    borderColor: C.yellowBorder,
+    paddingHorizontal: 14,
+    paddingVertical: 6,
+    minWidth: 70,
+    alignItems: "center",
+  },
+  scoreTxt: {
+    fontSize: 14,
+    fontWeight: "900",
+    color: C.yellow,
+    textShadowColor: "rgba(0,0,0,0.7)",
+    textShadowOffset: { width: 0, height: 1 },
+    textShadowRadius: 3,
+  },
+  tapBar: {
+    position: "absolute",
+    bottom: 28,
+    width: "90%",
+    // backgroundColor: "pink",
+    // gap: 250,
+
+    alignItems: "center",
+    zIndex: 150,
+  },
+  tapBarText: {
+    color: "rgba(255,255,255,0.9)",
+    fontSize: 13,
+    fontWeight: "700",
+  },
+  bigButton: {
+    width: "25%",
+    backgroundColor: "rgba(0,0,0,0.55)",
+    borderRadius: 28,
+    paddingVertical: 20,
+    borderWidth: 1.5,
+    alignItems: "center",
+    borderColor: "rgba(255,255,255,0.18)",
+  },
+  overlayBg: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: "rgba(3,18,3,0.88)",
+    alignItems: "center",
+    justifyContent: "center",
+    zIndex: 400,
+    paddingHorizontal: 22,
+  },
+  card: {
+    width: "100%",
+    maxWidth: 420,
+    backgroundColor: "rgba(5,22,5,0.97)",
+    borderRadius: 28,
+    borderWidth: 1.5,
+    borderColor: "rgba(105,240,174,0.4)",
+    padding: 24,
+    alignItems: "center",
+    shadowColor: "#69F0AE",
+    shadowOffset: { width: 0, height: 0 },
+    shadowOpacity: 0.25,
+    shadowRadius: 24,
+    elevation: 10,
+  },
+  roundHeader: {
+    width: "100%",
+    backgroundColor: "rgba(105,240,174,0.12)",
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: "rgba(105,240,174,0.35)",
+    paddingVertical: 10,
+    alignItems: "center",
+    marginBottom: 12,
+  },
+  roundHeaderTxt: {
+    fontSize: 12,
+    fontWeight: "900",
+    color: "#69F0AE",
+    letterSpacing: 2,
+  },
+  cardTitle: {
+    fontSize: 22,
+    fontWeight: "900",
+    color: "#FFF",
+    marginBottom: 8,
+    textAlign: "center",
+  },
+  cardDesc: {
+    fontSize: 13,
+    color: "#B2DFDB",
+    textAlign: "center",
+    lineHeight: 20,
+    marginBottom: 14,
+  },
+  chipRow: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: 6,
+    justifyContent: "center",
+    marginBottom: 18,
+  },
+  chip: {
+    backgroundColor: "rgba(105,240,174,0.12)",
+    borderColor: "rgba(105,240,174,0.4)",
+    borderWidth: 1.5,
+    borderRadius: 14,
+    paddingHorizontal: 10,
+    paddingVertical: 3,
+  },
+  chipText: { color: "#69F0AE", fontWeight: "800", fontSize: font.lg },
+  greenBtn: {
+    backgroundColor: "#2E7D32",
+    borderRadius: 30,
+    paddingHorizontal: 36,
+    paddingVertical: 15,
+    alignItems: "center",
+    shadowColor: "#69F0AE",
+    shadowOffset: { width: 0, height: 0 },
+    shadowOpacity: 0.7,
+    shadowRadius: 16,
+    elevation: 10,
+    borderWidth: 2,
+    borderColor: "#69F0AE",
+  },
+  startBtnBg: {
+    width: 230,
+    height: 150,
+    justifyContent: "center",
+    alignItems: "center",
+  },
   startBtnImage: { borderRadius: 40 },
-  greenBtnText: { fontSize: 18, fontWeight: "900", color: "#FFF", letterSpacing: 0.5 },
-  resultCard: { width: "100%", maxWidth: 400, backgroundColor: "rgba(10,20,10,0.98)", borderRadius: 28, borderWidth: 1.5, borderColor: "rgba(255,213,79,0.45)", padding: 24, alignItems: "center", shadowColor: C.yellow, shadowOffset: { width: 0, height: 0 }, shadowOpacity: 0.28, shadowRadius: 24, elevation: 10 },
+  greenBtnText: {
+    fontSize: 18,
+    fontWeight: "900",
+    color: "#FFF",
+    letterSpacing: 0.5,
+  },
+  resultCard: {
+    width: "100%",
+    maxWidth: 400,
+    backgroundColor: "rgba(10,20,10,0.98)",
+    borderRadius: 28,
+    borderWidth: 1.5,
+    borderColor: "rgba(255,213,79,0.45)",
+    padding: 24,
+    alignItems: "center",
+    shadowColor: C.yellow,
+    shadowOffset: { width: 0, height: 0 },
+    shadowOpacity: 0.28,
+    shadowRadius: 24,
+    elevation: 10,
+  },
   finalCard: { borderColor: "rgba(255,213,79,0.75)", shadowOpacity: 0.45 },
-  resultBanner: { width: "100%", borderRadius: 14, overflow: "hidden", backgroundColor: "rgba(255,213,79,0.12)", borderWidth: 1.5, borderColor: "rgba(255,213,79,0.5)", paddingVertical: 14, alignItems: "center", marginBottom: 14 },
-  finalBanner: { backgroundColor: "rgba(255,213,79,0.2)", borderColor: "rgba(255,213,79,0.85)" },
-  resultShimmer: { position: "absolute", top: 0, bottom: 0, width: 80, backgroundColor: "rgba(255,255,255,0.18)", transform: [{ skewX: "-18deg" }] },
-  resultBannerText: { fontSize: 20, fontWeight: "900", color: C.yellow, letterSpacing: 1, textShadowColor: "rgba(255,213,79,0.6)", textShadowOffset: { width: 0, height: 0 }, textShadowRadius: 10 },
+  resultBanner: {
+    width: "100%",
+    borderRadius: 14,
+    overflow: "hidden",
+    backgroundColor: "rgba(255,213,79,0.12)",
+    borderWidth: 1.5,
+    borderColor: "rgba(255,213,79,0.5)",
+    paddingVertical: 14,
+    alignItems: "center",
+    marginBottom: 14,
+  },
+  finalBanner: {
+    backgroundColor: "rgba(255,213,79,0.2)",
+    borderColor: "rgba(255,213,79,0.85)",
+  },
+  resultShimmer: {
+    position: "absolute",
+    top: 0,
+    bottom: 0,
+    width: 80,
+    backgroundColor: "rgba(255,255,255,0.18)",
+    transform: [{ skewX: "-18deg" }],
+  },
+  resultBannerText: {
+    fontSize: 20,
+    fontWeight: "900",
+    color: C.yellow,
+    letterSpacing: 1,
+    textShadowColor: "rgba(255,213,79,0.6)",
+    textShadowOffset: { width: 0, height: 0 },
+    textShadowRadius: 10,
+  },
   statRow: { flexDirection: "row", gap: 10, marginBottom: 20, width: "100%" },
-  statPill: { flex: 1, backgroundColor: "rgba(255,213,79,0.07)", borderRadius: 14, borderWidth: 1, borderColor: "rgba(255,213,79,0.3)", padding: 12, alignItems: "center" },
-  totalPill: { backgroundColor: "rgba(255,213,79,0.12)", borderColor: "rgba(255,213,79,0.6)" },
-  statLabel: { fontSize: 9, fontWeight: "900", color: C.textMuted, letterSpacing: 1.5, marginBottom: 4 },
+  statPill: {
+    flex: 1,
+    backgroundColor: "rgba(255,213,79,0.07)",
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: "rgba(255,213,79,0.3)",
+    padding: 12,
+    alignItems: "center",
+  },
+  totalPill: {
+    backgroundColor: "rgba(255,213,79,0.12)",
+    borderColor: "rgba(255,213,79,0.6)",
+  },
+  statLabel: {
+    fontSize: 9,
+    fontWeight: "900",
+    color: C.textMuted,
+    letterSpacing: 1.5,
+    marginBottom: 4,
+  },
   statVal: { fontSize: 24, fontWeight: "900", color: C.yellow },
-  goldBtn: { width: "100%", borderRadius: 28, paddingVertical: 15, alignItems: "center", backgroundColor: C.yellow, shadowColor: C.yellow, shadowOffset: { width: 0, height: 0 }, shadowOpacity: 0.55, shadowRadius: 12, elevation: 8 },
-  goldBtnText: { fontSize: 16, fontWeight: "900", color: "#1a2e1a", letterSpacing: 0.4 },
-  secondaryBtn: { width: "100%", borderRadius: 28, paddingVertical: 13, alignItems: "center", backgroundColor: "rgba(255,255,255,0.04)", borderWidth: 1, borderColor: "rgba(255,255,255,0.12)" },
+  goldBtn: {
+    width: "100%",
+    borderRadius: 28,
+    paddingVertical: 15,
+    alignItems: "center",
+    backgroundColor: C.yellow,
+    shadowColor: C.yellow,
+    shadowOffset: { width: 0, height: 0 },
+    shadowOpacity: 0.55,
+    shadowRadius: 12,
+    elevation: 8,
+  },
+  goldBtnText: {
+    fontSize: 16,
+    fontWeight: "900",
+    color: "#1a2e1a",
+    letterSpacing: 0.4,
+  },
+  secondaryBtn: {
+    width: "100%",
+    borderRadius: 28,
+    paddingVertical: 13,
+    alignItems: "center",
+    backgroundColor: "rgba(255,255,255,0.04)",
+    borderWidth: 1,
+    borderColor: "rgba(255,255,255,0.12)",
+  },
   secondaryBtnText: { fontSize: 14, fontWeight: "700", color: C.textSec },
 });

@@ -1,16 +1,14 @@
 /**
  * DodgeCarGame.jsx
- *
- * CHANGES FROM PREVIOUS VERSION:
- *   ✅ COLLECT_WORDS renamed to FALLBACK_COLLECT_WORDS
- *   ✅ gameDataJson read from route params via useLocalSearchParams
- *   ✅ collectWords resolved inside component via useMemo
- *   ✅ makeWord() now accepts words as second parameter (no module-level read)
- *   ✅ collectWordsRef keeps latest resolved words accessible inside tick closure
- *   ✅ All game logic, visuals, and styles unchanged
  */
 
-import React, { useEffect, useRef, useState, useCallback, useMemo } from "react";
+import React, {
+  useEffect,
+  useRef,
+  useState,
+  useCallback,
+  useMemo,
+} from "react";
 import {
   View,
   Text,
@@ -27,7 +25,8 @@ import { useRouter, useLocalSearchParams } from "expo-router";
 import { ImageBackground } from "react-native";
 
 const { width: SW, height: SH } = Dimensions.get("window");
-const STATUS_H = Platform.OS === "android" ? (StatusBar.currentHeight ?? 24) : 50;
+const STATUS_H =
+  Platform.OS === "android" ? (StatusBar.currentHeight ?? 24) : 50;
 
 const TICK_MS = 16;
 const ROAD_TOP = STATUS_H + 100;
@@ -61,18 +60,36 @@ const LANE_MILESTONES = [
 ];
 
 const CAR_COLORS = [
-  "#EF5350", "#FF7043", "#AB47BC", "#42A5F5",
-  "#26C6DA", "#EC407A", "#FFA726",
+  "#EF5350",
+  "#FF7043",
+  "#AB47BC",
+  "#42A5F5",
+  "#26C6DA",
+  "#EC407A",
+  "#FFA726",
 ];
 
-// ─── FALLBACK COLLECT WORDS ───────────────────────────────────────────────────
-// Used when no gameDataJson is passed or backend has no data for this level.
-// The component reads from `collectWords` (resolved at runtime) via collectWordsRef
-// inside the tick closure — never from this constant directly.
 const FALLBACK_COLLECT_WORDS = [
-  "fish", "milk", "paws", "yarn", "cozy", "purr", "meow", "nap",
-  "bell", "leap", "hiss", "flop", "curl", "mew", "claw", "soft",
-  "warm", "snug", "play", "zoom",
+  "fish",
+  "milk",
+  "paws",
+  "yarn",
+  "cozy",
+  "purr",
+  "meow",
+  "nap",
+  "bell",
+  "leap",
+  "hiss",
+  "flop",
+  "curl",
+  "mew",
+  "claw",
+  "soft",
+  "warm",
+  "snug",
+  "play",
+  "zoom",
 ];
 
 const C = {
@@ -99,7 +116,9 @@ let _oid = 0;
 
 function getLaneCount(score) {
   let lanes = 2;
-  for (const [t, c] of LANE_MILESTONES) { if (score >= t) lanes = c; }
+  for (const [t, c] of LANE_MILESTONES) {
+    if (score >= t) lanes = c;
+  }
   return lanes;
 }
 
@@ -116,30 +135,33 @@ function getLanes(laneCount) {
 
 function makeCar(lane) {
   return {
-    id: _oid++, kind: "car",
+    id: _oid++,
+    kind: "car",
     x: lane.cx - CAR_W / 2,
     y: ROAD_TOP - CAR_H - 10,
-    w: CAR_W, h: CAR_H,
+    w: CAR_W,
+    h: CAR_H,
     color: CAR_COLORS[Math.floor(Math.random() * CAR_COLORS.length)],
-    hit: false, scored: false,
+    hit: false,
+    scored: false,
   };
 }
 
-// ── makeWord now receives words as parameter — no module-level array read ────
 function makeWord(lane, words) {
   const text = words[Math.floor(Math.random() * words.length)];
   return {
-    id: _oid++, kind: "word", text,
+    id: _oid++,
+    kind: "word",
+    text,
     x: lane.cx - WORD_W / 2,
     y: ROAD_TOP - WORD_H - 10,
-    w: WORD_W, h: WORD_H,
-    hit: false, scored: false,
+    w: WORD_W,
+    h: WORD_H,
+    hit: false,
+    scored: false,
   };
 }
 
-// ─────────────────────────────────────────────────────────────
-// FLYING COIN
-// ─────────────────────────────────────────────────────────────
 function FlyingCoin({ startX, startY, endX, endY, delay, onDone }) {
   const ax = useRef(new Animated.Value(startX)).current;
   const ay = useRef(new Animated.Value(startY)).current;
@@ -150,51 +172,118 @@ function FlyingCoin({ startX, startY, endX, endY, delay, onDone }) {
     Animated.sequence([
       Animated.delay(delay),
       Animated.parallel([
-        Animated.timing(op, { toValue: 1, duration: 60, useNativeDriver: true }),
-        Animated.spring(sc, { toValue: 1, friction: 5, tension: 80, useNativeDriver: true }),
-        Animated.timing(ax, { toValue: endX, duration: 420 + Math.random() * 120, easing: Easing.out(Easing.quad), useNativeDriver: true }),
-        Animated.timing(ay, { toValue: endY, duration: 420 + Math.random() * 120, easing: Easing.out(Easing.quad), useNativeDriver: true }),
+        Animated.timing(op, {
+          toValue: 1,
+          duration: 60,
+          useNativeDriver: true,
+        }),
+        Animated.spring(sc, {
+          toValue: 1,
+          friction: 5,
+          tension: 80,
+          useNativeDriver: true,
+        }),
+        Animated.timing(ax, {
+          toValue: endX,
+          duration: 420 + Math.random() * 120,
+          easing: Easing.out(Easing.quad),
+          useNativeDriver: true,
+        }),
+        Animated.timing(ay, {
+          toValue: endY,
+          duration: 420 + Math.random() * 120,
+          easing: Easing.out(Easing.quad),
+          useNativeDriver: true,
+        }),
       ]),
-    ]).start(() => Animated.timing(op, { toValue: 0, duration: 80, useNativeDriver: true }).start(onDone));
+    ]).start(() =>
+      Animated.timing(op, {
+        toValue: 0,
+        duration: 80,
+        useNativeDriver: true,
+      }).start(onDone),
+    );
   }, []);
 
   return (
-    <Animated.View pointerEvents="none" style={{ position: "absolute", top: 0, left: 0, width: 22, height: 22, borderRadius: 11, backgroundColor: C.yellow, borderWidth: 2, borderColor: "#FFB300", alignItems: "center", justifyContent: "center", zIndex: 999, opacity: op, transform: [{ translateX: ax }, { translateY: ay }, { scale: sc }] }}>
+    <Animated.View
+      pointerEvents="none"
+      style={{
+        position: "absolute",
+        top: 0,
+        left: 0,
+        width: 22,
+        height: 22,
+        borderRadius: 11,
+        backgroundColor: C.yellow,
+        borderWidth: 2,
+        borderColor: "#FFB300",
+        alignItems: "center",
+        justifyContent: "center",
+        zIndex: 999,
+        opacity: op,
+        transform: [{ translateX: ax }, { translateY: ay }, { scale: sc }],
+      }}
+    >
       <Text style={{ fontSize: 11, color: "#7B3F00" }}>🪙</Text>
     </Animated.View>
   );
 }
 
-// ─────────────────────────────────────────────────────────────
-// CAR VISUAL
-// ─────────────────────────────────────────────────────────────
 function CarChip({ obj }) {
   const op = useRef(new Animated.Value(1)).current;
   const sc = useRef(new Animated.Value(1)).current;
   useEffect(() => {
     if (obj.hit) {
       Animated.parallel([
-        Animated.spring(sc, { toValue: 1.6, friction: 3, tension: 200, useNativeDriver: true }),
-        Animated.timing(op, { toValue: 0, duration: 300, useNativeDriver: true }),
+        Animated.spring(sc, {
+          toValue: 1.6,
+          friction: 3,
+          tension: 200,
+          useNativeDriver: true,
+        }),
+        Animated.timing(op, {
+          toValue: 0,
+          duration: 300,
+          useNativeDriver: true,
+        }),
       ]).start();
     }
   }, [obj.hit]);
 
   return (
-    <Animated.View pointerEvents="none" style={[styles.car, { left: obj.x, top: obj.y, backgroundColor: obj.color, opacity: op, transform: [{ scale: sc }] }]}>
+    <Animated.View
+      pointerEvents="none"
+      style={[
+        styles.car,
+        {
+          left: obj.x,
+          top: obj.y,
+          backgroundColor: obj.color,
+          opacity: op,
+          transform: [{ scale: sc }],
+        },
+      ]}
+    >
       <View style={styles.carWindshield} />
       <View style={styles.carBody}>
-        <View style={styles.carWheelRow}><View style={styles.carWheel} /><View style={styles.carWheel} /></View>
-        <View style={styles.carWheelRow}><View style={styles.carWheel} /><View style={styles.carWheel} /></View>
+        <View style={styles.carWheelRow}>
+          <View style={styles.carWheel} />
+          <View style={styles.carWheel} />
+        </View>
+        <View style={styles.carWheelRow}>
+          <View style={styles.carWheel} />
+          <View style={styles.carWheel} />
+        </View>
       </View>
-      <View style={styles.carLights}><View style={styles.carLight} /><View style={styles.carLight} /></View>
+      <View style={styles.carLights}>
+        <View style={styles.carLight} />
+        <View style={styles.carLight} />
+      </View>
     </Animated.View>
   );
 }
 
-// ─────────────────────────────────────────────────────────────
-// WORD CHIP
-// ─────────────────────────────────────────────────────────────
 function WordChip({ obj }) {
   const op = useRef(new Animated.Value(1)).current;
   const sc = useRef(new Animated.Value(1)).current;
@@ -204,8 +293,18 @@ function WordChip({ obj }) {
   useEffect(() => {
     glowLoop.current = Animated.loop(
       Animated.sequence([
-        Animated.timing(glow, { toValue: 1, duration: 500, easing: Easing.inOut(Easing.sin), useNativeDriver: false }),
-        Animated.timing(glow, { toValue: 0, duration: 500, easing: Easing.inOut(Easing.sin), useNativeDriver: false }),
+        Animated.timing(glow, {
+          toValue: 1,
+          duration: 500,
+          easing: Easing.inOut(Easing.sin),
+          useNativeDriver: false,
+        }),
+        Animated.timing(glow, {
+          toValue: 0,
+          duration: 500,
+          easing: Easing.inOut(Easing.sin),
+          useNativeDriver: false,
+        }),
       ]),
     );
     glowLoop.current.start();
@@ -216,30 +315,57 @@ function WordChip({ obj }) {
     if (obj.hit) {
       glowLoop.current?.stop();
       Animated.parallel([
-        Animated.spring(sc, { toValue: 1.5, friction: 3, tension: 200, useNativeDriver: true }),
-        Animated.timing(op, { toValue: 0, duration: 250, useNativeDriver: true }),
+        Animated.spring(sc, {
+          toValue: 1.5,
+          friction: 3,
+          tension: 200,
+          useNativeDriver: true,
+        }),
+        Animated.timing(op, {
+          toValue: 0,
+          duration: 250,
+          useNativeDriver: true,
+        }),
       ]).start();
     }
   }, [obj.hit]);
 
-  const borderColor = glow.interpolate({ inputRange: [0, 1], outputRange: ["rgba(76,175,80,0.5)", "rgba(76,175,80,1)"] });
-  const bgColor = glow.interpolate({ inputRange: [0, 1], outputRange: ["rgba(76,175,80,0.15)", "rgba(76,175,80,0.32)"] });
+  const borderColor = glow.interpolate({
+    inputRange: [0, 1],
+    outputRange: ["rgba(76,175,80,0.5)", "rgba(76,175,80,1)"],
+  });
+  const bgColor = glow.interpolate({
+    inputRange: [0, 1],
+    outputRange: ["rgba(76,175,80,0.15)", "rgba(76,175,80,0.32)"],
+  });
 
   return (
-    <Animated.View pointerEvents="none" style={[styles.wordChip, { left: obj.x, top: obj.y, borderColor, backgroundColor: bgColor }]}>
-      <Animated.View style={{ opacity: op, transform: [{ scale: sc }], alignItems: "center", justifyContent: "center" }}>
+    <Animated.View
+      pointerEvents="none"
+      style={[
+        styles.wordChip,
+        { left: obj.x, top: obj.y, borderColor, backgroundColor: bgColor },
+      ]}
+    >
+      <Animated.View
+        style={{
+          opacity: op,
+          transform: [{ scale: sc }],
+          alignItems: "center",
+          justifyContent: "center",
+        }}
+      >
         <Text style={styles.wordChipText}>{obj.text}</Text>
       </Animated.View>
     </Animated.View>
   );
 }
 
-// ─────────────────────────────────────────────────────────────
-// ROAD
-// ─────────────────────────────────────────────────────────────
 function Road({ laneCount, dashOffset }) {
   const lanes = getLanes(laneCount);
-  const dashH = 28, gapH = 18, total = dashH + gapH;
+  const dashH = 28,
+    gapH = 18,
+    total = dashH + gapH;
   const count = Math.ceil(ROAD_H / total) + 2;
   const off = dashOffset % total;
 
@@ -251,9 +377,29 @@ function Road({ laneCount, dashOffset }) {
       {lanes.slice(0, -1).map((lane, i) => {
         const lx = lane.x + lane.w - 1;
         return (
-          <View key={i} style={{ position: "absolute", left: lx, top: 0, bottom: 0, width: 2, overflow: "hidden" }}>
+          <View
+            key={i}
+            style={{
+              position: "absolute",
+              left: lx,
+              top: 0,
+              bottom: 0,
+              width: 2,
+              overflow: "hidden",
+            }}
+          >
             {Array.from({ length: count }, (_, d) => (
-              <View key={d} style={{ position: "absolute", top: d * total + off - total, width: 2, height: dashH, backgroundColor: C.roadLine, borderRadius: 1 }} />
+              <View
+                key={d}
+                style={{
+                  position: "absolute",
+                  top: d * total + off - total,
+                  width: 2,
+                  height: dashH,
+                  backgroundColor: C.roadLine,
+                  borderRadius: 1,
+                }}
+              />
             ))}
           </View>
         );
@@ -262,56 +408,113 @@ function Road({ laneCount, dashOffset }) {
   );
 }
 
-// ─────────────────────────────────────────────────────────────
-// CAT
-// ─────────────────────────────────────────────────────────────
 function Cat({ animX, tailAnim, earAnim }) {
-  const tailRot = tailAnim.interpolate({ inputRange: [0, 1], outputRange: ["-25deg", "25deg"] });
-  const earSc = earAnim.interpolate({ inputRange: [0, 1], outputRange: [1, 1.25] });
+  const tailRot = tailAnim.interpolate({
+    inputRange: [0, 1],
+    outputRange: ["-25deg", "25deg"],
+  });
+  const earSc = earAnim.interpolate({
+    inputRange: [0, 1],
+    outputRange: [1, 1.25],
+  });
 
   return (
-    <Animated.View pointerEvents="none" style={[styles.cat, { transform: [{ translateX: animX }] }]}>
-      <Animated.View style={[styles.catTail, { transform: [{ rotate: tailRot }] }]} />
+    <Animated.View
+      pointerEvents="none"
+      style={[styles.cat, { transform: [{ translateX: animX }] }]}
+    >
+      <Animated.View
+        style={[styles.catTail, { transform: [{ rotate: tailRot }] }]}
+      />
       <View style={styles.catBody}>
         <View style={styles.catTummy} />
-        <View style={styles.catPaws}><View style={styles.catPaw} /><View style={styles.catPaw} /></View>
+        <View style={styles.catPaws}>
+          <View style={styles.catPaw} />
+          <View style={styles.catPaw} />
+        </View>
       </View>
       <View style={styles.catHead}>
-        <Animated.View style={[styles.catEarL, { transform: [{ scale: earSc }] }]}><View style={styles.catEarInnerL} /></Animated.View>
-        <Animated.View style={[styles.catEarR, { transform: [{ scale: earSc }] }]}><View style={styles.catEarInnerR} /></Animated.View>
-        <View style={styles.catEyeL}><View style={styles.catPupilL} /></View>
-        <View style={styles.catEyeR}><View style={styles.catPupilR} /></View>
+        <Animated.View
+          style={[styles.catEarL, { transform: [{ scale: earSc }] }]}
+        >
+          <View style={styles.catEarInnerL} />
+        </Animated.View>
+        <Animated.View
+          style={[styles.catEarR, { transform: [{ scale: earSc }] }]}
+        >
+          <View style={styles.catEarInnerR} />
+        </Animated.View>
+        <View style={styles.catEyeL}>
+          <View style={styles.catPupilL} />
+        </View>
+        <View style={styles.catEyeR}>
+          <View style={styles.catPupilR} />
+        </View>
         <View style={styles.catNose} />
-        <View style={styles.whiskerL1} /><View style={styles.whiskerL2} />
-        <View style={styles.whiskerR1} /><View style={styles.whiskerR2} />
+        <View style={styles.whiskerL1} />
+        <View style={styles.whiskerL2} />
+        <View style={styles.whiskerR1} />
+        <View style={styles.whiskerR2} />
       </View>
     </Animated.View>
   );
 }
 
-// ─────────────────────────────────────────────────────────────
-// IDLE OVERLAY
-// ─────────────────────────────────────────────────────────────
 function IdleOverlay({ onStart, onExit }) {
   const pulse = useRef(new Animated.Value(1)).current;
   useEffect(() => {
     Animated.loop(
       Animated.sequence([
-        Animated.timing(pulse, { toValue: 1.08, duration: 600, easing: Easing.inOut(Easing.sin), useNativeDriver: true }),
-        Animated.timing(pulse, { toValue: 1, duration: 600, easing: Easing.inOut(Easing.sin), useNativeDriver: true }),
+        Animated.timing(pulse, {
+          toValue: 1.08,
+          duration: 600,
+          easing: Easing.inOut(Easing.sin),
+          useNativeDriver: true,
+        }),
+        Animated.timing(pulse, {
+          toValue: 1,
+          duration: 600,
+          easing: Easing.inOut(Easing.sin),
+          useNativeDriver: true,
+        }),
       ]),
     ).start();
   }, []);
 
   return (
-    <ImageBackground source={require("../../assets/games/dodge-car/cover.jpg")} resizeMode="stretch" style={StyleSheet.absoluteFill}>
-      <TouchableOpacity style={styles.idleExitBtn} onPress={onExit} activeOpacity={0.8} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
+    <ImageBackground
+      source={require("../../assets/games/dodge-car/cover.jpg")}
+      resizeMode="stretch"
+      style={StyleSheet.absoluteFill}
+    >
+      <TouchableOpacity
+        style={styles.idleExitBtn}
+        onPress={onExit}
+        activeOpacity={0.8}
+        hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+      >
         <Text style={styles.exitTxt}>✕</Text>
       </TouchableOpacity>
-      <View style={{ justifyContent: "center", alignItems: "center", marginTop: "135%" }} pointerEvents="box-none">
+      <View
+        style={{
+          justifyContent: "center",
+          alignItems: "center",
+          marginTop: "135%",
+        }}
+        pointerEvents="box-none"
+      >
         <Animated.View style={{ transform: [{ scale: pulse }], width: "72%" }}>
-          <TouchableOpacity style={styles.tapHint} onPress={onStart} activeOpacity={0.85}>
-            <ImageBackground source={require("../../assets/games/dodge-car/play.png")} style={styles.startBtnBg} imageStyle={styles.startBtnImage} resizeMode="stretch" />
+          <TouchableOpacity
+            style={styles.tapHint}
+            onPress={onStart}
+            activeOpacity={0.85}
+          >
+            <ImageBackground
+              source={require("../../assets/games/dodge-car/play.png")}
+              style={styles.startBtnBg}
+              imageStyle={styles.startBtnImage}
+              resizeMode="stretch"
+            />
           </TouchableOpacity>
         </Animated.View>
       </View>
@@ -319,34 +522,62 @@ function IdleOverlay({ onStart, onExit }) {
   );
 }
 
-// ─────────────────────────────────────────────────────────────
-// RESULT OVERLAY
-// ─────────────────────────────────────────────────────────────
 function ResultOverlay({ score, coins, survived, onReplay, onExit }) {
   const sc = useRef(new Animated.Value(0.6)).current;
   const op = useRef(new Animated.Value(0)).current;
   useEffect(() => {
     Animated.parallel([
-      Animated.spring(sc, { toValue: 1, friction: 5, tension: 55, useNativeDriver: true }),
+      Animated.spring(sc, {
+        toValue: 1,
+        friction: 5,
+        tension: 55,
+        useNativeDriver: true,
+      }),
       Animated.timing(op, { toValue: 1, duration: 350, useNativeDriver: true }),
     ]).start();
   }, []);
 
   return (
     <View style={styles.overlayBg}>
-      <Animated.View style={[styles.resultCard, { opacity: op, transform: [{ scale: sc }] }]}>
+      <Animated.View
+        style={[styles.resultCard, { opacity: op, transform: [{ scale: sc }] }]}
+      >
         <Text style={styles.resultEmoji}>💥</Text>
         <Text style={[styles.resultTitle, { color: C.red }]}>Crashed!</Text>
-        <Text style={styles.resultMsg}>Dodged {score} cars · collected {coins} coins{"\n"}survived {survived}s</Text>
+        <Text style={styles.resultMsg}>
+          Dodged {score} cars · collected {coins} coins{"\n"}survived {survived}
+          s
+        </Text>
         <View style={styles.resultScoreRow}>
-          <View style={styles.resultScorePill}><Text style={styles.resultScoreLabel}>DODGED</Text><Text style={styles.resultScoreVal}>{score}</Text></View>
-          <View style={styles.resultScorePill}><Text style={styles.resultScoreLabel}>COINS</Text><Text style={[styles.resultScoreVal, { color: C.yellow }]}>🪙 {coins}</Text></View>
-          <View style={styles.resultScorePill}><Text style={styles.resultScoreLabel}>TIME</Text><Text style={[styles.resultScoreVal, { color: C.green }]}>{survived}s</Text></View>
+          <View style={styles.resultScorePill}>
+            <Text style={styles.resultScoreLabel}>DODGED</Text>
+            <Text style={styles.resultScoreVal}>{score}</Text>
+          </View>
+          <View style={styles.resultScorePill}>
+            <Text style={styles.resultScoreLabel}>COINS</Text>
+            <Text style={[styles.resultScoreVal, { color: C.yellow }]}>
+              🪙 {coins}
+            </Text>
+          </View>
+          <View style={styles.resultScorePill}>
+            <Text style={styles.resultScoreLabel}>TIME</Text>
+            <Text style={[styles.resultScoreVal, { color: C.green }]}>
+              {survived}s
+            </Text>
+          </View>
         </View>
-        <TouchableOpacity style={[styles.resultBtn, { backgroundColor: C.teal }]} onPress={onReplay} activeOpacity={0.85}>
+        <TouchableOpacity
+          style={[styles.resultBtn, { backgroundColor: C.teal }]}
+          onPress={onReplay}
+          activeOpacity={0.85}
+        >
           <Text style={styles.resultBtnText}>▶ Play Again</Text>
         </TouchableOpacity>
-        <TouchableOpacity style={styles.resultBtnSecondary} onPress={onExit} activeOpacity={0.75}>
+        <TouchableOpacity
+          style={styles.resultBtnSecondary}
+          onPress={onExit}
+          activeOpacity={0.75}
+        >
           <Text style={styles.resultBtnSecText}>✕ Exit</Text>
         </TouchableOpacity>
       </Animated.View>
@@ -354,9 +585,6 @@ function ResultOverlay({ score, coins, survived, onReplay, onExit }) {
   );
 }
 
-// ─────────────────────────────────────────────────────────────
-// WIN OVERLAY
-// ─────────────────────────────────────────────────────────────
 function WinOverlay({ score, coins, survived, onReplay, onExit }) {
   const sc = useRef(new Animated.Value(0.5)).current;
   const op = useRef(new Animated.Value(0)).current;
@@ -367,43 +595,106 @@ function WinOverlay({ score, coins, survived, onReplay, onExit }) {
 
   useEffect(() => {
     Animated.parallel([
-      Animated.spring(sc, { toValue: 1, friction: 4, tension: 60, useNativeDriver: true }),
+      Animated.spring(sc, {
+        toValue: 1,
+        friction: 4,
+        tension: 60,
+        useNativeDriver: true,
+      }),
       Animated.timing(op, { toValue: 1, duration: 300, useNativeDriver: true }),
     ]).start();
     const starDelay = (val, delay) =>
-      Animated.sequence([Animated.delay(delay), Animated.spring(val, { toValue: 1, friction: 3, tension: 120, useNativeDriver: true })]).start();
-    starDelay(star1, 300); starDelay(star2, 480); starDelay(star3, 660);
+      Animated.sequence([
+        Animated.delay(delay),
+        Animated.spring(val, {
+          toValue: 1,
+          friction: 3,
+          tension: 120,
+          useNativeDriver: true,
+        }),
+      ]).start();
+    starDelay(star1, 300);
+    starDelay(star2, 480);
+    starDelay(star3, 660);
     Animated.loop(
       Animated.sequence([
         Animated.delay(800),
-        Animated.timing(shimX, { toValue: 300, duration: 1400, easing: Easing.inOut(Easing.quad), useNativeDriver: true }),
-        Animated.timing(shimX, { toValue: -200, duration: 0, useNativeDriver: true }),
+        Animated.timing(shimX, {
+          toValue: 300,
+          duration: 1400,
+          easing: Easing.inOut(Easing.quad),
+          useNativeDriver: true,
+        }),
+        Animated.timing(shimX, {
+          toValue: -200,
+          duration: 0,
+          useNativeDriver: true,
+        }),
       ]),
     ).start();
   }, []);
 
   return (
     <View style={styles.overlayBg}>
-      <Animated.View style={[styles.resultCard, styles.winCard, { opacity: op, transform: [{ scale: sc }] }]}>
+      <Animated.View
+        style={[
+          styles.resultCard,
+          styles.winCard,
+          { opacity: op, transform: [{ scale: sc }] },
+        ]}
+      >
         <View style={styles.winBanner}>
-          <Animated.View pointerEvents="none" style={[styles.winShimmer, { transform: [{ translateX: shimX }] }]} />
+          <Animated.View
+            pointerEvents="none"
+            style={[styles.winShimmer, { transform: [{ translateX: shimX }] }]}
+          />
           <Text style={styles.winBannerText}>🏆 YOU WIN!</Text>
         </View>
         <View style={styles.starsRow}>
           {[star1, star2, star3].map((s, i) => (
-            <Animated.Text key={i} style={[styles.starEmoji, { transform: [{ scale: s }] }]}>⭐</Animated.Text>
+            <Animated.Text
+              key={i}
+              style={[styles.starEmoji, { transform: [{ scale: s }] }]}
+            >
+              ⭐
+            </Animated.Text>
           ))}
         </View>
-        <Text style={styles.winSubtitle}>Amazing! You dodged {WIN_SCORE} cars!</Text>
+        <Text style={styles.winSubtitle}>
+          Amazing! You dodged {WIN_SCORE} cars!
+        </Text>
         <View style={styles.resultScoreRow}>
-          <View style={[styles.resultScorePill, styles.winPill]}><Text style={styles.resultScoreLabel}>DODGED</Text><Text style={[styles.resultScoreVal, { color: C.green }]}>{score}</Text></View>
-          <View style={[styles.resultScorePill, styles.winPill]}><Text style={styles.resultScoreLabel}>COINS</Text><Text style={[styles.resultScoreVal, { color: C.yellow }]}>🪙 {coins}</Text></View>
-          <View style={[styles.resultScorePill, styles.winPill]}><Text style={styles.resultScoreLabel}>TIME</Text><Text style={[styles.resultScoreVal, { color: C.teal }]}>{survived}s</Text></View>
+          <View style={[styles.resultScorePill, styles.winPill]}>
+            <Text style={styles.resultScoreLabel}>DODGED</Text>
+            <Text style={[styles.resultScoreVal, { color: C.green }]}>
+              {score}
+            </Text>
+          </View>
+          <View style={[styles.resultScorePill, styles.winPill]}>
+            <Text style={styles.resultScoreLabel}>COINS</Text>
+            <Text style={[styles.resultScoreVal, { color: C.yellow }]}>
+              🪙 {coins}
+            </Text>
+          </View>
+          <View style={[styles.resultScorePill, styles.winPill]}>
+            <Text style={styles.resultScoreLabel}>TIME</Text>
+            <Text style={[styles.resultScoreVal, { color: C.teal }]}>
+              {survived}s
+            </Text>
+          </View>
         </View>
-        <TouchableOpacity style={[styles.resultBtn, styles.winBtn]} onPress={onReplay} activeOpacity={0.85}>
+        <TouchableOpacity
+          style={[styles.resultBtn, styles.winBtn]}
+          onPress={onReplay}
+          activeOpacity={0.85}
+        >
           <Text style={styles.resultBtnText}>▶ Play Again</Text>
         </TouchableOpacity>
-        <TouchableOpacity style={styles.resultBtnSecondary} onPress={onExit} activeOpacity={0.75}>
+        <TouchableOpacity
+          style={styles.resultBtnSecondary}
+          onPress={onExit}
+          activeOpacity={0.75}
+        >
           <Text style={styles.resultBtnSecText}>✕ Exit</Text>
         </TouchableOpacity>
       </Animated.View>
@@ -416,12 +707,6 @@ function WinOverlay({ score, coins, survived, onReplay, onExit }) {
 // ─────────────────────────────────────────────────────────────
 export default function DodgeCarGame({ onExit }) {
   const router = useRouter();
-
-  // ── Resolve collect words from route params ────────────────────────────────
-  // GamificationContext.startPlay passes gameDataJson = JSON.stringify(levelData).
-  // For DodgeCar the backend stores a flat array of strings:
-  //   gameData["level_N"] = ["fish", "milk", "cat", ...]
-  // Falls back to FALLBACK_COLLECT_WORDS when absent or invalid.
   const { gameDataJson } = useLocalSearchParams();
 
   const collectWords = useMemo(() => {
@@ -432,24 +717,19 @@ export default function DodgeCarGame({ onExit }) {
         Array.isArray(parsed) &&
         parsed.length > 0 &&
         typeof parsed[0] === "string"
-      ) {
-        console.log("[DodgeCarGame] using backend collect words, count:", parsed.length);
+      )
         return parsed;
-      }
-      console.log("[DodgeCarGame] invalid shape — using fallback");
       return FALLBACK_COLLECT_WORDS;
     } catch (_) {
       return FALLBACK_COLLECT_WORDS;
     }
   }, [gameDataJson]);
 
-  // Keep the latest collectWords accessible inside the tick interval closure.
-  // The tick is set up once and never recreated — it reads from this ref
-  // so it always uses the current word list without needing to restart.
   const collectWordsRef = useRef(collectWords);
-  useEffect(() => { collectWordsRef.current = collectWords; }, [collectWords]);
+  useEffect(() => {
+    collectWordsRef.current = collectWords;
+  }, [collectWords]);
 
-  // ── Render state ──────────────────────────────────────────
   const [phase, setPhase] = useState("idle");
   const [score, setScore] = useState(0);
   const [coins, setCoins] = useState(0);
@@ -461,7 +741,6 @@ export default function DodgeCarGame({ onExit }) {
   const [level, setLevel] = useState(1);
   const [coinsAnim, setCoinsAnim] = useState([]);
 
-  // ── Refs ──────────────────────────────────────────────────
   const phaseRef = useRef("idle");
   const scoreRef = useRef(0);
   const coinsRef = useRef(0);
@@ -477,18 +756,27 @@ export default function DodgeCarGame({ onExit }) {
   const loopRef = useRef(null);
   const renderRef = useRef(null);
 
-  // ── Sounds ────────────────────────────────────────────────
+  // ── Sound refs ────────────────────────────────────────────
   const sndButton = useRef(null);
   const sndSwish = useRef(null);
   const sndCorrect = useRef(null);
   const sndHit = useRef(null);
   const sndWin = useRef(null);
   const sndLose = useRef(null);
+  const sndBg = useRef(null);
 
+  // Load everything on mount — bg music starts immediately with shouldPlay:true
+  // exactly like DinoWorldGame does with dino-bg.mp3
   useEffect(() => {
     let alive = true;
     (async () => {
-      await Audio.setAudioModeAsync({ playsInSilentModeIOS: true });
+      try {
+        await Audio.setAudioModeAsync({
+          playsInSilentModeIOS: true,
+          shouldDuckAndroid: true,
+        });
+      } catch (_) {}
+
       const map = [
         [sndButton, require("../../assets/sounds/button.mp3")],
         [sndSwish, require("../../assets/sounds/swish.mp3")],
@@ -504,22 +792,39 @@ export default function DodgeCarGame({ onExit }) {
           else sound.unloadAsync();
         } catch (_) {}
       }
+
+      // BG music — shouldPlay:true starts it immediately on mount, same as DinoWorldGame
+      try {
+        const { sound } = await Audio.Sound.createAsync(
+          require("../../assets/sounds/game/road-dash/road-bg.mp3"),
+          { shouldPlay: true, isLooping: true, volume: 0.7 },
+        );
+        if (alive) sndBg.current = sound;
+        else sound.unloadAsync();
+      } catch (e) {
+        console.log("[DodgeCarGame] bg music error:", e);
+      }
     })();
+
     return () => {
       alive = false;
-      [sndButton, sndSwish, sndCorrect, sndHit, sndWin, sndLose].forEach((r) => {
-        r.current?.unloadAsync(); r.current = null;
-      });
+      [sndButton, sndSwish, sndCorrect, sndHit, sndWin, sndLose, sndBg].forEach(
+        (r) => {
+          r.current?.unloadAsync().catch(() => {});
+          r.current = null;
+        },
+      );
     };
   }, []);
 
   const playSound = (ref) => {
-    try { ref.current?.setPositionAsync(0).then(() => ref.current?.playAsync()); } catch (_) {}
+    try {
+      ref.current?.setPositionAsync(0).then(() => ref.current?.playAsync());
+    } catch (_) {}
   };
 
   const badgePos = useRef({ x: SW - 60, y: STATUS_H + 18 });
   const badgeScale = useRef(new Animated.Value(1)).current;
-
   const catAnimX = useRef(new Animated.Value(0)).current;
   const tailAnim = useRef(new Animated.Value(0)).current;
   const earAnim = useRef(new Animated.Value(0)).current;
@@ -529,40 +834,75 @@ export default function DodgeCarGame({ onExit }) {
     tailLoop.current?.stop();
     tailLoop.current = Animated.loop(
       Animated.sequence([
-        Animated.timing(tailAnim, { toValue: 1, duration: 350, easing: Easing.inOut(Easing.sin), useNativeDriver: true }),
-        Animated.timing(tailAnim, { toValue: 0, duration: 350, easing: Easing.inOut(Easing.sin), useNativeDriver: true }),
+        Animated.timing(tailAnim, {
+          toValue: 1,
+          duration: 350,
+          easing: Easing.inOut(Easing.sin),
+          useNativeDriver: true,
+        }),
+        Animated.timing(tailAnim, {
+          toValue: 0,
+          duration: 350,
+          easing: Easing.inOut(Easing.sin),
+          useNativeDriver: true,
+        }),
       ]),
     );
     tailLoop.current.start();
   };
-  const stopTailWag = () => { tailLoop.current?.stop(); tailAnim.setValue(0); };
+
+  const stopTailWag = () => {
+    tailLoop.current?.stop();
+    tailAnim.setValue(0);
+  };
 
   const twitchEar = () => {
     Animated.sequence([
-      Animated.timing(earAnim, { toValue: 1, duration: 80, useNativeDriver: true }),
-      Animated.timing(earAnim, { toValue: 0, duration: 120, useNativeDriver: true }),
+      Animated.timing(earAnim, {
+        toValue: 1,
+        duration: 80,
+        useNativeDriver: true,
+      }),
+      Animated.timing(earAnim, {
+        toValue: 0,
+        duration: 120,
+        useNativeDriver: true,
+      }),
     ]).start();
   };
 
   const pulseBadge = () => {
     Animated.sequence([
-      Animated.spring(badgeScale, { toValue: 1.4, friction: 3, tension: 200, useNativeDriver: true }),
-      Animated.spring(badgeScale, { toValue: 1, friction: 4, tension: 200, useNativeDriver: true }),
+      Animated.spring(badgeScale, {
+        toValue: 1.4,
+        friction: 3,
+        tension: 200,
+        useNativeDriver: true,
+      }),
+      Animated.spring(badgeScale, {
+        toValue: 1,
+        friction: 4,
+        tension: 200,
+        useNativeDriver: true,
+      }),
     ]).start();
   };
 
   const spawnCoins = (wx, wy) => {
     const newCoins = Array.from({ length: 4 }, (_, i) => ({
       id: coinIdRef.current++,
-      startX: wx - 11, startY: wy - 11,
-      endX: badgePos.current.x, endY: badgePos.current.y,
+      startX: wx - 11,
+      startY: wy - 11,
+      endX: badgePos.current.x,
+      endY: badgePos.current.y,
       delay: i * 60,
     }));
     setCoinsAnim((prev) => [...prev, ...newCoins]);
     setTimeout(pulseBadge, 320);
   };
 
-  const removeCoin = (id) => setCoinsAnim((prev) => prev.filter((c) => c.id !== id));
+  const removeCoin = (id) =>
+    setCoinsAnim((prev) => prev.filter((c) => c.id !== id));
 
   const scheduleRender = () => {
     if (renderRef.current) return;
@@ -580,7 +920,12 @@ export default function DodgeCarGame({ onExit }) {
   const handleExit = useCallback(() => {
     playSound(sndButton);
     stopTailWag();
-    if (loopRef.current) { clearInterval(loopRef.current); loopRef.current = null; }
+    // pause instead of stop so it can resume next time
+    sndBg.current?.pauseAsync().catch(() => {});
+    if (loopRef.current) {
+      clearInterval(loopRef.current);
+      loopRef.current = null;
+    }
     phaseRef.current = "idle";
     if (typeof onExit === "function") onExit();
     else router.back();
@@ -588,11 +933,15 @@ export default function DodgeCarGame({ onExit }) {
 
   const endGame = useCallback(() => {
     if (phaseRef.current !== "playing") return;
+    sndBg.current?.pauseAsync().catch(() => {});
     phaseRef.current = "dead";
     setPhase("dead");
     setSurvived(Math.floor(survivedRef.current / 60));
     stopTailWag();
-    if (loopRef.current) { clearInterval(loopRef.current); loopRef.current = null; }
+    if (loopRef.current) {
+      clearInterval(loopRef.current);
+      loopRef.current = null;
+    }
     playSound(sndHit);
     playSound(sndLose);
     scheduleRender();
@@ -600,29 +949,46 @@ export default function DodgeCarGame({ onExit }) {
 
   const winGame = useCallback(() => {
     if (phaseRef.current !== "playing") return;
+    sndBg.current?.pauseAsync().catch(() => {});
     phaseRef.current = "won";
     setPhase("won");
     setSurvived(Math.floor(survivedRef.current / 60));
     stopTailWag();
-    if (loopRef.current) { clearInterval(loopRef.current); loopRef.current = null; }
+    if (loopRef.current) {
+      clearInterval(loopRef.current);
+      loopRef.current = null;
+    }
     playSound(sndWin);
     scheduleRender();
   }, []);
 
   const moveCat = useCallback((dir) => {
     if (phaseRef.current !== "playing") return;
-    const next = Math.max(0, Math.min(laneCountRef.current - 1, catLaneRef.current + dir));
+    const next = Math.max(
+      0,
+      Math.min(laneCountRef.current - 1, catLaneRef.current + dir),
+    );
     if (next === catLaneRef.current) return;
     catLaneRef.current = next;
     playSound(sndSwish);
     twitchEar();
     const lanes = getLanes(laneCountRef.current);
-    Animated.spring(catAnimX, { toValue: lanes[next].cx - CAT_W / 2, friction: 8, tension: 130, useNativeDriver: true }).start();
+    Animated.spring(catAnimX, {
+      toValue: lanes[next].cx - CAT_W / 2,
+      friction: 8,
+      tension: 130,
+      useNativeDriver: true,
+    }).start();
     setCatLane(next);
   }, []);
 
   const initGame = useCallback(() => {
     playSound(sndButton);
+    // Resume the already-loaded bg music — no create needed
+    sndBg.current
+      ?.setPositionAsync(0)
+      .then(() => sndBg.current?.playAsync())
+      .catch(() => {});
     tickRef.current = 0;
     scoreRef.current = 0;
     coinsRef.current = 0;
@@ -634,9 +1000,15 @@ export default function DodgeCarGame({ onExit }) {
     dashRef.current = 0;
     coolRef.current = 60;
     catAnimX.setValue(getLanes(2)[0].cx - CAT_W / 2);
-    setScore(0); setCoins(0); setSurvived(0);
-    setLaneCount(2); setCatLane(0);
-    setObjs([]); setDashOffset(0); setLevel(1); setCoinsAnim([]);
+    setScore(0);
+    setCoins(0);
+    setSurvived(0);
+    setLaneCount(2);
+    setCatLane(0);
+    setObjs([]);
+    setDashOffset(0);
+    setLevel(1);
+    setCoinsAnim([]);
     phaseRef.current = "playing";
     setPhase("playing");
     startTailWag();
@@ -657,18 +1029,25 @@ export default function DodgeCarGame({ onExit }) {
       if (catLaneRef.current >= newLC) {
         catLaneRef.current = newLC - 1;
         const ls = getLanes(newLC);
-        Animated.spring(catAnimX, { toValue: ls[catLaneRef.current].cx - CAT_W / 2, friction: 8, tension: 130, useNativeDriver: true }).start();
+        Animated.spring(catAnimX, {
+          toValue: ls[catLaneRef.current].cx - CAT_W / 2,
+          friction: 8,
+          tension: 130,
+          useNativeDriver: true,
+        }).start();
       }
     }
 
     dashRef.current = (dashRef.current + speedRef.current) % 460;
-
     coolRef.current--;
+
     if (coolRef.current <= 0) {
       const lanes = getLanes(laneCountRef.current);
       const occupied = new Set(
         objsRef.current
-          .filter((o) => o.y < ROAD_TOP + Math.max(CAR_H, WORD_H) * 2.5 && !o.hit)
+          .filter(
+            (o) => o.y < ROAD_TOP + Math.max(CAR_H, WORD_H) * 2.5 && !o.hit,
+          )
           .map((o) => Math.round(o.x)),
       );
       const free = lanes.filter((l) => {
@@ -676,17 +1055,14 @@ export default function DodgeCarGame({ onExit }) {
         const wx = Math.round(l.cx - WORD_W / 2);
         return !occupied.has(ox) && !occupied.has(wx);
       });
-
       if (free.length > 0) {
         const lane = free[Math.floor(Math.random() * free.length)];
         const spawnWord = Math.random() < WORD_SPAWN_CHANCE;
         objsRef.current = [
           ...objsRef.current,
-          // ── Pass collectWordsRef.current so tick always has fresh word list ──
           spawnWord ? makeWord(lane, collectWordsRef.current) : makeCar(lane),
         ];
       }
-
       const baseCool = Math.max(36, 100 - (speedRef.current - SPEED_INIT) * 6);
       coolRef.current = baseCool + Math.floor(Math.random() * 28);
     }
@@ -699,16 +1075,22 @@ export default function DodgeCarGame({ onExit }) {
     const catBot = CAT_Y + CAT_H - 4;
 
     let crashed = false;
-    let wordHitX = null, wordHitY = null;
+    let wordHitX = null,
+      wordHitY = null;
 
     objsRef.current = objsRef.current
       .map((o) => {
         const ny = o.y + speedRef.current;
         if (!o.hit) {
-          const oLeft = o.x + 4, oRight = o.x + o.w - 4;
-          const oTop = ny, oBot = ny + o.h;
-          const collides = oLeft < catRight && oRight > catLeft && oTop < catBot && oBot > catTop;
-
+          const oLeft = o.x + 4,
+            oRight = o.x + o.w - 4;
+          const oTop = ny,
+            oBot = ny + o.h;
+          const collides =
+            oLeft < catRight &&
+            oRight > catLeft &&
+            oTop < catBot &&
+            oBot > catTop;
           if (collides) {
             if (o.kind === "car") {
               crashed = true;
@@ -721,8 +1103,12 @@ export default function DodgeCarGame({ onExit }) {
               return { ...o, y: ny, hit: true };
             }
           }
-
-          if (o.kind === "car" && !o.scored && o.y + o.h < catTop && ny + o.h >= catTop) {
+          if (
+            o.kind === "car" &&
+            !o.scored &&
+            o.y + o.h < catTop &&
+            ny + o.h >= catTop
+          ) {
             scoreRef.current += 1;
             return { ...o, y: ny, scored: true };
           }
@@ -732,9 +1118,14 @@ export default function DodgeCarGame({ onExit }) {
       .filter((o) => o.y < ROAD_BOTTOM + 30);
 
     if (wordHitX !== null) spawnCoins(wordHitX, wordHitY);
-    if (crashed) { endGame(); return; }
-    if (scoreRef.current >= WIN_SCORE) { winGame(); return; }
-
+    if (crashed) {
+      endGame();
+      return;
+    }
+    if (scoreRef.current >= WIN_SCORE) {
+      winGame();
+      return;
+    }
     scheduleRender();
   }, [endGame, winGame]);
 
@@ -742,33 +1133,76 @@ export default function DodgeCarGame({ onExit }) {
     if (phase === "playing") {
       loopRef.current = setInterval(tick, TICK_MS);
     } else {
-      if (loopRef.current) { clearInterval(loopRef.current); loopRef.current = null; }
+      if (loopRef.current) {
+        clearInterval(loopRef.current);
+        loopRef.current = null;
+      }
     }
     return () => {
-      if (loopRef.current) { clearInterval(loopRef.current); loopRef.current = null; }
+      if (loopRef.current) {
+        clearInterval(loopRef.current);
+        loopRef.current = null;
+      }
     };
   }, [phase, tick]);
 
-  useEffect(() => () => {
-    if (loopRef.current) clearInterval(loopRef.current);
-    stopTailWag();
-  }, []);
+  useEffect(
+    () => () => {
+      if (loopRef.current) clearInterval(loopRef.current);
+      stopTailWag();
+    },
+    [],
+  );
 
   return (
     <View style={styles.root}>
-      <View style={[StyleSheet.absoluteFill, { backgroundColor: C.bgMid }]} pointerEvents="none">
+      <View
+        style={[StyleSheet.absoluteFill, { backgroundColor: C.bgMid }]}
+        pointerEvents="none"
+      >
         {[...Array(14)].map((_, i) => (
-          <View key={i} pointerEvents="none" style={{ position: "absolute", left: (i * 79 + 20) % (SW - 4), top: STATUS_H + 8 + ((i * 37) % 70), width: 2, height: 2, borderRadius: 1, backgroundColor: "rgba(0,188,212,0.35)" }} />
+          <View
+            key={i}
+            pointerEvents="none"
+            style={{
+              position: "absolute",
+              left: (i * 79 + 20) % (SW - 4),
+              top: STATUS_H + 8 + ((i * 37) % 70),
+              width: 2,
+              height: 2,
+              borderRadius: 1,
+              backgroundColor: "rgba(0,188,212,0.35)",
+            }}
+          />
         ))}
       </View>
 
-      <View style={[StyleSheet.absoluteFill, { top: ROAD_TOP }]} pointerEvents="none">
+      <View
+        style={[StyleSheet.absoluteFill, { top: ROAD_TOP }]}
+        pointerEvents="none"
+      >
         <Road laneCount={laneCount} dashOffset={dashOffset} />
       </View>
 
-      {objs.map((o) => o.kind === "car" ? <CarChip key={o.id} obj={o} /> : <WordChip key={o.id} obj={o} />)}
+      {objs.map((o) =>
+        o.kind === "car" ? (
+          <CarChip key={o.id} obj={o} />
+        ) : (
+          <WordChip key={o.id} obj={o} />
+        ),
+      )}
 
-      {coinsAnim.map((c) => <FlyingCoin key={c.id} startX={c.startX} startY={c.startY} endX={c.endX} endY={c.endY} delay={c.delay} onDone={() => removeCoin(c.id)} />)}
+      {coinsAnim.map((c) => (
+        <FlyingCoin
+          key={c.id}
+          startX={c.startX}
+          startY={c.startY}
+          endX={c.endX}
+          endY={c.endY}
+          delay={c.delay}
+          onDone={() => removeCoin(c.id)}
+        />
+      ))}
 
       {phase !== "idle" && (
         <View style={[styles.catWrapper, { top: CAT_Y }]} pointerEvents="none">
@@ -778,27 +1212,50 @@ export default function DodgeCarGame({ onExit }) {
 
       {phase === "playing" && (
         <View style={styles.hud} pointerEvents="box-none">
-          <TouchableOpacity style={styles.exitBtn} onPress={handleExit} activeOpacity={0.8} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
+          <TouchableOpacity
+            style={styles.exitBtn}
+            onPress={handleExit}
+            activeOpacity={0.8}
+            hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+          >
             <Text style={styles.exitTxt}>✕</Text>
           </TouchableOpacity>
-          <View style={styles.scorePill}><Text style={styles.scoreTxt}>🚗 {score}/{WIN_SCORE}</Text></View>
-          <Animated.View style={[styles.coinPill, { transform: [{ scale: badgeScale }] }]}>
+          <View style={styles.scorePill}>
+            <Text style={styles.scoreTxt}>
+              🚗 {score}/{WIN_SCORE}
+            </Text>
+          </View>
+          <Animated.View
+            style={[styles.coinPill, { transform: [{ scale: badgeScale }] }]}
+          >
             <Text style={styles.coinTxt}>🪙 {coins}</Text>
           </Animated.View>
-          <View style={styles.levelPill}><Text style={styles.levelTxt}>⚡ LV {level}</Text></View>
+          <View style={styles.levelPill}>
+            <Text style={styles.levelTxt}>⚡ LV {level}</Text>
+          </View>
         </View>
       )}
 
       {phase === "playing" && laneCount > 2 && (
         <View style={styles.laneToast} pointerEvents="none">
-          <Text style={styles.laneToastTxt}>🛣️ {laneCount} lanes unlocked!</Text>
+          <Text style={styles.laneToastTxt}>
+            🛣️ {laneCount} lanes unlocked!
+          </Text>
         </View>
       )}
 
       {phase === "playing" && (
         <>
-          <TouchableOpacity style={[styles.tapZone, { left: 0, width: SW / 2 }]} onPress={() => moveCat(-1)} activeOpacity={0.01} />
-          <TouchableOpacity style={[styles.tapZone, { right: 0, width: SW / 2 }]} onPress={() => moveCat(1)} activeOpacity={0.01} />
+          <TouchableOpacity
+            style={[styles.tapZone, { left: 0, width: SW / 2 }]}
+            onPress={() => moveCat(-1)}
+            activeOpacity={0.01}
+          />
+          <TouchableOpacity
+            style={[styles.tapZone, { right: 0, width: SW / 2 }]}
+            onPress={() => moveCat(1)}
+            activeOpacity={0.01}
+          />
         </>
       )}
 
@@ -809,93 +1266,546 @@ export default function DodgeCarGame({ onExit }) {
         </View>
       )}
 
-      {phase === "idle" && <IdleOverlay onStart={initGame} onExit={handleExit} />}
-      {phase === "dead" && <ResultOverlay score={score} coins={coins} survived={Math.floor(survivedRef.current / 60)} onReplay={initGame} onExit={handleExit} />}
-      {phase === "won" && <WinOverlay score={score} coins={coins} survived={Math.floor(survivedRef.current / 60)} onReplay={initGame} onExit={handleExit} />}
+      {phase === "idle" && (
+        <IdleOverlay onStart={initGame} onExit={handleExit} />
+      )}
+      {phase === "dead" && (
+        <ResultOverlay
+          score={score}
+          coins={coins}
+          survived={Math.floor(survivedRef.current / 60)}
+          onReplay={initGame}
+          onExit={handleExit}
+        />
+      )}
+      {phase === "won" && (
+        <WinOverlay
+          score={score}
+          coins={coins}
+          survived={Math.floor(survivedRef.current / 60)}
+          onReplay={initGame}
+          onExit={handleExit}
+        />
+      )}
     </View>
   );
 }
 
-// ─────────────────────────────────────────────────────────────
-// STYLES — unchanged from original
-// ─────────────────────────────────────────────────────────────
 const styles = StyleSheet.create({
   root: { flex: 1, backgroundColor: C.bg, overflow: "hidden" },
-  edgeLine: { position: "absolute", top: 0, bottom: 0, width: 4, backgroundColor: C.roadEdge, borderRadius: 2 },
-  car: { position: "absolute", width: CAR_W, height: CAR_H, borderRadius: 10, alignItems: "center", justifyContent: "space-evenly", paddingVertical: 5, shadowColor: "#000", shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.5, shadowRadius: 6, elevation: 8, zIndex: 50 },
-  carWindshield: { width: CAR_W - 14, height: 14, backgroundColor: "rgba(180,230,255,0.55)", borderRadius: 5, borderWidth: 1, borderColor: "rgba(255,255,255,0.3)" },
+  edgeLine: {
+    position: "absolute",
+    top: 0,
+    bottom: 0,
+    width: 4,
+    backgroundColor: C.roadEdge,
+    borderRadius: 2,
+  },
+  car: {
+    position: "absolute",
+    width: CAR_W,
+    height: CAR_H,
+    borderRadius: 10,
+    alignItems: "center",
+    justifyContent: "space-evenly",
+    paddingVertical: 5,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.5,
+    shadowRadius: 6,
+    elevation: 8,
+    zIndex: 50,
+  },
+  carWindshield: {
+    width: CAR_W - 14,
+    height: 14,
+    backgroundColor: "rgba(180,230,255,0.55)",
+    borderRadius: 5,
+    borderWidth: 1,
+    borderColor: "rgba(255,255,255,0.3)",
+  },
   carBody: { width: "100%", gap: 3, paddingHorizontal: 3 },
   carWheelRow: { flexDirection: "row", justifyContent: "space-between" },
-  carWheel: { width: 12, height: 8, borderRadius: 4, backgroundColor: "#222", borderWidth: 1, borderColor: "#555" },
-  carLights: { flexDirection: "row", justifyContent: "space-around", width: "100%", paddingHorizontal: 6 },
-  carLight: { width: 9, height: 5, borderRadius: 3, backgroundColor: "#FFF9C4", shadowColor: "#FFD54F", shadowOffset: { width: 0, height: 0 }, shadowOpacity: 1, shadowRadius: 5, elevation: 2 },
-  wordChip: { position: "absolute", width: WORD_W, height: WORD_H, borderRadius: 12, borderWidth: 1.5, alignItems: "center", justifyContent: "center", zIndex: 50, shadowColor: C.green, shadowOffset: { width: 0, height: 0 }, shadowOpacity: 0.8, shadowRadius: 8, elevation: 6 },
-  wordChipText: { fontSize: WORD_FONT, fontWeight: "900", color: C.green, letterSpacing: 0.5 },
+  carWheel: {
+    width: 12,
+    height: 8,
+    borderRadius: 4,
+    backgroundColor: "#222",
+    borderWidth: 1,
+    borderColor: "#555",
+  },
+  carLights: {
+    flexDirection: "row",
+    justifyContent: "space-around",
+    width: "100%",
+    paddingHorizontal: 6,
+  },
+  carLight: {
+    width: 9,
+    height: 5,
+    borderRadius: 3,
+    backgroundColor: "#FFF9C4",
+    shadowColor: "#FFD54F",
+    shadowOffset: { width: 0, height: 0 },
+    shadowOpacity: 1,
+    shadowRadius: 5,
+    elevation: 2,
+  },
+  wordChip: {
+    position: "absolute",
+    width: WORD_W,
+    height: WORD_H,
+    borderRadius: 12,
+    borderWidth: 1.5,
+    alignItems: "center",
+    justifyContent: "center",
+    zIndex: 50,
+    shadowColor: C.green,
+    shadowOffset: { width: 0, height: 0 },
+    shadowOpacity: 0.8,
+    shadowRadius: 8,
+    elevation: 6,
+  },
+  wordChipText: {
+    fontSize: WORD_FONT,
+    fontWeight: "900",
+    color: C.green,
+    letterSpacing: 0.5,
+  },
   catWrapper: { position: "absolute", left: 0, right: 0, zIndex: 60 },
   cat: { position: "absolute", width: CAT_W, height: CAT_H + 10 },
-  catBody: { position: "absolute", bottom: 0, left: 4, width: CAT_W - 8, height: CAT_H - 12, backgroundColor: "#F4A460", borderRadius: 14, borderWidth: 2, borderColor: "#CD853F", alignItems: "center", justifyContent: "flex-end", paddingBottom: 4, shadowColor: "#CD853F", shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.5, shadowRadius: 4, elevation: 6 },
-  catTummy: { width: "55%", height: "45%", backgroundColor: "#FAEBD7", borderRadius: 20, borderWidth: 1, borderColor: "rgba(205,133,63,0.4)" },
+  catBody: {
+    position: "absolute",
+    bottom: 0,
+    left: 4,
+    width: CAT_W - 8,
+    height: CAT_H - 12,
+    backgroundColor: "#F4A460",
+    borderRadius: 14,
+    borderWidth: 2,
+    borderColor: "#CD853F",
+    alignItems: "center",
+    justifyContent: "flex-end",
+    paddingBottom: 4,
+    shadowColor: "#CD853F",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.5,
+    shadowRadius: 4,
+    elevation: 6,
+  },
+  catTummy: {
+    width: "55%",
+    height: "45%",
+    backgroundColor: "#FAEBD7",
+    borderRadius: 20,
+    borderWidth: 1,
+    borderColor: "rgba(205,133,63,0.4)",
+  },
   catPaws: { flexDirection: "row", gap: 10, marginTop: 2 },
-  catPaw: { width: 12, height: 8, backgroundColor: "#F4A460", borderRadius: 6, borderWidth: 1.5, borderColor: "#CD853F" },
-  catTail: { position: "absolute", bottom: 6, right: -12, width: 20, height: 36, backgroundColor: "#F4A460", borderRadius: 10, borderWidth: 2, borderColor: "#CD853F", transformOrigin: "bottom center" },
-  catHead: { position: "absolute", top: 0, left: "50%", marginLeft: -(CAT_W * 0.42), width: CAT_W * 0.84, height: CAT_W * 0.72, backgroundColor: "#F4A460", borderRadius: (CAT_W * 0.84) / 2, borderWidth: 2, borderColor: "#CD853F", shadowColor: "#CD853F", shadowOffset: { width: 0, height: -1 }, shadowOpacity: 0.4, shadowRadius: 3, elevation: 4 },
-  catEarL: { position: "absolute", top: -10, left: 4, width: 0, height: 0, borderLeftWidth: 9, borderRightWidth: 9, borderBottomWidth: 14, borderLeftColor: "transparent", borderRightColor: "transparent", borderBottomColor: "#F4A460" },
-  catEarR: { position: "absolute", top: -10, right: 4, width: 0, height: 0, borderLeftWidth: 9, borderRightWidth: 9, borderBottomWidth: 14, borderLeftColor: "transparent", borderRightColor: "transparent", borderBottomColor: "#F4A460" },
-  catEarInnerL: { position: "absolute", top: 3, left: -5, width: 0, height: 0, borderLeftWidth: 5, borderRightWidth: 5, borderBottomWidth: 8, borderLeftColor: "transparent", borderRightColor: "transparent", borderBottomColor: "#FFB6C1" },
-  catEarInnerR: { position: "absolute", top: 3, left: -5, width: 0, height: 0, borderLeftWidth: 5, borderRightWidth: 5, borderBottomWidth: 8, borderLeftColor: "transparent", borderRightColor: "transparent", borderBottomColor: "#FFB6C1" },
-  catEyeL: { position: "absolute", top: 8, left: 8, width: 10, height: 10, borderRadius: 5, backgroundColor: "#7CFC00", borderWidth: 1.5, borderColor: "#228B22", alignItems: "center", justifyContent: "center" },
-  catEyeR: { position: "absolute", top: 8, right: 8, width: 10, height: 10, borderRadius: 5, backgroundColor: "#7CFC00", borderWidth: 1.5, borderColor: "#228B22", alignItems: "center", justifyContent: "center" },
+  catPaw: {
+    width: 12,
+    height: 8,
+    backgroundColor: "#F4A460",
+    borderRadius: 6,
+    borderWidth: 1.5,
+    borderColor: "#CD853F",
+  },
+  catTail: {
+    position: "absolute",
+    bottom: 6,
+    right: -12,
+    width: 20,
+    height: 36,
+    backgroundColor: "#F4A460",
+    borderRadius: 10,
+    borderWidth: 2,
+    borderColor: "#CD853F",
+    transformOrigin: "bottom center",
+  },
+  catHead: {
+    position: "absolute",
+    top: 0,
+    left: "50%",
+    marginLeft: -(CAT_W * 0.42),
+    width: CAT_W * 0.84,
+    height: CAT_W * 0.72,
+    backgroundColor: "#F4A460",
+    borderRadius: (CAT_W * 0.84) / 2,
+    borderWidth: 2,
+    borderColor: "#CD853F",
+    shadowColor: "#CD853F",
+    shadowOffset: { width: 0, height: -1 },
+    shadowOpacity: 0.4,
+    shadowRadius: 3,
+    elevation: 4,
+  },
+  catEarL: {
+    position: "absolute",
+    top: -10,
+    left: 4,
+    width: 0,
+    height: 0,
+    borderLeftWidth: 9,
+    borderRightWidth: 9,
+    borderBottomWidth: 14,
+    borderLeftColor: "transparent",
+    borderRightColor: "transparent",
+    borderBottomColor: "#F4A460",
+  },
+  catEarR: {
+    position: "absolute",
+    top: -10,
+    right: 4,
+    width: 0,
+    height: 0,
+    borderLeftWidth: 9,
+    borderRightWidth: 9,
+    borderBottomWidth: 14,
+    borderLeftColor: "transparent",
+    borderRightColor: "transparent",
+    borderBottomColor: "#F4A460",
+  },
+  catEarInnerL: {
+    position: "absolute",
+    top: 3,
+    left: -5,
+    width: 0,
+    height: 0,
+    borderLeftWidth: 5,
+    borderRightWidth: 5,
+    borderBottomWidth: 8,
+    borderLeftColor: "transparent",
+    borderRightColor: "transparent",
+    borderBottomColor: "#FFB6C1",
+  },
+  catEarInnerR: {
+    position: "absolute",
+    top: 3,
+    left: -5,
+    width: 0,
+    height: 0,
+    borderLeftWidth: 5,
+    borderRightWidth: 5,
+    borderBottomWidth: 8,
+    borderLeftColor: "transparent",
+    borderRightColor: "transparent",
+    borderBottomColor: "#FFB6C1",
+  },
+  catEyeL: {
+    position: "absolute",
+    top: 8,
+    left: 8,
+    width: 10,
+    height: 10,
+    borderRadius: 5,
+    backgroundColor: "#7CFC00",
+    borderWidth: 1.5,
+    borderColor: "#228B22",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  catEyeR: {
+    position: "absolute",
+    top: 8,
+    right: 8,
+    width: 10,
+    height: 10,
+    borderRadius: 5,
+    backgroundColor: "#7CFC00",
+    borderWidth: 1.5,
+    borderColor: "#228B22",
+    alignItems: "center",
+    justifyContent: "center",
+  },
   catPupilL: { width: 4, height: 7, borderRadius: 2, backgroundColor: "#111" },
   catPupilR: { width: 4, height: 7, borderRadius: 2, backgroundColor: "#111" },
-  catNose: { position: "absolute", bottom: 10, left: "50%", marginLeft: -4, width: 0, height: 0, borderLeftWidth: 4, borderRightWidth: 4, borderTopWidth: 5, borderLeftColor: "transparent", borderRightColor: "transparent", borderTopColor: "#FF69B4" },
-  whiskerL1: { position: "absolute", bottom: 13, left: 0, width: 14, height: 1.5, backgroundColor: "rgba(100,60,20,0.5)", borderRadius: 1 },
-  whiskerL2: { position: "absolute", bottom: 10, left: 0, width: 14, height: 1.5, backgroundColor: "rgba(100,60,20,0.5)", borderRadius: 1 },
-  whiskerR1: { position: "absolute", bottom: 13, right: 0, width: 14, height: 1.5, backgroundColor: "rgba(100,60,20,0.5)", borderRadius: 1 },
-  whiskerR2: { position: "absolute", bottom: 10, right: 0, width: 14, height: 1.5, backgroundColor: "rgba(100,60,20,0.5)", borderRadius: 1 },
-  hud: { position: "absolute", top: STATUS_H + 10, left: 0, right: 0, flexDirection: "row", justifyContent: "space-between", alignItems: "center", paddingHorizontal: 16, zIndex: 100 },
-  exitBtn: { width: 36, height: 36, borderRadius: 18, backgroundColor: "rgba(255,255,255,0.07)", borderWidth: 1, borderColor: "rgba(255,255,255,0.13)", alignItems: "center", justifyContent: "center" },
+  catNose: {
+    position: "absolute",
+    bottom: 10,
+    left: "50%",
+    marginLeft: -4,
+    width: 0,
+    height: 0,
+    borderLeftWidth: 4,
+    borderRightWidth: 4,
+    borderTopWidth: 5,
+    borderLeftColor: "transparent",
+    borderRightColor: "transparent",
+    borderTopColor: "#FF69B4",
+  },
+  whiskerL1: {
+    position: "absolute",
+    bottom: 13,
+    left: 0,
+    width: 14,
+    height: 1.5,
+    backgroundColor: "rgba(100,60,20,0.5)",
+    borderRadius: 1,
+  },
+  whiskerL2: {
+    position: "absolute",
+    bottom: 10,
+    left: 0,
+    width: 14,
+    height: 1.5,
+    backgroundColor: "rgba(100,60,20,0.5)",
+    borderRadius: 1,
+  },
+  whiskerR1: {
+    position: "absolute",
+    bottom: 13,
+    right: 0,
+    width: 14,
+    height: 1.5,
+    backgroundColor: "rgba(100,60,20,0.5)",
+    borderRadius: 1,
+  },
+  whiskerR2: {
+    position: "absolute",
+    bottom: 10,
+    right: 0,
+    width: 14,
+    height: 1.5,
+    backgroundColor: "rgba(100,60,20,0.5)",
+    borderRadius: 1,
+  },
+  hud: {
+    position: "absolute",
+    top: STATUS_H + 10,
+    left: 0,
+    right: 0,
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    paddingHorizontal: 16,
+    zIndex: 100,
+  },
+  exitBtn: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: "rgba(255,255,255,0.07)",
+    borderWidth: 1,
+    borderColor: "rgba(255,255,255,0.13)",
+    alignItems: "center",
+    justifyContent: "center",
+  },
   exitTxt: { fontSize: 13, color: C.textSec, fontWeight: "700" },
-  scorePill: { backgroundColor: C.tealDim, borderRadius: 18, borderWidth: 1.5, borderColor: C.tealBorder, paddingHorizontal: 12, paddingVertical: 5 },
+  scorePill: {
+    backgroundColor: C.tealDim,
+    borderRadius: 18,
+    borderWidth: 1.5,
+    borderColor: C.tealBorder,
+    paddingHorizontal: 12,
+    paddingVertical: 5,
+  },
   scoreTxt: { fontSize: 14, fontWeight: "900", color: C.teal },
-  coinPill: { backgroundColor: C.yellowDim, borderRadius: 18, borderWidth: 1.5, borderColor: C.yellowBorder, paddingHorizontal: 12, paddingVertical: 5 },
+  coinPill: {
+    backgroundColor: C.yellowDim,
+    borderRadius: 18,
+    borderWidth: 1.5,
+    borderColor: C.yellowBorder,
+    paddingHorizontal: 12,
+    paddingVertical: 5,
+  },
   coinTxt: { fontSize: 14, fontWeight: "900", color: C.yellow },
-  levelPill: { backgroundColor: "rgba(76,175,80,0.15)", borderRadius: 18, borderWidth: 1.5, borderColor: "rgba(76,175,80,0.55)", paddingHorizontal: 10, paddingVertical: 5 },
+  levelPill: {
+    backgroundColor: "rgba(76,175,80,0.15)",
+    borderRadius: 18,
+    borderWidth: 1.5,
+    borderColor: "rgba(76,175,80,0.55)",
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+  },
   levelTxt: { fontSize: 13, fontWeight: "900", color: C.green },
-  laneToast: { position: "absolute", top: STATUS_H + 58, alignSelf: "center", backgroundColor: "rgba(0,188,212,0.18)", borderRadius: 12, borderWidth: 1, borderColor: C.tealBorder, paddingHorizontal: 16, paddingVertical: 6, zIndex: 90 },
+  laneToast: {
+    position: "absolute",
+    top: STATUS_H + 58,
+    alignSelf: "center",
+    backgroundColor: "rgba(0,188,212,0.18)",
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: C.tealBorder,
+    paddingHorizontal: 16,
+    paddingVertical: 6,
+    zIndex: 90,
+  },
   laneToastTxt: { fontSize: 13, fontWeight: "800", color: C.teal },
-  arrowHints: { position: "absolute", bottom: ROAD_BOTTOM - CAT_Y + CAT_H + 10, left: 0, right: 0, flexDirection: "row", justifyContent: "space-between", paddingHorizontal: 24, zIndex: 65 },
+  arrowHints: {
+    position: "absolute",
+    bottom: ROAD_BOTTOM - CAT_Y + CAT_H + 10,
+    left: 0,
+    right: 0,
+    flexDirection: "row",
+    justifyContent: "space-between",
+    paddingHorizontal: 24,
+    zIndex: 65,
+  },
   arrowTxt: { fontSize: 22, color: "rgba(0,188,212,0.3)", fontWeight: "900" },
-  tapZone: { position: "absolute", top: 0, bottom: 0, zIndex: 70, backgroundColor: "transparent" },
-  overlayCenter: { position: "absolute", top: 0, left: 0, right: 0, bottom: 0, alignItems: "center", justifyContent: "center", zIndex: 200, backgroundColor: "rgba(8,8,26,0.78)" },
-  idleExitBtn: { position: "absolute", top: STATUS_H + 14, left: 16, width: 36, height: 36, borderRadius: 18, backgroundColor: "rgba(255,255,255,0.07)", borderWidth: 1, borderColor: "rgba(255,255,255,0.13)", alignItems: "center", justifyContent: "center" },
-  idleTitle: { fontSize: 40, fontWeight: "900", color: C.teal, letterSpacing: 1, fontFamily: Platform.OS === "ios" ? "Noteworthy-Bold" : "sans-serif-condensed", textShadowColor: "rgba(0,188,212,0.7)", textShadowOffset: { width: 0, height: 0 }, textShadowRadius: 18, marginBottom: 6 },
-  idleSubtitle: { fontSize: 18, fontWeight: "700", color: C.yellow, letterSpacing: 2, marginBottom: 28, textShadowColor: "rgba(255,213,79,0.5)", textShadowOffset: { width: 0, height: 0 }, textShadowRadius: 10 },
-  startBtnBg: { width: 230, height: 150, justifyContent: "center", alignItems: "center" },
+  tapZone: {
+    position: "absolute",
+    top: 0,
+    bottom: 0,
+    zIndex: 70,
+    backgroundColor: "transparent",
+  },
+  idleExitBtn: {
+    position: "absolute",
+    top: STATUS_H + 14,
+    left: 16,
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: "rgba(255,255,255,0.07)",
+    borderWidth: 1,
+    borderColor: "rgba(255,255,255,0.13)",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  startBtnBg: {
+    width: 230,
+    height: 150,
+    justifyContent: "center",
+    alignItems: "center",
+  },
   startBtnImage: { borderRadius: 40 },
-  idleHintBox: { backgroundColor: "rgba(0,0,0,0.35)", borderRadius: 16, borderWidth: 1, borderColor: "rgba(0,188,212,0.25)", paddingHorizontal: 24, paddingVertical: 16, marginBottom: 32, gap: 10, width: "80%" },
-  idleHintRow: { fontSize: 14, color: C.textSec, lineHeight: 22 },
-  tapHint: { borderRadius: 30, paddingHorizontal: 36, paddingVertical: 16, alignItems: "center", shadowColor: "#e09d01", shadowOffset: { width: 0, height: 0 }, shadowOpacity: 0.7, shadowRadius: 18, elevation: 12 },
-  tapHintText: { fontSize: 18, fontWeight: "900", color: C.bg, letterSpacing: 1 },
-  overlayBg: { position: "absolute", top: 0, left: 0, right: 0, bottom: 0, backgroundColor: "rgba(8,8,26,0.82)", alignItems: "center", justifyContent: "center", zIndex: 300 },
-  resultCard: { width: SW * 0.88, maxWidth: 400, backgroundColor: "rgba(255,255,255,0.05)", borderRadius: 28, borderWidth: 1.5, borderColor: C.tealBorder, padding: 28, alignItems: "center", shadowColor: C.teal, shadowOffset: { width: 0, height: 0 }, shadowOpacity: 0.25, shadowRadius: 24, elevation: 10 },
+  tapHint: {
+    borderRadius: 30,
+    paddingHorizontal: 36,
+    paddingVertical: 16,
+    alignItems: "center",
+    shadowColor: "#e09d01",
+    shadowOffset: { width: 0, height: 0 },
+    shadowOpacity: 0.7,
+    shadowRadius: 18,
+    elevation: 12,
+  },
+  overlayBg: {
+    position: "absolute",
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: "rgba(8,8,26,0.82)",
+    alignItems: "center",
+    justifyContent: "center",
+    zIndex: 300,
+  },
+  resultCard: {
+    width: SW * 0.88,
+    maxWidth: 400,
+    backgroundColor: "rgba(255,255,255,0.05)",
+    borderRadius: 28,
+    borderWidth: 1.5,
+    borderColor: C.tealBorder,
+    padding: 28,
+    alignItems: "center",
+    shadowColor: C.teal,
+    shadowOffset: { width: 0, height: 0 },
+    shadowOpacity: 0.25,
+    shadowRadius: 24,
+    elevation: 10,
+  },
   resultEmoji: { fontSize: 64, marginBottom: 8 },
-  resultTitle: { fontSize: 32, fontWeight: "900", letterSpacing: 0.5, marginBottom: 6 },
-  resultMsg: { fontSize: 13, color: C.textSec, textAlign: "center", marginBottom: 20, lineHeight: 20 },
+  resultTitle: {
+    fontSize: 32,
+    fontWeight: "900",
+    letterSpacing: 0.5,
+    marginBottom: 6,
+  },
+  resultMsg: {
+    fontSize: 13,
+    color: C.textSec,
+    textAlign: "center",
+    marginBottom: 20,
+    lineHeight: 20,
+  },
   resultScoreRow: { flexDirection: "row", gap: 10, marginBottom: 24 },
-  resultScorePill: { flex: 1, backgroundColor: C.tealDim, borderRadius: 14, borderWidth: 1, borderColor: C.tealBorder, padding: 12, alignItems: "center" },
-  resultScoreLabel: { fontSize: 9, fontWeight: "900", color: C.textMuted, letterSpacing: 1.5, marginBottom: 4 },
+  resultScorePill: {
+    flex: 1,
+    backgroundColor: C.tealDim,
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: C.tealBorder,
+    padding: 12,
+    alignItems: "center",
+  },
+  resultScoreLabel: {
+    fontSize: 9,
+    fontWeight: "900",
+    color: C.textMuted,
+    letterSpacing: 1.5,
+    marginBottom: 4,
+  },
   resultScoreVal: { fontSize: 22, fontWeight: "900", color: C.teal },
-  resultBtn: { width: "100%", borderRadius: 28, paddingVertical: 15, alignItems: "center", marginBottom: 10, shadowColor: C.teal, shadowOffset: { width: 0, height: 0 }, shadowOpacity: 0.55, shadowRadius: 12, elevation: 8 },
-  resultBtnText: { fontSize: 16, fontWeight: "900", color: C.bg, letterSpacing: 0.4 },
-  resultBtnSecondary: { width: "100%", borderRadius: 28, paddingVertical: 13, alignItems: "center", backgroundColor: "rgba(255,255,255,0.05)", borderWidth: 1, borderColor: "rgba(255,255,255,0.12)" },
+  resultBtn: {
+    width: "100%",
+    borderRadius: 28,
+    paddingVertical: 15,
+    alignItems: "center",
+    marginBottom: 10,
+    shadowColor: C.teal,
+    shadowOffset: { width: 0, height: 0 },
+    shadowOpacity: 0.55,
+    shadowRadius: 12,
+    elevation: 8,
+  },
+  resultBtnText: {
+    fontSize: 16,
+    fontWeight: "900",
+    color: C.bg,
+    letterSpacing: 0.4,
+  },
+  resultBtnSecondary: {
+    width: "100%",
+    borderRadius: 28,
+    paddingVertical: 13,
+    alignItems: "center",
+    backgroundColor: "rgba(255,255,255,0.05)",
+    borderWidth: 1,
+    borderColor: "rgba(255,255,255,0.12)",
+  },
   resultBtnSecText: { fontSize: 14, fontWeight: "700", color: C.textSec },
   winCard: { borderColor: "rgba(255,213,79,0.45)", shadowColor: "#FFD54F" },
-  winBanner: { width: "100%", borderRadius: 14, overflow: "hidden", backgroundColor: "rgba(255,213,79,0.12)", borderWidth: 1.5, borderColor: "rgba(255,213,79,0.5)", paddingVertical: 14, alignItems: "center", marginBottom: 16 },
-  winShimmer: { position: "absolute", top: 0, bottom: 0, width: 80, backgroundColor: "rgba(255,255,255,0.18)", transform: [{ skewX: "-18deg" }] },
-  winBannerText: { fontSize: 26, fontWeight: "900", color: "#FFD54F", letterSpacing: 1.5, textShadowColor: "rgba(255,213,79,0.7)", textShadowOffset: { width: 0, height: 0 }, textShadowRadius: 10 },
+  winBanner: {
+    width: "100%",
+    borderRadius: 14,
+    overflow: "hidden",
+    backgroundColor: "rgba(255,213,79,0.12)",
+    borderWidth: 1.5,
+    borderColor: "rgba(255,213,79,0.5)",
+    paddingVertical: 14,
+    alignItems: "center",
+    marginBottom: 16,
+  },
+  winShimmer: {
+    position: "absolute",
+    top: 0,
+    bottom: 0,
+    width: 80,
+    backgroundColor: "rgba(255,255,255,0.18)",
+    transform: [{ skewX: "-18deg" }],
+  },
+  winBannerText: {
+    fontSize: 26,
+    fontWeight: "900",
+    color: "#FFD54F",
+    letterSpacing: 1.5,
+    textShadowColor: "rgba(255,213,79,0.7)",
+    textShadowOffset: { width: 0, height: 0 },
+    textShadowRadius: 10,
+  },
   starsRow: { flexDirection: "row", gap: 10, marginBottom: 10 },
   starEmoji: { fontSize: 38 },
-  winSubtitle: { fontSize: 14, color: C.textSec, marginBottom: 20, textAlign: "center" },
-  winPill: { borderColor: "rgba(255,213,79,0.3)", backgroundColor: "rgba(255,213,79,0.07)" },
+  winSubtitle: {
+    fontSize: 14,
+    color: C.textSec,
+    marginBottom: 20,
+    textAlign: "center",
+  },
+  winPill: {
+    borderColor: "rgba(255,213,79,0.3)",
+    backgroundColor: "rgba(255,213,79,0.07)",
+  },
   winBtn: { backgroundColor: "#FFD54F", shadowColor: "#FFD54F" },
 });

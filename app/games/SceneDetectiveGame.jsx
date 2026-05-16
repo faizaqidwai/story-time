@@ -3,7 +3,9 @@
  * ─────────────────────────────────────────────────────────────
  * "Scene Detective" — A description-practice game for StoryTime
  *
- * NEW FEATURES:
+ * CHANGES:
+ *  • bg.mp3 plays in a loop at volume 0.6 throughout the entire game
+ *  • Option chips appear one-by-one: chip appears → TTS reads it → next chip appears
  *  • 4 wrong taps → round ends immediately
  *  • ⭐ floats from tapped chip up to score badge on correct tap
  */
@@ -24,17 +26,18 @@ import {
 } from "react-native";
 import { useRouter } from "expo-router";
 import { Audio } from "expo-av";
+import * as Speech from "expo-speech";
 import { font, pad, radius, size } from "../theme/tokens";
 import { ImageBackground } from "react-native";
-const { width: SW, height: SH } = Dimensions.get("window");
 
-const MAX_WRONG = 4; // 4 wrong taps = round over
+const { width: SW, height: SH } = Dimensions.get("window");
+const MAX_WRONG = 4;
 
 // ─────────────────────────────────────────────────────────────
 // SOUND ASSETS
 // ─────────────────────────────────────────────────────────────
 const SOUNDS = {
-  detectiveStart: require("../../assets/sounds/game/detective/detective-start.mp3"),
+  detectiveStart: require("../../assets/sounds/game/detective/bg.mp3"),
   sparkle: require("../../assets/sounds/fairy-sparkle.mp3"),
   clockTick: require("../../assets/sounds/game/clock-tick.mp3"),
   correctHit: require("../../assets/sounds/game/correct-hit.mp3"),
@@ -253,9 +256,6 @@ const SCENES = [
   },
 ];
 
-// ─────────────────────────────────────────────────────────────
-// HELPER
-// ─────────────────────────────────────────────────────────────
 function shuffle(arr) {
   const a = [...arr];
   for (let i = a.length - 1; i > 0; i--) {
@@ -266,14 +266,13 @@ function shuffle(arr) {
 }
 
 // ─────────────────────────────────────────────────────────────
-// FLOATING STAR  — flies from chip position → score badge
+// FLOATING STAR
 // ─────────────────────────────────────────────────────────────
 function FloatingStar({ startX, startY, endX, endY, delay, onDone }) {
   const ax = useRef(new Animated.Value(startX)).current;
   const ay = useRef(new Animated.Value(startY)).current;
   const op = useRef(new Animated.Value(0)).current;
   const sc = useRef(new Animated.Value(0.4)).current;
-
   useEffect(() => {
     Animated.sequence([
       Animated.delay(delay),
@@ -310,7 +309,6 @@ function FloatingStar({ startX, startY, endX, endY, delay, onDone }) {
       }).start(onDone),
     );
   }, []);
-
   return (
     <Animated.View
       pointerEvents="none"
@@ -333,7 +331,7 @@ function FloatingStar({ startX, startY, endX, endY, delay, onDone }) {
 }
 
 // ─────────────────────────────────────────────────────────────
-// WRONG STRIKE INDICATORS — shows ❌ for each wrong tap
+// WRONG STRIKE INDICATORS
 // ─────────────────────────────────────────────────────────────
 function WrongStrikes({ wrongTaps, max = MAX_WRONG }) {
   return (
@@ -347,115 +345,6 @@ function WrongStrikes({ wrongTaps, max = MAX_WRONG }) {
         </Text>
       ))}
     </View>
-  );
-}
-
-// ─────────────────────────────────────────────────────────────
-// MINI DETECTIVE MASCOT
-// ─────────────────────────────────────────────────────────────
-function MiniDetective({ size = 60 }) {
-  const bobAnim = useRef(new Animated.Value(0)).current;
-  useEffect(() => {
-    Animated.loop(
-      Animated.sequence([
-        Animated.timing(bobAnim, {
-          toValue: -4,
-          duration: 800,
-          useNativeDriver: true,
-        }),
-        Animated.timing(bobAnim, {
-          toValue: 0,
-          duration: 800,
-          useNativeDriver: true,
-        }),
-      ]),
-    ).start();
-  }, []);
-  const s = size;
-  return (
-    <Animated.View
-      style={{ transform: [{ translateY: bobAnim }], alignItems: "center" }}
-    >
-      <View
-        style={{
-          width: s * 0.55,
-          height: s * 0.12,
-          backgroundColor: "#1a1a2e",
-          borderRadius: 4,
-          marginBottom: -2,
-        }}
-      />
-      <View
-        style={{
-          width: s * 0.7,
-          height: s * 0.06,
-          backgroundColor: "#0d0d1a",
-          borderRadius: 2,
-        }}
-      />
-      <View
-        style={{
-          width: s * 0.45,
-          height: s * 0.38,
-          backgroundColor: "#FBBF24",
-          borderRadius: s * 0.22,
-          justifyContent: "center",
-          alignItems: "center",
-          overflow: "hidden",
-        }}
-      >
-        <View style={{ flexDirection: "row", gap: 8, marginBottom: 4 }}>
-          <View
-            style={{
-              width: 7,
-              height: 7,
-              borderRadius: 4,
-              backgroundColor: "#1a1a2e",
-            }}
-          />
-          <View
-            style={{
-              width: 7,
-              height: 7,
-              borderRadius: 4,
-              backgroundColor: "#1a1a2e",
-            }}
-          />
-        </View>
-        <View
-          style={{
-            width: 10,
-            height: 10,
-            borderRadius: 5,
-            borderWidth: 2,
-            borderColor: "#7C3AED",
-            position: "absolute",
-            bottom: 6,
-            right: 4,
-          }}
-        />
-        <View
-          style={{
-            width: 2,
-            height: 5,
-            backgroundColor: "#7C3AED",
-            position: "absolute",
-            bottom: 2,
-            right: 6,
-            transform: [{ rotate: "45deg" }],
-          }}
-        />
-      </View>
-      <View
-        style={{
-          width: s * 0.5,
-          height: s * 0.3,
-          backgroundColor: "#7C3AED",
-          borderRadius: 8,
-          marginTop: 2,
-        }}
-      />
-    </Animated.View>
   );
 }
 
@@ -501,16 +390,34 @@ function SceneImage({ scene }) {
 }
 
 // ─────────────────────────────────────────────────────────────
-// CHIP WITH LAYOUT — measures screen position for star origin
+// CHIP — animates in when mounted, shake on wrong tap
 // ─────────────────────────────────────────────────────────────
 function ChipWithLayout({ answer, state, onPress, disabled }) {
   const viewRef = useRef(null);
   const scaleAnim = useRef(new Animated.Value(1)).current;
   const shakeAnim = useRef(new Animated.Value(0)).current;
+  // Reveal: chip pops in when it first mounts
+  const revealOp = useRef(new Animated.Value(0)).current;
+  const revealSc = useRef(new Animated.Value(0.5)).current;
+
+  useEffect(() => {
+    Animated.parallel([
+      Animated.timing(revealOp, {
+        toValue: 1,
+        duration: 800,
+        useNativeDriver: true,
+      }),
+      Animated.spring(revealSc, {
+        toValue: 1,
+        friction: 5,
+        tension: 140,
+        useNativeDriver: true,
+      }),
+    ]).start();
+  }, []);
 
   const handlePress = useCallback(() => {
     if (disabled || state !== "idle") return;
-    // Animate
     Animated.sequence([
       Animated.timing(scaleAnim, {
         toValue: 0.88,
@@ -547,7 +454,6 @@ function ChipWithLayout({ answer, state, onPress, disabled }) {
         }),
       ]).start();
     }
-    // Measure chip position and pass to parent
     viewRef.current?.measureInWindow((x, y, w, h) => {
       onPress(answer, x + w / 2, y + h / 2);
     });
@@ -575,18 +481,22 @@ function ChipWithLayout({ answer, state, onPress, disabled }) {
   return (
     <Animated.View
       ref={viewRef}
-      style={{ transform: [{ scale: scaleAnim }, { translateX: shakeAnim }] }}
+      style={{ opacity: revealOp, transform: [{ scale: revealSc }] }}
     >
-      <TouchableOpacity
-        onPress={handlePress}
-        activeOpacity={0.85}
-        disabled={disabled}
-        style={[styles.chip, { backgroundColor: bg, borderColor: border }]}
+      <Animated.View
+        style={{ transform: [{ scale: scaleAnim }, { translateX: shakeAnim }] }}
       >
-        <Text style={[styles.chipText, { color: textColor }]}>
-          {answer.word}
-        </Text>
-      </TouchableOpacity>
+        <TouchableOpacity
+          onPress={handlePress}
+          activeOpacity={0.85}
+          disabled={disabled}
+          style={[styles.chip, { backgroundColor: bg, borderColor: border }]}
+        >
+          <Text style={[styles.chipText, { color: textColor }]}>
+            {answer.word}
+          </Text>
+        </TouchableOpacity>
+      </Animated.View>
     </Animated.View>
   );
 }
@@ -608,18 +518,26 @@ export default function SceneDetectiveGame() {
   const [wrongTaps, setWrongTaps] = useState(0);
   const [roundScores, setRoundScores] = useState([]);
   const [timeLeft, setTimeLeft] = useState(45);
-  const [roundEndReason, setRoundEndReason] = useState(null); // "time"|"strikes"|"complete"
+  const [roundEndReason, setRoundEndReason] = useState(null);
 
-  // Floating stars state
+  // ── visibleCount: how many chips are currently shown ──────
+  // Starts at 0. We reveal one chip, speak it, then increment.
+  const [visibleCount, setVisibleCount] = useState(0);
+  const revealingRef = useRef(false); // prevents re-entry
+  const revealStoppedRef = useRef(false); // set true when round ends mid-reveal
+
   const [floatingStars, setFloatingStars] = useState([]);
   const starIdRef = useRef(0);
-  const scoreBadgePos = useRef({ x: SW - 80, y: 60 }); // updated by onLayout
+  const scoreBadgePos = useRef({ x: SW - 80, y: 60 });
 
   const timerRef = useRef(null);
   const stopTickRef = useRef(null);
   const stopNarrationRef = useRef(null);
-  const wrongTapsRef = useRef(0); // ref mirror — safe inside async closures
+  const wrongTapsRef = useRef(0);
   const roundDoneRef = useRef(false);
+
+  // BG music ref — loaded once, plays throughout
+  const sndBgRef = useRef(null);
 
   const stopTick = useCallback(async () => {
     if (stopTickRef.current) {
@@ -635,28 +553,50 @@ export default function SceneDetectiveGame() {
     }
   }, []);
 
+  // Stop any ongoing chip-reveal speech chain
+  const stopReveal = useCallback(() => {
+    revealStoppedRef.current = true;
+    Speech.stop();
+  }, []);
+
+  // ── Load bg music on mount ────────────────────────────────
   useEffect(() => {
+    let alive = true;
+    (async () => {
+      try {
+        await Audio.setAudioModeAsync({
+          playsInSilentModeIOS: true,
+          shouldDuckAndroid: true,
+        });
+      } catch (_) {}
+      try {
+        const { sound } = await Audio.Sound.createAsync(
+          require("../../assets/sounds/game/detective/bg.mp3"),
+          { shouldPlay: true, isLooping: true, volume: 0.6 },
+        );
+        if (alive) sndBgRef.current = sound;
+        else sound.unloadAsync();
+      } catch (e) {
+        console.log("[SceneDetective] bg music error:", e);
+      }
+    })();
     return () => {
+      alive = false;
+      sndBgRef.current?.unloadAsync().catch(() => {});
+      sndBgRef.current = null;
+      stopReveal();
       stopTick();
       stopNarration();
     };
   }, []);
 
-  // detective-start on mount
+  // detective-start narration on mount (one-shot, separate from looping bg)
   useEffect(() => {
     playSoundTracked(SOUNDS.detectiveStart).then((fn) => {
       stopNarrationRef.current = fn;
     });
   }, []);
 
-  // detective-start on mount
-  useEffect(() => {
-    playSoundTracked(SOUNDS.detectiveStart).then((fn) => {
-      stopNarrationRef.current = fn;
-    });
-  }, []);
-
-  // ← ADD HERE
   useEffect(() => {
     if (screen !== "start") return;
     const t = setTimeout(() => {
@@ -678,9 +618,9 @@ export default function SceneDetectiveGame() {
   const currentScene = SCENES[sceneIndex];
   const correctAnswers = currentScene?.answers.filter((a) => a.correct) || [];
 
-  // ── Screen change: stop narration, fade in, play round sounds
   useEffect(() => {
     stopNarration();
+    stopReveal();
     fadeAnim.setValue(0);
     slideAnim.setValue(30);
     Animated.parallel([
@@ -719,7 +659,6 @@ export default function SceneDetectiveGame() {
     }
   }, [screen]);
 
-  // ── Setup round
   const setupRound = useCallback((idx) => {
     const scene = SCENES[idx];
     const answers = shuffle(scene.answers);
@@ -736,9 +675,12 @@ export default function SceneDetectiveGame() {
     setTimeLeft(90);
     setRoundEndReason(null);
     setFloatingStars([]);
+    // Reset chip reveal
+    setVisibleCount(0);
+    revealingRef.current = false;
+    revealStoppedRef.current = false;
   }, []);
 
-  // ── Shared end-round logic
   const endRound = useCallback(
     (reason, scene) => {
       if (roundDoneRef.current) return;
@@ -746,6 +688,7 @@ export default function SceneDetectiveGame() {
       setRoundDone(true);
       clearInterval(timerRef.current);
       stopTick();
+      stopReveal(); // stop chip-reveal chain immediately
       setRoundEndReason(reason);
       setChipStates((prev) => {
         const next = { ...prev };
@@ -759,10 +702,9 @@ export default function SceneDetectiveGame() {
         reason === "complete" ? 800 : 1200,
       );
     },
-    [stopTick],
+    [stopTick, stopReveal],
   );
 
-  // ── Timer + clock tick
   useEffect(() => {
     if (screen !== "playing") {
       clearInterval(timerRef.current);
@@ -785,26 +727,76 @@ export default function SceneDetectiveGame() {
     return () => clearInterval(timerRef.current);
   }, [screen]);
 
-  // ── Badge pulse (same as FlappyWordGame)
+  // ── Sequential chip reveal ────────────────────────────────
+  // When screen becomes "playing", start the chain from index 0.
+  // Each step: show chip N → speak it → when speech done → show chip N+1 → ...
+  useEffect(() => {
+    if (screen !== "playing" || shuffledAnswers.length === 0) return;
+    // Reset and kick off the chain
+    revealStoppedRef.current = false;
+    revealingRef.current = false;
+    setVisibleCount(0);
+
+    // Small initial delay so the playing screen has rendered before we start
+    const initTimer = setTimeout(() => {
+      revealNext(0, shuffledAnswers);
+    }, 400);
+
+    return () => {
+      clearTimeout(initTimer);
+      revealStoppedRef.current = true;
+      Speech.stop();
+    };
+  }, [screen, shuffledAnswers]);
+
+  // Reveal chip at `index`, speak it, then move to next
+  const revealNext = useCallback((index, answers) => {
+    if (revealStoppedRef.current) return;
+    if (index >= answers.length) return; // all chips shown
+
+    // Show chip N
+    setVisibleCount(index + 1);
+
+    // Speak the word — onDone triggers the next chip
+    Speech.speak(answers[index].word, {
+      language: "en-US",
+      rate: 0.85,
+      pitch: 1.1,
+      onDone: () => {
+        if (revealStoppedRef.current) return;
+        // Small gap between chips
+        const t = setTimeout(() => {
+          revealNext(index + 1, answers);
+        }, 800);
+      },
+      onError: () => {
+        if (revealStoppedRef.current) return;
+        // If TTS fails, still proceed
+        const t = setTimeout(() => {
+          revealNext(index + 1, answers);
+        }, 800);
+      },
+    });
+  }, []);
+
   const badgeScale = useRef(new Animated.Value(1)).current;
   const pulseBadge = useCallback(() => {
     Animated.sequence([
       Animated.spring(badgeScale, {
         toValue: 1.45,
         friction: 3,
-        tension: 200,
+        tension: 800,
         useNativeDriver: true,
       }),
       Animated.spring(badgeScale, {
         toValue: 1,
         friction: 4,
-        tension: 200,
+        tension: 800,
         useNativeDriver: true,
       }),
     ]).start();
   }, [badgeScale]);
 
-  // ── Spawn 4 stars with staggered delays — same pattern as FlyingCoin burst
   const spawnStar = useCallback(
     (cx, cy) => {
       const newStars = Array.from({ length: 4 }, (_, i) => ({
@@ -826,11 +818,9 @@ export default function SceneDetectiveGame() {
     [],
   );
 
-  // ── Chip press (receives screen position from ChipWithLayout)
   const handleChipPress = useCallback(
     (answer, chipX, chipY) => {
       if (roundDoneRef.current) return;
-
       setChipStates((prev) => ({
         ...prev,
         [answer.id]: answer.correct ? "correct" : "wrong",
@@ -839,7 +829,6 @@ export default function SceneDetectiveGame() {
       if (answer.correct) {
         playSound(SOUNDS.correctHit);
         spawnStar(chipX ?? SW / 2, chipY ?? SH / 2);
-
         const pts = 15;
         setScore((s) => s + pts);
         setTotalCorrectFound((f) => f + 1);
@@ -861,7 +850,6 @@ export default function SceneDetectiveGame() {
           }),
         ]).start(() => setShowScorePop(false));
 
-        // Check if all correct answers found
         setChipStates((prev) => {
           const allFound = currentScene.answers
             .filter((a) => a.correct)
@@ -878,22 +866,18 @@ export default function SceneDetectiveGame() {
         const newWrong = wrongTapsRef.current + 1;
         wrongTapsRef.current = newWrong;
         setWrongTaps(newWrong);
-        if (newWrong >= MAX_WRONG) {
-          endRound("strikes", currentScene);
-        }
+        if (newWrong >= MAX_WRONG) endRound("strikes", currentScene);
       }
     },
     [currentScene, endRound, spawnStar],
   );
 
-  // ── Stars calc
   const calcStars = useCallback((found, total, wrong) => {
     if (found / total >= 1 && wrong === 0) return 3;
     if (found / total >= 0.7 && wrong <= 2) return 2;
     return 1;
   }, []);
 
-  // ── Next round or finish
   const handleNextRound = useCallback(() => {
     playSound(SOUNDS.sparkle);
     const found = Object.values(chipStates).filter(
@@ -903,7 +887,6 @@ export default function SceneDetectiveGame() {
     const stars = calcStars(found, total, wrongTaps);
     setRoundScores((rs) => [...rs, { found, total, wrong: wrongTaps, stars }]);
     setTotalCorrectPossible((p) => p + total);
-
     if (sceneIndex + 1 < SCENES.length) {
       setSceneIndex((i) => {
         const next = i + 1;
@@ -944,38 +927,8 @@ export default function SceneDetectiveGame() {
             <View style={styles.startMagnifier}>
               <Text style={{ fontSize: 80 }}>🔍</Text>
             </View>
-            {/* <MiniDetective size={80} />
-            <Text style={styles.startTitle}>Scene{"\n"}Detective</Text>
-            <Text style={styles.startSubtitle}>
-              Look closely at each scene and tap the words that describe what
-              you really see!
-            </Text> */}
-            {/* <View style={styles.startBadgesRow}>
-              {["👁️ Observe", "💬 Describe", "🏆 Score"].map((b) => (
-                <View key={b} style={styles.startBadge}>
-                  <Text style={styles.startBadgeText}>{b}</Text>
-                </View>
-              ))}
-            </View>
-            <View style={styles.startInfoBox}>
-              <Text style={styles.startInfoText}>
-                ✅ Tap correct words →{" "}
-                <Text style={{ color: C.gold }}>+15 points</Text>
-              </Text>
-              <Text style={styles.startInfoText}>
-                ❌ Wrong word → <Text style={{ color: C.red }}>-5 points</Text>
-              </Text>
-              <Text style={styles.startInfoText}>
-                🎯 Find all clues →{" "}
-                <Text style={{ color: C.gold }}>+20 bonus!</Text>
-              </Text>
-              <Text style={styles.startInfoText}>
-                💀 {MAX_WRONG} wrong taps →{" "}
-                <Text style={{ color: C.red }}>round ends!</Text>
-              </Text>
-            </View> */}
-            {/* <TouchableOpacity
-              style={{ marginTop: "115%" }}
+            <TouchableOpacity
+              style={[styles.primaryBtn, { marginTop: "135%" }]}
               onPress={() => {
                 playSound(SOUNDS.sparkle);
                 setupRound(0);
@@ -983,16 +936,8 @@ export default function SceneDetectiveGame() {
                 setScreen("round_intro");
               }}
             >
-              <ImageBackground
-                source={require("../../assets/games/scene-detective/play.png")}
-                style={styles.startBtnBg}
-                imageStyle={styles.startBtnImage}
-                resizeMode="stretch"
-              >
-                {/* <Text style={st.greenBtnTextStart}>🦕 START!</Text> 
-              </ImageBackground>
-            </TouchableOpacity> */}
-
+              <Text style={styles.primaryBtnText}>🔍 INVESTIGATE!</Text>
+            </TouchableOpacity>
             <TouchableOpacity
               style={styles.closeBtn}
               onPress={() => router.back()}
@@ -1079,7 +1024,6 @@ export default function SceneDetectiveGame() {
     return (
       <View style={styles.root}>
         <StatusBar barStyle="light-content" />
-
         <SafeAreaView style={styles.gameHeader}>
           <View style={styles.gameHeaderInner}>
             <TouchableOpacity onPress={() => router.back()}>
@@ -1090,7 +1034,6 @@ export default function SceneDetectiveGame() {
               </Text>
             </TouchableOpacity>
             <Text style={styles.sceneTitleBadge}>{currentScene.title}</Text>
-            {/* Score badge — onLayout captures position for star target */}
             <Animated.View
               style={[
                 styles.scoreBadge,
@@ -1108,7 +1051,6 @@ export default function SceneDetectiveGame() {
               <Text style={styles.scoreText}>⭐ {score}</Text>
             </Animated.View>
           </View>
-
           <View style={styles.timerBarBg}>
             <View
               style={[
@@ -1117,8 +1059,6 @@ export default function SceneDetectiveGame() {
               ]}
             />
           </View>
-
-          {/* Timer + wrong strikes on same row */}
           <View
             style={{
               flexDirection: "row",
@@ -1148,8 +1088,10 @@ export default function SceneDetectiveGame() {
             </Text>
           </View>
           <Text style={styles.playingPrompt}>{currentScene.prompt}</Text>
+
+          {/* Only render chips up to visibleCount — new chips pop in + speak sequentially */}
           <View style={styles.chipsGrid}>
-            {shuffledAnswers.map((answer) => (
+            {shuffledAnswers.slice(0, visibleCount).map((answer) => (
               <ChipWithLayout
                 key={answer.id}
                 answer={answer}
@@ -1172,7 +1114,6 @@ export default function SceneDetectiveGame() {
           </Animated.View>
         )}
 
-        {/* Floating stars */}
         {floatingStars.map((star) => (
           <FloatingStar
             key={star.id}
@@ -1343,7 +1284,6 @@ function RoundResultCard({
   const accentColor = isWin ? C.gold : C.red;
   const accentDim = isWin ? "rgba(245,158,11,0.12)" : "rgba(239,68,68,0.1)";
   const accentBorder = isWin ? "rgba(245,158,11,0.45)" : "rgba(239,68,68,0.35)";
-
   const bannerLabel =
     endReason === "strikes"
       ? "💀 Too Many Wrong Guesses!"
@@ -1523,7 +1463,6 @@ function FinalCard({
   }, []);
 
   const filledStars = Math.round((totalStars / maxStars) * 3);
-
   return (
     <Animated.View
       style={[
@@ -1638,7 +1577,6 @@ const styles = StyleSheet.create({
     paddingVertical: 40,
     marginTop: "30%",
   },
-
   startMagnifier: {
     position: "absolute",
     top: 20,
@@ -1646,56 +1584,6 @@ const styles = StyleSheet.create({
     opacity: 0.08,
     transform: [{ rotate: "-15deg" }],
   },
-  startTitle: {
-    fontSize: 52,
-    fontWeight: "900",
-    color: C.text,
-    textAlign: "center",
-    marginTop: 16,
-    lineHeight: 58,
-    letterSpacing: -1,
-  },
-  startSubtitle: {
-    fontSize: font.lg,
-    color: C.textSec,
-    textAlign: "center",
-    marginTop: 12,
-    lineHeight: 24,
-    paddingHorizontal: 16,
-  },
-  startBadgesRow: {
-    flexDirection: "row",
-    gap: 8,
-    marginTop: 24,
-    flexWrap: "wrap",
-    justifyContent: "center",
-  },
-  startBadge: {
-    backgroundColor: C.purpleDim,
-    borderWidth: 1,
-    borderColor: C.purple,
-    borderRadius: 20,
-    paddingHorizontal: 14,
-    paddingVertical: 6,
-  },
-  startBadgeText: {
-    color: C.purpleLight,
-    fontSize: font.md,
-    fontWeight: "700",
-  },
-  startInfoBox: {
-    backgroundColor: C.card,
-    borderRadius: 16,
-    padding: 16,
-    marginTop: 20,
-    width: "100%",
-    gap: 6,
-    borderWidth: 1,
-    borderColor: C.border,
-    marginBottom: 20,
-  },
-  startInfoText: { color: C.textSec, fontSize: font.md, lineHeight: 22 },
-
   roundIntroNum: {
     fontSize: font.lg,
     color: C.purpleLight,
@@ -1750,7 +1638,6 @@ const styles = StyleSheet.create({
     marginBottom: 6,
   },
   roundIntroTip: { color: C.textSec, fontSize: font.md, lineHeight: 22 },
-
   gameHeader: {
     backgroundColor: C.surface,
     paddingHorizontal: 16,
@@ -1783,7 +1670,6 @@ const styles = StyleSheet.create({
   },
   timerBarFill: { height: "100%", borderRadius: 4 },
   timerText: { fontSize: 12, fontWeight: "700" },
-
   sceneImageContainer: { width: SW, height: SW * 0.65 },
   sceneImage: { width: "100%", height: "100%" },
   sceneFallback: {
@@ -1824,7 +1710,6 @@ const styles = StyleSheet.create({
     gap: 2,
   },
   chipText: { fontSize: font.xl, fontWeight: "500", color: C.text },
-
   scorePop: {
     position: "absolute",
     top: "50%",
@@ -1835,7 +1720,6 @@ const styles = StyleSheet.create({
     paddingVertical: 6,
   },
   scorePopText: { color: "#1a1a2e", fontWeight: "900", fontSize: font.md },
-
   overlayBg: {
     position: "absolute",
     top: 0,
@@ -1991,7 +1875,6 @@ const styles = StyleSheet.create({
     borderColor: "rgba(255,255,255,0.1)",
   },
   resultBtnSecText: { fontSize: 14, fontWeight: "700", color: C.textSec },
-
   primaryBtn: {
     backgroundColor: C.purple,
     paddingHorizontal: 36,
@@ -2006,16 +1889,6 @@ const styles = StyleSheet.create({
     marginBottom: 12,
   },
   primaryBtnText: { color: "#fff", fontSize: font.xxl, fontWeight: "900" },
-  startBtnBg: {
-    width: 180,
-    height: 180,
-    justifyContent: "center",
-    alignItems: "center",
-  },
-
-  startBtnImage: {
-    borderRadius: 40,
-  },
   closeBtn: { padding: 12 },
-  closeBtnText: { color: C.textMuted, fontSize: font.md, fontWeight: "600" },
+  closeBtnText: { color: "#fefefe", fontSize: font.md, fontWeight: "600" },
 });
