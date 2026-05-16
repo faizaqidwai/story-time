@@ -188,7 +188,7 @@ function CoverSection({ coverSource, gradient, icon, gameId, isLocked }) {
       <ExpoImage
         source={coverSource}
         style={StyleSheet.absoluteFillObject}
-        contentFit="cover"
+        contentFit="fill"
         cachePolicy="memory-disk"
       />
       {/* Thin gradient scrim at bottom so footer edge blends */}
