@@ -23,7 +23,7 @@ import {
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { FONTS } from "../theme";
 
-const { height: SH } = Dimensions.get("window");
+const { height: SH, width: SW } = Dimensions.get("window");
 const NotificationContext = createContext(null);
 const SHEET_H = SH * 0.44;
 
@@ -42,34 +42,48 @@ const C = {
   textMuted: "#7a9aaa",
 };
 
+// ── Success sheet colours ─────────────────────────────────────────────────
+const SUCCESS_SHEET = {
+  bg: "#2E7D32",
+  circleDark: "#1B5E20",
+  circleLight: "rgba(255,255,255,0.10)",
+  border: "rgba(27,94,32,0.8)",
+  handle: "#1B5E20",
+  tick: "#FFFFFF",
+  ringColor: "rgba(255,255,255,0.55)",
+  ringFaint: "rgba(255,255,255,0.12)",
+  titleColor: "#1B5E20",
+  subColor: "rgba(27,94,32,0.75)",
+  btnBg: "rgba(27,94,32,0.3)",
+  btnBorder: "rgba(27,94,32,0.7)",
+  btnText: "#FFFFFF",
+  glow: "rgba(27,94,32,0.25)",
+};
+
 const TOAST_CONFIG = {
   error: { bg: "rgba(239,83,80,0.96)", border: "#EF5350", icon: "✕" },
   info: { bg: "rgba(150,82,217,0.96)", border: "#9652D9", icon: "ℹ" },
   warning: { bg: "rgba(255,213,79,0.96)", border: "#FFD54F", icon: "⚠" },
 };
 
-// Matte dark green for success toast — same design language as the
-// email linked indicator: translucent dark body, muted border, soft text
 const SUCCESS_TOAST = {
-  bg: "rgba(10, 28, 14, 0.98)", // darker — almost black with green tint
+  bg: "rgba(10, 28, 14, 0.98)",
   border: "rgba(76,175,80,0.4)",
   badgeBg: "rgba(76,175,80,0.12)",
   badgeBorder: "rgba(76,175,80,0.35)",
-  tickColor: "#66BB6A", // slightly deeper sage green
-  textColor: "#A5D6A7", // softer mint, less bright
+  tickColor: "#66BB6A",
+  textColor: "#A5D6A7",
 };
 
-// Matte dark red for error toast — mirrors success toast design language
 const ERROR_TOAST = {
-  bg: "rgba(40, 10, 10, 0.98)", // near-black dark red body
-  border: "rgba(239,83,80,0.4)", // muted red outline
-  badgeBg: "rgba(239,83,80,0.12)", // translucent badge behind cross
-  badgeBorder: "rgba(239,83,80,0.35)", // badge border
-  crossColor: "#EF9A9A", // soft rose red cross
-  textColor: "#FFCDD2", // light rose — readable on dark bg
+  bg: "rgba(40, 10, 10, 0.98)",
+  border: "rgba(239,83,80,0.4)",
+  badgeBg: "rgba(239,83,80,0.12)",
+  badgeBorder: "rgba(239,83,80,0.35)",
+  crossColor: "#EF9A9A",
+  textColor: "#FFCDD2",
 };
 
-// Error icon per error type — used for the icon bubble only
 const ERROR_ICON_MAP = {
   AUTH: { icon: "🔐", color: C.coral },
   SERVER: { icon: "⚙️", color: C.red },
@@ -79,12 +93,11 @@ const ERROR_ICON_MAP = {
 };
 
 // ─────────────────────────────────────────────────────────────────────────────
-// TOAST BANNER
+// TOAST BANNER — unchanged
 // ─────────────────────────────────────────────────────────────────────────────
 function ToastBanner({ message, type }) {
   const insets = useSafeAreaInsets();
 
-  // Success uses its own matte dark green design
   if (type === "success") {
     return (
       <Animated.View
@@ -98,7 +111,6 @@ function ToastBanner({ message, type }) {
           },
         ]}
       >
-        {/* Tick badge — mirrors email linked indicator style */}
         <View
           style={[
             ts.successBadge,
@@ -122,7 +134,6 @@ function ToastBanner({ message, type }) {
     );
   }
 
-  // Error — badge design matching success toast but red
   if (type === "error") {
     return (
       <Animated.View
@@ -159,7 +170,6 @@ function ToastBanner({ message, type }) {
     );
   }
 
-  // Info / warning
   const cfg = TOAST_CONFIG[type] ?? TOAST_CONFIG.info;
   return (
     <Animated.View
@@ -198,7 +208,6 @@ const ts = StyleSheet.create({
     shadowRadius: 10,
     elevation: 14,
   },
-  // Success/error badge — circular tick or cross
   successBadge: {
     width: 30,
     height: 30,
@@ -208,19 +217,16 @@ const ts = StyleSheet.create({
     justifyContent: "center",
     flexShrink: 0,
   },
-  // ✓ / ✕ glyph inside badge — bold
   successTick: {
     fontFamily: FONTS.bold,
     fontSize: 14,
   },
-  // Info/warning icon glyph — bold
   icon: {
     fontFamily: FONTS.bold,
     fontSize: 14,
     color: "#fff",
     flexShrink: 0,
   },
-  // Toast message text — regular weight, readable
   text: {
     fontFamily: FONTS.regular,
     flex: 1,
@@ -234,9 +240,9 @@ const ts = StyleSheet.create({
 // SUCCESS SHEET ANIMATIONS
 // ─────────────────────────────────────────────────────────────────────────────
 const BURST_ICONS = [
-  { emoji: "🌿", angle: 0 },
-  { emoji: "🌿", angle: 45 },
-  { emoji: "🌿", angle: 90 },
+  { emoji: "⭐", angle: 0 },
+  { emoji: "✨", angle: 45 },
+  { emoji: "🌟", angle: 90 },
   { emoji: "💫", angle: 135 },
   { emoji: "⭐", angle: 180 },
   { emoji: "✨", angle: 225 },
@@ -317,6 +323,7 @@ function BurstIcon({ emoji, angle, trigger }) {
   );
 }
 
+// ── Animated ring — now uses white strokes on green background ────────────
 function AnimatedRing({ trigger, size = 118 }) {
   const thick = size * 0.07;
   const arcs = useRef([0, 1, 2, 3].map(() => new Animated.Value(0))).current;
@@ -357,87 +364,46 @@ function AnimatedRing({ trigger, size = 118 }) {
         justifyContent: "center",
       }}
     >
-      <View style={[base, { borderColor: "rgba(76,175,80,0.08)" }]} />
-      <Animated.View
-        style={[
-          base,
-          {
-            borderColor: "transparent",
-            borderTopColor: "#66BB6A",
-            borderLeftColor: "#66BB6A",
-            opacity: arcs[0],
-            transform: [
-              { rotate: "-45deg" },
-              {
-                scale: arcs[0].interpolate({
-                  inputRange: [0, 1],
-                  outputRange: [0.85, 1],
-                }),
-              },
-            ],
-          },
-        ]}
-      />
-      <Animated.View
-        style={[
-          base,
-          {
-            borderColor: "transparent",
-            borderTopColor: "#66BB6A",
-            borderRightColor: "#66BB6A",
-            opacity: arcs[1],
-            transform: [
-              { rotate: "-45deg" },
-              {
-                scale: arcs[1].interpolate({
-                  inputRange: [0, 1],
-                  outputRange: [0.85, 1],
-                }),
-              },
-            ],
-          },
-        ]}
-      />
-      <Animated.View
-        style={[
-          base,
-          {
-            borderColor: "transparent",
-            borderBottomColor: "#66BB6A",
-            borderRightColor: "#66BB6A",
-            opacity: arcs[2],
-            transform: [
-              { rotate: "-45deg" },
-              {
-                scale: arcs[2].interpolate({
-                  inputRange: [0, 1],
-                  outputRange: [0.85, 1],
-                }),
-              },
-            ],
-          },
-        ]}
-      />
-      <Animated.View
-        style={[
-          base,
-          {
-            borderColor: "transparent",
-            borderBottomColor: "#66BB6A",
-            borderLeftColor: "#66BB6A",
-            opacity: arcs[3],
-            transform: [
-              { rotate: "-45deg" },
-              {
-                scale: arcs[3].interpolate({
-                  inputRange: [0, 1],
-                  outputRange: [0.85, 1],
-                }),
-              },
-            ],
-          },
-        ]}
-      />
+      <View style={[base, { borderColor: SUCCESS_SHEET.ringFaint }]} />
+      {[
+        {
+          borderTopColor: SUCCESS_SHEET.ringColor,
+          borderLeftColor: SUCCESS_SHEET.ringColor,
+        },
+        {
+          borderTopColor: SUCCESS_SHEET.ringColor,
+          borderRightColor: SUCCESS_SHEET.ringColor,
+        },
+        {
+          borderBottomColor: SUCCESS_SHEET.ringColor,
+          borderRightColor: SUCCESS_SHEET.ringColor,
+        },
+        {
+          borderBottomColor: SUCCESS_SHEET.ringColor,
+          borderLeftColor: SUCCESS_SHEET.ringColor,
+        },
+      ].map((colors, i) => (
+        <Animated.View
+          key={i}
+          style={[
+            base,
+            {
+              borderColor: "transparent",
+              ...colors,
+              opacity: arcs[i],
+              transform: [
+                { rotate: "-45deg" },
+                {
+                  scale: arcs[i].interpolate({
+                    inputRange: [0, 1],
+                    outputRange: [0.85, 1],
+                  }),
+                },
+              ],
+            },
+          ]}
+        />
+      ))}
     </View>
   );
 }
@@ -479,12 +445,11 @@ function AnimatedTick({ trigger }) {
   return (
     <Animated.Text
       style={{
-        // Large ✓ glyph — bold, green
         fontFamily: FONTS.bold,
         fontSize: 44,
-        color: "#66BB6A",
+        color: SUCCESS_SHEET.tick,
         opacity: op,
-        textShadowColor: "rgba(76,175,80,0.35)",
+        textShadowColor: "rgba(255,255,255,0.3)",
         textShadowOffset: { width: 0, height: 0 },
         textShadowRadius: 12,
         transform: [
@@ -546,86 +511,33 @@ function AnimatedErrorRing({ trigger, size = 118 }) {
       }}
     >
       <View style={[base, { borderColor: "rgba(239,83,80,0.08)" }]} />
-      <Animated.View
-        style={[
-          base,
-          {
-            borderColor: "transparent",
-            borderTopColor: "#EF9A9A",
-            borderLeftColor: "#EF9A9A",
-            opacity: arcs[0],
-            transform: [
-              { rotate: "-45deg" },
-              {
-                scale: arcs[0].interpolate({
-                  inputRange: [0, 1],
-                  outputRange: [0.85, 1],
-                }),
-              },
-            ],
-          },
-        ]}
-      />
-      <Animated.View
-        style={[
-          base,
-          {
-            borderColor: "transparent",
-            borderTopColor: "#EF9A9A",
-            borderRightColor: "#EF9A9A",
-            opacity: arcs[1],
-            transform: [
-              { rotate: "-45deg" },
-              {
-                scale: arcs[1].interpolate({
-                  inputRange: [0, 1],
-                  outputRange: [0.85, 1],
-                }),
-              },
-            ],
-          },
-        ]}
-      />
-      <Animated.View
-        style={[
-          base,
-          {
-            borderColor: "transparent",
-            borderBottomColor: "#EF9A9A",
-            borderRightColor: "#EF9A9A",
-            opacity: arcs[2],
-            transform: [
-              { rotate: "-45deg" },
-              {
-                scale: arcs[2].interpolate({
-                  inputRange: [0, 1],
-                  outputRange: [0.85, 1],
-                }),
-              },
-            ],
-          },
-        ]}
-      />
-      <Animated.View
-        style={[
-          base,
-          {
-            borderColor: "transparent",
-            borderBottomColor: "#EF9A9A",
-            borderLeftColor: "#EF9A9A",
-            opacity: arcs[3],
-            transform: [
-              { rotate: "-45deg" },
-              {
-                scale: arcs[3].interpolate({
-                  inputRange: [0, 1],
-                  outputRange: [0.85, 1],
-                }),
-              },
-            ],
-          },
-        ]}
-      />
+      {[
+        { borderTopColor: "#EF9A9A", borderLeftColor: "#EF9A9A" },
+        { borderTopColor: "#EF9A9A", borderRightColor: "#EF9A9A" },
+        { borderBottomColor: "#EF9A9A", borderRightColor: "#EF9A9A" },
+        { borderBottomColor: "#EF9A9A", borderLeftColor: "#EF9A9A" },
+      ].map((colors, i) => (
+        <Animated.View
+          key={i}
+          style={[
+            base,
+            {
+              borderColor: "transparent",
+              ...colors,
+              opacity: arcs[i],
+              transform: [
+                { rotate: "-45deg" },
+                {
+                  scale: arcs[i].interpolate({
+                    inputRange: [0, 1],
+                    outputRange: [0.85, 1],
+                  }),
+                },
+              ],
+            },
+          ]}
+        />
+      ))}
     </View>
   );
 }
@@ -667,7 +579,6 @@ function AnimatedCross({ trigger }) {
   return (
     <Animated.Text
       style={{
-        // Large ✕ glyph — bold, red
         fontFamily: FONTS.bold,
         fontSize: 44,
         color: "#EF9A9A",
@@ -694,9 +605,7 @@ function AnimatedCross({ trigger }) {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// SHEET — success and error variants
-// Fix: removed contentOp fade (was causing blink)
-// Fix: error sheet shows message as bold title, subMessage as body below
+// SHEET
 // ─────────────────────────────────────────────────────────────────────────────
 function Sheet({ visible, type, config, onDismiss }) {
   const slideY = useRef(new Animated.Value(SHEET_H)).current;
@@ -711,7 +620,6 @@ function Sheet({ visible, type, config, onDismiss }) {
       setRetrying(false);
       slideY.setValue(SHEET_H);
       scrOp.setValue(0);
-
       Animated.parallel([
         Animated.timing(scrOp, {
           toValue: 1,
@@ -725,7 +633,6 @@ function Sheet({ visible, type, config, onDismiss }) {
           useNativeDriver: true,
         }),
       ]).start(() => {
-        // Trigger success animations after sheet is up
         setTrigger(true);
         const ms = config?.autoDismissMs;
         if (ms && ms > 0) {
@@ -757,16 +664,14 @@ function Sheet({ visible, type, config, onDismiss }) {
   const handleDismiss = useCallback(() => {
     if (autoRef.current) clearTimeout(autoRef.current);
     onDismiss?.();
-    if (config?.onDismiss) {
-      setTimeout(() => config.onDismiss(), 320);
-    }
+    if (config?.onDismiss) setTimeout(() => config.onDismiss(), 320);
   }, [onDismiss, config]);
 
   if (!visible || !config) return null;
 
   const isSuccess = type === "success";
-  const borderColor = isSuccess ? C.greenBorder : C.redBorder;
-  const shadowColor = isSuccess ? C.green : C.red;
+  const borderColor = isSuccess ? SUCCESS_SHEET.border : C.redBorder;
+  const shadowColor = isSuccess ? "#1B5E20" : C.red;
   const errIconCfg = ERROR_ICON_MAP[config.errorType] ?? ERROR_ICON_MAP.default;
 
   const handleRetry = async () => {
@@ -800,24 +705,38 @@ function Sheet({ visible, type, config, onDismiss }) {
         <Animated.View
           style={[
             ss.sheet,
+            isSuccess && ss.sheetSuccess,
+            !isSuccess && ss.sheetError,
             { borderColor, shadowColor, transform: [{ translateY: slideY }] },
           ]}
         >
+          {/* ── Decorative circles — HomeCategoryCard style ── */}
+          {isSuccess && (
+            <>
+              {/* Large circle top-right */}
+              <View style={ss.decCircle1} pointerEvents="none" />
+              {/* Medium circle bottom-left */}
+              <View style={ss.decCircle2} pointerEvents="none" />
+              {/* Small accent circle top-left */}
+              <View style={ss.decCircle3} pointerEvents="none" />
+              {/* Tiny circle bottom-right */}
+              <View style={ss.decCircle4} pointerEvents="none" />
+            </>
+          )}
+
           <View
             style={[
               ss.handle,
               {
-                backgroundColor: isSuccess
-                  ? "rgba(76,175,80,0.35)"
-                  : borderColor,
+                backgroundColor: isSuccess ? SUCCESS_SHEET.handle : borderColor,
               },
             ]}
           />
 
           <View style={ss.content}>
             {isSuccess ? (
-              // ── Success visuals ──────────────────────────────────────
               <View style={ss.ringCluster}>
+                {/* Glow circle — #1B5E20 */}
                 <View style={ss.glowCircle} />
                 <AnimatedRing trigger={trigger} size={118} />
                 <View style={ss.burstWrap}>
@@ -839,7 +758,6 @@ function Sheet({ visible, type, config, onDismiss }) {
                 </View>
               </View>
             ) : (
-              // ── Error visuals — animated ring + cross matching success ──
               <View style={ss.ringCluster}>
                 <View style={ss.errorGlowCircle} />
                 <AnimatedErrorRing trigger={trigger} size={118} />
@@ -849,28 +767,20 @@ function Sheet({ visible, type, config, onDismiss }) {
               </View>
             )}
 
-            {/*
-              ERROR SHEET TEXT LAYOUT:
-              - config.message  → bold title (your custom message OR backend message)
-              - config.subMessage → smaller grey body text below (optional)
-
-              SUCCESS SHEET TEXT LAYOUT:
-              - config.message    → bold title
-              - config.subMessage → smaller grey text below
-            */}
             <Text style={isSuccess ? ss.titleSuccess : ss.titleError}>
               {config.message}
             </Text>
 
             {config.subMessage ? (
-              <Text style={ss.subMessage}>{config.subMessage}</Text>
+              <Text style={isSuccess ? ss.subMessageSuccess : ss.subMessage}>
+                {config.subMessage}
+              </Text>
             ) : null}
 
-            {/* Buttons */}
             <View style={ss.btnRow}>
               {!isSuccess && config.onRetry && (
                 <TouchableOpacity
-                  style={[ss.retryBtn]}
+                  style={ss.retryBtn}
                   onPress={handleRetry}
                   disabled={retrying}
                   activeOpacity={0.85}
@@ -886,25 +796,13 @@ function Sheet({ visible, type, config, onDismiss }) {
                 style={[
                   ss.dismissBtn,
                   { flex: 1 },
-                  isSuccess && {
-                    backgroundColor: "rgba(76,175,80,0.15)",
-                    borderColor: "rgba(76,175,80,0.45)",
-                    shadowColor: "#000",
-                    shadowOffset: { width: 0, height: 2 },
-                    shadowOpacity: 0.2,
-                    shadowRadius: 4,
-                    elevation: 4,
-                  },
+                  isSuccess && ss.dismissBtnSuccess,
                 ]}
                 onPress={handleDismiss}
                 activeOpacity={0.85}
               >
                 <Text
-                  style={[
-                    ss.dismissText,
-                    // Override colour for success "Continue" button
-                    isSuccess && { color: "#A5D6A7" },
-                  ]}
+                  style={[ss.dismissText, isSuccess && ss.dismissTextSuccess]}
                 >
                   {isSuccess ? "Continue" : "Dismiss"}
                 </Text>
@@ -923,6 +821,8 @@ const ss = StyleSheet.create({
     ...StyleSheet.absoluteFillObject,
     backgroundColor: "rgba(0,0,0,0.55)",
   },
+
+  // Base sheet — dark (error / default)
   sheet: {
     position: "absolute",
     bottom: 0,
@@ -943,9 +843,59 @@ const ss = StyleSheet.create({
     shadowOpacity: 0.2,
     shadowRadius: 20,
     elevation: 24,
+    overflow: "hidden", // clips decorative circles
   },
+
+  // Success sheet override — solid #2E7D32
+  sheetSuccess: {
+    backgroundColor: "#2E7D32",
+  },
+
+  // Success sheet override — solid #F57F17
+  sheetError: {
+    backgroundColor: "#F57F17",
+  },
+
+  // ── Decorative circles (HomeCategoryCard style) ───────────────────────
+  decCircle1: {
+    position: "absolute",
+    width: SW * 0.75,
+    height: SW * 0.75,
+    borderRadius: SW * 0.375,
+    backgroundColor: "rgba(255,255,255,0.07)",
+    top: -(SW * 0.35),
+    right: -(SW * 0.25),
+  },
+  decCircle2: {
+    position: "absolute",
+    width: SW * 0.55,
+    height: SW * 0.55,
+    borderRadius: SW * 0.275,
+    backgroundColor: "rgba(27,94,32,0.45)",
+    bottom: -(SW * 0.15),
+    left: -(SW * 0.15),
+  },
+  decCircle3: {
+    position: "absolute",
+    width: SW * 0.3,
+    height: SW * 0.3,
+    borderRadius: SW * 0.15,
+    backgroundColor: "rgba(255,255,255,0.05)",
+    top: SHEET_H * 0.3,
+    left: -(SW * 0.08),
+  },
+  decCircle4: {
+    position: "absolute",
+    width: SW * 0.2,
+    height: SW * 0.2,
+    borderRadius: SW * 0.1,
+    backgroundColor: "rgba(27,94,32,0.35)",
+    bottom: SHEET_H * 0.15,
+    right: -(SW * 0.05),
+  },
+
   handle: { width: 44, height: 5, borderRadius: 3, marginBottom: 24 },
-  // No opacity wrapper — content visible immediately, no blink
+
   content: {
     flex: 1,
     alignItems: "center",
@@ -953,6 +903,7 @@ const ss = StyleSheet.create({
     gap: 14,
     width: "100%",
   },
+
   ringCluster: {
     width: 160,
     height: 160,
@@ -960,20 +911,24 @@ const ss = StyleSheet.create({
     justifyContent: "center",
     marginBottom: 6,
   },
+
+  // Success glow — #1B5E20
   glowCircle: {
     position: "absolute",
     width: 130,
     height: 130,
     borderRadius: 65,
-    backgroundColor: "rgba(76,175,80,0.10)",
+    backgroundColor: "#1B5E20",
   },
+
   errorGlowCircle: {
     position: "absolute",
     width: 130,
     height: 130,
     borderRadius: 65,
-    backgroundColor: "rgba(239,83,80,0.08)",
+    backgroundColor: "#E65100",
   },
+
   burstWrap: {
     position: "absolute",
     width: "100%",
@@ -986,23 +941,12 @@ const ss = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
   },
-  errorIconWrap: {
-    width: 80,
-    height: 80,
-    borderRadius: 40,
-    backgroundColor: "rgba(239,83,80,0.1)",
-    borderWidth: 1.5,
-    alignItems: "center",
-    justifyContent: "center",
-    marginBottom: 4,
-  },
-  errorIcon: { fontSize: 34 },
 
-  // Sheet title — bold, prominent for both success and error
+  // Success title — #1B5E20
   titleSuccess: {
     fontFamily: FONTS.bold,
     fontSize: 20,
-    color: C.textPri,
+    color: "#07370a",
     textAlign: "center",
     letterSpacing: 0.3,
     lineHeight: 27,
@@ -1016,7 +960,6 @@ const ss = StyleSheet.create({
     lineHeight: 25,
   },
 
-  // Sub message — light, muted body text below the title
   subMessage: {
     fontFamily: FONTS.light,
     fontSize: 13,
@@ -1026,41 +969,64 @@ const ss = StyleSheet.create({
     marginTop: -4,
     paddingHorizontal: 12,
   },
+  // Success sub message — darker green
+  subMessageSuccess: {
+    fontFamily: FONTS.light,
+    fontSize: 13,
+    color: "#07370a",
+    textAlign: "center",
+    lineHeight: 19,
+    marginTop: -4,
+    paddingHorizontal: 12,
+  },
 
   btnRow: { flexDirection: "row", gap: 12, width: "100%", marginTop: 8 },
+
   retryBtn: {
     flex: 1,
     borderRadius: 14,
     borderWidth: 1.5,
-    borderColor: "rgba(0,188,212,0.44)",
+    borderColor: "#00BCD4",
     paddingVertical: 14,
     alignItems: "center",
-    backgroundColor: "rgba(0,188,212,0.08)",
+    backgroundColor: "#00BCD4",
   },
-  // "Try Again" — bold, teal
   retryText: {
     fontFamily: FONTS.bold,
     fontSize: 15,
-    color: "#00BCD4",
+    color: "#FFFFFF",
   },
+
   dismissBtn: {
     borderRadius: 14,
     borderWidth: 1,
-    borderColor: "rgba(255,255,255,0.15)",
-    backgroundColor: "rgba(255,255,255,0.05)",
+    borderColor: "#E65100",
+    backgroundColor: "#E65100",
     paddingVertical: 14,
     alignItems: "center",
   },
-  // "Continue" / "Dismiss" — bold, muted (colour overridden inline for success)
+  // Success Continue button — dark green bg, white text
+  dismissBtnSuccess: {
+    backgroundColor: "#004D40",
+    borderColor: "rgba(27,94,32,0.8)",
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.25,
+    shadowRadius: 4,
+    elevation: 4,
+  },
   dismissText: {
     fontFamily: FONTS.bold,
     fontSize: 15,
-    color: C.textMuted,
+    color: "#FFFFFF",
+  },
+  dismissTextSuccess: {
+    color: "#FFFFFF",
   },
 });
 
 // ─────────────────────────────────────────────────────────────────────────────
-// PROVIDER
+// PROVIDER — unchanged
 // ─────────────────────────────────────────────────────────────────────────────
 export function NotificationProvider({ children }) {
   const [toast, setToast] = useState(null);

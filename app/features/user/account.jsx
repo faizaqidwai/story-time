@@ -1260,6 +1260,7 @@ const Account = () => {
       gap: 2,
     },
     accountIdLabel: {
+      marginTop: 5,
       fontFamily: FONTS.regular,
       fontSize: 9,
       color: C.textMuted,
@@ -1280,15 +1281,14 @@ const Account = () => {
             <Ionicons name="chevron-back" size={20} color={C.teal} />
           </TouchableOpacity>
           <View style={styles.headerSpacer} />
-          <View style={styles.planBadgeRow}>
+          <View style={styles.planBadgeCol}>
             <PlanBadge planName={planName} isFree={isFree} />
             {!!userAccount?.id && (
               <Text style={styles.accountIdLabel}>
-                ID: {userAccount.id.slice(-8).toUpperCase()}
+                User ID: {userAccount.id.slice(-8).toUpperCase()}
               </Text>
             )}
           </View>
-          <View style={styles.headerSpacer} />
         </View>
         <KeyboardAvoidingView
           style={{ flex: 1 }}
@@ -1311,7 +1311,7 @@ const Account = () => {
                   sz={sz}
                 />
                 <AccountOptionCard
-                  image={require("../../../assets/img/learning-path-icon-3.png")}
+                  image={require("../../../assets/img/learning-path-icon.png")}
                   label="Learning Path Levels"
                   onPress={() => router.push("/features/user/LearningPath")}
                   sz={sz}

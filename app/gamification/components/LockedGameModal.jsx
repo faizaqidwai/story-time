@@ -182,7 +182,7 @@ export default function LockedGameModal({
 
                   borderRadius: 10,
                 }}
-                contentFit="cover"
+                contentFit="contain"
               />
             </View>
 

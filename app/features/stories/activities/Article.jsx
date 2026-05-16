@@ -846,8 +846,13 @@ function ListeningChallenge({ article, onFinish }) {
           {/* Bottom note when not done */}
           {!isListeningDone && (
             <View style={styles.listenNote}>
+              <ExpoImage
+                source={require("../../../../assets/img/lock.png")}
+                style={{ width: 18, height: 18 }}
+                contentFit="contain"
+              />
               <Text style={styles.listenNoteText}>
-                🔒 Complete listening to unlock the quiz
+                Complete listening to unlock the quiz
               </Text>
             </View>
           )}
@@ -1473,6 +1478,9 @@ const styles = StyleSheet.create({
   },
 
   listenNote: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
     marginTop: pad.md,
     backgroundColor: "rgba(0,188,212,0.07)",
     borderRadius: radius.md,
