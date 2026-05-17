@@ -49,7 +49,7 @@ const SUCCESS_SHEET = {
   circleLight: "rgba(255,255,255,0.10)",
   border: "rgba(27,94,32,0.8)",
   handle: "#1B5E20",
-  tick: "#FFFFFF",
+  tick: "#ffffff",
   ringColor: "rgba(255,255,255,0.55)",
   ringFaint: "rgba(255,255,255,0.12)",
   titleColor: "#1B5E20",
@@ -670,7 +670,7 @@ function Sheet({ visible, type, config, onDismiss }) {
   if (!visible || !config) return null;
 
   const isSuccess = type === "success";
-  const borderColor = isSuccess ? SUCCESS_SHEET.border : C.redBorder;
+  const borderColor = isSuccess ? "#0D47A1" : C.redBorder;
   const shadowColor = isSuccess ? "#1B5E20" : C.red;
   const errIconCfg = ERROR_ICON_MAP[config.errorType] ?? ERROR_ICON_MAP.default;
 
@@ -714,13 +714,13 @@ function Sheet({ visible, type, config, onDismiss }) {
           {isSuccess && (
             <>
               {/* Large circle top-right */}
-              <View style={ss.decCircle1} pointerEvents="none" />
+              {/* <View style={ss.decCircle1} pointerEvents="none" /> */}
               {/* Medium circle bottom-left */}
-              <View style={ss.decCircle2} pointerEvents="none" />
+              {/* <View style={ss.decCircle2} pointerEvents="none" /> */}
               {/* Small accent circle top-left */}
-              <View style={ss.decCircle3} pointerEvents="none" />
+              {/* <View style={ss.decCircle3} pointerEvents="none" /> */}
               {/* Tiny circle bottom-right */}
-              <View style={ss.decCircle4} pointerEvents="none" />
+              {/* <View style={ss.decCircle4} pointerEvents="none" /> */}
             </>
           )}
 
@@ -728,7 +728,7 @@ function Sheet({ visible, type, config, onDismiss }) {
             style={[
               ss.handle,
               {
-                backgroundColor: isSuccess ? SUCCESS_SHEET.handle : borderColor,
+                backgroundColor: isSuccess ? "#0D47A1" : borderColor,
               },
             ]}
           />
@@ -848,7 +848,7 @@ const ss = StyleSheet.create({
 
   // Success sheet override — solid #2E7D32
   sheetSuccess: {
-    backgroundColor: "#2E7D32",
+    backgroundColor: "#1565C0",
   },
 
   // Success sheet override — solid #F57F17
@@ -918,7 +918,7 @@ const ss = StyleSheet.create({
     width: 130,
     height: 130,
     borderRadius: 65,
-    backgroundColor: "#1B5E20",
+    backgroundColor: "#0D47A1",
   },
 
   errorGlowCircle: {
@@ -946,7 +946,7 @@ const ss = StyleSheet.create({
   titleSuccess: {
     fontFamily: FONTS.bold,
     fontSize: 20,
-    color: "#07370a",
+    color: "#ffffff",
     textAlign: "center",
     letterSpacing: 0.3,
     lineHeight: 27,
@@ -963,7 +963,7 @@ const ss = StyleSheet.create({
   subMessage: {
     fontFamily: FONTS.light,
     fontSize: 13,
-    color: C.textMuted,
+    color: "#ffffff",
     textAlign: "center",
     lineHeight: 19,
     marginTop: -4,
@@ -973,7 +973,7 @@ const ss = StyleSheet.create({
   subMessageSuccess: {
     fontFamily: FONTS.light,
     fontSize: 13,
-    color: "#07370a",
+    color: "#ffffff",
     textAlign: "center",
     lineHeight: 19,
     marginTop: -4,
@@ -1007,8 +1007,8 @@ const ss = StyleSheet.create({
   },
   // Success Continue button — dark green bg, white text
   dismissBtnSuccess: {
-    backgroundColor: "#004D40",
-    borderColor: "rgba(27,94,32,0.8)",
+    backgroundColor: "#0D47A1",
+    borderColor: "#0D47A1",
     shadowColor: "#000",
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.25,
