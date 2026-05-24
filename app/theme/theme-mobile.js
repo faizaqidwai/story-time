@@ -344,7 +344,7 @@ export const DEVICE_SIZES = {
     stepsRowMarginH: 14,
     stepsRowMarginBottom: 16,
     stepsRowGap: 8,
-    stepCardHeight: 100,
+    stepCardHeight: 80,
     stepCardBorderRadius: 14,
     stepCardPaddingV: 10,
     stepCardPaddingH: 4,
@@ -371,7 +371,7 @@ export const DEVICE_SIZES = {
   // ── StoryCard ─────────────────────────────────────────────────
   storyCard: {
     cardWidth: 175,
-    cardHeight: 252,
+    cardHeight: 215,
     imageHeight: 135,
     cardMargin: 10,
 

@@ -1,9 +1,20 @@
+/**
+ * MainStoryCard.jsx
+ * app/features/stories/components/MainStoryCard.jsx
+ *
+ * CHANGES:
+ *   - No whole-card pulse animation — only the current active step card pulses
+ *   - activeDot removed (was overlapping title at reduced height)
+ *   - stepLabelActive removed — active step keeps its original bg color
+ *   - stepCardActive border/shadow glow retained but bg color NOT overridden
+ *   - "RECOMMENDED" badge replaced with a START button (top-right of image)
+ *   - borderAnim / scaleAnim whole-card animations removed entirely
+ */
+
 import React, { useEffect, useRef } from "react";
-import { Audio } from "expo-av";
 import {
   View,
   Text,
-  Image,
   TouchableOpacity,
   StyleSheet,
   Animated,
@@ -20,136 +31,98 @@ const T = {
   darkBg2: "#16213e",
   teal: "#00BCD4",
   yellow: "#FFD54F",
-  coral: "#FF7043",
-  purple: "#9652D9",
   textPrimary: "#E0F7FA",
   textMuted: "#7a9aaa",
 };
 
-// ── Activity steps — PNG icons ────────────────────────────────
 const STEPS = [
-  { image: require("../../../../assets/img/read_icon.png"), label: "Read" },
-  { image: require("../../../../assets/img/guess_icon.png"), label: "Guess" },
-  { image: require("../../../../assets/img/listen_icon.png"), label: "Listen" },
+  {
+    image: require("../../../../assets/img/read_icon.png"),
+    label: "Read",
+    bg: "#880E4F",
+  },
+  {
+    image: require("../../../../assets/img/guess_icon.png"),
+    label: "Guess",
+    bg: "#6A1B9A",
+  },
+  {
+    image: require("../../../../assets/img/listen_icon.png"),
+    label: "Listen",
+    bg: "#1565C0",
+  },
   {
     image: require("../../../../assets/img/describe_icon.png"),
     label: "Describe",
+    bg: "#F57F17",
   },
 ];
 
-// ─────────────────────────────────────────────────────────────
-// Play button
-// ─────────────────────────────────────────────────────────────
-function PlayButton({ onPress, sz }) {
-  const pulse = useRef(new Animated.Value(1)).current;
-  const sndSelect = useRef(null);
-
+// ─── Per-step pulse — only the active step animates ───────────────────────────
+function StepCard({ step, isActive, isCompleted, stepRef, pulseAnim, sz, s }) {
   useEffect(() => {
-    let alive = true;
-    (async () => {
-      try {
-        await Audio.setAudioModeAsync({ playsInSilentModeIOS: true });
-        const { sound } = await Audio.Sound.createAsync(
-          require("../../../../assets/sounds/button.mp3"),
-        );
-        if (alive) sndSelect.current = sound;
-        else sound.unloadAsync();
-      } catch (_) {}
-    })();
-    return () => {
-      alive = false;
-      sndSelect.current?.unloadAsync();
-      sndSelect.current = null;
-    };
-  }, []);
-
-  const handlePress = () => {
-    try {
-      sndSelect.current
-        ?.setPositionAsync(0)
-        .then(() => sndSelect.current?.playAsync());
-    } catch (_) {}
-    onPress?.();
-  };
-
-  useEffect(() => {
-    Animated.loop(
+    if (!isActive) {
+      pulseAnim.setValue(1);
+      return;
+    }
+    const loop = Animated.loop(
       Animated.sequence([
-        Animated.timing(pulse, {
-          toValue: 1.08,
-          duration: 600,
+        Animated.timing(pulseAnim, {
+          toValue: 1.06,
+          duration: 650,
           easing: Easing.inOut(Easing.sin),
           useNativeDriver: true,
         }),
-        Animated.timing(pulse, {
-          toValue: 1,
-          duration: 600,
+        Animated.timing(pulseAnim, {
+          toValue: 1.0,
+          duration: 650,
           easing: Easing.inOut(Easing.sin),
           useNativeDriver: true,
         }),
       ]),
-    ).start();
-  }, []);
+    );
+    loop.start();
+    return () => loop.stop();
+  }, [isActive]);
+
+  // Active step: glow border only — bg stays its original color (not overridden)
+  // Done step: same bg at reduced opacity
+  const bgColor = isCompleted ? `${step.bg}55` : step.bg;
 
   return (
-    <View style={{ marginHorizontal: sz.tapHintMarginH }}>
-      <Animated.View style={{ transform: [{ scale: pulse }] }}>
-        <TouchableOpacity
-          onPress={handlePress}
-          activeOpacity={0.85}
-          style={{
-            backgroundColor: T.teal,
-            width: "100%",
-            borderRadius: sz.tapHintBorderRadius,
-            paddingHorizontal: sz.tapHintPaddingH,
-            paddingVertical: sz.tapHintPaddingV,
-            // alignItems: "center",
-            //  justifyContent: "center",
-            flexDirection: "row",
-            shadowColor: T.teal,
-            shadowOffset: { width: 0, height: 0 },
-            shadowOpacity: 0.7,
-            shadowRadius: 12,
-            elevation: 12,
-          }}
-        >
-          <ExpoImage
-            source={require("../../../../assets/img/play-icon-2.png")}
-            style={{
-              width: 25,
-              height: 25,
-              resizeMode: "contain",
-            }}
-            cachePolicy="memory-disk"
-          />
-          <Text
-            style={{
-              fontFamily: FONTS.bold,
-              fontSize: font.xl,
-              // fontWeight: "800",
-              color: "#08081a",
-              padding: 5,
-              letterSpacing: sz.tapHintLetterSpacing,
-            }}
-          >
-            START
-          </Text>
-        </TouchableOpacity>
-      </Animated.View>
-    </View>
+    <Animated.View
+      ref={stepRef ?? null}
+      collapsable={false}
+      style={[
+        s.stepCard,
+        { backgroundColor: bgColor },
+        isActive && s.stepCardActive,
+        isCompleted && s.stepCardDone,
+        { transform: [{ scale: pulseAnim }] },
+      ]}
+    >
+      <ExpoImage
+        source={step.image}
+        style={[s.stepImage, isCompleted && s.stepImageDone]}
+        contentFit="contain"
+      />
+      <Text style={s.stepLabel}>{step.label}</Text>
+      {isCompleted && (
+        <View style={s.checkBadge}>
+          <Text style={s.checkText}>✓</Text>
+        </View>
+      )}
+      {/* activeDot removed — was overlapping title at reduced card height */}
+    </Animated.View>
   );
 }
 
-// ─────────────────────────────────────────────────────────────
-// MAIN COMPONENT
-// ─────────────────────────────────────────────────────────────
+// ─────────────────────────────────────────────────────────────────────────────
 export default function MainStoryCard({
   title,
   description,
   image,
   onPress,
-  // Tutorial refs — wired from home.jsx so HomeTutorial can
-  // measureInWindow() each activity icon card for spotlight highlighting.
   progressIndex = 0,
   readIconRef,
   guessIconRef,
@@ -158,37 +131,32 @@ export default function MainStoryCard({
 }) {
   const { sizes } = useTheme();
   const sz = sizes.mainStoryCard;
-
   const cardW = Math.min(SW - sz.cardMarginHorizontal, sz.cardMaxWidth);
-  const pulseAnims = useRef(STEPS.map(() => new Animated.Value(1))).current;
-  const activeIdx = progressIndex < 4 ? progressIndex : -1;
 
+  // One pulse anim per step — only the active one actually animates
+  const pulseAnims = useRef(STEPS.map(() => new Animated.Value(1))).current;
   const stepRefs = [readIconRef, guessIconRef, listenIconRef, describeIconRef];
 
-  // Build styles from tokens
   const s = StyleSheet.create({
     wrapper: {
       alignSelf: "center",
       marginVertical: sz.cardMarginVertical,
       alignItems: "center",
+      // Static teal border — no animation on the whole card
+      borderWidth: 1.5,
+      borderColor: "rgba(0,188,212,0.45)",
+      borderRadius: sz.cardBorderRadius,
       shadowColor: T.teal,
       shadowOffset: { width: 0, height: 0 },
-      shadowOpacity: 0.7,
+      shadowOpacity: 0.55,
       shadowRadius: 12,
-      elevation: 12,
+      elevation: 10,
     },
     card: {
       backgroundColor: T.darkBg2,
       borderRadius: sz.cardBorderRadius,
-      borderWidth: 1.5,
-      borderColor: "rgba(0,188,212,0.35)",
       overflow: "hidden",
-      shadowColor: T.teal,
-      shadowOffset: { width: 0, height: 0 },
-      shadowOpacity: 0.7,
-      shadowRadius: 18,
-      elevation: 12,
-      paddingBottom: sz.cardPaddingBottom,
+      width: cardW,
     },
     imageFrame: {
       marginHorizontal: sz.imageFrameMarginH,
@@ -261,22 +229,33 @@ export default function MainStoryCard({
       borderRightWidth: sz.cornerBorderWidth,
       borderBottomRightRadius: sz.cornerBorderRadius,
     },
-    newBadge: {
+
+    // ── START button (replaces RECOMMENDED badge) ─────────────────────────
+    startBtn: {
       position: "absolute",
       top: sz.newBadgeTop,
       right: sz.newBadgeRight,
-      backgroundColor: T.yellow,
-      borderRadius: sz.newBadgeBorderRadius,
-      paddingHorizontal: sz.newBadgePaddingH,
-      paddingVertical: sz.newBadgePaddingV,
+      backgroundColor: T.teal,
+      borderRadius: 20,
+      paddingHorizontal: 14,
+      paddingVertical: 5,
       zIndex: 4,
+      flexDirection: "row",
+      alignItems: "center",
+      gap: 4,
+      shadowColor: T.teal,
+      shadowOffset: { width: 0, height: 0 },
+      shadowOpacity: 0.75,
+      shadowRadius: 8,
+      elevation: 8,
     },
-    newBadgeTxt: {
+    startBtnText: {
       fontFamily: FONTS.bold,
-      fontSize: sz.newBadgeFontSize,
-      color: "#0d0d1a",
-      letterSpacing: sz.newBadgeLetterSpacing,
+      fontSize: sz.newBadgeFontSize ?? 11,
+      color: "#08081a",
+      letterSpacing: 0.5,
     },
+
     body: {
       paddingHorizontal: sz.descPaddingH,
       paddingTop: sz.descPaddingTop,
@@ -294,7 +273,7 @@ export default function MainStoryCard({
       alignItems: "stretch",
       justifyContent: "space-between",
       marginHorizontal: sz.stepsRowMarginH,
-      marginBottom: sz.stepsRowMarginBottom,
+      marginBottom: sz.stepsRowMarginBottom ?? 12,
       gap: sz.stepsRowGap,
     },
     stepCard: {
@@ -304,36 +283,34 @@ export default function MainStoryCard({
       justifyContent: "center",
       paddingVertical: sz.stepCardPaddingV,
       paddingHorizontal: sz.stepCardPaddingH,
-      backgroundColor: "rgba(0,0,0,0.30)",
       borderRadius: sz.stepCardBorderRadius,
       borderWidth: 1,
       borderColor: "rgba(255,255,255,0.08)",
       overflow: "hidden",
       gap: sz.stepCardGap,
     },
+    // Active: glow border only — bg color comes from step.bg (not overridden here)
     stepCardActive: {
-      borderColor: "rgba(0,188,212,0.75)",
-      backgroundColor: "rgba(0,188,212,0.13)",
+      borderColor: "rgba(255,255,255,0.55)",
       borderWidth: 2,
+      shadowColor: "#fff",
       shadowOffset: { width: 0, height: 0 },
-      shadowOpacity: 0.7,
-      shadowRadius: 8,
-      elevation: 8,
+      shadowOpacity: 0.35,
+      shadowRadius: 6,
+      elevation: 6,
     },
     stepCardDone: {
       borderColor: "rgba(255,255,255,0.05)",
-      backgroundColor: "rgba(0,0,0,0.18)",
     },
     stepImage: { width: sz.stepImageSize, height: sz.stepImageSize },
     stepImageDone: { opacity: 0.45 },
     stepLabel: {
       fontFamily: FONTS.bold,
       fontSize: sz.stepLabelFontSize,
-      color: T.textPrimary,
+      color: T.textPrimary, // always white — never changes with active state
       letterSpacing: sz.stepLabelLetterSpacing,
       textAlign: "center",
     },
-    stepLabelActive: { color: T.teal },
     checkBadge: {
       position: "absolute",
       top: sz.checkBadgeTop,
@@ -350,24 +327,12 @@ export default function MainStoryCard({
       fontSize: sz.checkBadgeFontSize,
       color: "#08081a",
     },
-    activeDot: {
-      position: "absolute",
-      bottom: sz.activeDotBottom,
-      width: sz.activeDotSize,
-      height: sz.activeDotSize,
-      borderRadius: sz.activeDotSize / 2,
-      backgroundColor: T.teal,
-      shadowColor: T.teal,
-      shadowOffset: { width: 0, height: 0 },
-      shadowOpacity: 1,
-      shadowRadius: 4,
-    },
   });
 
   return (
     <View style={[s.wrapper, { width: cardW }]}>
-      <View style={[s.card, { width: cardW }]}>
-        {/* STORY IMAGE with title overlay */}
+      <TouchableOpacity onPress={onPress} activeOpacity={0.92} style={s.card}>
+        {/* Story image */}
         {image && (
           <View style={s.imageFrame}>
             <View style={[s.corner, s.cornerTL]} />
@@ -385,61 +350,44 @@ export default function MainStoryCard({
                 {title}
               </Text>
             </View>
-            <View style={s.newBadge}>
-              <Text style={s.newBadgeTxt}>RECOMENDED</Text>
-            </View>
+            {/* START button replaces RECOMMENDED badge */}
+            <TouchableOpacity
+              style={s.startBtn}
+              onPress={onPress}
+              activeOpacity={0.85}
+            >
+              <Text style={s.startBtnText}>▶ START</Text>
+            </TouchableOpacity>
           </View>
         )}
 
-        {/* DESCRIPTION */}
+        {/* Description */}
         <View style={s.body}>
           <Text style={s.desc} numberOfLines={2}>
             {description}
           </Text>
         </View>
 
-        {/* ACTIVITY STEPS — 4 icon cards */}
+        {/* Activity steps — only active step pulses */}
         <View style={s.stepsRow}>
           {STEPS.map((step, i) => {
             const isCompleted = i < progressIndex;
             const isActive = i === progressIndex && progressIndex < 4;
-
             return (
-              <Animated.View
+              <StepCard
                 key={i}
-                ref={stepRefs[i] ?? null}
-                collapsable={false}
-                style={[
-                  s.stepCard,
-                  isActive && s.stepCardActive,
-                  isCompleted && s.stepCardDone,
-                  { transform: [{ scale: pulseAnims[i] }] },
-                ]}
-              >
-                <ExpoImage
-                  source={step.image}
-                  style={[s.stepImage, isCompleted && s.stepImageDone]}
-                  contentFit="contain"
-                />
-                <Text style={[s.stepLabel, isActive && s.stepLabelActive]}>
-                  {step.label}
-                </Text>
-                {isCompleted && (
-                  <View style={s.checkBadge}>
-                    <Text style={s.checkText}>✓</Text>
-                  </View>
-                )}
-                {isActive && <View style={s.activeDot} />}
-              </Animated.View>
+                step={step}
+                isActive={isActive}
+                isCompleted={isCompleted}
+                stepRef={stepRefs[i]}
+                pulseAnim={pulseAnims[i]}
+                sz={sz}
+                s={s}
+              />
             );
           })}
         </View>
-
-        {/* PLAY BUTTON */}
-        <View style={{ alignItems: "center" }}>
-          <PlayButton onPress={onPress} sz={sz} />
-        </View>
-      </View>
+      </TouchableOpacity>
     </View>
   );
 }

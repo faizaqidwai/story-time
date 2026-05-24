@@ -108,17 +108,18 @@ export default function DiamondInfoModal({ visible, onClose, diamonds = 0 }) {
             </View>
 
             {/* 🎯 MAIN MESSAGE */}
-            <Text style={s.mainText}>Diamonds unlock fun games 🎮</Text>
+            <Text style={s.mainText}>Diamonds unlock fun games </Text>
 
             <Text style={s.subText}>Keep reading to earn more 💎</Text>
 
+            {/*
             <View style={[s.dividerRow, {}]}>
               <View style={s.dividerLine} />
               <Text style={[s.dividerText, { fontSize: font.md }]}> OR </Text>
               <View style={s.dividerLine} />
             </View>
 
-            {/* 💰 SECONDARY (PURCHASE) */}
+            {/* 💰 SECONDARY (PURCHASE) 
             <View style={s.purchaseWrap}>
               <Text style={s.purchaseHint}></Text>
 
@@ -143,7 +144,7 @@ export default function DiamondInfoModal({ visible, onClose, diamonds = 0 }) {
                 </TouchableOpacity>
               </View>
             </View>
-
+            */}
             {/* CLOSE */}
             {/* <TouchableOpacity style={s.btn} onPress={handleClose}>
               <Text style={s.btnText}>Got it ✓</Text>

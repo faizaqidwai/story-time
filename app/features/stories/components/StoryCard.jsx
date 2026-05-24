@@ -30,18 +30,11 @@ const ACTIVITY_STEPS = [
   },
 ];
 
-// ─────────────────────────────────────────────────────────────
-// Props:
-//   title, image, onPress, bookId, index
-//   resuming       — bool: is there an in-progress session for this story?
-//   resumeAtIndex  — number (0-3): which activity step to resume at
-//   isCompleted    — bool: all 4 activities finished for this story
-//   topLeftType    — "crown" | "bird" | undefined  (ignored when isCompleted)
-// ─────────────────────────────────────────────────────────────
+const COMPLETED_GREEN = "#1B5E20";
+
 function StoryCard({
   title,
   image,
-  intro,
   onPress,
   bookId,
   topLeftType,
@@ -64,7 +57,6 @@ function StoryCard({
         ? "🐦"
         : null;
 
-  // ── Button sound ──────────────────────────────────────────
   const sndButton = useRef(null);
   useEffect(() => {
     let alive = true;
@@ -72,7 +64,7 @@ function StoryCard({
       try {
         await Audio.setAudioModeAsync({ playsInSilentModeIOS: true });
         const { sound } = await Audio.Sound.createAsync(
-          require("../../../../assets/sounds/button.mp3"),
+          require("../../assets/sounds/button.mp3"),
         );
         if (alive) sndButton.current = sound;
         else sound.unloadAsync();
@@ -94,7 +86,6 @@ function StoryCard({
     onPress?.();
   };
 
-  // Build styles from theme tokens
   const styles = StyleSheet.create({
     container: {
       margin: sz.cardMargin,
@@ -118,29 +109,26 @@ function StoryCard({
       width: sz.topLeftBadgeSize,
       height: sz.topLeftBadgeSize,
       borderRadius: sz.topLeftBadgeBorderRadius,
-      backgroundColor: "#1a1a2e",
+      // ── CHANGE: solid dark green fill, matching completed ribbon color ──
+      backgroundColor: COMPLETED_GREEN,
       borderWidth: 2,
-      borderColor: "rgba(0,188,212,0.45)",
+      borderColor: COMPLETED_GREEN,
       justifyContent: "center",
       alignItems: "center",
-      shadowColor: "#000",
+      shadowColor: COMPLETED_GREEN,
       shadowOffset: { width: 0, height: 2 },
-      shadowOpacity: 0.35,
-      shadowRadius: 4,
-      elevation: 6,
-    },
-    completedBadge: {
-      backgroundColor: "rgba(76,175,80,0.2)",
-      borderColor: "#4CAF50",
-      shadowColor: "#4CAF50",
-      shadowOpacity: 0.5,
-      shadowRadius: 8,
+      shadowOpacity: 0.6,
+      shadowRadius: 6,
       elevation: 8,
     },
+    // completedBadge no longer needed as overrides — base badge now IS the completed style.
+    // Kept as empty so nothing breaks if referenced elsewhere.
+    completedBadge: {},
     tickIcon: {
       fontFamily: FONTS.bold,
       fontSize: sz.tickFontSize,
-      color: "#4CAF50",
+      // ── CHANGE: white tick on dark green background ──
+      color: "#ffffff",
     },
     card: {
       backgroundColor: "#16213e",
@@ -186,7 +174,8 @@ function StoryCard({
       position: "absolute",
       top: sz.ribbonTop,
       right: 0,
-      backgroundColor: "rgba(76,175,80,0.85)",
+      // ── CHANGE: same dark green as badge ──
+      backgroundColor: COMPLETED_GREEN,
       paddingHorizontal: sz.ribbonPaddingH,
       paddingVertical: sz.ribbonPaddingV,
       borderTopLeftRadius: sz.ribbonBorderRadius,
@@ -198,18 +187,7 @@ function StoryCard({
       fontSize: sz.ribbonFontSize,
       color: "#fff",
     },
-    intro: {
-      fontFamily: FONTS.light,
-      fontSize: sz.introFontSize,
-      color: "#7a9aaa",
-      fontStyle: "italic",
-      lineHeight: sz.introLineHeight,
-      textAlign: "center",
-      paddingHorizontal: sz.introPaddingH,
-      marginTop: sz.introMarginTop,
-      marginBottom: sz.introMarginBottom,
-      flexShrink: 1,
-    },
+
     stepsBlock: {
       marginTop: "auto",
       alignItems: "center",
@@ -275,18 +253,30 @@ function StoryCard({
             height: cardHeight,
             width: cardWidth,
             borderRadius: cardBorderRadius,
-            shadowColor: isCompleted ? "#4CAF50" : "#00BCD4",
+            shadowColor: isCompleted ? COMPLETED_GREEN : "#00BCD4",
           },
         ]}
       />
 
-      {/* Top-left badge */}
+      {/* Top-left badge — solid dark green when completed, generic otherwise */}
       {isCompleted ? (
         <View style={[styles.topLeftBadge, styles.completedBadge]}>
           <Text style={styles.tickIcon}>✓</Text>
         </View>
       ) : topLeftIcon ? (
-        <View style={styles.topLeftBadge}>
+        <View
+          style={[
+            styles.topLeftBadge,
+            {
+              backgroundColor: "#1a1a2e",
+              borderColor: "rgba(0,188,212,0.45)",
+              shadowColor: "#000",
+              shadowOpacity: 0.35,
+              shadowRadius: 4,
+              elevation: 6,
+            },
+          ]}
+        >
           <Text style={{ fontSize: sz.tickFontSize - 4 }}>{topLeftIcon}</Text>
         </View>
       ) : null}
@@ -299,7 +289,7 @@ function StoryCard({
             height: cardHeight,
             borderRadius: cardBorderRadius,
             borderColor: isCompleted
-              ? "rgba(76,175,80,0.45)"
+              ? "#1B5E20"
               : resuming
                 ? "rgba(255,213,79,0.45)"
                 : "rgba(0,188,212,0.28)",
@@ -308,7 +298,7 @@ function StoryCard({
         ]}
         onPress={handlePress}
       >
-        {/* ── Image with title overlay ── */}
+        {/* Image with title overlay */}
         <View
           style={{ width: "100%", height: imageHeight, overflow: "hidden" }}
         >
@@ -319,7 +309,6 @@ function StoryCard({
             cachePolicy="disk"
           />
 
-          {/* "Completed" ribbon */}
           {isCompleted && (
             <View style={styles.completedRibbon}>
               <Text style={styles.completedRibbonText}>✓ Completed</Text>
@@ -332,12 +321,7 @@ function StoryCard({
           </View>
         </View>
 
-        {/* ── Intro text ── */}
-        <Text style={styles.intro} numberOfLines={3}>
-          {intro}
-        </Text>
-
-        {/* ── Activity steps ── */}
+        {/* Activity steps */}
         <View style={styles.stepsBlock}>
           <View style={styles.stepsRow}>
             {ACTIVITY_STEPS.map((step, i) => {

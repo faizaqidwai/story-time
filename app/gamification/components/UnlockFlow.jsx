@@ -546,6 +546,7 @@ const fl = StyleSheet.create({
     justifyContent: "center",
     gap: GAP,
     paddingVertical: pad.xs,
+    marginTop: 10,
   },
   iconCol: { alignItems: "center", gap: pad.s },
   iconBox: {

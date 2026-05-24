@@ -139,18 +139,18 @@ export default function CoinInfoModal({ visible, onClose, coins = 0 }) {
             </View>
 
             {/* MAIN */}
-            <Text style={s.mainText}>Coins let you play games 🎮</Text>
+            <Text style={s.mainText}>Coins let you play games </Text>
 
             <Text style={s.subText}> Complete stories to earn coins</Text>
 
-            {/* DIVIDER */}
+            {/* DIVIDER 
             <View style={s.dividerRow}>
               <View style={s.dividerLine} />
               <Text style={s.dividerText}> OR </Text>
               <View style={s.dividerLine} />
             </View>
 
-            {/* 💰 PURCHASE (SUBTLE) */}
+            {/* 💰 PURCHASE (SUBTLE)
             <View style={s.purchaseWrap}>
               <View style={s.packRow}>
                 <TouchableOpacity style={s.pack}>
@@ -173,6 +173,7 @@ export default function CoinInfoModal({ visible, onClose, coins = 0 }) {
                 </TouchableOpacity>
               </View>
             </View>
+            */}
           </Animated.View>
         </Animated.View>
       </View>

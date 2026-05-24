@@ -2,25 +2,14 @@
  * ScratchCover.jsx
  * app/gamification/components/ScratchCover.jsx
  *
- * Renders the golden mystery cover image over a game card with a
- * programmatic scratch/tear effect using react-native-svg.
+ * CHANGE vs previous version:
+ *   - Accepts optional `width` and `height` props so MiniGameCard can
+ *     render the same tear geometry at 90×COVER_H instead of 160×200.
+ *   - Falls back to existing isTablet defaults when props are omitted,
+ *     so GameCard is completely unaffected.
  *
- * HOW IT WORKS:
- * The cover image fills the card. A ClipPath made of two polygons
- * with fillRule="evenodd" creates a "hole" in the cover:
- *   Polygon 1 = full card rectangle (fills everything)
- *   Polygon 2 = jagged tear shape   (even-odd rule cuts it as a hole)
- * The result: cover visible everywhere EXCEPT the tear hole.
- *
- * TEAR STATES:
- *   0 stories → full cover, no tear
- *   1 story   → small diagonal slash ~25% revealed
- *   2 stories → larger slash ~55% revealed
- *   3 stories → engine flips to REVEALED, this component unmounts
- *
- * ASSET REQUIRED:
- *   Place your golden cover image at:
- *   assets/games/scratch-cover.png
+ * Everything else — buildTearPath, ScratchLines, clip logic, flash
+ * animation — is identical to the original.
  */
 
 import React, { useEffect, useRef } from "react";
@@ -31,58 +20,41 @@ import Svg, {
   Path,
   Rect,
   Image as SvgImage,
-  Polygon,
   Line,
 } from "react-native-svg";
 
 import { isTablet } from "../../theme/tokens";
 
-const W = isTablet ? 220 : 160;
-const H = isTablet ? 270 : 200;
+const DEFAULT_W = isTablet ? 220 : 160;
+const DEFAULT_H = isTablet ? 270 : 200;
 
 // ─────────────────────────────────────────────────────────────────────────────
 // TEAR GEOMETRY
-// Builds the jagged polygon that defines the revealed hole.
-// Returns an SVG path string using the evenodd approach:
-//   M (outer rect) Z M (inner jagged polygon) Z
-// This creates a compound path where the inner shape cuts a hole.
 // ─────────────────────────────────────────────────────────────────────────────
-function buildTearPath(progress) {
+function buildTearPath(progress, W, H) {
   if (progress === 0) return null;
 
-  // How wide the tear is — grows with progress
   const tearHalfW = progress === 1 ? W * 0.13 : W * 0.24;
 
-  // Center diagonal line: upper-left → lower-right (matching reference image)
-  const cx1 = W * 0.22,
-    cy1 = H * 0.14;
-  const cx2 = W * 0.78,
-    cy2 = H * 0.86;
+  const cx1 = W * 0.22, cy1 = H * 0.14;
+  const cx2 = W * 0.78, cy2 = H * 0.86;
 
-  const steps = 14; // more steps = more jagged teeth
+  const steps = 14;
 
-  // Unit vector along center line
-  const dxC = cx2 - cx1,
-    dyC = cy2 - cy1;
+  const dxC = cx2 - cx1, dyC = cy2 - cy1;
   const lineLen = Math.sqrt(dxC * dxC + dyC * dyC);
-  const ux = dxC / lineLen,
-    uy = dyC / lineLen;
-  // Perpendicular unit vector (points "left" of the line direction)
-  const px = -uy,
-    py = ux;
+  const ux = dxC / lineLen, uy = dyC / lineLen;
+  const px = -uy, py = ux;
 
-  // Build left edge points (top → bottom along center line, offset left)
   const leftPts = [];
   for (let i = 0; i <= steps; i++) {
     const t = i / steps;
     const cx = cx1 + dxC * t;
     const cy = cy1 + dyC * t;
-    // Jagged tooth — deterministic, different for left and right
     const jaggle = tearHalfW * (0.5 + 0.5 * Math.sin(i * 2.4 + 0.8));
     leftPts.push({ x: cx - px * jaggle, y: cy - py * jaggle });
   }
 
-  // Build right edge points (top → bottom, offset right, reversed for polygon)
   const rightPts = [];
   for (let i = 0; i <= steps; i++) {
     const t = i / steps;
@@ -92,18 +64,12 @@ function buildTearPath(progress) {
     rightPts.push({ x: cx + px * jaggle, y: cy + py * jaggle });
   }
 
-  // Combine into closed polygon: left top→bottom, right bottom→top
   const allPts = [...leftPts, ...[...rightPts].reverse()];
 
-  // Build SVG compound path:
-  //   M = outer card rect (so evenodd fills everything)
-  //   Z M = inner tear polygon (evenodd punches a hole)
   const outerRect = `M 0,0 L ${W},0 L ${W},${H} L 0,${H} Z`;
   const innerPoly =
     allPts
-      .map(
-        (p, i) => `${i === 0 ? "M" : "L"} ${p.x.toFixed(1)},${p.y.toFixed(1)}`,
-      )
+      .map((p, i) => `${i === 0 ? "M" : "L"} ${p.x.toFixed(1)},${p.y.toFixed(1)}`)
       .join(" ") + " Z";
 
   return { path: `${outerRect} ${innerPoly}`, leftPts, rightPts };
@@ -111,23 +77,16 @@ function buildTearPath(progress) {
 
 // ─────────────────────────────────────────────────────────────────────────────
 // SCRATCH LINES
-// Thin white diagonal lines inside the tear, mimicking scratch marks
-// from the reference image
 // ─────────────────────────────────────────────────────────────────────────────
-function ScratchLines({ storiesCompleted }) {
+function ScratchLines({ storiesCompleted, W, H }) {
   const count = storiesCompleted === 1 ? 6 : 11;
 
-  const cx1 = W * 0.22,
-    cy1 = H * 0.14;
-  const cx2 = W * 0.78,
-    cy2 = H * 0.86;
-  const dxC = cx2 - cx1,
-    dyC = cy2 - cy1;
+  const cx1 = W * 0.22, cy1 = H * 0.14;
+  const cx2 = W * 0.78, cy2 = H * 0.86;
+  const dxC = cx2 - cx1, dyC = cy2 - cy1;
   const lineLen = Math.sqrt(dxC * dxC + dyC * dyC);
-  const ux = dxC / lineLen,
-    uy = dyC / lineLen;
-  const px = -uy,
-    py = ux;
+  const ux = dxC / lineLen, uy = dyC / lineLen;
+  const px = -uy, py = ux;
   const tearHalfW = storiesCompleted === 1 ? W * 0.09 : W * 0.18;
 
   const lines = [];
@@ -137,8 +96,8 @@ function ScratchLines({ storiesCompleted }) {
       tearHalfW * 0.6 * (Math.sin(i * 1.9 + 0.4) * (i % 2 === 0 ? 1 : -0.7));
     const midX = cx1 + dxC * t + px * perpOffset;
     const midY = cy1 + dyC * t + py * perpOffset;
-    const scratchLen =
-      (isTablet ? 18 : 13) * (0.55 + 0.45 * Math.abs(Math.sin(i * 1.3)));
+    // Scale scratch length proportionally to card width
+    const scratchLen = (W * 0.09) * (0.55 + 0.45 * Math.abs(Math.sin(i * 1.3)));
 
     lines.push({
       x1: (midX - ux * scratchLen * 0.5).toFixed(1),
@@ -167,13 +126,46 @@ function ScratchLines({ storiesCompleted }) {
   );
 }
 
+// Helper: inner polygon points for tear edge stroke
+function buildInnerPolyPoints(progress, W, H) {
+  const tearHalfW = progress === 1 ? W * 0.13 : W * 0.24;
+  const cx1 = W * 0.22, cy1 = H * 0.14;
+  const cx2 = W * 0.78, cy2 = H * 0.86;
+  const dxC = cx2 - cx1, dyC = cy2 - cy1;
+  const lineLen = Math.sqrt(dxC * dxC + dyC * dyC);
+  const px = -dyC / lineLen, py = dxC / lineLen;
+  const steps = 14;
+
+  const leftPts = [];
+  for (let i = 0; i <= steps; i++) {
+    const t = i / steps;
+    const cx = cx1 + dxC * t, cy = cy1 + dyC * t;
+    const jaggle = tearHalfW * (0.5 + 0.5 * Math.sin(i * 2.4 + 0.8));
+    leftPts.push({ x: cx - px * jaggle, y: cy - py * jaggle });
+  }
+  const rightPts = [];
+  for (let i = 0; i <= steps; i++) {
+    const t = i / steps;
+    const cx = cx1 + dxC * t, cy = cy1 + dyC * t;
+    const jaggle = tearHalfW * (0.55 + 0.45 * Math.sin(i * 1.8 + 2.1));
+    rightPts.push({ x: cx + px * jaggle, y: cy + py * jaggle });
+  }
+  return [...leftPts, ...[...rightPts].reverse()];
+}
+
 // ─────────────────────────────────────────────────────────────────────────────
 // SCRATCH COVER
 // ─────────────────────────────────────────────────────────────────────────────
-export default function ScratchCover({ storiesCompleted }) {
+export default function ScratchCover({
+  storiesCompleted,
+  width,   // optional — pass for mini size; omit to use GameCard defaults
+  height,  // optional — pass for mini size; omit to use GameCard defaults
+}) {
+  const W = width  ?? DEFAULT_W;
+  const H = height ?? DEFAULT_H;
+
   const fadeAnim = useRef(new Animated.Value(1)).current;
 
-  // Brief flash on each new scratch — makes the reveal feel satisfying
   useEffect(() => {
     if (storiesCompleted === 0) return;
     Animated.sequence([
@@ -190,7 +182,11 @@ export default function ScratchCover({ storiesCompleted }) {
     ]).start();
   }, [storiesCompleted]);
 
-  const tearData = buildTearPath(storiesCompleted);
+  const tearData = buildTearPath(storiesCompleted, W, H);
+
+  // Unique clipPath id per size+progress so multiple cards on screen
+  // don't share the same SVG defs and clip each other incorrectly.
+  const clipId = `scratchClip_${W}_${H}_${storiesCompleted}`;
 
   return (
     <Animated.View
@@ -199,18 +195,16 @@ export default function ScratchCover({ storiesCompleted }) {
     >
       <Svg width={W} height={H} style={StyleSheet.absoluteFillObject}>
         <Defs>
-          <ClipPath id={`scratchClip_${storiesCompleted}`}>
+          <ClipPath id={clipId}>
             {tearData ? (
-              // Compound path with evenodd cuts the hole
               <Path d={tearData.path} fillRule="evenodd" />
             ) : (
-              // No tear — clip is the full card
               <Rect x={0} y={0} width={W} height={H} />
             )}
           </ClipPath>
         </Defs>
 
-        {/* Golden cover image — only visible outside the tear hole */}
+        {/* Golden cover image — clipped to hide the tear area */}
         <SvgImage
           href={require("../../../assets/games/scratch-cover.jpeg")}
           x={0}
@@ -218,19 +212,15 @@ export default function ScratchCover({ storiesCompleted }) {
           width={W}
           height={H}
           preserveAspectRatio="xMidYMid slice"
-          clipPath={`url(#scratchClip_${storiesCompleted})`}
+          clipPath={`url(#${clipId})`}
         />
 
-        {/* Golden shimmer on the tear edges */}
+        {/* Golden shimmer on tear edges */}
         {tearData && (
           <Path
             d={
-              // Just the inner tear polygon for the stroke (no outer rect)
-              [...buildInnerPolyPoints(storiesCompleted)]
-                .map(
-                  (p, i) =>
-                    `${i === 0 ? "M" : "L"} ${p.x.toFixed(1)},${p.y.toFixed(1)}`,
-                )
+              buildInnerPolyPoints(storiesCompleted, W, H)
+                .map((p, i) => `${i === 0 ? "M" : "L"} ${p.x.toFixed(1)},${p.y.toFixed(1)}`)
                 .join(" ") + " Z"
             }
             fill="none"
@@ -240,42 +230,11 @@ export default function ScratchCover({ storiesCompleted }) {
           />
         )}
 
-        {/* Scratch line marks inside the tear */}
-        {tearData && <ScratchLines storiesCompleted={storiesCompleted} />}
+        {/* Scratch marks inside the tear */}
+        {tearData && (
+          <ScratchLines storiesCompleted={storiesCompleted} W={W} H={H} />
+        )}
       </Svg>
     </Animated.View>
   );
-}
-
-// Helper: returns just the inner polygon points for the tear edge stroke
-function buildInnerPolyPoints(progress) {
-  const tearHalfW = progress === 1 ? W * 0.13 : W * 0.24;
-  const cx1 = W * 0.22,
-    cy1 = H * 0.14;
-  const cx2 = W * 0.78,
-    cy2 = H * 0.86;
-  const dxC = cx2 - cx1,
-    dyC = cy2 - cy1;
-  const lineLen = Math.sqrt(dxC * dxC + dyC * dyC);
-  const px = -dyC / lineLen,
-    py = dxC / lineLen;
-  const steps = 14;
-
-  const leftPts = [];
-  for (let i = 0; i <= steps; i++) {
-    const t = i / steps;
-    const cx = cx1 + dxC * t,
-      cy = cy1 + dyC * t;
-    const jaggle = tearHalfW * (0.5 + 0.5 * Math.sin(i * 2.4 + 0.8));
-    leftPts.push({ x: cx - px * jaggle, y: cy - py * jaggle });
-  }
-  const rightPts = [];
-  for (let i = 0; i <= steps; i++) {
-    const t = i / steps;
-    const cx = cx1 + dxC * t,
-      cy = cy1 + dyC * t;
-    const jaggle = tearHalfW * (0.55 + 0.45 * Math.sin(i * 1.8 + 2.1));
-    rightPts.push({ x: cx + px * jaggle, y: cy + py * jaggle });
-  }
-  return [...leftPts, ...[...rightPts].reverse()];
 }

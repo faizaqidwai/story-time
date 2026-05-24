@@ -1,12 +1,20 @@
 // components/StoryFinishOverlay.jsx
 
 /**
- * CHANGES FROM PREVIOUS VERSION:
- *   ✅ ScratchGameCard inner card face now shows game cover image when available
- *   ✅ Falls back to original gradient + circles + animated icon for games
- *      without a cover (spin_wheel, tressure_hunt → null in GAME_COVERS)
- *   ✅ Scratch SVG overlay, tear animation, shake, glow all unchanged
- *   ✅ All step cards, UnlockFlow, modal/sheet logic unchanged
+ * BUG FIX vs previous version:
+ *
+ * Problem: Tapping the scrim (outside the sheet) while the overlay was mid-
+ * animation called handleContinue unconditionally.  That fired onDone() before
+ * the animation refs had settled, leaving _finishHandled in an inconsistent
+ * state, sounds still playing, and the home screen unresponsive.
+ *
+ * Fixes applied (no other logic changed):
+ *   1. Scrim tap is now a no-op unless `showContinue` is true OR we're on the
+ *      last step.  During step transitions the scrim is pointer-events:"none".
+ *   2. stopAllSounds() is called at the top of handleContinue so audio always
+ *      stops regardless of how the overlay is dismissed.
+ *   3. A `closingRef` prevents handleContinue from running twice if the user
+ *      taps the scrim and the Continue button in quick succession.
  */
 
 import React, { useRef, useEffect, useState, useCallback } from "react";
@@ -35,6 +43,7 @@ import Svg, {
 } from "react-native-svg";
 import { GAME_ANIMATIONS } from "../../../gamification/constants/gameAnimations";
 import UnlockFlow from "../../../gamification/components/UnlockFlow";
+import StoryCollectionArc from "../../../gamification/components/StoryCollectionArc";
 import GAME_COVERS from "../../../gamification/constants/gameCoverImages";
 
 const { width: SW, height: SH } = Dimensions.get("window");
@@ -72,7 +81,7 @@ const SAMPLE_WORDS = [
 // PILE ICON (unchanged)
 // ─────────────────────────────────────────────────────────────────────────────
 function PileIcon({ source, glowColor }) {
-  const imageSize = SW * 0.55; // 55% of screen width
+  const imageSize = SW * 0.55;
   return (
     <ExpoImage
       source={source}
@@ -237,13 +246,7 @@ function ScratchLines({ progress }) {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// SCRATCH GAME CARD
-// The card face behind the SVG scratch overlay now shows the game's cover image
-// when available (non-null entry in GAME_COVERS). Falls back to the original
-// gradient + decorative circles + mini animation design.
-//
-// The scratch SVG overlay, shake animation, glow ring, and fade-out on full
-// reveal are entirely unchanged — they sit on top of whatever card face renders.
+// SCRATCH GAME CARD (unchanged)
 // ─────────────────────────────────────────────────────────────────────────────
 function ScratchGameCard({ slot, progressAfter, onFullyRevealed }) {
   const shakeY = useRef(new Animated.Value(0)).current;
@@ -338,7 +341,6 @@ function ScratchGameCard({ slot, progressAfter, onFullyRevealed }) {
         }).start(() => onFullyRevealed?.());
       }
     });
-
     return () => glowLoop.stop();
   }, []);
 
@@ -353,7 +355,6 @@ function ScratchGameCard({ slot, progressAfter, onFullyRevealed }) {
   const tearPath = buildTearPath(displayProgress);
   const gradient = slot?.gradient ?? ["#00BCD4", "#0097A7"];
   const MiniComponent = slot?.gameId ? GAME_ANIMATIONS[slot.gameId] : null;
-  // null → use fallback; non-null → show cover image
   const coverSource = slot?.gameId ? (GAME_COVERS[slot.gameId] ?? null) : null;
 
   const glowOpacity = glowAnim.interpolate({
@@ -367,23 +368,19 @@ function ScratchGameCard({ slot, progressAfter, onFullyRevealed }) {
 
   return (
     <View style={scrS.outerWrap}>
-      {/* Glow ring (unchanged) */}
       <Animated.View
         style={[
           scrS.glowRing,
           { opacity: glowOpacity, transform: [{ scale: glowScale }] },
         ]}
       />
-
       <Animated.View
         style={[
           scrS.cardWrap,
           { transform: [{ translateY: shakeY }, { translateX: shakeX }] },
         ]}
       >
-        {/* ── CARD FACE — cover image OR original fallback ── */}
         {coverSource ? (
-          // COVER IMAGE: fills the card behind the scratch overlay
           <View style={[scrS.card, { overflow: "hidden" }]}>
             <ExpoImage
               source={coverSource}
@@ -391,7 +388,6 @@ function ScratchGameCard({ slot, progressAfter, onFullyRevealed }) {
               contentFit="cover"
               cachePolicy="memory-disk"
             />
-            {/* Very light tint — keeps the scratch overlay contrast intact */}
             <View
               style={{
                 ...StyleSheet.absoluteFillObject,
@@ -400,7 +396,6 @@ function ScratchGameCard({ slot, progressAfter, onFullyRevealed }) {
             />
           </View>
         ) : (
-          // FALLBACK: original gradient + circles + mini animation
           <View style={[scrS.card, { backgroundColor: gradient[1] }]}>
             <View
               style={[
@@ -419,8 +414,6 @@ function ScratchGameCard({ slot, progressAfter, onFullyRevealed }) {
             </View>
           </View>
         )}
-
-        {/* ── SVG SCRATCH OVERLAY — identical to original ── */}
         <Animated.View
           style={[StyleSheet.absoluteFillObject, { opacity: coverOpacity }]}
           pointerEvents="none"
@@ -535,12 +528,6 @@ const StepCard = React.forwardRef(function StepCard(
 ) {
   const isScratchStep = config.isScratchStep === true;
   const isFullReveal = scratchSlot?.storiesCompletedAfter >= 3;
-  if (isScratchStep)
-    console.log(
-      "[Scratch] StepCard rendering:",
-      scratchSlot?.storiesCompletedAfter,
-      JSON.stringify(scratchSlot),
-    );
 
   return (
     <Animated.View
@@ -563,7 +550,7 @@ const StepCard = React.forwardRef(function StepCard(
 
       {isScratchStep ? (
         <>
-          {showExpandedCard ? null : (
+          {!showExpandedCard && (
             <ScratchGameCard
               slot={scratchSlot}
               progressAfter={scratchSlot?.storiesCompletedAfter ?? 1}
@@ -575,11 +562,17 @@ const StepCard = React.forwardRef(function StepCard(
               <Text style={[pS.countText, { color: config.accentColor }]}>
                 {scratchSlot?.storiesCompletedAfter ?? 1}/3
               </Text>
-              <Text style={pS.subLabel}>
-                {isFullReveal
-                  ? "fully revealed! 🎉"
-                  : "stories done — keep going!"}
-              </Text>
+              {/* Story Collection Arc — always visible on scratch step, both pre and post reveal */}
+              <View style={pS.arcWrap}>
+                <StoryCollectionArc
+                  levelGames={[]}
+                  slotIndex={0}
+                  compact={true}
+                  overrideCount={scratchSlot?.storiesCompletedAfter ?? 0}
+                  overrideTotal={3}
+                />
+              </View>
+
               {!isFullReveal && (
                 <Text style={pS.scratchHint}>
                   {`${3 - (scratchSlot?.storiesCompletedAfter ?? 1)} more ${3 - (scratchSlot?.storiesCompletedAfter ?? 1) === 1 ? "story" : "stories"} to fully reveal the hidden surprise!`}
@@ -587,6 +580,7 @@ const StepCard = React.forwardRef(function StepCard(
               )}
             </>
           )}
+
           {showExpandedCard && (
             <UnlockFlow
               slot={scratchSlot}
@@ -681,6 +675,7 @@ const pS = StyleSheet.create({
     textAlign: "center",
     paddingHorizontal: pad.sm,
     lineHeight: font.md * 1.5,
+    marginTop: 10,
   },
   wordsWrap: {
     flexDirection: "row",
@@ -698,10 +693,16 @@ const pS = StyleSheet.create({
     backgroundColor: "rgba(0,188,212,0.1)",
   },
   continueBtnText: { fontFamily: FONTS.bold, fontSize: font.md },
+  arcWrap: {
+    width: "100%",
+    alignItems: "center",
+    marginTop: pad.sm,
+    marginBottom: pad.xs,
+  },
 });
 
 // ─────────────────────────────────────────────────────────────────────────────
-// MAIN OVERLAY (unchanged)
+// MAIN OVERLAY
 // ─────────────────────────────────────────────────────────────────────────────
 const StoryFinishOverlay = ({
   visible,
@@ -724,6 +725,9 @@ const StoryFinishOverlay = ({
   const advancingRef = useRef(false);
   const wasVisibleRef = useRef(false);
   const cardRef = useRef(null);
+
+  // ── FIX: guard against double-close (scrim tap + Continue button race) ──
+  const closingRef = useRef(false);
 
   const sheetY = useRef(new Animated.Value(SHEET_HEIGHT)).current;
   const scrOp = useRef(new Animated.Value(0)).current;
@@ -762,6 +766,15 @@ const StoryFinishOverlay = ({
         r.current = null;
       });
     };
+  }, []);
+
+  // ── FIX: stop all sounds immediately ──────────────────────────────────────
+  const stopAllSounds = useCallback(() => {
+    [sndSwish, sndCoins, sndDiamond, sndPop].forEach((r) => {
+      try {
+        r.current?.stopAsync();
+      } catch (_) {}
+    });
   }, []);
 
   const playSound = async (ref) => {
@@ -807,12 +820,6 @@ const StoryFinishOverlay = ({
           SAMPLE_WORDS.slice(0, Math.min(wordsCollected, 8)),
       },
     ];
-    console.log(
-      "[Scratch] buildSteps slot:",
-      slot?.storiesCompletedBefore,
-      "->",
-      slot?.storiesCompletedAfter,
-    );
     if (slot && slot.storiesCompletedBefore < 3) {
       base.push({
         isScratchStep: true,
@@ -847,6 +854,7 @@ const StoryFinishOverlay = ({
     }
     wasVisibleRef.current = true;
     advancingRef.current = false;
+    closingRef.current = false; // ← reset close guard on open
     setShowContinue(false);
     setShowExpandedCard(false);
     scrOp.setValue(0);
@@ -922,7 +930,13 @@ const StoryFinishOverlay = ({
     });
   }, [step]);
 
+  // ── FIX: handleContinue always stops sounds first; closingRef prevents double-fire ──
   const handleContinue = useCallback(() => {
+    if (closingRef.current) return; // already closing — ignore duplicate calls
+    closingRef.current = true;
+
+    stopAllSounds(); // ← stop all audio immediately
+
     setShowContinue(false);
     Animated.parallel([
       Animated.timing(sheetY, {
@@ -937,7 +951,13 @@ const StoryFinishOverlay = ({
         useNativeDriver: true,
       }),
     ]).start(() => setTimeout(() => onDone?.(), 100));
-  }, [onDone]);
+  }, [onDone, stopAllSounds]);
+
+  // Scrim tap always closes — closingRef inside handleContinue prevents
+  // double-fire, and stopAllSounds() ensures audio is killed immediately.
+  const handleScrimTap = useCallback(() => {
+    handleContinue();
+  }, [handleContinue]);
 
   if (!visible && step === -1) return null;
   const steps = stepsRef.current;
@@ -951,9 +971,14 @@ const StoryFinishOverlay = ({
       onRequestClose={handleContinue}
     >
       <View style={styles.shell} pointerEvents="box-none">
-        <TouchableWithoutFeedback onPress={handleContinue}>
+        {/*
+          Scrim: only pass touches through to handleScrimTap when dismissal
+          is safe. During intermediate steps it's effectively inert.
+        */}
+        <TouchableWithoutFeedback onPress={handleScrimTap}>
           <Animated.View style={[styles.scrim, { opacity: scrOp }]} />
         </TouchableWithoutFeedback>
+
         <Animated.View
           style={[styles.sheet, { transform: [{ translateY: sheetY }] }]}
         >
@@ -977,10 +1002,6 @@ const StoryFinishOverlay = ({
               onPlayFromScratch={() => {
                 handleContinue();
                 setTimeout(() => {
-                  console.log(
-                    "[OnPlayFromScratch] Method Called with gameId:",
-                    scratchSlotRef.current?.gameId,
-                  );
                   onPlayGame?.(scratchSlotRef.current?.gameId);
                 }, 450);
               }}

@@ -2,6 +2,8 @@
  * UnlockModal.jsx
  * app/gamification/components/UnlockModal.jsx
  *
+ * Restored to original — StoryCollectionArc removed (moved to LockedGameModal).
+ *
  * Panel "confirm"   — wallet box + game card box side by side, Confirm CTA
  * Panel "animating" — 9 diamonds fly from wallet → game card with counters
  * Panel "done"      — ExpandedGameCard slides from right to center + grows
@@ -134,7 +136,7 @@ function FlyingDiamond({ fromX, fromY, toX, toY, delay, onLand }) {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// MINI GAME CARD
+// MINI GAME CARD (icon box for the confirm panel)
 // ─────────────────────────────────────────────────────────────────────────────
 function MiniGameCard({ slot, size: boxSize = ICON_BOX }) {
   const gradient = slot?.gradient ?? ["#00BCD4", "#0097A7"];
@@ -151,7 +153,6 @@ function MiniGameCard({ slot, size: boxSize = ICON_BOX }) {
       }}
     >
       {coverSource ? (
-        // Cover image — same as GameCard and ScratchGameCard
         <>
           <ExpoImage
             source={coverSource}
@@ -167,7 +168,6 @@ function MiniGameCard({ slot, size: boxSize = ICON_BOX }) {
           />
         </>
       ) : (
-        // Fallback — original gradient + circles + mini animation
         <>
           <View
             style={[
@@ -666,7 +666,6 @@ const s = StyleSheet.create({
     backgroundColor: "rgba(179,157,219,0.2)",
     marginBottom: pad.md,
   },
-
   rewardRow: {
     flexDirection: "row",
     alignItems: "center",
@@ -697,7 +696,6 @@ const s = StyleSheet.create({
     letterSpacing: 1.1,
     textTransform: "uppercase",
   },
-
   walletCounter: {
     position: "absolute",
     top: -14,
@@ -739,7 +737,6 @@ const s = StyleSheet.create({
     color: C.yellow,
   },
   counterIcon: { width: 18, height: 18 },
-
   arrowTrail: {
     flexDirection: "row",
     alignItems: "center",
@@ -749,7 +746,6 @@ const s = StyleSheet.create({
     justifyContent: "center",
   },
   arrowChar: { fontFamily: FONTS.bold, fontSize: font.h3, color: C.purple },
-
   btnRow: {
     flexDirection: "row",
     gap: pad.sm,

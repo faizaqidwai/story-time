@@ -1,4 +1,14 @@
-import React, { useRef, useEffect } from "react";
+/**
+ * LevelBadge.jsx
+ * app/features/levels/components/LevelBadge.jsx
+ *
+ * CHANGE vs previous version:
+ *   Added `showProgressBar` prop (default true).
+ *   When false, the progress bar and dot below the ring are hidden.
+ *   All other styling and animation is unchanged.
+ */
+
+import React, { useEffect, useRef } from "react";
 import { View, Text, Animated, Easing, TouchableOpacity } from "react-native";
 import { FONTS } from "../../../theme";
 import { font, isTablet } from "../../../theme/tokens";
@@ -6,14 +16,12 @@ import { font, isTablet } from "../../../theme/tokens";
 const TEAL = "#00BCD4";
 const YELLOW = "#FFD54F";
 
-// ─────────────────────────────────────────────────────────────────────────────
-// LEVEL BADGE
-// ─────────────────────────────────────────────────────────────────────────────
-function LevelBadge({
+export default function LevelBadge({
   displayLevel = 1,
   currentLevel = 1,
   progress = 0.62,
   onPress,
+  showProgressBar = true, // ← NEW: set false to hide the bar
 }) {
   const ringSize = isTablet ? 110 : 82;
   const innerSize = isTablet ? 92 : 68;
@@ -23,6 +31,7 @@ function LevelBadge({
 
   const fillAnim = useRef(new Animated.Value(0)).current;
   useEffect(() => {
+    if (!showProgressBar) return;
     Animated.timing(fillAnim, {
       toValue: progress,
       duration: 1100,
@@ -30,7 +39,8 @@ function LevelBadge({
       easing: Easing.out(Easing.cubic),
       useNativeDriver: false,
     }).start();
-  }, [progress]);
+  }, [progress, showProgressBar]);
+
   const fillW = fillAnim.interpolate({
     inputRange: [0, 1],
     outputRange: ["0%", "100%"],
@@ -43,6 +53,7 @@ function LevelBadge({
       onPress={onPress}
       activeOpacity={onPress ? 0.8 : 1}
     >
+      {/* ── Ring ── */}
       <View
         style={[
           {
@@ -58,6 +69,7 @@ function LevelBadge({
             alignItems: "center",
             justifyContent: "center",
             borderWidth: 2,
+            zIndex: 10,
           },
           isViewingOther
             ? { borderColor: "rgba(255,213,79,0.5)" }
@@ -75,6 +87,7 @@ function LevelBadge({
             borderWidth: 1.5,
             borderColor: "rgba(0,0,0,0.6)",
             overflow: "hidden",
+            zIndex: 10,
           }}
         >
           <View
@@ -127,53 +140,55 @@ function LevelBadge({
           )}
         </View>
       </View>
-      <View
-        style={{
-          width: barW,
-          height: barH,
-          borderRadius: barH / 2,
-          backgroundColor: "rgba(255,255,255,0.08)",
-          marginTop: isTablet ? 7 : 5,
-          overflow: "visible",
-          borderWidth: 1,
-          borderColor: "rgba(0,0,0,0.35)",
-        }}
-      >
-        <Animated.View
+
+      {/* ── Progress bar — hidden when showProgressBar=false ── */}
+      {showProgressBar && (
+        <View
           style={{
-            height: "100%",
+            width: barW,
+            height: barH,
             borderRadius: barH / 2,
-            backgroundColor: TEAL,
-            shadowColor: TEAL,
-            shadowOffset: { width: 0, height: 0 },
-            shadowOpacity: 0.9,
-            shadowRadius: 4,
-            elevation: 4,
-            width: fillW,
+            backgroundColor: "rgba(255,255,255,0.08)",
+            marginTop: isTablet ? 7 : 5,
+            overflow: "visible",
+            borderWidth: 1,
+            borderColor: "rgba(0,0,0,0.35)",
           }}
-        />
-        <Animated.View
-          style={{
-            position: "absolute",
-            top: -(dotSize / 2 - barH / 2),
-            width: dotSize,
-            height: dotSize,
-            borderRadius: dotSize / 2,
-            backgroundColor: "#fff",
-            borderWidth: 2,
-            borderColor: TEAL,
-            marginLeft: -(dotSize / 2),
-            shadowColor: TEAL,
-            shadowOffset: { width: 0, height: 0 },
-            shadowOpacity: 1,
-            shadowRadius: 6,
-            elevation: 6,
-            left: fillW,
-          }}
-        />
-      </View>
+        >
+          <Animated.View
+            style={{
+              height: "100%",
+              borderRadius: barH / 2,
+              backgroundColor: TEAL,
+              shadowColor: TEAL,
+              shadowOffset: { width: 0, height: 0 },
+              shadowOpacity: 0.9,
+              shadowRadius: 4,
+              elevation: 4,
+              width: fillW,
+            }}
+          />
+          <Animated.View
+            style={{
+              position: "absolute",
+              top: -(dotSize / 2 - barH / 2),
+              width: dotSize,
+              height: dotSize,
+              borderRadius: dotSize / 2,
+              backgroundColor: "#fff",
+              borderWidth: 2,
+              borderColor: TEAL,
+              marginLeft: -(dotSize / 2),
+              shadowColor: TEAL,
+              shadowOffset: { width: 0, height: 0 },
+              shadowOpacity: 1,
+              shadowRadius: 6,
+              elevation: 6,
+              left: fillW,
+            }}
+          />
+        </View>
+      )}
     </TouchableOpacity>
   );
 }
-
-export default LevelBadge;
