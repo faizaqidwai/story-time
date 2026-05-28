@@ -153,8 +153,12 @@ function LevelFinishBox({ allDone, active, inProgress, completedStoryCount }) {
       ? glowAnim.interpolate({ inputRange: [0, 1], outputRange: [0.05, 0.35] })
       : 0;
 
-  const star1Filled = completedStoryCount >= 7;
-  const star2Filled = completedStoryCount >= 8;
+  // Stars only start filling after both game goals are achieved (6 stories).
+  // Count stories beyond the 6 goal stories toward the finish box.
+  // Guard: if slot1 not yet achieved (active=false), finish stars stay empty.
+  const storiesBeyondGoals = active ? Math.max(0, completedStoryCount - 6) : 0;
+  const star1Filled = storiesBeyondGoals >= 1;
+  const star2Filled = storiesBeyondGoals >= 2;
   const starSize = isTablet ? 16 : 13;
 
   return (

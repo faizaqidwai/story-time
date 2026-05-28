@@ -1665,10 +1665,12 @@ const HomeContent = () => {
         books.length
       : 0;
   const currentLevelBookIds = new Set(books.map((b) => String(b.id)));
-  const completedStoryCount = [
-    ...(currentProfile?.readingHistory?.map(String) ?? []),
-    ...localCompletedIds,
-  ].filter((id) => currentLevelBookIds.has(id)).length;
+  const completedStoryCount = new Set(
+    [
+      ...(currentProfile?.readingHistory?.map(String) ?? []),
+      ...localCompletedIds,
+    ].filter((id) => currentLevelBookIds.has(id)),
+  ).size;
 
   const ICON_SIZE = isTablet ? 50 : 40;
   const BADGE_SIZE = isTablet ? 20 : 16;

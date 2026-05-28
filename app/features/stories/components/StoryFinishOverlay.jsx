@@ -562,17 +562,11 @@ const StepCard = React.forwardRef(function StepCard(
               <Text style={[pS.countText, { color: config.accentColor }]}>
                 {scratchSlot?.storiesCompletedAfter ?? 1}/3
               </Text>
-              {/* Story Collection Arc — always visible on scratch step, both pre and post reveal */}
-              <View style={pS.arcWrap}>
-                <StoryCollectionArc
-                  levelGames={[]}
-                  slotIndex={0}
-                  compact={true}
-                  overrideCount={scratchSlot?.storiesCompletedAfter ?? 0}
-                  overrideTotal={3}
-                />
-              </View>
-
+              <Text style={pS.subLabel}>
+                {isFullReveal
+                  ? "fully revealed! 🎉"
+                  : "stories done — keep going!"}
+              </Text>
               {!isFullReveal && (
                 <Text style={pS.scratchHint}>
                   {`${3 - (scratchSlot?.storiesCompletedAfter ?? 1)} more ${3 - (scratchSlot?.storiesCompletedAfter ?? 1) === 1 ? "story" : "stories"} to fully reveal the hidden surprise!`}
@@ -580,6 +574,17 @@ const StepCard = React.forwardRef(function StepCard(
               )}
             </>
           )}
+
+          {/* Story Collection Arc — always visible on scratch step, both pre and post reveal */}
+          <View style={pS.arcWrap}>
+            <StoryCollectionArc
+              levelGames={[]}
+              slotIndex={0}
+              compact={true}
+              overrideCount={scratchSlot?.storiesCompletedAfter ?? 0}
+              overrideTotal={3}
+            />
+          </View>
 
           {showExpandedCard && (
             <UnlockFlow
@@ -675,7 +680,6 @@ const pS = StyleSheet.create({
     textAlign: "center",
     paddingHorizontal: pad.sm,
     lineHeight: font.md * 1.5,
-    marginTop: 10,
   },
   wordsWrap: {
     flexDirection: "row",
@@ -903,13 +907,18 @@ const StoryFinishOverlay = ({
         useNativeDriver: true,
       }),
     ]).start((result) => {
-      if (!result.finished || advancingRef.current) return;
+      // Guard: bail if animation was interrupted (by stopAnimation in handleContinue)
+      // or if overlay is already closing — prevents stale step advances that freeze home
+      if (!result.finished || advancingRef.current || closingRef.current)
+        return;
       advancingRef.current = true;
       const isLast = step === steps.length - 1;
       if (!isLast) {
         const holdMs =
           step === steps.length - 2 && steps[step].isScratchStep ? 2200 : 1000;
         setTimeout(() => {
+          // Re-check: overlay may have been dismissed during the hold delay
+          if (closingRef.current) return;
           Animated.parallel([
             Animated.timing(opAnim, {
               toValue: 0,
@@ -922,10 +931,25 @@ const StoryFinishOverlay = ({
               tension: 80,
               useNativeDriver: true,
             }),
-          ]).start(() => setStep((prev) => prev + 1));
+          ]).start(() => {
+            if (closingRef.current) return;
+            setStep((prev) => prev + 1);
+          });
         }, holdMs);
       } else {
-        setShowContinue(true);
+        // For the scratch step (last step), delay the Continue button until
+        // the scratch animation has finished playing — shake + tear animation
+        // takes ~2820ms total. Without this delay users tap Continue immediately
+        // and miss the entire scratch reveal animation.
+        const isScratchLastStep = steps[step]?.isScratchStep === true;
+        if (isScratchLastStep) {
+          setTimeout(() => {
+            if (closingRef.current) return;
+            setShowContinue(true);
+          }, 3000); // ~2820ms animation + 180ms buffer
+        } else {
+          setShowContinue(true);
+        }
       }
     });
   }, [step]);
@@ -935,7 +959,12 @@ const StoryFinishOverlay = ({
     if (closingRef.current) return; // already closing — ignore duplicate calls
     closingRef.current = true;
 
-    stopAllSounds(); // ← stop all audio immediately
+    stopAllSounds(); // stop all audio immediately
+
+    // Stop step animations so their callbacks don't fire after dismiss
+    // and advance the step state, which freezes the home screen.
+    enterAnim.stopAnimation();
+    opAnim.stopAnimation();
 
     setShowContinue(false);
     Animated.parallel([
