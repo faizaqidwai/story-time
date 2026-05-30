@@ -26,7 +26,7 @@ const SUBSCRIPTION_TTL = 5 * 60 * 1000;
 
 export function SubscriptionProvider({ children, isLoggedIn }) {
   const [subscription, setSubscription] = useState(null);
-  const [loading, setLoading]           = useState(false);
+  const [loading, setLoading] = useState(false);
 
   const refresh = useCallback(async () => {
     if (!isLoggedIn) return;
@@ -36,8 +36,9 @@ export function SubscriptionProvider({ children, isLoggedIn }) {
       setSubscription(sub ?? null);
       await AsyncStorage.setItem(LAST_FETCH_KEY, Date.now().toString());
     } catch {
-      // Silently ignore — free users have no subscription record
-      setSubscription(null);
+      // Network/API failure — preserve last known subscription state.
+      // Do NOT wipe to null — genuine free users return null from the
+      // API successfully; a catch here means network/server error only.
     } finally {
       setLoading(false);
     }
@@ -53,13 +54,11 @@ export function SubscriptionProvider({ children, isLoggedIn }) {
       return;
     }
     const parsed = parseInt(lastFetch, 10);
-    const isExpired =
-      !parsed || Date.now() - parsed > SUBSCRIPTION_TTL;
-        
+    const isExpired = !parsed || Date.now() - parsed > SUBSCRIPTION_TTL;
+
     if (isExpired) {
       refresh();
     }
-    
   }, [isLoggedIn, refresh]);
 
   // Load on mount and whenever login state changes
@@ -86,7 +85,10 @@ export function SubscriptionProvider({ children, isLoggedIn }) {
     /** Convenience: display name shown in UI */
     planName: subscription?.packageName ?? "Free",
     /** True when user is on the free tier */
-    isFree: !subscription || subscription.billingCycle === "NONE" || subscription.status !== "ACTIVE",
+    isFree:
+      !subscription ||
+      subscription.billingCycle === "NONE" ||
+      subscription.status !== "ACTIVE",
   };
 
   return (
@@ -98,6 +100,7 @@ export function SubscriptionProvider({ children, isLoggedIn }) {
 
 export function useSubscription() {
   const ctx = useContext(SubscriptionContext);
-  if (!ctx) throw new Error("useSubscription must be used within SubscriptionProvider");
+  if (!ctx)
+    throw new Error("useSubscription must be used within SubscriptionProvider");
   return ctx;
 }

@@ -1290,7 +1290,10 @@ const HomeContent = () => {
     }, []),
   );
   useEffect(() => {
-    if (!subscription || subscription.status !== "ACTIVE")
+    // Only lock if backend confirmed a bad status.
+    // null means fetch failed or not yet loaded — treat as unknown,
+    // not as expired, to allow offline use.
+    if (subscription && subscription.status !== "ACTIVE")
       setShowSubscriptionExpired(true);
     else setShowSubscriptionExpired(false);
   }, [subscription]);
@@ -1834,7 +1837,7 @@ const HomeContent = () => {
                   <SubscriptionExpiredScreen
                     subscription={subscription}
                     onViewPlans={() =>
-                      router.push("/components/billing/SubscriptionPlansScreen")
+                      router.push("/features/purchases/SubscriptionPlansScreen")
                     }
                   />
                 ) : isViewOnly ? (

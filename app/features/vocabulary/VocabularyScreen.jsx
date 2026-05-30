@@ -332,7 +332,7 @@ export default function VocabularyScreen() {
           <TouchableOpacity
             style={sc.lockBtn}
             onPress={() =>
-              router.push("/components/billing/SubscriptionPlansScreen")
+              router.push("/features/purchases/SubscriptionPlansScreen")
             }
             activeOpacity={0.88}
           >

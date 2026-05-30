@@ -682,7 +682,7 @@ const Account = () => {
           {
             text: "View Plans",
             onPress: () =>
-              router.push("/components/billing/SubscriptionPlansScreen"),
+              router.push("/features/purchases/SubscriptionPlansScreen"),
           },
         ],
       );
@@ -715,7 +715,7 @@ const Account = () => {
           {
             text: "View Plans",
             onPress: () =>
-              router.push("/components/billing/SubscriptionPlansScreen"),
+              router.push("/features/purchases/SubscriptionPlansScreen"),
           },
         ],
       );
@@ -743,7 +743,7 @@ const Account = () => {
           {
             text: "View Plans",
             onPress: () =>
-              router.push("/components/billing/SubscriptionPlansScreen"),
+              router.push("/features/purchases/SubscriptionPlansScreen"),
           },
         ],
       );
@@ -1642,7 +1642,7 @@ const Account = () => {
         }
         onUpgrade={() => {
           setProfileLimitModal((prev) => ({ ...prev, visible: false }));
-          router.push("/components/billing/PlanBillingScreen");
+          router.push("/features/purchases/PlanBillingScreen");
         }}
       />
     </ScreenWrapper>
