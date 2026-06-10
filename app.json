@@ -3,7 +3,7 @@
     "scheme": "storytimeapp",
     "name": "Story Time",
     "slug": "StoryTime_APP",
-    "version": "1.0.12",
+    "version": "1.0.13",
     "orientation": "portrait",
     "icon": "./assets/img/storytime-logo.png",
     "userInterfaceStyle": "dark",
