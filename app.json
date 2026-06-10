@@ -5,7 +5,7 @@
     "slug": "StoryTime_APP",
     "version": "1.0.12",
     "orientation": "portrait",
-    "icon": "./assets/img/story-time-icon.jpg",
+    "icon": "./assets/img/storytime-logo.png",
     "userInterfaceStyle": "dark",
     "newArchEnabled": true,
     "runtimeVersion": {

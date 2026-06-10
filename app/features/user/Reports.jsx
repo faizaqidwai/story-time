@@ -27,27 +27,27 @@ const { width: SW } = Dimensions.get("window");
 const STATUS_H = Platform.OS === "android" ? 24 : 50;
 
 const C = {
-  bg: "#08081a",
-  surface: "#111830",
+  bg: "#0A1628",
+  surface: "#0F2040",
   surfaceDim: "rgba(255,255,255,0.05)",
-  teal: "#00BCD4",
-  tealDim: "rgba(0,188,212,0.15)",
-  tealBorder: "rgba(0,188,212,0.35)",
-  yellow: "#FFD54F",
-  yellowDim: "rgba(255,213,79,0.15)",
-  yellowBorder: "rgba(255,213,79,0.4)",
-  green: "#4CAF50",
-  greenDim: "rgba(76,175,80,0.18)",
-  greenBorder: "rgba(76,175,80,0.45)",
-  purple: "#9652D9",
-  purpleDim: "rgba(150,82,217,0.18)",
-  purpleBorder: "rgba(150,82,217,0.4)",
-  coral: "#FF7043",
-  coralDim: "rgba(255,112,67,0.15)",
-  coralBorder: "rgba(255,112,67,0.4)",
-  textPri: "#E0F7FA",
-  textSec: "#B2EBF2",
-  textMuted: "#546E7A",
+  teal: "#00C4CC",
+  tealDim: "rgba(0,196,204,0.15)",
+  tealBorder: "rgba(0,196,204,0.35)",
+  yellow: "#F5A623",
+  yellowDim: "rgba(245,166,35,0.15)",
+  yellowBorder: "rgba(245,166,35,0.4)",
+  green: "#2A9D8F",
+  greenDim: "rgba(42,157,143,0.18)",
+  greenBorder: "rgba(42,157,143,0.45)",
+  purple: "#7B2FBE",
+  purpleDim: "rgba(123,47,190,0.18)",
+  purpleBorder: "rgba(123,47,190,0.4)",
+  coral: "#E8445A",
+  coralDim: "rgba(232,68,90,0.15)",
+  coralBorder: "rgba(232,68,90,0.4)",
+  textPri: "#FFFFFF",
+  textSec: "#FFFFFF",
+  textMuted: "#8899AA",
 };
 
 const ACTIVITY_META = [
@@ -305,7 +305,7 @@ function WeeklyChart({ weeks, sz }) {
                   height: barH,
                   backgroundColor: w.currentWeek
                     ? C.teal
-                    : "rgba(0,188,212,0.4)",
+                    : "rgba(0,196,204,0.4)",
                   shadowColor: w.currentWeek ? C.teal : "transparent",
                   shadowOpacity: 0.8,
                   shadowRadius: 6,
@@ -659,7 +659,7 @@ export default function Reports() {
         <Ionicons
           name="chevron-back"
           size={sz.backBtnSize * 0.55}
-          color="#E0F7FA"
+          color="#FFFFFF"
         />
       </TouchableOpacity>
       <Text
@@ -670,7 +670,7 @@ export default function Reports() {
           fontSize: sz.topTitleFontSize,
           color: C.teal,
           letterSpacing: 0.4,
-          textShadowColor: "rgba(0,188,212,0.5)",
+          textShadowColor: "rgba(0,196,204,0.5)",
           textShadowOffset: { width: 0, height: 0 },
           textShadowRadius: 10,
         }}

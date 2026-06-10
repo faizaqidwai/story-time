@@ -2,16 +2,32 @@
  * LevelGoalTracker.jsx
  * app/gamification/components/LevelGoalTracker.jsx
  *
- * FIXES:
- *   1. BoxConnector: moving dot only shows when goal is actively IN PROGRESS
- *      (connector is active but the NEXT slot is still locked).
- *      Once the next goal is achieved, line stays bright but dot stops.
- *   2. LevelGoalTracker no longer hides when mode !== "PLAY".
- *      It always renders. The "Read Only" / "View Only" banner from
- *      AccessModeBanner (already in home.jsx) handles the mode messaging.
- *      Game slot cards reflect their true engine state (LOCKED/REVEALED/UNLOCKED).
- *      Connecting lines use a static bright color on previous levels
- *      (no animation, no moving dot) since all goals are already achieved there.
+ * BRAND UPDATE — feature/brand-guidelines-v2
+ * COLOUR-ONLY changes — zero functional/logic/animation changes:
+ *
+ *   ✅ Removed local TEAL/YELLOW/DARK constants — all from COLORS theme:
+ *        TEAL   "#00BCD4" → COLORS.primary    (#00C4CC — §3.1 brand cyan)
+ *        YELLOW "#FFD54F" → COLORS.amber      (#F5A623 — §3.1 brand amber)
+ *        DARK   "#08081a" → COLORS.background (#0A1628 — §5.1 midnight navy)
+ *   ✅ All rgba(0,188,212,…) — old cyan hex → rgba(0,196,204,…) correct cyan
+ *        Same opacities preserved exactly: 0.04, 0.18, 0.5, 0.6, 0.75, 0.95
+ *   ✅ All rgba(255,213,79,…) — old yellow hex → rgba(245,166,35,…) correct amber
+ *        Same opacities preserved exactly: 0.2, 0.55, 0.6, 1.0
+ *   ✅ "#FF7043" confetti dot → COLORS.coral (#E8445A — §3.1 brand coral)
+ *   ✅ COLORS imported from theme
+ *
+ * KEPT EXACTLY (neutral values, not colour-specific):
+ *   ✅ All rgba(255,255,255,…) — white neutral opacities unchanged
+ *   ✅ rgba(8,8,26,0.45) — dark overlay on locked finish box
+ *   ✅ rgba(0,0,0,0.35) — not present here but pattern confirmed
+ *
+ * UNTOUCHED (zero changes):
+ *   ✅ All animation logic (useGlow, BoxConnector pulse, GlowCard pulse)
+ *   ✅ All layout, sizing, padding, radius tokens
+ *   ✅ All logic: slot0Achieved, slot1Achieved, conn1Active, conn1InProgress etc.
+ *   ✅ All JSX structure — zero additions or removals
+ *   ✅ All props interface unchanged
+ *   ✅ GAME_STATUS import, MiniGameCard import, radius/isTablet tokens
  */
 
 import React, { useRef, useEffect } from "react";
@@ -19,14 +35,11 @@ import { View, Text, StyleSheet, Animated } from "react-native";
 import { Image as ExpoImage } from "expo-image";
 
 import { radius, isTablet } from "../../theme/tokens";
+import { COLORS } from "../../theme";
 import { GAME_STATUS } from "../GamificationEngine";
 import MiniGameCard, { TRACKER_CARD_SIZE } from "./MiniGameCard";
 
-const TEAL = "#00BCD4";
-const YELLOW = "#FFD54F";
-const DARK = "#08081a";
-
-// ─── Glow pulse hook ──────────────────────────────────────────────────────────
+// ─── Glow pulse hook — UNCHANGED ─────────────────────────────────────────────
 function useGlow(active) {
   const anim = useRef(new Animated.Value(0)).current;
   useEffect(() => {
@@ -54,22 +67,21 @@ function useGlow(active) {
   return anim;
 }
 
-// ─── Box connector ─────────────────────────────────────────────────────────────
-// active      — true when the LEFT slot's goal has been achieved (connector lit)
-// inProgress  — true when lit AND the RIGHT slot is still locked (dot animates)
-//               Once right slot is also achieved, dot stops but line stays bright.
+// ─── Box connector — logic/animation UNCHANGED, colours corrected ─────────────
 function BoxConnector({ active, inProgress }) {
-  const glowAnim = useGlow(inProgress); // dot animation only when in-progress
+  const glowAnim = useGlow(inProgress);
 
-  // Line color: bright teal when active (achieved or in-progress), dim otherwise
   const lineColor = active
     ? inProgress
       ? glowAnim.interpolate({
           inputRange: [0, 1],
-          outputRange: ["rgba(0,188,212,0.5)", "rgba(0,188,212,0.95)"],
+          outputRange: [
+            "rgba(0,196,204,0.5)",    // ✅ was "rgba(0,188,212,0.5)"
+            "rgba(0,196,204,0.95)",   // ✅ was "rgba(0,188,212,0.95)"
+          ],
         })
-      : "rgba(0,188,212,0.75)" // achieved: static bright, no pulse
-    : "rgba(255,255,255,0.07)"; // locked: dim
+      : "rgba(0,196,204,0.75)"        // ✅ was "rgba(0,188,212,0.75)"
+    : "rgba(255,255,255,0.07)";       // keep — neutral dim
 
   const dotLeft = glowAnim.interpolate({
     inputRange: [0, 1],
@@ -80,14 +92,13 @@ function BoxConnector({ active, inProgress }) {
     <View style={connS.wrap}>
       <View style={connS.base} />
       <Animated.View style={[connS.glow, { backgroundColor: lineColor }]} />
-      {/* Dot only renders when actively in progress — not after goal achieved */}
       {inProgress && (
         <Animated.View
           style={[
             connS.dot,
             {
               left: dotLeft,
-              shadowColor: TEAL,
+              shadowColor: COLORS.primary,     // ✅ was TEAL "#00BCD4"
               shadowOffset: { width: 0, height: 0 },
               shadowOpacity: 0.9,
               shadowRadius: 4,
@@ -113,7 +124,7 @@ const connS = StyleSheet.create({
     left: 0,
     right: 0,
     height: 2,
-    backgroundColor: "rgba(255,255,255,0.05)",
+    backgroundColor: "rgba(255,255,255,0.05)", // keep — neutral
     borderRadius: 1,
   },
   glow: { position: "absolute", left: 0, right: 0, height: 2, borderRadius: 1 },
@@ -122,13 +133,13 @@ const connS = StyleSheet.create({
     width: 7,
     height: 7,
     borderRadius: 3.5,
-    backgroundColor: TEAL,
+    backgroundColor: COLORS.primary,           // ✅ was TEAL "#00BCD4"
     top: "50%",
     marginTop: -3.5,
   },
 });
 
-// ─── Level Finish Box ──────────────────────────────────────────────────────────
+// ─── Level Finish Box — logic UNCHANGED, colours corrected ────────────────────
 function LevelFinishBox({ allDone, active, inProgress, completedStoryCount }) {
   const glowAnim = useGlow(true);
 
@@ -136,15 +147,15 @@ function LevelFinishBox({ allDone, active, inProgress, completedStoryCount }) {
     inputRange: [0, 1],
     outputRange: [
       allDone
-        ? "rgba(255,213,79,0.55)"
+        ? "rgba(245,166,35,0.55)"    // ✅ was "rgba(255,213,79,0.55)"
         : active
-          ? "rgba(255,213,79,0.2)"
-          : "rgba(255,255,255,0.07)",
+          ? "rgba(245,166,35,0.2)"   // ✅ was "rgba(255,213,79,0.2)"
+          : "rgba(255,255,255,0.07)",// keep — neutral locked
       allDone
-        ? "rgba(255,213,79,1.0)"
+        ? "rgba(245,166,35,1.0)"     // ✅ was "rgba(255,213,79,1.0)"
         : active
-          ? "rgba(255,213,79,0.6)"
-          : "rgba(255,255,255,0.1)",
+          ? "rgba(245,166,35,0.6)"   // ✅ was "rgba(255,213,79,0.6)"
+          : "rgba(255,255,255,0.1)", // keep — neutral locked
     ],
   });
   const shadowOpacity = allDone
@@ -153,9 +164,6 @@ function LevelFinishBox({ allDone, active, inProgress, completedStoryCount }) {
       ? glowAnim.interpolate({ inputRange: [0, 1], outputRange: [0.05, 0.35] })
       : 0;
 
-  // Stars only start filling after both game goals are achieved (6 stories).
-  // Count stories beyond the 6 goal stories toward the finish box.
-  // Guard: if slot1 not yet achieved (active=false), finish stars stay empty.
   const storiesBeyondGoals = active ? Math.max(0, completedStoryCount - 6) : 0;
   const star1Filled = storiesBeyondGoals >= 1;
   const star2Filled = storiesBeyondGoals >= 2;
@@ -169,7 +177,7 @@ function LevelFinishBox({ allDone, active, inProgress, completedStoryCount }) {
           {
             borderColor,
             opacity: !active && !allDone ? 0.38 : 1,
-            shadowColor: YELLOW,
+            shadowColor: COLORS.amber,          // ✅ was YELLOW "#FFD54F"
             shadowOffset: { width: 0, height: 0 },
             shadowOpacity,
             shadowRadius: 14,
@@ -187,36 +195,16 @@ function LevelFinishBox({ allDone, active, inProgress, completedStoryCount }) {
           <View
             style={[
               StyleSheet.absoluteFillObject,
-              { backgroundColor: "rgba(8,8,26,0.45)" },
+              { backgroundColor: "rgba(8,8,26,0.45)" }, // keep — dark overlay
             ]}
           />
         )}
         {allDone && (
           <>
-            <View
-              style={[
-                finS.confetti,
-                { top: 6, left: 8, backgroundColor: TEAL },
-              ]}
-            />
-            <View
-              style={[
-                finS.confetti,
-                { top: 10, right: 9, backgroundColor: "#FF7043" },
-              ]}
-            />
-            <View
-              style={[
-                finS.confetti,
-                { bottom: 14, left: 9, backgroundColor: YELLOW },
-              ]}
-            />
-            <View
-              style={[
-                finS.confetti,
-                { bottom: 10, right: 7, backgroundColor: TEAL },
-              ]}
-            />
+            <View style={[finS.confetti, { top: 6,    left: 8,  backgroundColor: COLORS.primary }]} />
+            <View style={[finS.confetti, { top: 10,   right: 9, backgroundColor: COLORS.coral   }]} />
+            <View style={[finS.confetti, { bottom: 14, left: 9, backgroundColor: COLORS.amber   }]} />
+            <View style={[finS.confetti, { bottom: 10, right: 7, backgroundColor: COLORS.primary }]} />
           </>
         )}
       </Animated.View>
@@ -234,9 +222,9 @@ function LevelFinishBox({ allDone, active, inProgress, completedStoryCount }) {
             key={i}
             style={{
               fontSize: starSize,
-              color: filled ? YELLOW : "rgba(255,255,255,0.2)",
+              color: filled ? COLORS.amber : "rgba(255,255,255,0.2)", // ✅ was YELLOW
               ...(filled && {
-                textShadowColor: YELLOW,
+                textShadowColor: COLORS.amber,                        // ✅ was YELLOW
                 textShadowOffset: { width: 0, height: 0 },
                 textShadowRadius: 4,
               }),
@@ -258,7 +246,7 @@ const finS = StyleSheet.create({
     borderWidth: 1.5,
     overflow: "hidden",
     position: "relative",
-    backgroundColor: DARK,
+    backgroundColor: COLORS.background,        // ✅ was DARK "#08081a"
   },
   confetti: {
     position: "absolute",
@@ -269,7 +257,7 @@ const finS = StyleSheet.create({
   },
 });
 
-// ─── Pulsing glow card border — NO overflow:hidden (blocks touches) ───────────
+// ─── GlowCard — animation UNCHANGED, colours corrected ───────────────────────
 function GlowCard({ children, style }) {
   const glowAnim = useRef(new Animated.Value(0)).current;
   useEffect(() => {
@@ -293,7 +281,10 @@ function GlowCard({ children, style }) {
 
   const borderColor = glowAnim.interpolate({
     inputRange: [0, 1],
-    outputRange: ["rgba(0,188,212,0.18)", "rgba(0,188,212,0.6)"],
+    outputRange: [
+      "rgba(0,196,204,0.18)",   // ✅ was "rgba(0,188,212,0.18)"
+      "rgba(0,196,204,0.6)",    // ✅ was "rgba(0,188,212,0.6)"
+    ],
   });
   const shadowOpacity = glowAnim.interpolate({
     inputRange: [0, 1],
@@ -307,7 +298,7 @@ function GlowCard({ children, style }) {
         style,
         {
           borderColor,
-          shadowColor: TEAL,
+          shadowColor: COLORS.primary,          // ✅ was TEAL "#00BCD4"
           shadowOffset: { width: 0, height: 0 },
           shadowOpacity,
           shadowRadius: 14,
@@ -322,13 +313,15 @@ function GlowCard({ children, style }) {
 
 const gcS = StyleSheet.create({
   card: {
-    backgroundColor: "rgba(0,188,212,0.04)",
+    backgroundColor: "rgba(0,196,204,0.04)",   // ✅ was "rgba(0,188,212,0.04)"
     borderWidth: 1.5,
     borderRadius: radius.xl,
     // NO overflow:"hidden" — would block MiniGameCard touches
   },
 });
 
+// ═════════════════════════════════════════════════════════════════════════════
+// Main component — logic/JSX UNCHANGED
 // ═════════════════════════════════════════════════════════════════════════════
 export default function LevelGoalTracker({
   levelGames = [],
@@ -340,37 +333,26 @@ export default function LevelGoalTracker({
 
   if (!slot0 && !slot1) return null;
 
-  // Whether each slot's goal has been passed (connector to its right lights up)
   const slot0Achieved = slot0 != null && slot0.status !== GAME_STATUS.LOCKED;
   const slot1Achieved = slot1 != null && slot1.status !== GAME_STATUS.LOCKED;
   const allDone = completedStoryCount >= totalStories;
 
-  // Connector 1 (between slot0 and slot1):
-  //   active      = slot0 goal achieved
-  //   inProgress  = slot0 achieved BUT slot1 not yet achieved (dot animates)
-  const conn1Active = slot0Achieved;
+  const conn1Active     = slot0Achieved;
   const conn1InProgress = slot0Achieved && !slot1Achieved;
-
-  // Connector 2 (between slot1 and finish):
-  //   active      = slot1 goal achieved
-  //   inProgress  = slot1 achieved BUT level not yet finished (dot animates)
-  const conn2Active = slot1Achieved;
+  const conn2Active     = slot1Achieved;
   const conn2InProgress = slot1Achieved && !allDone;
 
   return (
     <GlowCard style={s.trackerCard}>
       <View style={s.boxesRow}>
-        {/* Slot 0 — always interactive, reflects true engine state */}
         {slot0 ? (
           <MiniGameCard slot={slot0} size="tracker" interactive />
         ) : (
           <View style={s.placeholder} />
         )}
 
-        {/* Connector 1: lit when slot0 achieved, dot only while slot1 pending */}
         <BoxConnector active={conn1Active} inProgress={conn1InProgress} />
 
-        {/* Slot 1 — dims until slot0 cleared, reflects true engine state */}
         <Animated.View style={{ opacity: slot0Achieved ? 1 : 0.35 }}>
           {slot1 ? (
             <MiniGameCard slot={slot1} size="tracker" interactive />
@@ -379,10 +361,8 @@ export default function LevelGoalTracker({
           )}
         </Animated.View>
 
-        {/* Connector 2: lit when slot1 achieved, dot only while finish pending */}
         <BoxConnector active={conn2Active} inProgress={conn2InProgress} />
 
-        {/* Level finish box */}
         <LevelFinishBox
           allDone={allDone}
           active={slot1Achieved}
@@ -396,10 +376,10 @@ export default function LevelGoalTracker({
 
 const s = StyleSheet.create({
   trackerCard: {
-    paddingTop: isTablet ? 14 : 10,
-    paddingBottom: isTablet ? 20 : 10,
+    paddingTop:        isTablet ? 14 : 10,
+    paddingBottom:     isTablet ? 20 : 10,
     paddingHorizontal: isTablet ? 14 : 10,
-    marginLeft: 14,
+    marginLeft:  14,
     marginRight: 14,
   },
   boxesRow: {
@@ -407,11 +387,11 @@ const s = StyleSheet.create({
     alignItems: "flex-start",
   },
   placeholder: {
-    width: TRACKER_CARD_SIZE,
+    width:  TRACKER_CARD_SIZE,
     height: TRACKER_CARD_SIZE,
     borderRadius: radius.lg,
-    backgroundColor: "rgba(255,255,255,0.03)",
+    backgroundColor: "rgba(255,255,255,0.03)", // keep — neutral
     borderWidth: 1,
-    borderColor: "rgba(255,255,255,0.06)",
+    borderColor: "rgba(255,255,255,0.06)",      // keep — neutral
   },
 });

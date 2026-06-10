@@ -1,4 +1,7 @@
 import React, { useRef, useEffect, useState } from "react";
+// BRAND UPDATE — feature/brand-guidelines-v2 — COLOUR-ONLY changes:
+// All logic, animation, layout, props unchanged.
+
 import {
   Modal,
   View,
@@ -18,25 +21,25 @@ import { Image as ExpoImage } from "expo-image";
 const { width: SW, height: SH } = Dimensions.get("window");
 
 const C = {
-  bg: "#08081a",
-  darkBg2: "#0f0f2a",
+  bg: "#0A1628",
+  darkBg2: "#0A1628",
   surface: "rgba(255,255,255,0.06)",
-  teal: "#00BCD4",
-  tealDim: "rgba(0,188,212,0.15)",
-  tealBorder: "rgba(0,188,212,0.5)",
-  yellow: "#FFD54F",
-  yellowDim: "rgba(255,213,79,0.12)",
-  yellowBorder: "rgba(255,213,79,0.55)",
-  green: "#4CAF50",
-  greenDim: "rgba(76,175,80,0.14)",
-  greenBorder: "rgba(76,175,80,0.55)",
-  red: "#EF5350",
-  redDim: "rgba(239,83,80,0.14)",
-  redBorder: "rgba(239,83,80,0.5)",
-  purple: "#9652D9",
+  teal: "#00C4CC",
+  tealDim: "rgba(0,196,204,0.15)",
+  tealBorder: "rgba(0,196,204,0.5)",
+  yellow: "#F5A623",
+  yellowDim: "rgba(245,166,35,0.12)",
+  yellowBorder: "rgba(245,166,35,0.55)",
+  green: "#2A9D8F",
+  greenDim: "rgba(42,157,143,0.14)",
+  greenBorder: "rgba(42,157,143,0.55)",
+  red: "#E8445A",
+  redDim: "rgba(232,68,90,0.14)",
+  redBorder: "rgba(232,68,90,0.5)",
+  purple: "#7B2FBE",
   textPri: "#FFFFFF",
-  textSec: "#B0BEC5",
-  textMuted: "#546E7A",
+  textSec: "#8899AA",
+  textMuted: "#8899AA",
 };
 
 const CONFETTI = ["🎉", "⭐", "🌟", "✨", "🎊", "💫", "🎈", "🥳", "🌈", "🏆"];
@@ -496,7 +499,7 @@ export default GameEnd;
 const styles = StyleSheet.create({
   overlay: {
     flex: 1,
-    backgroundColor: "rgba(8,8,26,0.92)",
+    backgroundColor: "rgba(10,16,38,0.97)",
     justifyContent: "center",
     alignItems: "center",
   },
@@ -515,7 +518,7 @@ const styles = StyleSheet.create({
   },
   cardWin: {
     backgroundColor: C.darkBg2,
-    borderColor: "rgba(255,213,79,0.55)",
+    borderColor: "rgba(245,166,35,0.55)",
     shadowColor: C.yellow,
     shadowOpacity: 0.35,
   },
@@ -534,9 +537,9 @@ const styles = StyleSheet.create({
     borderRadius: 55,
   },
   glowRingWin: {
-    backgroundColor: "rgba(255,213,79,0.12)",
+    backgroundColor: "rgba(245,166,35,0.12)",
     borderWidth: 2,
-    borderColor: "rgba(255,213,79,0.3)",
+    borderColor: "rgba(245,166,35,0.3)",
   },
   glowRingLose: {
     backgroundColor: C.redDim,
@@ -553,7 +556,7 @@ const styles = StyleSheet.create({
     color: C.yellow,
     letterSpacing: 0.4,
     marginBottom: pad.xs,
-    textShadowColor: "rgba(255,213,79,0.5)",
+    textShadowColor: "rgba(245,166,35,0.5)",
     textShadowOffset: { width: 0, height: 0 },
     textShadowRadius: 14,
   },
@@ -584,7 +587,7 @@ const styles = StyleSheet.create({
     color: C.red,
     letterSpacing: 0.4,
     marginBottom: pad.xs,
-    textShadowColor: "rgba(239,83,80,0.45)",
+    textShadowColor: "rgba(232,68,90,0.45)",
     textShadowOffset: { width: 0, height: 0 },
     textShadowRadius: 14,
   },
@@ -601,10 +604,10 @@ const styles = StyleSheet.create({
   tipBox: {
     flexDirection: "row",
     alignItems: "flex-start",
-    backgroundColor: "rgba(255,213,79,0.07)",
+    backgroundColor: "rgba(245,166,35,0.07)",
     borderRadius: radius.md, // was: 12
     borderWidth: 1,
-    borderColor: "rgba(255,213,79,0.2)",
+    borderColor: "rgba(245,166,35,0.2)",
     padding: pad.sm, // was: 12
     gap: pad.sm, // was: 10
     marginBottom: pad.lg,
@@ -656,7 +659,7 @@ const styles = StyleSheet.create({
     color: C.yellow, // was: 26
     letterSpacing: 1.5,
     textTransform: "uppercase",
-    textShadowColor: "rgba(255,213,79,0.4)",
+    textShadowColor: "rgba(245,166,35,0.4)",
     textShadowOffset: { width: 0, height: 0 },
     textShadowRadius: 10,
   },
@@ -666,7 +669,7 @@ const styles = StyleSheet.create({
     color: C.red, // was: 26
     letterSpacing: 1.5,
     textTransform: "uppercase",
-    textShadowColor: "rgba(239,83,80,0.4)",
+    textShadowColor: "rgba(232,68,90,0.4)",
     textShadowOffset: { width: 0, height: 0 },
     textShadowRadius: 10,
   },
@@ -695,7 +698,7 @@ const styles = StyleSheet.create({
     marginLeft: 10,
   }, // was: 16
   btnRetry: {
-    backgroundColor: "rgba(239,83,80,0.15)",
+    backgroundColor: "rgba(232,68,90,0.15)",
     borderWidth: 1.5,
     borderColor: C.redBorder,
     width: "100%",

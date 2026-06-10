@@ -2,30 +2,46 @@
  * StoryCollectionArc.jsx
  * app/gamification/components/StoryCollectionArc.jsx
  *
- * CHANGES:
- *   - Label text ("Read N stories to unlock...") removed entirely
- *   - Progress text removed
- *   - A glowing rounded border (like the design) wraps the story nodes row
- *   - compact=false nodes made larger (50px) to match design scale
- *   - compact=true nodes stay 34px for modal use
+ * BRAND UPDATE — feature/brand-guidelines-v2
+ * COLOUR-ONLY changes — zero functional/logic/animation changes:
+ *
+ *   ✅ Removed local TEAL/YELLOW/GREEN constants — all from COLORS theme:
+ *        TEAL   "#00BCD4" → COLORS.primary    (#00C4CC — §3.1 brand cyan)
+ *        YELLOW "#FFD54F" → COLORS.amber      (#F5A623 — §3.1 brand amber)
+ *        GREEN  "#4CAF50" → COLORS.teal       (#2A9D8F — §3.3 completion signal)
+ *   ✅ All rgba(0,188,212,…) → rgba(0,196,204,…) correct cyan hex, same opacity
+ *   ✅ All rgba(76,175,80,…) → rgba(42,157,143,…) brand teal rgba, same opacity
+ *        (off-brand green retired — §9.1)
+ *   ✅ "#1a1a2e" tick badge border → COLORS.background (#0A1628)
+ *   ✅ COLORS imported from theme
+ *
+ * KEPT EXACTLY (neutral — not colour-specific):
+ *   ✅ "rgba(255,255,255,0.04)" inactive node bg
+ *   ✅ "rgba(255,255,255,0.08)" inactive connector
+ *   ✅ "rgba(255,255,255,0.15)" inactive node border
+ *   ✅ "#fff" tick text (white on teal bg — correct)
+ *
+ * UNTOUCHED (zero changes):
+ *   ✅ All animation logic (useGlow, loops, interpolations)
+ *   ✅ All layout, sizing, nodeSize, lineW, padding
+ *   ✅ All logic: doneCount, isActive, isDone, overrideCount/Total
+ *   ✅ All JSX structure — zero additions or removals
+ *   ✅ All props interface unchanged
  */
 
 import React, { useRef, useEffect } from "react";
 import { View, Text, StyleSheet, Animated } from "react-native";
 import { Image as ExpoImage } from "expo-image";
 
-import { FONTS } from "../../theme";
+import { FONTS, COLORS } from "../../theme";
 import { isTablet } from "../../theme/tokens";
 import { GAME_STATUS } from "../GamificationEngine";
 
-const TEAL   = "#00BCD4";
-const YELLOW = "#FFD54F";
-const GREEN  = "#4CAF50";
-
+// ── Constants — UNCHANGED ─────────────────────────────────────────────────────
 const STORIES_PER_GOAL = 3;
 const GOAL3_NODES      = 2;
 
-// ─── Glow pulse hook ──────────────────────────────────────────────────────────
+// ─── Glow pulse hook — UNCHANGED ─────────────────────────────────────────────
 function useGlow(active) {
   const anim = useRef(new Animated.Value(0)).current;
   useEffect(() => {
@@ -42,25 +58,28 @@ function useGlow(active) {
   return anim;
 }
 
-// ─── Story node ───────────────────────────────────────────────────────────────
+// ─── Story node — layout/animation UNCHANGED, colours corrected ───────────────
 function StoryNode({ done, active, nodeSize }) {
   const glowAnim = useGlow(active && !done);
   const nodeHalf = nodeSize / 2;
 
   const borderColor = done
-    ? GREEN
+    ? COLORS.teal                              // ✅ was GREEN "#4CAF50"
     : active
     ? glowAnim.interpolate({
         inputRange:  [0, 1],
-        outputRange: ["rgba(0,188,212,0.4)", "rgba(0,188,212,1)"],
+        outputRange: [
+          "rgba(0,196,204,0.4)",               // ✅ was "rgba(0,188,212,0.4)"
+          "rgba(0,196,204,1)",                 // ✅ was "rgba(0,188,212,1)"
+        ],
       })
-    : "rgba(255,255,255,0.15)";
+    : "rgba(255,255,255,0.15)";               // keep — neutral inactive
 
   const bgColor = done
-    ? "rgba(76,175,80,0.2)"
+    ? "rgba(42,157,143,0.2)"                  // ✅ was "rgba(76,175,80,0.2)" off-brand green
     : active
-    ? "rgba(0,188,212,0.14)"
-    : "rgba(255,255,255,0.04)";
+    ? "rgba(0,196,204,0.14)"                  // ✅ was "rgba(0,188,212,0.14)"
+    : "rgba(255,255,255,0.04)";               // keep — neutral inactive
 
   return (
     <Animated.View
@@ -73,11 +92,13 @@ function StoryNode({ done, active, nodeSize }) {
           position: "relative",
         },
         done && {
-          shadowColor: GREEN, shadowOffset: { width: 0, height: 0 },
+          shadowColor: COLORS.teal,            // ✅ was GREEN "#4CAF50"
+          shadowOffset: { width: 0, height: 0 },
           shadowOpacity: 0.7, shadowRadius: 7, elevation: 7,
         },
         active && !done && {
-          shadowColor: TEAL, shadowOffset: { width: 0, height: 0 },
+          shadowColor: COLORS.primary,         // ✅ was TEAL "#00BCD4"
+          shadowOffset: { width: 0, height: 0 },
           shadowOpacity: 0.65, shadowRadius: 7, elevation: 7,
         },
       ]}
@@ -89,15 +110,16 @@ function StoryNode({ done, active, nodeSize }) {
         cachePolicy="memory-disk"
       />
       {done && (
-        // Fixed tick size so it's always clearly visible regardless of nodeSize
         <View
           style={{
             position: "absolute", top: -7, right: -7,
             width: 22, height: 22,
             borderRadius: 11,
-            backgroundColor: GREEN,
+            backgroundColor: COLORS.teal,      // ✅ was GREEN "#4CAF50"
             alignItems: "center", justifyContent: "center",
-            borderWidth: 2, borderColor: "#1a1a2e", zIndex: 10,
+            borderWidth: 2,
+            borderColor: COLORS.background,    // ✅ was "#1a1a2e"
+            zIndex: 10,
           }}
         >
           <Text style={{ fontFamily: FONTS.bold, fontSize: 13, color: "#fff", lineHeight: 15 }}>
@@ -109,26 +131,31 @@ function StoryNode({ done, active, nodeSize }) {
   );
 }
 
-// ─── Connector line between nodes ─────────────────────────────────────────────
+// ─── Connector line — logic/animation UNCHANGED, colours corrected ────────────
 function ArcLine({ done, active, lineW }) {
   const glowAnim = useGlow(active && !done);
   const bgColor  = done
-    ? "rgba(76,175,80,0.75)"
+    ? "rgba(42,157,143,0.75)"                 // ✅ was "rgba(76,175,80,0.75)" off-brand green
     : active
     ? glowAnim.interpolate({
         inputRange:  [0, 1],
-        outputRange: ["rgba(0,188,212,0.2)", "rgba(0,188,212,0.7)"],
+        outputRange: [
+          "rgba(0,196,204,0.2)",              // ✅ was "rgba(0,188,212,0.2)"
+          "rgba(0,196,204,0.7)",              // ✅ was "rgba(0,188,212,0.7)"
+        ],
       })
-    : "rgba(255,255,255,0.08)";
+    : "rgba(255,255,255,0.08)";              // keep — neutral inactive
 
   return (
     <View style={{ width: lineW, height: 2, justifyContent: "center" }}>
-      <Animated.View style={{ height: 2, width: "100%", borderRadius: 1, backgroundColor: bgColor }} />
+      <Animated.View
+        style={{ height: 2, width: "100%", borderRadius: 1, backgroundColor: bgColor }}
+      />
     </View>
   );
 }
 
-// ─── Glowing rounded border container for the nodes row ───────────────────────
+// ─── ArcContainer — animation UNCHANGED, colours corrected ───────────────────
 function ArcContainer({ children }) {
   const glowAnim = useRef(new Animated.Value(0)).current;
   useEffect(() => {
@@ -144,7 +171,10 @@ function ArcContainer({ children }) {
 
   const borderColor = glowAnim.interpolate({
     inputRange:  [0, 1],
-    outputRange: ["rgba(0,188,212,0.25)", "rgba(0,188,212,0.75)"],
+    outputRange: [
+      "rgba(0,196,204,0.25)",               // ✅ was "rgba(0,188,212,0.25)"
+      "rgba(0,196,204,0.75)",               // ✅ was "rgba(0,188,212,0.75)"
+    ],
   });
   const shadowOpacity = glowAnim.interpolate({
     inputRange: [0, 1], outputRange: [0.1, 0.55],
@@ -156,7 +186,7 @@ function ArcContainer({ children }) {
         arcContS.wrap,
         {
           borderColor,
-          shadowColor: TEAL,
+          shadowColor: COLORS.primary,        // ✅ was TEAL "#00BCD4"
           shadowOffset: { width: 0, height: 0 },
           shadowOpacity,
           shadowRadius: 12,
@@ -171,17 +201,19 @@ function ArcContainer({ children }) {
 
 const arcContS = StyleSheet.create({
   wrap: {
-    backgroundColor: "rgba(0,188,212,0.05)",
+    backgroundColor: "rgba(0,196,204,0.05)",  // ✅ was "rgba(0,188,212,0.05)"
     borderWidth: 1.5,
-    borderRadius: 28,       // very rounded, matching the design
+    borderRadius: 28,
     paddingHorizontal: 16,
     paddingVertical: 14,
-    alignSelf: "center",    // shrinks to content width
+    alignSelf: "center",
     flexDirection: "row",
     alignItems: "center",
   },
 });
 
+// ═════════════════════════════════════════════════════════════════════════════
+// Main component — logic/JSX/props UNCHANGED
 // ═════════════════════════════════════════════════════════════════════════════
 export default function StoryCollectionArc({
   levelGames = [],
@@ -189,12 +221,9 @@ export default function StoryCollectionArc({
   completedStoryCount = 0,
   totalStories = 8,
   compact = false,
-  // Optional overrides — used by StoryFinishOverlay which has no levelGames context
   overrideCount = null,
   overrideTotal = null,
 }) {
-  // compact=true  → 46px nodes (LockedGameModal)
-  // compact=false → 64px nodes (standalone)
   const nodeSize = compact ? (isTablet ? 56 : 46) : (isTablet ? 74 : 64);
   const lineW    = compact ? 20 : (isTablet ? 28 : 24);
 
@@ -205,7 +234,6 @@ export default function StoryCollectionArc({
   let doneCount = 0;
 
   if (overrideCount !== null) {
-    // Direct override — used by StoryFinishOverlay (no levelGames available)
     doneCount = Math.min(overrideCount, nodeCount);
   } else if (slotIndex === 0) {
     doneCount = slot0 ? Math.min(slot0.storiesCompletedInGroup, STORIES_PER_GOAL) : 0;

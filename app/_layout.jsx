@@ -1,3 +1,14 @@
+// app/_layout.jsx
+//
+// BRAND UPDATE — feature/brand-guidelines-v2
+//   ✅ All retired colour tokens replaced with new theme tokens:
+//      COLORS.darkBg        → COLORS.background
+//      COLORS.teal          → COLORS.primary (cyan — teal is now Describe activity)
+//      COLORS.borderTeal    → COLORS.borderPrimary
+//      COLORS.textPrimary   → COLORS.textPrimary (same name, new value #FFFFFF)
+//      "#08081a" hardcoded  → COLORS.background
+//   ✅ All other logic, providers, and Stack config unchanged
+
 import { Stack } from "expo-router";
 import { UserProvider, useUser } from "./_contexts/UserContext";
 import { StoryActivityProvider } from "./_contexts/StoryActivityContext";
@@ -41,8 +52,6 @@ function AppProviders({ children }) {
   const userAccountId = userAccount?.id ?? null;
 
   return (
-    // RevenueCatProvider sits inside UserProvider (needs userAccountId)
-    // and outside SubscriptionProvider (subscription refresh triggers after RC purchase)
     <RevenueCatProvider userAccountId={userAccountId} isLoggedIn={isLoggedIn}>
       <SubscriptionProvider isLoggedIn={isLoggedIn}>
         <LevelAccessProvider>
@@ -63,8 +72,8 @@ const RootLayout = () => {
   const router = useRouter();
 
   const [fontsLoaded] = useFonts({
-    CoText: require("../assets/fonts/Co-Text.otf"),
-    "CoText-Bold": require("../assets/fonts/Co-Text-Bold.otf"),
+    CoText:         require("../assets/fonts/Co-Text.otf"),
+    "CoText-Bold":  require("../assets/fonts/Co-Text-Bold.otf"),
     "CoText-Light": require("../assets/fonts/Co-Text-Light.otf"),
   });
 
@@ -100,12 +109,15 @@ const RootLayout = () => {
                 title: "Story",
                 headerBackTitle: "",
                 animation: "slide_from_right",
-                headerStyle: { backgroundColor: COLORS.darkBg },
-                headerTitleStyle: {
-                  color: COLORS.textPrimary,
-                  fontWeight: "bold",
+                headerStyle: {
+                  backgroundColor: COLORS.background,     // ✅ was COLORS.darkBg
                 },
-                headerTintColor: COLORS.teal,
+                headerTitleStyle: {
+                  color:      COLORS.textPrimary,          // ✅ same name, new value #FFFFFF
+                  fontFamily: "CoText-Bold",               // ✅ explicit font — no fontWeight
+                },
+                headerTintColor: COLORS.primary,           // ✅ was COLORS.teal (now Describe activity)
+                                                           //    COLORS.primary = cyan = correct for nav
               }}
             />
 
@@ -114,18 +126,11 @@ const RootLayout = () => {
               options={{
                 headerShown: false,
                 animation: "slide_from_right",
-                contentStyle: { backgroundColor: "#08081a" },
+                contentStyle: {
+                  backgroundColor: COLORS.background,     // ✅ was hardcoded "#08081a"
+                },
               }}
             />
-
-            {/* <Stack.Screen
-              name="features/user"
-              options={{
-                headerShown: false,
-                animation: "slide_from_left", // user/_layout.jsx handles its own animation
-                gestureEnabled: false,
-              }}
-            /> */}
 
             <Stack.Screen
               name="features/user/account"
@@ -135,16 +140,16 @@ const RootLayout = () => {
                 headerBackTitle: "",
                 animation: "slide_from_left",
                 headerStyle: {
-                  backgroundColor: COLORS.darkBg,
+                  backgroundColor:   COLORS.background,   // ✅ was COLORS.darkBg
                   borderBottomWidth: 1,
-                  borderBottomColor: COLORS.borderTeal,
+                  borderBottomColor: COLORS.borderPrimary, // ✅ was COLORS.borderTeal
                 },
                 headerTitleStyle: {
-                  color: COLORS.textPrimary,
-                  fontSize: 20,
-                  fontWeight: "bold",
+                  color:      COLORS.textPrimary,          // ✅ #FFFFFF
+                  fontSize:   20,
+                  fontFamily: "CoText-Bold",               // ✅ explicit font — no fontWeight
                 },
-                headerTintColor: COLORS.teal,
+                headerTintColor:    COLORS.primary,        // ✅ was COLORS.teal → now cyan
                 headerShadowVisible: true,
                 headerRight: () => <HeaderPlanBadge />,
               }}
@@ -155,7 +160,9 @@ const RootLayout = () => {
               options={{
                 headerShown: false,
                 animation: "slide_from_right",
-                contentStyle: { backgroundColor: "#08081a" },
+                contentStyle: {
+                  backgroundColor: COLORS.background,     // ✅ was hardcoded "#08081a"
+                },
               }}
             />
 
@@ -164,7 +171,9 @@ const RootLayout = () => {
               options={{
                 headerShown: false,
                 animation: "slide_from_right",
-                contentStyle: { backgroundColor: "#08081a" },
+                contentStyle: {
+                  backgroundColor: COLORS.background,     // ✅ was hardcoded "#08081a"
+                },
               }}
             />
 
@@ -172,7 +181,7 @@ const RootLayout = () => {
               name="games"
               options={{
                 headerShown: false,
-                animation: "slide_from_bottom", // games/_layout.jsx handles its own animation
+                animation: "slide_from_bottom",
                 gestureEnabled: false,
               }}
             />
@@ -181,7 +190,7 @@ const RootLayout = () => {
               name="features/levels"
               options={{
                 headerShown: false,
-                animation: "none", // levels/_layout.jsx handles its own animation
+                animation: "none",
                 gestureEnabled: false,
               }}
             />
@@ -191,7 +200,9 @@ const RootLayout = () => {
               options={{
                 headerShown: false,
                 animation: "slide_from_left",
-                contentStyle: { backgroundColor: "#08081a" },
+                contentStyle: {
+                  backgroundColor: COLORS.background,     // ✅ was hardcoded "#08081a"
+                },
               }}
             />
 
@@ -200,7 +211,9 @@ const RootLayout = () => {
               options={{
                 headerShown: false,
                 animation: "slide_from_left",
-                contentStyle: { backgroundColor: "#08081a" },
+                contentStyle: {
+                  backgroundColor: COLORS.background,     // ✅ was hardcoded "#08081a"
+                },
               }}
             />
 
@@ -209,7 +222,9 @@ const RootLayout = () => {
               options={{
                 headerShown: false,
                 animation: "slide_from_right",
-                contentStyle: { backgroundColor: "#08081a" },
+                contentStyle: {
+                  backgroundColor: COLORS.background,     // ✅ was hardcoded "#08081a"
+                },
               }}
             />
 

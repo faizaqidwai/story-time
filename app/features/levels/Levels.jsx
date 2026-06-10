@@ -33,9 +33,9 @@ const { width: SW, height: SH } = Dimensions.get("window");
 const STATUS_BAR_HEIGHT =
   Platform.OS === "android" ? (StatusBar.currentHeight ?? 24) : 50;
 
-const TEAL = "#00BCD4";
-const YELLOW = "#FFD54F";
-const DARK_BG = "#08081a";
+const TEAL = "#00C4CC";   // brand cyan §3.1
+const YELLOW = "#F5A623";  // brand amber §3.1
+const DARK_BG = "#0A1628"; // brand background §5.1
 const TOTAL_LEVELS = 20;
 const COLS = 3;
 const BADGE_SIZE = Math.floor((SW - 48) / COLS);
@@ -86,16 +86,16 @@ function LevelBadgeGrid({ level, isCurrent, isLoaded, visualState, onPress }) {
   const isUnlocked = !isLocked;
 
   const ringColor = isCurrent
-    ? "rgba(0,188,212,0.55)"
+    ? "rgba(0,196,204,0.55)"
     : isLoaded && !isCurrent
-      ? "rgba(255,213,79,0.45)"
+      ? "rgba(245,166,35,0.45)"
       : isUnlocked
-        ? "rgba(0,188,212,0.28)"
+        ? "rgba(0,196,204,0.28)"
         : "rgba(255,255,255,0.06)";
 
-  const innerBg = isLocked ? "#0a0b18" : "#10122a";
-  const labelColor = isLocked ? "rgba(0,188,212,0.25)" : TEAL;
-  const numberColor = isLocked ? "rgba(224,247,250,0.18)" : "#E0F7FA";
+  const innerBg = isLocked ? "#0A1628" : "#0A1628";
+  const labelColor = isLocked ? "rgba(0,196,204,0.25)" : TEAL;
+  const numberColor = isLocked ? "rgba(255,255,255,0.18)" : "#FFFFFF";
   const lightShade = isLocked
     ? "rgba(255,255,255,0.02)"
     : "rgba(255,255,255,0.055)";
@@ -147,10 +147,10 @@ function LevelBadgeGrid({ level, isCurrent, isLoaded, visualState, onPress }) {
           <View
             style={[
               gridS.modePill,
-              { borderColor: "#4DD0E166" + "66", backgroundColor: "#4DD0E122" },
+              { borderColor: "#00C4CC66" + "66", backgroundColor: "#00C4CC22" },
             ]}
           >
-            <Text style={[gridS.modePillText, { color: "#4DD0E1" }]}>
+            <Text style={[gridS.modePillText, { color: "#00C4CC" }]}>
               CURRENT
             </Text>
           </View>
@@ -208,7 +208,7 @@ const gridS = StyleSheet.create({
     width: RING,
     height: RING,
     borderRadius: RING / 2,
-    backgroundColor: "#0d0f22",
+    backgroundColor: "#0A1628",
     shadowColor: "#000",
     shadowOffset: { width: 0, height: 3 },
     shadowOpacity: 0.8,
@@ -265,7 +265,7 @@ const gridS = StyleSheet.create({
     left: 0,
     right: 0,
     bottom: 0,
-    backgroundColor: "rgba(20,22,35,0.55)",
+    backgroundColor: "rgba(10,16,38,0.55)",
     zIndex: 1,
   },
   modePill: {
@@ -293,7 +293,7 @@ function Legend() {
       {[
         { color: TEAL, label: "Your Level" },
         { color: YELLOW, label: "Viewing" },
-        { color: "#4DD0E1", label: "Read Only" },
+        { color: "#00C4CC", label: "Read Only" },
         { color: "rgba(255,255,255,0.2)", label: "Locked" },
       ].map((item) => (
         <View key={item.label} style={legS.item}>
@@ -415,7 +415,7 @@ const screenS = StyleSheet.create({
   glow2: {
     width: 200,
     height: 200,
-    backgroundColor: "#9652D9",
+    backgroundColor: "#7B2FBE",
     bottom: 80,
     left: -40,
   },
@@ -427,24 +427,24 @@ const screenS = StyleSheet.create({
     paddingHorizontal: pad.lg, // 20 → pad.lg (20/28)
     paddingBottom: pad.sm, // 12 → pad.sm (12/16)
     borderBottomWidth: 1,
-    borderBottomColor: "rgba(0,188,212,0.12)",
+    borderBottomColor: "rgba(0,196,204,0.12)",
   },
   headerRight: { width: size.hitMd }, // 40 → size.hitMd (40/52)
   headerCenter: { alignItems: "center", gap: pad.xs }, // gap 5 → pad.xs (4/6)
   title: {
     fontFamily: FONTS.bold,
     fontSize: font.xxl, // 22 → font.xxl (24/32)
-    color: "#E0F7FA",
+    color: "#FFFFFF",
     letterSpacing: 0.4,
-    textShadowColor: "rgba(0,188,212,0.5)",
+    textShadowColor: "rgba(0,196,204,0.5)",
     textShadowOffset: { width: 0, height: 0 },
     textShadowRadius: 10,
   },
   currentPill: {
-    backgroundColor: "rgba(0,188,212,0.12)",
+    backgroundColor: "rgba(0,196,204,0.12)",
     borderRadius: radius.sm, // 10 → radius.sm (10/14)
     borderWidth: 1,
-    borderColor: "rgba(0,188,212,0.35)",
+    borderColor: "rgba(0,196,204,0.35)",
     paddingHorizontal: pad.s, // 10 → pad.s (8/11)
     paddingVertical: pad.xs, // 3 → pad.xs (4/6)
   },
@@ -467,7 +467,7 @@ const screenS = StyleSheet.create({
   closeIcon: {
     fontFamily: FONTS.regular,
     fontSize: font.md, // 14 → font.md (15/19)
-    color: "rgba(176,190,197,0.8)",
+    color: "rgba(136,153,170,0.8)",
   },
   handle: {
     width: 36,

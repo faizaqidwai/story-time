@@ -17,6 +17,16 @@
  *      taps the scrim and the Continue button in quick succession.
  */
 
+
+// BRAND UPDATE — feature/brand-guidelines-v2
+// COLOUR-ONLY — zero functional/logic/animation changes:
+//   ✅ Local C{} colour object removed — COLORS imported from theme
+//   ✅ Old cyan #00BCD4 → COLORS.primary (#00C4CC)
+//   ✅ Old yellow #FFD54F → COLORS.amber (#F5A623)
+//   ✅ All rgba(0,188,212,…) → rgba(0,196,204,…) correct cyan hex
+//   ✅ All rgba(255,213,79,…) → rgba(245,166,35,…) correct amber hex
+//   ✅ Old text colours → COLORS.textPrimary / COLORS.textMuted
+
 import React, { useRef, useEffect, useState, useCallback } from "react";
 import { Audio } from "expo-av";
 import {
@@ -31,7 +41,7 @@ import {
   TouchableWithoutFeedback,
   Modal,
 } from "react-native";
-import { FONTS } from "../../../theme";
+import { FONTS, COLORS } from "../../../theme";
 import { font, pad, radius, size } from "../../../theme/tokens";
 import { Image as ExpoImage } from "expo-image";
 import Svg, {
@@ -48,20 +58,7 @@ import GAME_COVERS from "../../../gamification/constants/gameCoverImages";
 
 const { width: SW, height: SH } = Dimensions.get("window");
 
-const C = {
-  bg: "rgba(8,8,26,0.96)",
-  teal: "#00BCD4",
-  tealGlow: "rgba(0,188,212,0.35)",
-  tealBorder: "rgba(0,188,212,0.5)",
-  yellow: "#FFD54F",
-  yellowGlow: "rgba(255,213,79,0.35)",
-  yellowBorder: "rgba(255,213,79,0.6)",
-  purple: "#B39DDB",
-  purpleGlow: "rgba(179,157,219,0.35)",
-  purpleBorder: "rgba(179,157,219,0.55)",
-  textPri: "#E0F7FA",
-  textMuted: "#7a9aaa",
-};
+// Brand colours from theme — COLORS imported above
 
 const SHEET_HEIGHT = SH * 0.72;
 const TOP_CLEAR = SH - SHEET_HEIGHT;
@@ -132,15 +129,15 @@ function WordChip({ word, delay }) {
 }
 const wS = StyleSheet.create({
   chip: {
-    backgroundColor: "rgba(0,188,212,0.15)",
+    backgroundColor: "rgba(0,196,204,0.15)",
     borderWidth: 1.5,
-    borderColor: C.tealBorder,
+    borderColor: COLORS.primaryBorder,
     borderRadius: radius.pill,
     paddingHorizontal: pad.sm,
     paddingVertical: pad.xs,
     margin: pad.xs,
   },
-  text: { fontFamily: FONTS.bold, color: C.teal, fontSize: font.md },
+  text: { fontFamily: FONTS.bold, color: COLORS.primary, fontSize: font.md },
 });
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -353,7 +350,7 @@ function ScratchGameCard({ slot, progressAfter, onFullyRevealed }) {
   }, []);
 
   const tearPath = buildTearPath(displayProgress);
-  const gradient = slot?.gradient ?? ["#00BCD4", "#0097A7"];
+  const gradient = slot?.gradient ?? [COLORS.primary, COLORS.primaryDark];
   const MiniComponent = slot?.gameId ? GAME_ANIMATIONS[slot.gameId] : null;
   const coverSource = slot?.gameId ? (GAME_COVERS[slot.gameId] ?? null) : null;
 
@@ -458,8 +455,8 @@ const scrS = StyleSheet.create({
     height: CARD_H + 24,
     borderRadius: radius.xl + 6,
     borderWidth: 2.5,
-    borderColor: "rgba(255, 213, 79, 0.75)",
-    shadowColor: C.yellow,
+    borderColor: "rgba(245,166,35,0.75)",
+    shadowColor: COLORS.amber,
     shadowOffset: { width: 0, height: 0 },
     shadowOpacity: 1,
     shadowRadius: 18,
@@ -470,7 +467,7 @@ const scrS = StyleSheet.create({
     height: CARD_H,
     borderRadius: radius.xl,
     overflow: "hidden",
-    shadowColor: "#FFD54F",
+    shadowColor: COLORS.amber,
     shadowOffset: { width: 0, height: 6 },
     shadowOpacity: 0.6,
     shadowRadius: 18,
@@ -652,10 +649,10 @@ const pS = StyleSheet.create({
   heading: {
     fontFamily: FONTS.bold,
     fontSize: font.xl,
-    color: C.textPri,
+    color: COLORS.textPrimary,
     marginBottom: pad.lg,
     letterSpacing: 0.3,
-    textShadowColor: "rgba(0,188,212,0.35)",
+    textShadowColor: "rgba(0,196,204,0.35)",
     textShadowOffset: { width: 0, height: 0 },
     textShadowRadius: 10,
   },
@@ -669,14 +666,14 @@ const pS = StyleSheet.create({
   subLabel: {
     fontFamily: FONTS.regular,
     fontSize: font.lg,
-    color: C.textMuted,
+    color: COLORS.textMuted,
     marginTop: pad.xs,
     marginBottom: pad.sm,
   },
   scratchHint: {
     fontFamily: FONTS.regular,
     fontSize: font.md,
-    color: C.textMuted,
+    color: COLORS.textMuted,
     textAlign: "center",
     paddingHorizontal: pad.sm,
     lineHeight: font.md * 1.5,
@@ -694,7 +691,7 @@ const pS = StyleSheet.create({
     borderWidth: 1.5,
     paddingHorizontal: pad.xxl,
     paddingVertical: pad.sm,
-    backgroundColor: "rgba(0,188,212,0.1)",
+    backgroundColor: "rgba(0,196,204,0.1)",
   },
   continueBtnText: { fontFamily: FONTS.bold, fontSize: font.md },
   arcWrap: {
@@ -796,27 +793,27 @@ const StoryFinishOverlay = ({
     const base = [
       {
         image: require("../../../../assets/img/coins-collected.png"),
-        accentColor: C.yellow,
-        glowColor: C.yellowGlow,
-        borderColor: C.yellowBorder,
+        accentColor: COLORS.amber,
+        glowColor: COLORS.amberGlow,
+        borderColor: COLORS.amberBorder,
         countLabel: `${coinsEarned} Coins`,
         subLabel: "coins earned! 🪙",
         words: null,
       },
       {
         image: require("../../../../assets/img/diamonds-collected.png"),
-        accentColor: C.purple,
-        glowColor: C.purpleGlow,
-        borderColor: C.purpleBorder,
+        accentColor: COLORS.purple,
+        glowColor: "rgba(123,47,190,0.35)",
+        borderColor: "rgba(123,47,190,0.55)",
         countLabel: `${diamondsEarned} Diamonds`,
         subLabel: "diamonds earned! 💎",
         words: null,
       },
       {
         image: require("../../../../assets/img/words-collected.png"),
-        accentColor: C.teal,
-        glowColor: C.tealGlow,
-        borderColor: C.tealBorder,
+        accentColor: COLORS.primary,
+        glowColor: COLORS.primaryGlow,
+        borderColor: COLORS.primaryBorder,
         countLabel: `${wordsCollected} Words`,
         subLabel: "words learned! 📚",
         words:
@@ -827,9 +824,9 @@ const StoryFinishOverlay = ({
     if (slot && slot.storiesCompletedBefore < 3) {
       base.push({
         isScratchStep: true,
-        accentColor: C.yellow,
-        glowColor: C.yellowGlow,
-        borderColor: C.yellowBorder,
+        accentColor: COLORS.amber,
+        glowColor: COLORS.amberGlow,
+        borderColor: COLORS.amberBorder,
         countLabel: null,
         subLabel: null,
         words: null,
@@ -1060,13 +1057,13 @@ const styles = StyleSheet.create({
     left: 0,
     right: 0,
     height: SHEET_HEIGHT,
-    backgroundColor: C.bg,
+    backgroundColor: "rgba(10,16,38,0.96)",
     borderTopLeftRadius: radius.xxl,
     borderTopRightRadius: radius.xxl,
     borderTopWidth: 1.5,
     borderLeftWidth: 1.5,
     borderRightWidth: 1.5,
-    borderColor: "rgba(0,188,212,0.25)",
+    borderColor: "rgba(0,196,204,0.25)",
     alignItems: "center",
     paddingTop: pad.s,
     shadowColor: "#000",

@@ -9,6 +9,9 @@
 //   words    — challengeWords array from storySession
 //   onDone   — () => void  called when all words have been seen
 
+// BRAND UPDATE — feature/brand-guidelines-v2 — COLOUR-ONLY changes:
+// All logic, animation, layout, props unchanged.
+
 import React, { useRef, useEffect, useState, useCallback } from "react";
 import {
   View,
@@ -41,21 +44,21 @@ const POPUP_H = isTablet
   : SH * 0.72;
 
 const C = {
-  bg: "rgba(6,7,20,0.98)",
+  bg: "rgba(10,16,38,0.98)",
   surface: "rgba(255,255,255,0.05)",
   surfaceHigh: "rgba(255,255,255,0.09)",
-  teal: "#00BCD4",
-  tealDim: "rgba(0,188,212,0.15)",
-  tealBorder: "rgba(0,188,212,0.35)",
-  yellow: "#FFD54F",
-  yellowDim: "rgba(255,213,79,0.12)",
-  yellowBorder: "rgba(255,213,79,0.4)",
-  purple: "#9652D9",
-  purpleDim: "rgba(150,82,217,0.18)",
-  purpleBorder: "rgba(150,82,217,0.4)",
-  textPri: "#E0F7FA",
-  textSec: "#B0BEC5",
-  textMuted: "#546E7A",
+  teal: "#00C4CC",
+  tealDim: "rgba(0,196,204,0.15)",
+  tealBorder: "rgba(0,196,204,0.35)",
+  yellow: "#F5A623",
+  yellowDim: "rgba(245,166,35,0.12)",
+  yellowBorder: "rgba(245,166,35,0.4)",
+  purple: "#7B2FBE",
+  purpleDim: "rgba(123,47,190,0.18)",
+  purpleBorder: "rgba(123,47,190,0.4)",
+  textPri: "#FFFFFF",
+  textSec: "#8899AA",
+  textMuted: "#8899AA",
 };
 console.log("is tablet: " + isTablet);
 console.log("Device type:", Device.deviceType);
@@ -102,7 +105,7 @@ const dotS = StyleSheet.create({
     shadowRadius: 6,
     elevation: 4,
   },
-  dotDone: { backgroundColor: "rgba(0,188,212,0.4)" },
+  dotDone: { backgroundColor: "rgba(0,196,204,0.4)" },
 });
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -249,7 +252,7 @@ const wS = StyleSheet.create({
     width: 110,
     height: 110,
     borderRadius: 55,
-    backgroundColor: "rgba(0,188,212,0.1)",
+    backgroundColor: "rgba(0,196,204,0.1)",
     borderWidth: 2.5,
     borderColor: C.tealBorder,
     alignItems: "center",
@@ -280,7 +283,7 @@ const wS = StyleSheet.create({
     color: C.yellow,
     letterSpacing: 1.5,
     textTransform: "uppercase",
-    textShadowColor: "rgba(255,213,79,0.4)",
+    textShadowColor: "rgba(245,166,35,0.4)",
     textShadowOffset: { width: 0, height: 0 },
     textShadowRadius: 10,
     textAlign: "center",
@@ -689,11 +692,11 @@ const s = StyleSheet.create({
   popup: {
     width: POPUP_W,
     maxHeight: POPUP_H,
-    backgroundColor: "#0f0f2a",
+    backgroundColor: "#0A1628",
     borderRadius: radius.xxl,
     borderWidth: 1.5,
     borderColor: C.tealBorder,
-    borderTopColor: "rgba(0,188,212,0.5)",
+    borderTopColor: "rgba(0,196,204,0.5)",
     overflow: "hidden",
     shadowColor: C.teal,
     shadowOffset: { width: 0, height: 0 },
@@ -720,7 +723,7 @@ const s = StyleSheet.create({
     fontSize: font.xl,
     color: C.textPri,
     letterSpacing: 0.3,
-    textShadowColor: "rgba(0,188,212,0.4)",
+    textShadowColor: "rgba(0,196,204,0.4)",
     textShadowOffset: { width: 0, height: 0 },
     textShadowRadius: 10,
   },
@@ -785,7 +788,7 @@ const s = StyleSheet.create({
   navBtnPrimaryText: {
     fontFamily: FONTS.bold,
     fontSize: font.lg,
-    color: "#06070f",
+    color: "#0A1628",
     // fontWeight: 700,
     letterSpacing: 0.3,
   },

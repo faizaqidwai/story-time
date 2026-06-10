@@ -1,20 +1,26 @@
 // ─────────────────────────────────────────────────────────────
 // theme-mobile.js  —  Sizing tokens for phone-sized screens
 // Covers: iPhone, Android phones (width < 768pt)
+//
+// BRAND UPDATE — feature/brand-guidelines-v2
+//   ✅ splash.titleFontSize — DEPRECATED (title is now an image,
+//      not a Text node). Value kept so no crash if referenced
+//      elsewhere, but it has no visual effect on the splash screen.
+//   ✅ All other values unchanged — sizing tokens are brand-neutral.
 // ─────────────────────────────────────────────────────────────
 
 export const DEVICE_SIZES = {
   // ── Splash / index ──────────────────────────────────────────
   splash: {
-    logoSizeRatio: 0.52, // multiplied by screen width
-    titleFontSize: 42,
+    logoSizeRatio: 0.52,    // multiplied by screen width
+    titleFontSize: 42,      // DEPRECATED — title is now storytime-title-bg.png image
     sub1FontSize: 17,
     sub2FontSize: 13,
   },
 
   // ── IntroCarousel ───────────────────────────────────────────
   carousel: {
-    topHeightRatio: 0.28, // fraction of screen height
+    topHeightRatio: 0.28,
     botHeightRatio: 0.7,
     titleFontSize: 32,
     titleLineHeight: 39,
@@ -32,21 +38,18 @@ export const DEVICE_SIZES = {
     nextBtnPaddingV: 13,
     getStartedPaddingH: 32,
     getStartedPaddingV: 14,
-    // Level badge mini
     badgeRingSize: 88,
     badgeInnerSize: 74,
     badgeLvlLabelSize: 10,
     badgeLvlNumSize: 28,
     badgeBarWidth: 78,
     badgeMarginV: 5,
-    // Activity badge mini
     activityCardPaddingV: 14,
     activityCardPaddingH: 14,
     activityIconBoxSize: 60,
     activityIconSize: 38,
     activityLabelFontSize: 18,
     activityMarginV: 7,
-    // Story card mini (width computed from HALF_W)
     storyCardMarginBottom: 12,
     storyCardTitleFontSize: 13,
     storyCardTitleLineHeight: 17,
@@ -54,12 +57,10 @@ export const DEVICE_SIZES = {
     storyCardIntroLineHeight: 14,
     storyDotSize: 10,
     storyConnectorWidth: 12,
-    // Desc lines
     descLineFirstFontSize: 22,
     descLineFirstLineHeight: 30,
     descLineBodyFontSize: 16,
     descLineBodyLineHeight: 23,
-    // Slide panel layout
     panelPaddingH: 22,
     panelPaddingTop_ios: 52,
     panelPaddingTop_android: 32,
@@ -67,7 +68,6 @@ export const DEVICE_SIZES = {
     panelHalfPaddingBottom: 88,
     accentBarWidth: 44,
     accentBarHeight: 4,
-    // S1 desc/vis split ratios
     s1DescRatio: 0.65,
     s1VisRatio: 0.35,
   },
@@ -112,7 +112,7 @@ export const DEVICE_SIZES = {
     stepHintFontSize: 13,
     stepHintMarginBottom: 14,
     cardBorderRadius: 28,
-    cardWidth: null, // computed: width - 32
+    cardWidth: null,
     cardWidthOffset: 32,
     dialogueFontSize: 21,
     dialogueLineHeight: 30,
@@ -165,10 +165,7 @@ export const DEVICE_SIZES = {
 
   // ── Home ─────────────────────────────────────────────────────
   home: {
-    // Header / layout
     headerHeight: 190,
-
-    // Level badge
     levelBadgeRingSize: 82,
     levelBadgeInnerSize: 68,
     levelBadgeLabelFontSize: 8,
@@ -180,11 +177,7 @@ export const DEVICE_SIZES = {
     levelBadgeBarHeight: 6,
     levelBadgeBarMarginTop: 5,
     levelBadgeBarDotSize: 12,
-
-    // Profile icon
     profileIconSize: 60,
-
-    // Currency / side icons
     sideIconSize: 60,
     badgeMinWidth: 26,
     badgeHeight: 26,
@@ -193,21 +186,15 @@ export const DEVICE_SIZES = {
     badgeFontSize: 11,
     badgeTop: -6,
     badgeRight: -6,
-
-    // Side layout
     sideLayerLeft: 20,
     sideLayerRight: 20,
     sideLayerTop: 8,
     sideRowMarginBottom: 25,
     levelBadgeAnchorTop: 40,
-
-    // Section titles
     sectionTitleFontSize: 20,
     sectionTitleMarginBottom: 4,
     sectionTaglineFontSize: 12,
     sectionTaglineMarginBottom: 10,
-
-    // Game cards
     gameCardWidth: 160,
     gameCardHeight: 200,
     gameCardBorderRadius: 20,
@@ -219,8 +206,6 @@ export const DEVICE_SIZES = {
     gameCardPlayBadgeFontSize: 11,
     gameCardTextPaddingH: 12,
     gameCardTextPaddingBottom: 14,
-
-    // Access mode banner
     bannerMarginH: 15,
     bannerMarginBottom: 8,
     bannerBorderRadius: 14,
@@ -233,8 +218,6 @@ export const DEVICE_SIZES = {
     bannerBtnPaddingH: 10,
     bannerBtnPaddingV: 5,
     bannerBtnFontSize: 11,
-
-    // View-only locked state
     viewOnlyPaddingV: 60,
     viewOnlyPaddingH: 32,
     viewOnlyGap: 14,
@@ -247,8 +230,6 @@ export const DEVICE_SIZES = {
     goCurrentBtnPaddingV: 13,
     goCurrentBtnFontSize: 14,
     goCurrentBtnMarginTop: 4,
-
-    // Tutorial overlay
     tutorialTooltipBorderRadius: 18,
     tutorialTooltipPaddingV: 16,
     tutorialTooltipPaddingH: 18,
@@ -272,8 +253,6 @@ export const DEVICE_SIZES = {
     tutorialNavBtnMinWidth: 100,
     tutorialNavBtnFontSize: 18,
     tutorialStepCounterFontSize: 15,
-
-    // Background circles
     bgCircle1Size: 350,
     bgCircle1Top: -80,
     bgCircle1Right: -80,
@@ -283,19 +262,14 @@ export const DEVICE_SIZES = {
     bgCircle3Size: 150,
     bgCircle3Bottom: 200,
     bgCircle3Right: -40,
-
-    // Mini bird (game card mascot)
     miniBirdContainerHeight: 72,
     miniBirdBodyWidth: 68,
     miniBirdBodyHeight: 50,
-
-    // Mini cat (game card mascot)
     miniCatContainerSize: 72,
-
-    // Profile icon sizes (internal elements)
     profileIconOuterSize: 60,
     profileIconLetterFontSize: 10,
   },
+
   // ── MainStoryCard ─────────────────────────────────────────────
   mainStoryCard: {
     cardMaxWidth: 420,
@@ -303,28 +277,20 @@ export const DEVICE_SIZES = {
     cardMarginVertical: 20,
     cardBorderRadius: 24,
     cardPaddingBottom: 15,
-
-    // Image frame
     imageFrameMarginH: 16,
     imageFrameMarginTop: 16,
     imageFrameMarginBottom: 4,
     imageFrameBorderRadius: 16,
     imageFrameHeight: 180,
-
-    // Title overlay
     titleFontSize: 20,
     titleLineHeight: 26,
     titleOverlayPaddingTop: 28,
     titleOverlayPaddingBottom: 12,
     titleOverlayPaddingH: 14,
-
-    // Corner accents
     cornerSize: 16,
     cornerBorderWidth: 2.5,
     cornerBorderRadius: 4,
     cornerInset: 4,
-
-    // NEW badge
     newBadgeTop: 10,
     newBadgeRight: 10,
     newBadgeBorderRadius: 8,
@@ -332,15 +298,11 @@ export const DEVICE_SIZES = {
     newBadgePaddingV: 3,
     newBadgeFontSize: 9,
     newBadgeLetterSpacing: 1.5,
-
-    // Description
     descFontSize: 14,
     descLineHeight: 18,
     descPaddingH: 20,
     descPaddingTop: 12,
     descPaddingBottom: 10,
-
-    // Steps row
     stepsRowMarginH: 14,
     stepsRowMarginBottom: 16,
     stepsRowGap: 8,
@@ -358,8 +320,6 @@ export const DEVICE_SIZES = {
     checkBadgeFontSize: 10,
     activeDotBottom: 6,
     activeDotSize: 6,
-
-    // Play button
     tapHintBorderRadius: 30,
     tapHintPaddingH: 36,
     tapHintPaddingV: 16,
@@ -374,35 +334,25 @@ export const DEVICE_SIZES = {
     cardHeight: 215,
     imageHeight: 135,
     cardMargin: 10,
-
-    // Top-left badge
     topLeftBadgeSize: 34,
     topLeftBadgeBorderRadius: 17,
     topLeftBadgeOffset: -10,
     tickFontSize: 18,
-
-    // Title
     titleFontSize: 16,
     titleLineHeight: 17,
     titlePaddingH: 10,
     titlePaddingBottom: 8,
     titlePaddingTop: 10,
-
-    // Completed ribbon
     ribbonTop: 8,
     ribbonPaddingH: 8,
     ribbonPaddingV: 3,
     ribbonBorderRadius: 8,
     ribbonFontSize: 10,
-
-    // Intro
     introFontSize: 12,
     introLineHeight: 14,
     introPaddingH: 10,
     introMarginTop: 8,
     introMarginBottom: 2,
-
-    // Steps row
     stepsRowPaddingH: 8,
     stepsRowPaddingV: 7,
     stepsRowMarginH: 10,
@@ -413,8 +363,6 @@ export const DEVICE_SIZES = {
     stepImageSize: 20,
     stepDotSize: 4,
     stepDotMarginH: 3,
-
-    // Resume label
     resumeLabelFontSize: 9,
     resumeLabelMarginTop: 4,
     resumeLabelMarginBottom: 2,
@@ -422,7 +370,6 @@ export const DEVICE_SIZES = {
 
   // ── Account screen ────────────────────────────────────────
   account: {
-    // Option cards (top row)
     optionCardPaddingV: 22,
     optionCardPaddingH: 10,
     optionCardBorderRadius: 18,
@@ -433,30 +380,20 @@ export const DEVICE_SIZES = {
     optionSectionPaddingH: 20,
     optionSectionPaddingTop: 16,
     optionSectionPaddingBottom: 20,
-
-    // "Who's Reading" title
     titleFontSize: 32,
     titleMarginTop: 16,
     titleMarginBottom: 8,
-
-    // Current profile banner
     bannerPadding: 12,
     bannerMarginH: 20,
     bannerMarginTop: 16,
     bannerMarginBottom: 8,
     bannerBorderRadius: 10,
     bannerTextFontSize: 16,
-
-    // Profiles list
     listPaddingH: 20,
-
-    // Add button
     addBtnBorderRadius: 20,
     addBtnPadding: 20,
     addBtnMarginTop: 10,
     addBtnFontSize: 18,
-
-    // Account section box
     accountSectionMarginH: 20,
     accountSectionMarginTop: 8,
     accountSectionMarginBottom: 24,
@@ -466,8 +403,6 @@ export const DEVICE_SIZES = {
     accountSectionTitleFontSize: 18,
     accountSectionHeaderGap: 8,
     accountSectionHeaderMarginBottom: 16,
-
-    // Credentials form
     credentialsHintFontSize: 13,
     credentialsHintLineHeight: 19,
     credentialsInputBorderRadius: 12,
@@ -476,8 +411,6 @@ export const DEVICE_SIZES = {
     credentialsBtnBorderRadius: 12,
     credentialsBtnPaddingV: 14,
     credentialsBtnFontSize: 15,
-
-    // Email linked row
     emailLinkedRowBorderRadius: 12,
     emailLinkedRowPadding: 12,
     emailLinkedRowGap: 12,
@@ -486,8 +419,6 @@ export const DEVICE_SIZES = {
     emailLinkedIconFontSize: 15,
     emailLinkedLabelFontSize: 11,
     emailLinkedValueFontSize: 14,
-
-    // Logout
     logoutMarginH: 20,
     logoutMarginTop: 8,
     logoutPaddingV: 16,
@@ -495,8 +426,6 @@ export const DEVICE_SIZES = {
     logoutIconFontSize: 18,
     logoutTextFontSize: 16,
     logoutGap: 10,
-
-    // Modal
     modalOverlayPadding: 20,
     modalBorderRadius: 25,
     modalPadding: 25,
@@ -509,30 +438,26 @@ export const DEVICE_SIZES = {
     modalInputPadding: 15,
     modalInputFontSize: 16,
     modalInputGroupMarginBottom: 20,
-
-    // Age buttons
     ageBtnSize: 42,
     ageBtnBorderRadius: 22,
     ageBtnFontSize: 16,
     ageSectionGap: 12,
     ageSectionMarginTop: 10,
-
-    // Gender buttons
     genderBtnBorderRadius: 24,
     genderBtnPaddingV: 26,
     genderEmojiFontSize: 52,
     genderLabelFontSize: 24,
     genderSectionGap: 20,
     genderSectionMarginTop: 10,
-
-    // Modal actions
     modalActionGap: 10,
     modalActionMarginTop: 20,
     actionBtnPaddingV: 15,
     actionBtnBorderRadius: 12,
     actionBtnFontSize: 16,
   },
+
   // ── Billing screens ───────────────────────────────────────
+  // (all values unchanged — sizing is brand-neutral)
   billing: {
     headerPaddingH: 18,
     headerPaddingBottom: 14,
@@ -541,11 +466,8 @@ export const DEVICE_SIZES = {
     backIconFontSize: 18,
     titleFontSize: 18,
     subtitleFontSize: 12,
-
     scrollPadding: 18,
     scrollPaddingTop: 20,
-
-    // Plan card
     planCardBorderRadius: 20,
     planCardPadding: 18,
     planCardMarginBottom: 20,
@@ -560,15 +482,11 @@ export const DEVICE_SIZES = {
     upgradeBtnBorderRadius: 12,
     upgradeBtnPaddingV: 12,
     upgradeBtnFontSize: 14,
-
-    // Section cards
     sectionBorderRadius: 16,
     sectionPadding: 16,
     sectionMarginBottom: 16,
     sectionTitleFontSize: 13,
     sectionLinkFontSize: 12,
-
-    // Card chip
     cardChipWidth: 44,
     cardChipHeight: 30,
     cardChipBorderRadius: 6,
@@ -579,17 +497,13 @@ export const DEVICE_SIZES = {
     defaultBadgeBorderRadius: 8,
     defaultBadgePaddingH: 8,
     defaultBadgePaddingV: 3,
-
     addCardBtnPaddingV: 14,
     addCardBtnBorderRadius: 12,
     addCardFontSize: 13,
-
     historyHintFontSize: 12,
     historyHintBorderRadius: 10,
     historyHintPadding: 12,
-
-    // Subscription plans screen
-    planCardWidth: 0.8, // fraction of SW
+    planCardWidth: 0.8,
     planCardMargin: 14,
     planCardBorderRadius2: 28,
     planCardPaddingH: 20,
@@ -635,8 +549,6 @@ export const DEVICE_SIZES = {
     cycleBadgeFontSize: 8,
     paginationDotSize: 6,
     paginationDotActiveWidth: 22,
-
-    // Payment method screen
     cardItemBorderRadius: 16,
     cardItemPadding: 16,
     cardItemMarginBottom: 12,
@@ -649,8 +561,6 @@ export const DEVICE_SIZES = {
     addMethodBtnPaddingV: 16,
     addMethodIconFontSize: 20,
     addMethodFontSize: 14,
-
-    // Add card modal
     modalSheetBorderRadius: 24,
     modalSheetPadding: 24,
     modalSheetTitleFontSize: 18,
@@ -668,8 +578,6 @@ export const DEVICE_SIZES = {
     modalSheetActionFontSize: 14,
     modalHandleWidth: 40,
     modalHandleHeight: 4,
-
-    // Billing history
     summaryCardBorderRadius: 16,
     summaryCardPadding: 16,
     summaryCardMarginBottom: 20,
@@ -691,8 +599,6 @@ export const DEVICE_SIZES = {
     emptyIconFontSize: 48,
     emptyTitleFontSize: 18,
     emptySubtitleFontSize: 13,
-
-    // ── BillingHistoryScreen ─────────────────────
     historyHeaderPaddingH: 18,
     historyHeaderPaddingBottom: 14,
     historyBackBtnSize: 38,
@@ -722,8 +628,6 @@ export const DEVICE_SIZES = {
     historyEmptyIconFontSize: 48,
     historyEmptyTitleFontSize: 18,
     historyEmptySubFontSize: 13,
-
-    // ── LevelSelectScreen ────────────────────────
     levelHeaderPaddingH: 18,
     levelHeaderPaddingBottom: 16,
     levelBackBtnSize: 40,
@@ -757,8 +661,6 @@ export const DEVICE_SIZES = {
     levelConfirmBtnHeight: 54,
     levelConfirmBtnBorderRadius: 27,
     levelConfirmTextFontSize: 16,
-
-    // ── PaymentMethodScreen ──────────────────────
     paymentCardBorderRadius: 16,
     paymentCardPadding: 16,
     paymentCardMarginBottom: 12,
@@ -786,7 +688,6 @@ export const DEVICE_SIZES = {
     paymentEmptyIconFontSize: 48,
     paymentEmptyTitleFontSize: 18,
     paymentEmptySubFontSize: 13,
-    // Add card modal
     paymentModalHandleWidth: 40,
     paymentModalHandleHeight: 4,
     paymentModalBorderRadius: 24,
@@ -804,8 +705,6 @@ export const DEVICE_SIZES = {
     paymentModalActionPaddingV: 14,
     paymentModalActionBorderRadius: 12,
     paymentModalActionFontSize: 14,
-
-    // ── PurchaseScreen ───────────────────────────
     purchaseHeaderPaddingH: 18,
     purchaseHeaderPaddingBottom: 16,
     purchaseBackBtnSize: 40,
@@ -869,7 +768,6 @@ export const DEVICE_SIZES = {
     purchaseCheckoutBtnBorderRadius: 27,
     purchaseCheckoutEmojiFontSize: 18,
     purchaseCheckoutTextFontSize: 16,
-    // Add card sheet (same sheet pattern as PaymentMethod)
     purchaseSheetBorderRadius: 24,
     purchaseSheetPadding: 24,
     purchaseSheetTitleFontSize: 18,
@@ -891,12 +789,10 @@ export const DEVICE_SIZES = {
 
   // ── Learning Path screen ──────────────────────────────────
   learningPath: {
-    cardWidth: 0.45, // fraction of SW
+    cardWidth: 0.45,
     cardHeight: 200,
     connectorHeight: 60,
     screenPad: 16,
-
-    // Card internals
     cardBorderRadius: 18,
     cardPaddingTop: 12,
     cardPaddingH: 12,
@@ -916,8 +812,6 @@ export const DEVICE_SIZES = {
     youBadgePaddingV: 4,
     youTxtFontSize: 8,
     youTxtLetterSpacing: 1,
-
-    // Header
     backBtnSize: 38,
     backBtnBorderRadius: 19,
     backIconFontSize: 18,
@@ -927,14 +821,10 @@ export const DEVICE_SIZES = {
     lvlPillPaddingH: 10,
     lvlPillPaddingV: 5,
     lvlPillFontSize: 11,
-
-    // Strip
     stripPaddingV: 10,
     stripValFontSize: 15,
     stripLblFontSize: 9,
     stripDivHeight: 28,
-
-    // End cap
     endCapPaddingV: 28,
     endCapFontSize: 12,
   },
@@ -943,15 +833,11 @@ export const DEVICE_SIZES = {
   reports: {
     scrollPaddingH: 16,
     scrollPaddingBottom: 24,
-
-    // Top bar
     topBarPaddingH: 14,
     topBarPaddingBottom: 12,
     backBtnSize: 40,
     backBtnBorderRadius: 20,
     topTitleFontSize: 17,
-
-    // Child header
     childAvatarSize: 52,
     childAvatarBorderRadius: 26,
     childAvatarFontSize: 22,
@@ -959,8 +845,6 @@ export const DEVICE_SIZES = {
     childLevelFontSize: 12,
     childHeaderGap: 14,
     childHeaderMarginBottom: 20,
-
-    // Stat pills
     pillBorderRadius: 16,
     pillPaddingV: 14,
     pillPaddingH: 6,
@@ -970,8 +854,6 @@ export const DEVICE_SIZES = {
     pillEmojiFontSize: 20,
     pillValueFontSize: 19,
     pillLabelFontSize: 9,
-
-    // Section card
     sectionCardBorderRadius: 20,
     sectionCardPadding: 18,
     sectionCardMarginBottom: 14,
@@ -979,29 +861,21 @@ export const DEVICE_SIZES = {
     sectionTitleFontSize: 15,
     sectionHeaderGap: 8,
     sectionHeaderMarginBottom: 16,
-
-    // Ring chart
     ringChartSize: 148,
     ringLegendPaddingLeft: 18,
     ringLegendGap: 14,
     legendDotSize: 10,
     legendLabelFontSize: 11,
     legendValueFontSize: 13,
-
-    // Weekly bar chart
     barChartHeight: 90,
     barCountFontSize: 10,
     barWeekLabelFontSize: 9,
-
-    // Skill bars
     skillIconSize: 26,
     skillLabelFontSize: 13,
     skillPctFontSize: 13,
     skillTrackHeight: 8,
     skillRowGap: 12,
     skillRowMarginBottom: 16,
-
-    // Story rows
     statusDotSize: 8,
     storyTitleFontSize: 13,
     storyDateFontSize: 11,
@@ -1009,17 +883,11 @@ export const DEVICE_SIZES = {
     storyDotGap: 5,
     storyRowGap: 12,
     storyRowPaddingV: 12,
-
-    // Chart subtitle
     chartSubFontSize: 11,
     chartSubMarginBottom: 12,
-
-    // Story legend
     storyLegendGap: 14,
     storyLegendItemGap: 5,
     storyLegendDotSize: 8,
-
-    // Loading / empty states
     loadingEmojiFontSize: 48,
     loadingTextFontSize: 15,
     retryBtnBorderRadius: 12,

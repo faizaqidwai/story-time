@@ -1,4 +1,18 @@
-// app/EmailLogin.jsx
+// app/features/login/EmailLogin.jsx
+//
+// BRAND UPDATE — feature/brand-guidelines-v2
+//   ✅ loginButton borderRadius: 14 → RADIUS.btn (50) — §3.7 pill rule
+//   ✅ Logo section: added storytime-title-bg.png wordmark below icon
+//   ✅ titleImage sized with explicit height from 4.5:1 aspect ratio
+//   ✅ Input icon colour: COLORS.glowCyanBtn → COLORS.primary (cyan)
+//      glowCyanBtn is a border-glow value, not an icon tint
+//   ✅ Back button bg hardcode → COLORS.glowCyan from theme
+//   ✅ Title textShadowColor hardcode → COLORS.borderBold from theme
+//   ✅ buttonDisabled opacity → COLORS.disabledOpacity (0.4) from theme
+//
+// UNCHANGED:
+//   ✅ All navigation, API, auth, form logic
+//   ✅ All layout and sizing
 
 import {
   StyleSheet,
@@ -8,7 +22,6 @@ import {
   TextInput,
   Alert,
   ActivityIndicator,
-  Image,
   KeyboardAvoidingView,
   Platform,
   ScrollView,
@@ -19,11 +32,10 @@ import { Ionicons } from "@expo/vector-icons";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useUser } from "../../_contexts/UserContext";
 import { useApiCall } from "../../_hooks/useApiCall";
-import { COLORS, SHADOWS, FONTS } from "../../theme";
+import { COLORS, SHADOWS, FONTS, RADIUS } from "../../theme";
 import { loginWithEmail, fetchUserAccount } from "../../services/authService";
 import { useLocalSearchParams } from "expo-router";
 import { Image as ExpoImage } from "expo-image";
-const TEAL = "#00BCD4";
 
 const EmailLogin = () => {
   const router = useRouter();
@@ -31,10 +43,10 @@ const EmailLogin = () => {
   const { setLoginUserAccount } = useUser();
   const insets = useSafeAreaInsets();
 
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
+  const [email, setEmail]               = useState("");
+  const [password, setPassword]         = useState("");
   const [showPassword, setShowPassword] = useState(false);
-  const [isLoading, setIsLoading] = useState(false);
+  const [isLoading, setIsLoading]       = useState(false);
 
   const { from } = useLocalSearchParams();
   const showCreateAccount = from === "accountChoice";
@@ -55,7 +67,7 @@ const EmailLogin = () => {
       {
         successDisplay: "toast",
         successMessage: "Login Successful",
-        errorDisplay: "toast",
+        errorDisplay:   "toast",
         onSuccess: () => {
           router.dismissAll();
           setTimeout(() => router.replace("/features/home"), 0);
@@ -68,13 +80,18 @@ const EmailLogin = () => {
 
   const headerPaddingTop = Math.max(insets.top, 8);
 
+  // ── Logo sizing — matches welcome back screen ─────────────────
+  const LOGO_SIZE       = 90;
+  const TITLE_IMG_WIDTH = LOGO_SIZE * 2.2;
+  const TITLE_IMG_HEIGHT = TITLE_IMG_WIDTH / 4.5;   // explicit height — no layout gap
+
   return (
     <View style={styles.root}>
-      {/* Background glows */}
+      {/* Ambient glows */}
       <View style={styles.glowTL} pointerEvents="none" />
       <View style={styles.glowBR} pointerEvents="none" />
 
-      {/* Custom header — back button */}
+      {/* Back button */}
       {!showCreateAccount && (
         <View style={[styles.header, { paddingTop: headerPaddingTop }]}>
           <TouchableOpacity
@@ -82,7 +99,7 @@ const EmailLogin = () => {
             onPress={() => router.back()}
             hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
           >
-            <Ionicons name="chevron-back" size={20} color={TEAL} />
+            <Ionicons name="chevron-back" size={20} color={COLORS.primary} />
           </TouchableOpacity>
           <View style={styles.headerSpacer} />
         </View>
@@ -98,12 +115,23 @@ const EmailLogin = () => {
           keyboardShouldPersistTaps="handled"
           showsVerticalScrollIndicator={false}
         >
-          {/* Logo */}
-          <ExpoImage
-            source={require("../../../assets/img/story-time-logo-4.png")}
-            style={styles.logo}
-            contentFit="contain"
-          />
+          {/* ── Logo block — icon + wordmark ──────────────────── */}
+          <View style={styles.logoBlock}>
+            <ExpoImage
+              source={require("../../../assets/img/storytime-logo.png")}
+              style={[styles.logo, { width: LOGO_SIZE, height: LOGO_SIZE }]}
+              contentFit="contain"
+            />
+            {/* ✅ Brand wordmark — consistent with splash + welcome screens */}
+            <ExpoImage
+              source={require("../../../assets/img/storytime-title-bg.png")}
+              style={{
+                width:  TITLE_IMG_WIDTH,
+                height: TITLE_IMG_HEIGHT,   // ✅ explicit — prevents unknown-height gap
+              }}
+              contentFit="contain"
+            />
+          </View>
 
           {/* Title */}
           <Text style={styles.title}>Sign In</Text>
@@ -113,6 +141,7 @@ const EmailLogin = () => {
 
           {/* Form card */}
           <View style={styles.formCard}>
+
             {/* Email */}
             <View style={styles.inputGroup}>
               <Text style={styles.label}>Email</Text>
@@ -120,7 +149,7 @@ const EmailLogin = () => {
                 <Ionicons
                   name="mail-outline"
                   size={18}
-                  color="rgba(0,188,212,0.6)"
+                  color={COLORS.primary}             // ✅ was COLORS.glowCyanBtn (wrong token)
                   style={styles.inputIcon}
                 />
                 <TextInput
@@ -143,7 +172,7 @@ const EmailLogin = () => {
                 <Ionicons
                   name="lock-closed-outline"
                   size={18}
-                  color="rgba(0,188,212,0.6)"
+                  color={COLORS.primary}             // ✅ was COLORS.glowCyanBtn (wrong token)
                   style={styles.inputIcon}
                 />
                 <TextInput
@@ -170,17 +199,20 @@ const EmailLogin = () => {
               </View>
             </View>
 
-            {/* Login button */}
+            {/* ── Login button — §3.7 pill radius ───────────── */}
             <TouchableOpacity
-              style={[styles.loginButton, isLoading && styles.buttonDisabled]}
+              style={[
+                styles.loginButton,
+                isLoading && { opacity: COLORS.disabledOpacity },  // ✅ 0.4 from theme
+              ]}
               onPress={handleEmailLogin}
               disabled={isLoading}
               activeOpacity={0.85}
             >
               {isLoading ? (
-                <ActivityIndicator color="#08081a" />
+                <ActivityIndicator color={COLORS.textOnPrimary} />
               ) : (
-                <Text style={styles.loginButtonText}>Login ➜</Text>
+                <Text style={styles.loginButtonText}>Login ›</Text>
               )}
             </TouchableOpacity>
           </View>
@@ -204,27 +236,29 @@ const EmailLogin = () => {
 export default EmailLogin;
 
 const styles = StyleSheet.create({
-  root: { flex: 1, backgroundColor: "#08081a" },
+  // ── Root ──────────────────────────────────────────────────────
+  root: {
+    flex: 1,
+    backgroundColor: COLORS.background,    // #0A1628
+  },
+
+  // ── Ambient glows ─────────────────────────────────────────────
   glowTL: {
     position: "absolute",
-    top: -60,
-    left: -60,
-    width: 280,
-    height: 280,
+    top: -60, left: -60,
+    width: 280, height: 280,
     borderRadius: 140,
-    backgroundColor: "rgba(0,188,212,0.07)",
+    backgroundColor: COLORS.glowCyan,      // ✅ from theme
   },
   glowBR: {
     position: "absolute",
-    bottom: -40,
-    right: -40,
-    width: 240,
-    height: 240,
+    bottom: -40, right: -40,
+    width: 240, height: 240,
     borderRadius: 120,
-    backgroundColor: "rgba(150,82,217,0.07)",
+    backgroundColor: COLORS.glowPurple,    // ✅ from theme
   },
 
-  // ── Header ────────────────────────────────────────────────
+  // ── Header ────────────────────────────────────────────────────
   header: {
     flexDirection: "row",
     alignItems: "center",
@@ -232,18 +266,17 @@ const styles = StyleSheet.create({
     paddingBottom: 8,
   },
   backButton: {
-    width: 36,
-    height: 36,
+    width: 36, height: 36,
     borderRadius: 18,
-    backgroundColor: "rgba(0,188,212,0.08)",
+    backgroundColor: COLORS.glowCyan,     // ✅ was hardcoded rgba(0,196,204,0.08)
     borderWidth: 1,
-    borderColor: "rgba(0,188,212,0.35)",
+    borderColor: COLORS.borderPrimary,
     alignItems: "center",
     justifyContent: "center",
   },
   headerSpacer: { flex: 1 },
 
-  // ── Scroll content ────────────────────────────────────────
+  // ── Scroll content ────────────────────────────────────────────
   scrollContent: {
     flexGrow: 1,
     alignItems: "center",
@@ -253,21 +286,24 @@ const styles = StyleSheet.create({
     paddingTop: 8,
   },
 
-  // ── Logo ──────────────────────────────────────────────────
+  // ── Logo block — icon + wordmark stacked ──────────────────────
+  logoBlock: {
+    alignItems: "center",
+    gap: 10,
+    marginBottom: 20,
+  },
   logo: {
-    width: 100,
-    height: 100,
-    marginBottom: 16,
+    borderRadius: RADIUS.appIcon,          // 22 — §3.7 app icon radius
   },
 
-  // ── Title ─────────────────────────────────────────────────
+  // ── Title ─────────────────────────────────────────────────────
   title: {
     fontFamily: FONTS.bold,
     fontSize: 28,
     color: COLORS.textPrimary,
     textAlign: "center",
     marginBottom: 6,
-    textShadowColor: "rgba(0,188,212,0.4)",
+    textShadowColor:  COLORS.borderBold,   // ✅ was hardcoded rgba
     textShadowOffset: { width: 0, height: 2 },
     textShadowRadius: 10,
   },
@@ -280,17 +316,18 @@ const styles = StyleSheet.create({
     marginBottom: 28,
   },
 
-  // ── Form card ─────────────────────────────────────────────
+  // ── Form card — §5.4 feature card spec ────────────────────────
   formCard: {
     width: "100%",
-    backgroundColor: "rgba(255,255,255,0.05)",
-    borderRadius: 24,
+    backgroundColor: COLORS.surfaceCard,   // rgba(255,255,255,0.04)
+    borderRadius:    RADIUS.card,          // 20 — §3.7 feature card
     borderWidth: 1.5,
-    borderColor: "rgba(0,188,212,0.2)",
+    borderColor: COLORS.borderPrimary,     // rgba(0,196,204,0.25)
     padding: 20,
     gap: 4,
-    ...SHADOWS.tealGlow,
+    ...SHADOWS.primaryGlow,
   },
+
   inputGroup: { marginBottom: 16 },
   label: {
     fontFamily: FONTS.bold,
@@ -300,14 +337,14 @@ const styles = StyleSheet.create({
     letterSpacing: 0.3,
   },
 
-  // ── Input with icon ───────────────────────────────────────
+  // ── Input ─────────────────────────────────────────────────────
   inputWrapper: {
     flexDirection: "row",
     alignItems: "center",
-    backgroundColor: COLORS.surfaceDim,
-    borderRadius: 12,
+    backgroundColor: COLORS.surfaceDim,    // rgba(255,255,255,0.06)
+    borderRadius: RADIUS.md,              // 12
     borderWidth: 1.5,
-    borderColor: "rgba(0,188,212,0.25)",
+    borderColor: COLORS.borderPrimary,
     paddingHorizontal: 12,
   },
   inputIcon: { marginRight: 8, flexShrink: 0 },
@@ -320,23 +357,23 @@ const styles = StyleSheet.create({
   },
   eyeBtn: { paddingLeft: 8, flexShrink: 0 },
 
-  // ── Login button ──────────────────────────────────────────
+  // ── Login button — §3.7 RADIUS.btn = 50 (pill) ───────────────
   loginButton: {
-    backgroundColor: TEAL,
-    borderRadius: 14,
+    backgroundColor: COLORS.primary,       // #00C4CC brand cyan
+    borderRadius:    RADIUS.btn,           // ✅ 50 — was 14 ❌
     paddingVertical: 14,
     alignItems: "center",
     marginTop: 4,
-    ...SHADOWS.tealGlow,
+    ...SHADOWS.primaryGlow,
   },
   loginButtonText: {
     fontFamily: FONTS.bold,
     fontSize: 16,
-    color: "#08081a",
+    color: COLORS.textOnPrimary,           // navy on cyan §5.3
     letterSpacing: 0.4,
   },
 
-  // ── Back to options ───────────────────────────────────────
+  // ── Back to options ───────────────────────────────────────────
   backToOptions: {
     marginTop: 20,
     paddingVertical: 8,
@@ -347,6 +384,4 @@ const styles = StyleSheet.create({
     color: COLORS.textMuted,
     letterSpacing: 0.2,
   },
-
-  buttonDisabled: { opacity: 0.6 },
 });

@@ -26,17 +26,17 @@ const STATUS_BAR_HEIGHT =
   Platform.OS === "android" ? (StatusBar.currentHeight ?? 24) : 50;
 
 const C = {
-  bg: "#08081a",
+  bg: "#0A1628",
   surface: "rgba(255,255,255,0.05)",
-  teal: "#00BCD4",
-  tealDim: "rgba(0,188,212,0.12)",
-  tealBorder: "rgba(0,188,212,0.3)",
-  green: "#4CAF50",
-  red: "#EF5350",
-  yellow: "#FFD54F",
-  textPri: "#E0F7FA",
-  textSec: "#B0BEC5",
-  textMuted: "#546E7A",
+  teal: "#00C4CC",
+  tealDim: "rgba(0,196,204,0.12)",
+  tealBorder: "rgba(0,196,204,0.3)",
+  green: "#2A9D8F",
+  red: "#E8445A",
+  yellow: "#F5A623",
+  textPri: "#FFFFFF",
+  textSec: "#8899AA",
+  textMuted: "#8899AA",
 };
 
 const BRAND_COLORS = {
@@ -274,7 +274,7 @@ const styles = StyleSheet.create({
     paddingBottom: pad.sm, // was: sz.headerPaddingBottom
     paddingHorizontal: pad.md, // was: sz.headerPaddingH
     borderBottomWidth: 1,
-    borderBottomColor: "rgba(0,188,212,0.12)",
+    borderBottomColor: "rgba(0,196,204,0.12)",
   },
   backBtn: {
     width: size.hitMd, // was: sz.backBtnSize
@@ -354,7 +354,7 @@ const styles = StyleSheet.create({
   upgradeBtnText: {
     fontFamily: FONTS.bold,
     fontSize: font.lg,
-    color: "#08081a",
+    color: "#0A1628",
   },
 
   // Section cards

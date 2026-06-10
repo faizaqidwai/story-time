@@ -16,19 +16,19 @@ const ProfileCard = ({
   const getReadingLevelColor = (level) => {
     switch (level.toLowerCase()) {
       case "early":
-        return "#00BCD4"; // teal
+        return "#00C4CC"; // teal
       case "middle":
-        return "#FFD54F"; // yellow
+        return "#F5A623"; // yellow
       case "advance":
-        return "#FF7043"; // coral
+        return "#E8445A"; // coral
       case "beginner":
-        return "#4CAF50";
+        return "#2A9D8F";
       case "intermediate":
-        return "#FF9800";
+        return "#F5A623";
       case "expert":
-        return "#9C27B0";
+        return "#7B2FBE";
       default:
-        return "#7a9aaa";
+        return "#8899AA";
     }
   };
 
@@ -48,7 +48,7 @@ const ProfileCard = ({
           source={{
             uri:
               avatar ||
-              `https://ui-avatars.com/api/?name=${name}&size=120&background=00BCD4&color=fff&bold=true`,
+              `https://ui-avatars.com/api/?name=${name}&size=120&background=00C4CC&color=fff&bold=true`,
           }}
           style={styles.avatar}
         />

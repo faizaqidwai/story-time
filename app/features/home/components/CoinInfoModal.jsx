@@ -2,6 +2,16 @@
  * CoinInfoModal.jsx (SINGLE SCREEN + PURCHASE)
  */
 
+
+// BRAND UPDATE — feature/brand-guidelines-v2
+// COLOUR-ONLY — zero functional/logic/animation changes:
+//   ✅ Local C{} colour object removed — COLORS imported from theme
+//   ✅ Old cyan #00BCD4 → COLORS.primary (#00C4CC)
+//   ✅ Old yellow #FFD54F → COLORS.amber (#F5A623)
+//   ✅ All rgba(0,188,212,…) → rgba(0,196,204,…) correct cyan hex
+//   ✅ All rgba(255,213,79,…) → rgba(245,166,35,…) correct amber hex
+//   ✅ Old text colours → COLORS.textPrimary / COLORS.textMuted
+
 import React, { useRef, useEffect, useCallback } from "react";
 import {
   View,
@@ -13,20 +23,12 @@ import {
   Modal,
 } from "react-native";
 import { Image as ExpoImage } from "expo-image";
-import { FONTS } from "../../../theme";
+import { FONTS, COLORS } from "../../../theme";
 import { font, pad, radius } from "../../../theme/tokens";
 
 const { height: SH } = Dimensions.get("window");
 
-const C = {
-  bg: "rgba(8,8,26,0.96)",
-  teal: "#00BCD4",
-  tealBorder: "rgba(0,188,212,0.5)",
-  yellow: "#FFD54F",
-  yellowBorder: "rgba(255,213,79,0.6)",
-  textPri: "#E0F7FA",
-  textMuted: "#7a9aaa",
-};
+// Brand colours from theme — COLORS imported above
 
 const SHEET_HEIGHT = SH * 0.65;
 
@@ -196,7 +198,7 @@ const s = StyleSheet.create({
     bottom: 0,
     width: "100%",
     height: SHEET_HEIGHT,
-    backgroundColor: C.bg,
+    backgroundColor: "rgba(10,16,38,0.96)",
     borderTopLeftRadius: radius.xxl,
     borderTopRightRadius: radius.xxl,
     padding: pad.lg,
@@ -216,17 +218,17 @@ const s = StyleSheet.create({
   count: {
     fontSize: font.h1,
     fontFamily: FONTS.bold,
-    color: C.yellow,
+    color: COLORS.amber,
   },
 
   label: {
-    color: C.textMuted,
+    color: COLORS.textMuted,
     fontSize: font.md,
   },
 
   mainText: {
     textAlign: "center",
-    color: C.textPri,
+    color: COLORS.textPrimary,
     fontFamily: FONTS.bold,
     fontSize: font.xxl,
     marginTop: 6,
@@ -234,7 +236,7 @@ const s = StyleSheet.create({
 
   subText: {
     textAlign: "center",
-    color: C.textMuted,
+    color: COLORS.textMuted,
     fontSize: font.lg,
     marginBottom: pad.xl,
   },
@@ -248,31 +250,31 @@ const s = StyleSheet.create({
   dividerLine: {
     flex: 1,
     height: 0.5,
-    backgroundColor: "rgba(255,213,79,0.35)",
+    backgroundColor: "rgba(245,166,35,0.35)",
   },
 
   dividerText: {
-    color: "#7a9aaa",
+    color: COLORS.textMuted,
     marginHorizontal: 8,
   },
 
   earnCard: {
     borderRadius: radius.lg,
     borderWidth: 1.5,
-    borderColor: C.yellowBorder,
-    backgroundColor: "rgba(255,213,79,0.08)",
+    borderColor: COLORS.amberBorder,
+    backgroundColor: "rgba(245,166,35,0.08)",
     padding: pad.md,
     marginBottom: pad.lg,
   },
 
   earnTitle: {
     fontFamily: FONTS.bold,
-    color: C.textPri,
+    color: COLORS.textPrimary,
     fontSize: font.xl,
   },
 
   earnSub: {
-    color: C.textMuted,
+    color: COLORS.textMuted,
     fontSize: font.md,
   },
 
@@ -289,15 +291,15 @@ const s = StyleSheet.create({
     borderRadius: 14,
     paddingVertical: 12,
     alignItems: "center",
-    backgroundColor: "rgba(0,188,212,0.12)",
+    backgroundColor: "rgba(0,196,204,0.12)",
     borderWidth: 1.5,
-    borderColor: C.tealBorder,
+    borderColor: COLORS.primaryBorder,
   },
 
   best: {
     transform: [{ scale: 1.05 }],
-    borderColor: C.yellow,
-    backgroundColor: "rgba(255,213,79,0.18)",
+    borderColor: COLORS.amber,
+    backgroundColor: "rgba(245,166,35,0.18)",
   },
 
   packEmoji: { fontSize: 18 },
@@ -305,17 +307,17 @@ const s = StyleSheet.create({
   packValue: {
     fontFamily: FONTS.bold,
     fontSize: font.lg,
-    color: C.textPri,
+    color: COLORS.textPrimary,
   },
 
   packPrice: {
     fontSize: font.sm,
-    color: C.textMuted,
+    color: COLORS.textMuted,
   },
 
   bestBadge: {
     fontSize: 10,
-    color: C.yellow,
+    color: COLORS.amber,
     marginTop: 2,
   },
 });

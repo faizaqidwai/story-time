@@ -24,15 +24,15 @@ const PRIVACY_URL = "https://www.codeklusters.com/storytime/privacy";
 const TERMS_URL   = "https://www.apple.com/legal/internet-services/itunes/dev/stdeula/";
 
 const C = {
-  bg: "#08081a",
+  bg: "#0A1628",
   surface: "rgba(255,255,255,0.05)",
-  teal: "#00BCD4",
-  tealDim: "rgba(0,188,212,0.12)",
-  tealBorder: "rgba(0,188,212,0.3)",
-  green: "#4CAF50",
-  textPri: "#E0F7FA",
-  textSec: "#B0BEC5",
-  textMuted: "#546E7A",
+  teal: "#00C4CC",
+  tealDim: "rgba(0,196,204,0.12)",
+  tealBorder: "rgba(0,196,204,0.3)",
+  green: "#2A9D8F",
+  textPri: "#FFFFFF",
+  textSec: "#8899AA",
+  textMuted: "#8899AA",
 };
 
 function billingLabel(billingCycle) {
@@ -97,7 +97,7 @@ function PackageUnavailableScreen({ pkg, onBack, onRetry, retrying }) {
         </Text>
         <TouchableOpacity style={styles.errorBtn} onPress={onRetry} disabled={retrying} activeOpacity={0.85}>
           {retrying
-            ? <ActivityIndicator color="#08081a" size="small" />
+            ? <ActivityIndicator color="#0A1628" size="small" />
             : <Text style={styles.errorBtnText}>Try Again</Text>}
         </TouchableOpacity>
         <TouchableOpacity style={styles.errorBtnSecondary} onPress={onBack} activeOpacity={0.75}>
@@ -317,9 +317,9 @@ export default function PurchaseScreen() {
       ) : (
         <Animated.ScrollView style={{ opacity: fadeAnim }} contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
           <Text style={styles.sectionLabel}>Order Summary</Text>
-          <View style={[styles.orderCard, { borderColor: `rgba(${pkg.accentColorRgb ?? "0,188,212"},0.35)`, borderTopColor: `rgba(${pkg.accentColorRgb ?? "0,188,212"},0.70)`, backgroundColor: pkg.darkBg ?? "#03080a" }]}>
+          <View style={[styles.orderCard, { borderColor: `rgba(${pkg.accentColorRgb ?? "0,196,204"},0.35)`, borderTopColor: `rgba(${pkg.accentColorRgb ?? "0,196,204"},0.70)`, backgroundColor: pkg.darkBg ?? "#0A1628" }]}>
             <View style={styles.planHeader}>
-              <View style={[styles.planIcon, { borderColor: accentColor, backgroundColor: `rgba(${pkg.accentColorRgb ?? "0,188,212"},0.12)` }]}>
+              <View style={[styles.planIcon, { borderColor: accentColor, backgroundColor: `rgba(${pkg.accentColorRgb ?? "0,196,204"},0.12)` }]}>
                 <Text style={styles.planIconEmoji}>{pkg.icon ?? "📦"}</Text>
               </View>
               <View style={{ flex: 1 }}>
@@ -328,7 +328,7 @@ export default function PurchaseScreen() {
               </View>
             </View>
             {!!pkg.description && <Text style={styles.planDesc}>{pkg.description}</Text>}
-            <View style={[styles.pricePill, { borderColor: `rgba(${pkg.accentColorRgb ?? "0,188,212"},0.25)`, backgroundColor: `rgba(${pkg.accentColorRgb ?? "0,188,212"},0.07)` }]}>
+            <View style={[styles.pricePill, { borderColor: `rgba(${pkg.accentColorRgb ?? "0,196,204"},0.25)`, backgroundColor: `rgba(${pkg.accentColorRgb ?? "0,196,204"},0.07)` }]}>
               <Text style={[styles.priceAmount, { color: accentColor }]}>{priceString}</Text>
               {!!cycleLabel && <Text style={styles.priceCycle}>{cycleLabel}</Text>}
             </View>
@@ -381,7 +381,7 @@ export default function PurchaseScreen() {
           >
             <View style={styles.btnShine} />
             {purchasing
-              ? <ActivityIndicator color="#08081a" size="small" />
+              ? <ActivityIndicator color="#0A1628" size="small" />
               : (<>
                   <Text style={styles.btnEmoji}>⚡</Text>
                   <Text style={styles.btnText}>{pkg.ctaLabel ?? `Subscribe to ${pkg.name}`}</Text>
@@ -404,10 +404,10 @@ const styles = StyleSheet.create({
   errorTitle:         { fontFamily: FONTS.bold, fontSize: font.xl, color: C.textPri, textAlign: "center" },
   errorSubtitle:      { fontFamily: FONTS.light, fontSize: font.md, color: C.textMuted, textAlign: "center", lineHeight: font.md * 1.5 },
   errorBtn:           { backgroundColor: C.teal, borderRadius: radius.md, paddingHorizontal: pad.xl, paddingVertical: pad.sm, marginTop: pad.sm },
-  errorBtnText:       { fontFamily: FONTS.bold, fontSize: font.md, color: "#08081a" },
+  errorBtnText:       { fontFamily: FONTS.bold, fontSize: font.md, color: "#0A1628" },
   errorBtnSecondary:  { paddingHorizontal: pad.xl, paddingVertical: pad.sm },
   errorBtnSecondaryText: { fontFamily: FONTS.regular, fontSize: font.md, color: C.textMuted, textDecorationLine: "underline" },
-  header:             { flexDirection: "row", alignItems: "center", justifyContent: "space-between", paddingTop: STATUS_BAR_HEIGHT + pad.sm, paddingBottom: pad.md, paddingHorizontal: pad.md, borderBottomWidth: 1, borderBottomColor: "rgba(0,188,212,0.1)" },
+  header:             { flexDirection: "row", alignItems: "center", justifyContent: "space-between", paddingTop: STATUS_BAR_HEIGHT + pad.sm, paddingBottom: pad.md, paddingHorizontal: pad.md, borderBottomWidth: 1, borderBottomColor: "rgba(0,196,204,0.1)" },
   headerBack:         { width: size.hitMd, height: size.hitMd, borderRadius: size.hitMd / 2, backgroundColor: "rgba(255,255,255,0.06)", borderWidth: 1, borderColor: "rgba(255,255,255,0.1)", alignItems: "center", justifyContent: "center" },
   headerBackIcon:     { fontFamily: FONTS.bold, fontSize: font.xl, color: C.teal },
   headerTitle:        { fontFamily: FONTS.bold, fontSize: font.xxl, color: C.textPri, letterSpacing: 0.3 },
@@ -444,7 +444,7 @@ const styles = StyleSheet.create({
   checkoutBtnDisabled:{ opacity: 0.45 },
   btnShine:           { position: "absolute", top: 0, left: "14%", width: "38%", height: "52%", backgroundColor: "rgba(255,255,255,0.20)", borderRadius: 20, transform: [{ rotate: "-15deg" }] },
   btnEmoji:           { fontSize: font.lg },
-  btnText:            { fontFamily: FONTS.bold, fontSize: font.lg, color: "#08081a", letterSpacing: 0.3 },
+  btnText:            { fontFamily: FONTS.bold, fontSize: font.lg, color: "#0A1628", letterSpacing: 0.3 },
   restoreWrap:        { alignSelf: "center", paddingVertical: pad.sm },
   restoreText:        { fontFamily: FONTS.regular, fontSize: font.sm, color: C.textMuted, textDecorationLine: "underline" },
 });

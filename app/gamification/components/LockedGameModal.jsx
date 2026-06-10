@@ -22,7 +22,7 @@ import {
   Modal,
 } from "react-native";
 import { Image as ExpoImage } from "expo-image";
-import { FONTS } from "../../theme";
+import { FONTS, COLORS } from "../../theme";
 import { font, pad, radius } from "../../theme/tokens";
 import { useGamification } from "../GamificationContext";
 import StoryCollectionArc from "./StoryCollectionArc";
@@ -37,13 +37,6 @@ import { GAME_ANIMATIONS } from "../constants/gameAnimations";
 import GAME_COVERS from "../constants/gameCoverImages";
 
 const { height: SH } = Dimensions.get("window");
-
-const C = {
-  bg: "rgba(8,8,26,0.96)",
-  yellow: "#FFD54F",
-  textPri: "#E0F7FA",
-  textMuted: "#7a9aaa",
-};
 
 const SHEET_HEIGHT = SH * 0.78; // slightly taller to fit scratch card + arc
 
@@ -181,7 +174,7 @@ function StaticScratchCard({ slot, storiesCompleted }) {
   const progress = Math.min(storiesCompleted, 3); // 0, 1, 2, or 3
   const tearPath = buildTearPath(progress);
 
-  const gradient = slot?.gradient ?? ["#00BCD4", "#0097A7"];
+  const gradient = slot?.gradient ?? [COLORS.primary, COLORS.primaryDark];
   const MiniAnim = slot?.gameId ? GAME_ANIMATIONS[slot.gameId] : null;
   const coverSource = slot?.gameId ? (GAME_COVERS[slot.gameId] ?? null) : null;
 
@@ -304,8 +297,8 @@ const sc = StyleSheet.create({
     height: CARD_H + 22,
     borderRadius: radius.xl + 6,
     borderWidth: 2.5,
-    borderColor: "rgba(255,213,79,0.75)",
-    shadowColor: "#FFD54F",
+    borderColor: "rgba(245,166,35,0.75)",
+    shadowColor: COLORS.amber,
     shadowOffset: { width: 0, height: 0 },
     shadowOpacity: 1,
     shadowRadius: 18,
@@ -316,7 +309,7 @@ const sc = StyleSheet.create({
     height: CARD_H,
     borderRadius: radius.xl,
     overflow: "hidden",
-    shadowColor: "#FFD54F",
+    shadowColor: COLORS.amber,
     shadowOffset: { width: 0, height: 6 },
     shadowOpacity: 0.6,
     shadowRadius: 18,
@@ -398,16 +391,32 @@ export default function LockedGameModal({
     Animated.parallel([
       Animated.timing(sheetY, {
         toValue: SHEET_HEIGHT,
-        duration: 250,
+        duration: 280,
         useNativeDriver: true,
       }),
       Animated.timing(scrim, {
         toValue: 0,
-        duration: 200,
+        duration: 220,
         useNativeDriver: true,
       }),
     ]).start(onClose);
   }, [onClose]);
+
+  // ✅ CTA dismisses with the same slide-down animation before navigating
+  const handleGoRead = useCallback(() => {
+    Animated.parallel([
+      Animated.timing(sheetY, {
+        toValue: SHEET_HEIGHT,
+        duration: 280,
+        useNativeDriver: true,
+      }),
+      Animated.timing(scrim, {
+        toValue: 0,
+        duration: 220,
+        useNativeDriver: true,
+      }),
+    ]).start(() => onGoRead?.());
+  }, [onGoRead]);
 
   if (!visible) return null;
 
@@ -459,7 +468,7 @@ export default function LockedGameModal({
             {/* CTA */}
             <TouchableOpacity
               style={s.cta}
-              onPress={onGoRead}
+              onPress={handleGoRead}
               activeOpacity={0.85}
             >
               <Text style={s.ctaText}>{state.cta}</Text>
@@ -482,7 +491,7 @@ const s = StyleSheet.create({
     bottom: 0,
     width: "100%",
     minHeight: SHEET_HEIGHT,
-    backgroundColor: C.bg,
+    backgroundColor: "rgba(10,16,38,0.97)",
     borderTopLeftRadius: radius.xxl,
     borderTopRightRadius: radius.xxl,
     padding: pad.lg,
@@ -498,25 +507,25 @@ const s = StyleSheet.create({
   title: {
     fontFamily: FONTS.bold,
     fontSize: font.h3,
-    color: C.textPri,
+    color: COLORS.textPrimary,
     marginBottom: pad.sm,
     textAlign: "center",
   },
   arcWrap: { width: "100%", alignItems: "center", marginBottom: pad.md },
   message: {
-    color: C.textMuted,
+    color: COLORS.textMuted,
     fontSize: font.lg,
     marginBottom: pad.xl,
     textAlign: "center",
     fontFamily: FONTS.light,
   },
   cta: {
-    backgroundColor: "rgba(255,213,79,0.2)",
+    backgroundColor: "rgba(245,166,35,0.2)",
     borderWidth: 1.5,
-    borderColor: C.yellow,
+    borderColor: COLORS.amber,
     paddingHorizontal: 28,
     paddingVertical: 12,
     borderRadius: radius.pill,
   },
-  ctaText: { fontFamily: FONTS.bold, color: C.yellow, fontSize: font.lg },
+  ctaText: { fontFamily: FONTS.bold, color: COLORS.amber, fontSize: font.lg },
 });

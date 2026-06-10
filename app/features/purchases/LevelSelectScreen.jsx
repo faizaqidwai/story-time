@@ -27,13 +27,13 @@ const STATUS_BAR_HEIGHT =
   Platform.OS === "android" ? (StatusBar.currentHeight ?? 24) : 50;
 
 const C = {
-  bg: "#08081a",
-  teal: "#00BCD4",
-  tealDim: "rgba(0,188,212,0.12)",
-  tealBorder: "rgba(0,188,212,0.3)",
-  textPri: "#E0F7FA",
-  textSec: "#B0BEC5",
-  textMuted: "#546E7A",
+  bg: "#0A1628",
+  teal: "#00C4CC",
+  tealDim: "rgba(0,196,204,0.12)",
+  tealBorder: "rgba(0,196,204,0.3)",
+  textPri: "#FFFFFF",
+  textSec: "#8899AA",
+  textMuted: "#8899AA",
 };
 
 const LEVELS = Array.from({ length: 10 }, (_, i) => i + 1);
@@ -194,7 +194,7 @@ export default function LevelSelectScreen() {
         >
           <View style={styles.confirmShine} />
           {saving ? (
-            <ActivityIndicator color="#08081a" size="small" />
+            <ActivityIndicator color="#0A1628" size="small" />
           ) : (
             <Text style={styles.confirmText}>Continue to Checkout →</Text>
           )}
@@ -232,7 +232,7 @@ const styles = StyleSheet.create({
   errorBtnText: {
     fontFamily: FONTS.bold,
     fontSize: font.md,
-    color: "#08081a",
+    color: "#0A1628",
   },
 
   header: {
@@ -243,7 +243,7 @@ const styles = StyleSheet.create({
     paddingBottom: pad.md,
     paddingHorizontal: pad.md,
     borderBottomWidth: 1,
-    borderBottomColor: "rgba(0,188,212,0.1)",
+    borderBottomColor: "rgba(0,196,204,0.1)",
   },
   backBtn: {
     width: size.hitMd,
@@ -271,10 +271,10 @@ const styles = StyleSheet.create({
 
   introBox: {
     alignItems: "center",
-    backgroundColor: "rgba(0,188,212,0.06)",
+    backgroundColor: "rgba(0,196,204,0.06)",
     borderRadius: radius.xl,
     borderWidth: 1,
-    borderColor: "rgba(0,188,212,0.18)",
+    borderColor: "rgba(0,196,204,0.18)",
     padding: pad.lg,
     marginBottom: pad.xl,
     gap: pad.s,
@@ -339,10 +339,10 @@ const styles = StyleSheet.create({
   },
 
   callout: {
-    backgroundColor: "rgba(0,188,212,0.08)",
+    backgroundColor: "rgba(0,196,204,0.08)",
     borderRadius: radius.xl,
     borderWidth: 1,
-    borderColor: "rgba(0,188,212,0.25)",
+    borderColor: "rgba(0,196,204,0.25)",
     padding: pad.md,
     alignItems: "center",
     marginBottom: pad.xl,
@@ -397,7 +397,7 @@ const styles = StyleSheet.create({
   confirmText: {
     fontFamily: FONTS.bold,
     fontSize: font.lg,
-    color: "#08081a",
+    color: "#0A1628",
     letterSpacing: 0.3,
   },
 });

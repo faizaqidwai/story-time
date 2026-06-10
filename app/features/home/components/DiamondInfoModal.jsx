@@ -2,6 +2,16 @@
  * DiamondInfoModal.jsx (SINGLE SCREEN VERSION)
  */
 
+
+// BRAND UPDATE — feature/brand-guidelines-v2
+// COLOUR-ONLY — zero functional/logic/animation changes:
+//   ✅ Local C{} colour object removed — COLORS imported from theme
+//   ✅ Old cyan #00BCD4 → COLORS.primary (#00C4CC)
+//   ✅ Old yellow #FFD54F → COLORS.amber (#F5A623)
+//   ✅ All rgba(0,188,212,…) → rgba(0,196,204,…) correct cyan hex
+//   ✅ All rgba(255,213,79,…) → rgba(245,166,35,…) correct amber hex
+//   ✅ Old text colours → COLORS.textPrimary / COLORS.textMuted
+
 import React, { useRef, useEffect, useCallback } from "react";
 import {
   View,
@@ -13,20 +23,12 @@ import {
   Modal,
 } from "react-native";
 import { Image as ExpoImage } from "expo-image";
-import { FONTS } from "../../../theme";
+import { FONTS, COLORS } from "../../../theme";
 import { font, pad, radius } from "../../../theme/tokens";
 
 const { height: SH } = Dimensions.get("window");
 
-const C = {
-  bg: "rgba(8,8,26,0.96)",
-  teal: "#00BCD4",
-  tealBorder: "rgba(0,188,212,0.5)",
-  yellow: "#FFD54F",
-  yellowBorder: "rgba(255,213,79,0.6)",
-  textPri: "#E0F7FA",
-  textMuted: "#7a9aaa",
-};
+// Brand colours from theme — COLORS imported above
 
 const SHEET_HEIGHT = SH * 0.65;
 
@@ -170,14 +172,14 @@ const s = StyleSheet.create({
     bottom: 0,
     width: "100%",
     height: SHEET_HEIGHT,
-    backgroundColor: C.bg,
+    backgroundColor: "rgba(10,16,38,0.96)",
     borderTopLeftRadius: radius.xxl,
     borderTopRightRadius: radius.xxl,
     padding: pad.lg,
   },
   packPrice: {
     fontSize: font.md,
-    color: C.textMuted,
+    color: COLORS.textMuted,
     marginTop: 2,
   },
   handle: {
@@ -197,11 +199,11 @@ const s = StyleSheet.create({
   dividerLine: {
     flex: 1,
     height: 0.5,
-    backgroundColor: "rgba(0,188,212,0.35)",
+    backgroundColor: "rgba(0,196,204,0.35)",
   },
   dividerText: {
     fontFamily: FONTS.regular,
-    color: "#7a9aaa",
+    color: COLORS.textMuted,
     letterSpacing: 1,
   },
 
@@ -219,17 +221,17 @@ const s = StyleSheet.create({
   count: {
     fontSize: font.h1,
     fontFamily: FONTS.bold,
-    color: C.teal,
+    color: COLORS.primary,
   },
 
   label: {
-    color: C.textMuted,
+    color: COLORS.textMuted,
     fontSize: font.md,
   },
 
   mainText: {
     textAlign: "center",
-    color: C.textPri,
+    color: COLORS.textPrimary,
     fontFamily: FONTS.bold,
     fontSize: font.xxl,
     marginTop: 6,
@@ -237,7 +239,7 @@ const s = StyleSheet.create({
 
   subText: {
     textAlign: "center",
-    color: C.textMuted,
+    color: COLORS.textMuted,
     fontSize: font.lg,
     marginBottom: pad.xl,
   },
@@ -252,10 +254,10 @@ const s = StyleSheet.create({
     borderRadius: 20,
     padding: 16,
     marginBottom: 18,
-    backgroundColor: "rgba(0,188,212,0.18)", // brighter
+    backgroundColor: "rgba(0,196,204,0.18)", // brighter
     borderWidth: 2,
-    borderColor: C.teal,
-    shadowColor: C.teal,
+    borderColor: COLORS.primary,
+    shadowColor: COLORS.primary,
     shadowOpacity: 0.6,
     shadowRadius: 12,
   },
@@ -267,11 +269,11 @@ const s = StyleSheet.create({
   bigActionTitle: {
     fontFamily: FONTS.bold,
     fontSize: font.h3,
-    color: C.textPri,
+    color: COLORS.textPrimary,
   },
 
   bigActionSub: {
-    color: C.textMuted,
+    color: COLORS.textMuted,
     fontSize: font.sm,
   },
 
@@ -281,14 +283,14 @@ const s = StyleSheet.create({
     borderRadius: 16,
     paddingVertical: 14,
     alignItems: "center",
-    backgroundColor: "rgba(0,188,212,0.12)",
+    backgroundColor: "rgba(0,196,204,0.12)",
     borderWidth: 1.5,
-    borderColor: C.tealBorder,
+    borderColor: COLORS.primaryBorder,
   },
 
   bestFun: {
-    backgroundColor: "rgba(255,213,79,0.18)",
-    borderColor: C.yellow,
+    backgroundColor: "rgba(245,166,35,0.18)",
+    borderColor: COLORS.amber,
     transform: [{ scale: 1.08 }],
   },
 
@@ -298,35 +300,35 @@ const s = StyleSheet.create({
 
   packValue: {
     marginTop: 4,
-    color: C.textPri,
+    color: COLORS.textPrimary,
     fontFamily: FONTS.bold,
     fontSize: font.xxl,
   },
 
   bestBadge: {
     fontSize: font.sm,
-    color: C.yellow,
+    color: COLORS.amber,
     marginTop: 2,
   },
 
   earnCard: {
     borderRadius: radius.lg,
     borderWidth: 1.5,
-    borderColor: C.tealBorder,
-    backgroundColor: "rgba(0,188,212,0.08)",
+    borderColor: COLORS.primaryBorder,
+    backgroundColor: "rgba(0,196,204,0.08)",
     padding: pad.md,
     marginBottom: 18,
   },
 
   earnTitle: {
     fontFamily: FONTS.bold,
-    color: C.textPri,
+    color: COLORS.textPrimary,
     fontSize: font.xl,
     marginBottom: 2,
   },
 
   earnSub: {
-    color: C.textMuted,
+    color: COLORS.textMuted,
     fontSize: font.md,
   },
 
@@ -336,7 +338,7 @@ const s = StyleSheet.create({
   },
 
   purchaseHint: {
-    color: C.textMuted,
+    color: COLORS.textMuted,
     fontSize: font.lg,
     marginBottom: pad.sm,
     textAlign: "center",
@@ -350,26 +352,26 @@ const s = StyleSheet.create({
   packCard: {
     flex: 1,
     borderWidth: 1,
-    borderColor: "rgba(0,188,212,0.25)", // 👈 reduced intensity
+    borderColor: "rgba(0,196,204,0.25)", // 👈 reduced intensity
     borderRadius: radius.md,
     paddingVertical: 10,
     alignItems: "center",
-    backgroundColor: "rgba(0,188,212,0.04)", // 👈 softer
+    backgroundColor: "rgba(0,196,204,0.04)", // 👈 softer
   },
 
   best: {
-    borderColor: C.yellow,
-    backgroundColor: "rgba(255,213,79,0.08)",
+    borderColor: COLORS.amber,
+    backgroundColor: "rgba(245,166,35,0.08)",
   },
 
   packAmount: {
-    color: C.textPri,
+    color: COLORS.textPrimary,
     fontSize: font.sm,
   },
 
   badge: {
     fontSize: 10,
-    color: C.yellow,
+    color: COLORS.amber,
     marginTop: 2,
   },
 
@@ -381,11 +383,11 @@ const s = StyleSheet.create({
     paddingVertical: 8,
     borderRadius: 20,
     borderWidth: 1,
-    borderColor: "rgba(0,188,212,0.4)",
+    borderColor: "rgba(0,196,204,0.4)",
   },
 
   btnText: {
-    color: C.teal,
+    color: COLORS.primary,
     fontSize: font.sm,
     fontFamily: FONTS.bold,
   },

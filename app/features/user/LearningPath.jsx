@@ -44,24 +44,24 @@ const LW = 1.5;
 // Solid dark base for each accent — mirrors GameCard's gradientEnd.
 // Used as the bottom fill so the card has a proper two-tone look.
 const DARK_FOR_ACCENT = {
-  "#4CAF50": "#1B5E20",
-  "#00BCD4": "#00838F",
-  "#FF9800": "#E65100",
-  "#9C27B0": "#4A148C",
-  "#E91E63": "#880E4F",
-  "#FFD54F": "#F57F17",
-  "#03A9F4": "#01579B",
+  "#2A9D8F": "#1F7A6E",
+  "#00C4CC": "#009BA3",
+  "#F5A623": "#C07A1A",
+  "#7B2FBE": "#5E1F96",
+  "#E8445A": "#C73448",
+  "#F5A623": "#C07A1A",
+  "#00C4CC": "#009BA3",
 };
 
 const C = {
-  bg: "#08081a",
-  teal: "#00BCD4",
-  tealBorder: "rgba(0,188,212,0.3)",
-  tealDim: "rgba(0,188,212,0.12)",
-  tealBorderBold: "rgba(0,188,212,0.5)",
-  textPri: "#E0F7FA",
-  textSec: "#B0BEC5",
-  textMuted: "#546E7A",
+  bg: "#0A1628",
+  teal: "#00C4CC",
+  tealBorder: "rgba(0,196,204,0.3)",
+  tealDim: "rgba(0,196,204,0.12)",
+  tealBorderBold: "rgba(0,196,204,0.5)",
+  textPri: "#FFFFFF",
+  textSec: "#8899AA",
+  textMuted: "#8899AA",
 };
 
 // ── Card size overrides — larger than theme defaults, consistent across
@@ -238,7 +238,7 @@ function ExpandBtn({ expanded, onPress, accentColor }) {
           },
         ]}
       >
-        <Text style={[btnS.icon, { color: expanded ? "#08081a" : ac }]}>+</Text>
+        <Text style={[btnS.icon, { color: expanded ? "#0A1628" : ac }]}>+</Text>
       </Animated.View>
     </TouchableOpacity>
   );
@@ -315,7 +315,7 @@ function ExpandPanel({ item, visible, side, cardH, cardW, accentColor }) {
     side === "left" ? { left: cardW + GAP } : { right: cardW + GAP };
 
   const ac = accentColor;
-  const darkBase = DARK_FOR_ACCENT[ac] ?? "#1a1a2e";
+  const darkBase = DARK_FOR_ACCENT[ac] ?? "#0F2040";
 
   return (
     <Animated.View
@@ -528,7 +528,7 @@ function LevelCard({
         <View
           style={[
             StyleSheet.absoluteFillObject,
-            { backgroundColor: DARK_FOR_ACCENT[ac] ?? "#1a1a2e" },
+            { backgroundColor: DARK_FOR_ACCENT[ac] ?? "#0F2040" },
           ]}
         />
 
@@ -627,7 +627,7 @@ function LevelCard({
                   {
                     fontSize: sz.youTxtFontSize,
                     letterSpacing: sz.youTxtLetterSpacing,
-                    color: DARK_FOR_ACCENT[ac] ?? "#08081a",
+                    color: DARK_FOR_ACCENT[ac] ?? "#0A1628",
                   },
                 ]}
               >
@@ -756,7 +756,7 @@ const cardS = StyleSheet.create({
   },
   youText: {
     fontFamily: FONTS.bold,
-    color: "#08081a",
+    color: "#0A1628",
   },
   accentBar: {
     position: "absolute",
@@ -850,7 +850,7 @@ export default function LearningPathScreen() {
         style={{
           position: "absolute",
           borderRadius: 999,
-          backgroundColor: "#9652D9",
+          backgroundColor: "#7B2FBE",
           bottom: 60,
           left: -60,
           width: 220,
@@ -869,7 +869,7 @@ export default function LearningPathScreen() {
             paddingBottom: 12,
             paddingHorizontal: 18,
             borderBottomWidth: 1,
-            borderBottomColor: "rgba(0,188,212,0.12)",
+            borderBottomColor: "rgba(0,196,204,0.12)",
           },
           { opacity: headerOp },
         ]}
@@ -904,7 +904,7 @@ export default function LearningPathScreen() {
               fontFamily: FONTS.bold,
               fontSize: sz.titleFontSize,
               color: C.textPri,
-              textShadowColor: "rgba(0,188,212,0.4)",
+              textShadowColor: "rgba(0,196,204,0.4)",
               textShadowOffset: { width: 0, height: 0 },
               textShadowRadius: 8,
             }}
@@ -924,7 +924,7 @@ export default function LearningPathScreen() {
         </View>
         <View
           style={{
-            backgroundColor: "rgba(0,188,212,0.12)",
+            backgroundColor: "rgba(0,196,204,0.12)",
             borderRadius: sz.lvlPillBorderRadius,
             borderWidth: 1.5,
             borderColor: C.tealBorder,

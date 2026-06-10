@@ -22,17 +22,17 @@ import { FONTS } from "../../../theme";
 import { font, pad, radius, size } from "../../../theme/tokens";
 
 const C = {
-  teal: "#00BCD4",
-  yellow: "#FFD54F",
-  coral: "#FF6B6B",
-  textMuted: "#546E7A",
+  teal: "#00C4CC",
+  yellow: "#F5A623",
+  coral: "#E8445A",
+  textMuted: "#8899AA",
 };
 
 export default function PlanBadge({ planName, isFree }) {
   const router = useRouter();
   const color = isFree ? C.textMuted : C.yellow;
-  const bg = isFree ? "rgba(255,255,255,0.05)" : "rgba(255,213,79,0.10)";
-  const border = isFree ? "rgba(255,255,255,0.10)" : "rgba(255,213,79,0.35)";
+  const bg = isFree ? "rgba(255,255,255,0.05)" : "rgba(245,166,35,0.10)";
+  const border = isFree ? "rgba(255,255,255,0.10)" : "rgba(245,166,35,0.35)";
 
   return (
     <TouchableOpacity

@@ -21,67 +21,76 @@ import {
   ActivityIndicator,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { FONTS } from "../theme";
+import { FONTS, COLORS } from "../theme";
 
 const { height: SH, width: SW } = Dimensions.get("window");
 const NotificationContext = createContext(null);
 const SHEET_H = SH * 0.44;
 
+
+// ── Converts #RRGGBB hex from COLORS into "R,G,B" for rgba() template literals ──
+// Allows rgba() expressions to track theme colour changes automatically.
+function hexToRgb(hex) {
+  const h = hex.replace("#", "");
+  return `${parseInt(h.slice(0,2),16)},${parseInt(h.slice(2,4),16)},${parseInt(h.slice(4,6),16)}`;
+}
+
+// Brand colours — all sourced from COLORS so theme changes propagate automatically
 const C = {
-  bg: "#111830",
-  green: "#4CAF50",
-  greenBorder: "rgba(76,175,80,0.5)",
-  greenGlow: "rgba(76,175,80,0.22)",
-  red: "#EF5350",
-  redBorder: "rgba(239,83,80,0.5)",
-  teal: "#00BCD4",
-  yellow: "#FFD54F",
-  purple: "#9652D9",
-  coral: "#FF7043",
-  textPri: "#E0F7FA",
-  textMuted: "#7a9aaa",
+  bg:          COLORS.surface,          // #0F2040
+  green:       COLORS.teal,             // #2A9D8F — brand completion §3.3
+  greenBorder: `rgba(${hexToRgb(COLORS.teal)},0.5)`,
+  greenGlow:   `rgba(${hexToRgb(COLORS.teal)},0.22)`,
+  red:         COLORS.coral,            // #E8445A — brand coral §3.1
+  redBorder:   `rgba(${hexToRgb(COLORS.coral)},0.5)`,
+  teal:        COLORS.primary,          // #00C4CC — brand cyan §3.1
+  yellow:      COLORS.amber,            // #F5A623 — brand amber §3.1
+  purple:      COLORS.purple,           // #7B2FBE — brand purple §3.1
+  coral:       COLORS.coral,            // #E8445A — brand coral §3.1
+  textPri:     COLORS.textPrimary,      // #FFFFFF
+  textMuted:   COLORS.textMuted,        // #8899AA
 };
 
 // ── Success sheet colours ─────────────────────────────────────────────────
 const SUCCESS_SHEET = {
-  bg: "#2E7D32",
-  circleDark: "#1B5E20",
+  bg: "#1F7A6E",
+  circleDark: "#1F7A6E",
   circleLight: "rgba(255,255,255,0.10)",
-  border: "rgba(27,94,32,0.8)",
-  handle: "#1B5E20",
+  border: "rgba(42,157,143,0.8)",
+  handle: "#1F7A6E",
   tick: "#ffffff",
   ringColor: "rgba(255,255,255,0.55)",
   ringFaint: "rgba(255,255,255,0.12)",
-  titleColor: "#1B5E20",
-  subColor: "rgba(27,94,32,0.75)",
-  btnBg: "rgba(27,94,32,0.3)",
-  btnBorder: "rgba(27,94,32,0.7)",
+  titleColor: "#1F7A6E",
+  subColor: "rgba(42,157,143,0.75)",
+  btnBg: "rgba(42,157,143,0.3)",
+  btnBorder: "rgba(42,157,143,0.7)",
   btnText: "#FFFFFF",
-  glow: "rgba(27,94,32,0.25)",
+  glow: "rgba(42,157,143,0.25)",
 };
 
 const TOAST_CONFIG = {
-  error: { bg: "rgba(239,83,80,0.96)", border: "#EF5350", icon: "✕" },
-  info: { bg: "rgba(150,82,217,0.96)", border: "#9652D9", icon: "ℹ" },
-  warning: { bg: "rgba(255,213,79,0.96)", border: "#FFD54F", icon: "⚠" },
+  error: { bg: "rgba(232,68,90,0.96)", border: COLORS.coral, icon: "✕" },
+  info: { bg: "rgba(123,47,190,0.96)", border: COLORS.purple, icon: "ℹ" },
+  warning: { bg: "rgba(245,166,35,0.96)", border: COLORS.amber, icon: "⚠" },
 };
 
 const SUCCESS_TOAST = {
-  bg: "rgba(10, 28, 14, 0.98)",
-  border: "rgba(76,175,80,0.4)",
-  badgeBg: "rgba(76,175,80,0.12)",
-  badgeBorder: "rgba(76,175,80,0.35)",
-  tickColor: "#66BB6A",
-  textColor: "#A5D6A7",
+  bg: "rgba(10,16,38,0.98)",
+  border: "rgba(42,157,143,0.4)",
+  badgeBg: "rgba(42,157,143,0.12)",
+  badgeBorder: "rgba(42,157,143,0.35)",
+  tickColor: COLORS.textPrimary,
+  textColor: COLORS.textMuted,
 };
 
 const ERROR_TOAST = {
-  bg: "rgba(40, 10, 10, 0.98)",
-  border: "rgba(239,83,80,0.4)",
-  badgeBg: "rgba(239,83,80,0.12)",
-  badgeBorder: "rgba(239,83,80,0.35)",
-  crossColor: "#EF9A9A",
-  textColor: "#FFCDD2",
+  bg: "rgba(38,10,16,0.98)",
+  border: "rgba(232,68,90,0.4)",
+  badgeBg: "rgba(232,68,90,0.12)",
+  badgeBorder: "rgba(232,68,90,0.35)",
+  crossColor: COLORS.textPrimary,
+  textColor: COLORS.textPrimary,
 };
 
 const ERROR_ICON_MAP = {
@@ -510,12 +519,12 @@ function AnimatedErrorRing({ trigger, size = 118 }) {
         justifyContent: "center",
       }}
     >
-      <View style={[base, { borderColor: "rgba(239,83,80,0.08)" }]} />
+      <View style={[base, { borderColor: "rgba(232,68,90,0.08)" }]} />
       {[
-        { borderTopColor: "#EF9A9A", borderLeftColor: "#EF9A9A" },
-        { borderTopColor: "#EF9A9A", borderRightColor: "#EF9A9A" },
-        { borderBottomColor: "#EF9A9A", borderRightColor: "#EF9A9A" },
-        { borderBottomColor: "#EF9A9A", borderLeftColor: "#EF9A9A" },
+        { borderTopColor: COLORS.textPrimary, borderLeftColor: COLORS.textPrimary },
+        { borderTopColor: COLORS.textPrimary, borderRightColor: COLORS.textPrimary },
+        { borderBottomColor: COLORS.textPrimary, borderRightColor: COLORS.textPrimary },
+        { borderBottomColor: COLORS.textPrimary, borderLeftColor: COLORS.textPrimary },
       ].map((colors, i) => (
         <Animated.View
           key={i}
@@ -581,9 +590,9 @@ function AnimatedCross({ trigger }) {
       style={{
         fontFamily: FONTS.bold,
         fontSize: 44,
-        color: "#EF9A9A",
+        color: COLORS.textPrimary,
         opacity: op,
-        textShadowColor: "rgba(239,83,80,0.35)",
+        textShadowColor: "rgba(232,68,90,0.35)",
         textShadowOffset: { width: 0, height: 0 },
         textShadowRadius: 12,
         transform: [
@@ -670,8 +679,8 @@ function Sheet({ visible, type, config, onDismiss }) {
   if (!visible || !config) return null;
 
   const isSuccess = type === "success";
-  const borderColor = isSuccess ? "#0D47A1" : C.redBorder;
-  const shadowColor = isSuccess ? "#1B5E20" : C.red;
+  const borderColor = isSuccess ? "#009BA3" : C.redBorder;
+  const shadowColor = isSuccess ? "#1F7A6E" : C.red;
   const errIconCfg = ERROR_ICON_MAP[config.errorType] ?? ERROR_ICON_MAP.default;
 
   const handleRetry = async () => {
@@ -728,7 +737,7 @@ function Sheet({ visible, type, config, onDismiss }) {
             style={[
               ss.handle,
               {
-                backgroundColor: isSuccess ? "#0D47A1" : borderColor,
+                backgroundColor: isSuccess ? "#009BA3" : borderColor,
               },
             ]}
           />
@@ -736,7 +745,7 @@ function Sheet({ visible, type, config, onDismiss }) {
           <View style={ss.content}>
             {isSuccess ? (
               <View style={ss.ringCluster}>
-                {/* Glow circle — #1B5E20 */}
+                {/* Glow circle — brand teal */}
                 <View style={ss.glowCircle} />
                 <AnimatedRing trigger={trigger} size={118} />
                 <View style={ss.burstWrap}>
@@ -846,14 +855,14 @@ const ss = StyleSheet.create({
     overflow: "hidden", // clips decorative circles
   },
 
-  // Success sheet override — solid #2E7D32
+  // Success sheet override — brand teal
   sheetSuccess: {
-    backgroundColor: "#1565C0",
+    backgroundColor: COLORS.primary,
   },
 
   // Success sheet override — solid #F57F17
   sheetError: {
-    backgroundColor: "#F57F17",
+    backgroundColor: COLORS.amber,
   },
 
   // ── Decorative circles (HomeCategoryCard style) ───────────────────────
@@ -871,7 +880,7 @@ const ss = StyleSheet.create({
     width: SW * 0.55,
     height: SW * 0.55,
     borderRadius: SW * 0.275,
-    backgroundColor: "rgba(27,94,32,0.45)",
+    backgroundColor: "rgba(42,157,143,0.45)",
     bottom: -(SW * 0.15),
     left: -(SW * 0.15),
   },
@@ -889,7 +898,7 @@ const ss = StyleSheet.create({
     width: SW * 0.2,
     height: SW * 0.2,
     borderRadius: SW * 0.1,
-    backgroundColor: "rgba(27,94,32,0.35)",
+    backgroundColor: "rgba(42,157,143,0.35)",
     bottom: SHEET_H * 0.15,
     right: -(SW * 0.05),
   },
@@ -912,13 +921,13 @@ const ss = StyleSheet.create({
     marginBottom: 6,
   },
 
-  // Success glow — #1B5E20
+  // Success glow — brand teal
   glowCircle: {
     position: "absolute",
     width: 130,
     height: 130,
     borderRadius: 65,
-    backgroundColor: "#0D47A1",
+    backgroundColor: "#009BA3",
   },
 
   errorGlowCircle: {
@@ -926,7 +935,7 @@ const ss = StyleSheet.create({
     width: 130,
     height: 130,
     borderRadius: 65,
-    backgroundColor: "#E65100",
+    backgroundColor: "#C07A1A",
   },
 
   burstWrap: {
@@ -942,7 +951,7 @@ const ss = StyleSheet.create({
     justifyContent: "center",
   },
 
-  // Success title — #1B5E20
+  // Success title — brand teal
   titleSuccess: {
     fontFamily: FONTS.bold,
     fontSize: 20,
@@ -986,10 +995,10 @@ const ss = StyleSheet.create({
     flex: 1,
     borderRadius: 14,
     borderWidth: 1.5,
-    borderColor: "#00BCD4",
+    borderColor: COLORS.primary,
     paddingVertical: 14,
     alignItems: "center",
-    backgroundColor: "#00BCD4",
+    backgroundColor: COLORS.primary,
   },
   retryText: {
     fontFamily: FONTS.bold,
@@ -1000,15 +1009,15 @@ const ss = StyleSheet.create({
   dismissBtn: {
     borderRadius: 14,
     borderWidth: 1,
-    borderColor: "#E65100",
-    backgroundColor: "#E65100",
+    borderColor: "#C07A1A",
+    backgroundColor: "#C07A1A",
     paddingVertical: 14,
     alignItems: "center",
   },
   // Success Continue button — dark green bg, white text
   dismissBtnSuccess: {
-    backgroundColor: "#0D47A1",
-    borderColor: "#0D47A1",
+    backgroundColor: "#009BA3",
+    borderColor: "#009BA3",
     shadowColor: "#000",
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.25,

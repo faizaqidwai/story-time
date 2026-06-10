@@ -8,6 +8,16 @@
 //   onClose  — called when user dismisses
 //   onUpgrade — called when user taps upgrade button (navigate to subscription)
 
+
+// BRAND UPDATE — feature/brand-guidelines-v2
+// COLOUR-ONLY — zero functional/logic/animation changes:
+//   ✅ Local C{} colour object removed — COLORS imported from theme
+//   ✅ Old cyan #00BCD4 → COLORS.primary (#00C4CC)
+//   ✅ Old yellow #FFD54F → COLORS.amber (#F5A623)
+//   ✅ All rgba(0,188,212,…) → rgba(0,196,204,…) correct cyan hex
+//   ✅ All rgba(255,213,79,…) → rgba(245,166,35,…) correct amber hex
+//   ✅ Old text colours → COLORS.textPrimary / COLORS.textMuted
+
 import React, { useRef, useEffect } from "react";
 import {
   Modal,
@@ -19,23 +29,11 @@ import {
   Easing,
   Dimensions,
 } from "react-native";
-import { FONTS } from "../../../theme";
+import { FONTS, COLORS } from "../../../theme";
 
 const { width: SW, height: SH } = Dimensions.get("window");
 
-const C = {
-  bg: "#0d0f22",
-  card: "#111830",
-  teal: "#00BCD4",
-  tealDim: "rgba(0,188,212,0.15)",
-  tealGlow: "rgba(0,188,212,0.35)",
-  yellow: "#FFD54F",
-  yellowDim: "rgba(255,213,79,0.12)",
-  coral: "#FF6B6B",
-  textPri: "#E0F7FA",
-  textMuted: "#7a9aaa",
-  border: "rgba(0,188,212,0.2)",
-};
+// Brand colours from theme — COLORS imported above
 
 const VALUE_PROPS = [
   { emoji: "📚", text: "All stories in every level" },
@@ -97,29 +95,29 @@ const icon = StyleSheet.create({
     width: 120,
     height: 120,
     borderRadius: 60,
-    backgroundColor: "rgba(255,213,79,0.08)",
+    backgroundColor: "rgba(245,166,35,0.08)",
     borderWidth: 1.5,
-    borderColor: "rgba(255,213,79,0.2)",
+    borderColor: "rgba(245,166,35,0.2)",
   },
   glowRingInner: {
     position: "absolute",
     width: 90,
     height: 90,
     borderRadius: 45,
-    backgroundColor: "rgba(255,213,79,0.1)",
+    backgroundColor: "rgba(245,166,35,0.1)",
     borderWidth: 1.5,
-    borderColor: "rgba(255,213,79,0.35)",
+    borderColor: "rgba(245,166,35,0.35)",
   },
   circle: {
     width: 68,
     height: 68,
     borderRadius: 34,
-    backgroundColor: "#1a1f3a",
+    backgroundColor: COLORS.surface,
     borderWidth: 2,
-    borderColor: C.yellow,
+    borderColor: COLORS.amber,
     alignItems: "center",
     justifyContent: "center",
-    shadowColor: C.yellow,
+    shadowColor: COLORS.amber,
     shadowOffset: { width: 0, height: 0 },
     shadowOpacity: 0.7,
     shadowRadius: 16,
@@ -155,10 +153,10 @@ const vp = StyleSheet.create({
     paddingVertical: 9,
     paddingHorizontal: 16,
     marginVertical: 3,
-    backgroundColor: C.tealDim,
+    backgroundColor: COLORS.primaryDim,
     borderRadius: 14,
     borderWidth: 1,
-    borderColor: C.border,
+    borderColor: COLORS.borderPrimary,
     width: "100%",
   },
   emojiWrap: {
@@ -174,7 +172,7 @@ const vp = StyleSheet.create({
   text: {
     fontFamily: FONTS.regular,
     fontSize: 14,
-    color: C.textPri,
+    color: COLORS.textPrimary,
     flex: 1,
   },
 });
@@ -425,21 +423,21 @@ const s = StyleSheet.create({
   card: {
     width: SW - 40,
     maxWidth: 400,
-    backgroundColor: C.card,
+    backgroundColor: COLORS.surface,
     borderRadius: 28,
     borderWidth: 1.5,
-    borderColor: C.border,
+    borderColor: COLORS.borderPrimary,
     paddingTop: 32,
     paddingBottom: 24,
     paddingHorizontal: 20,
     alignItems: "center",
-    shadowColor: C.teal,
+    shadowColor: COLORS.primary,
     shadowOffset: { width: 0, height: 8 },
     shadowOpacity: 0.2,
     shadowRadius: 24,
     elevation: 20,
     // Subtle top gradient feel via border
-    borderTopColor: "rgba(0,188,212,0.4)",
+    borderTopColor: "rgba(0,196,204,0.4)",
     borderTopWidth: 1.5,
   },
   closeBtn: {
@@ -456,23 +454,23 @@ const s = StyleSheet.create({
   closeTxt: {
     fontFamily: FONTS.bold,
     fontSize: 13,
-    color: C.textMuted,
+    color: COLORS.textMuted,
   },
   headline: {
     fontFamily: FONTS.bold,
     fontSize: 24,
-    color: C.textPri,
+    color: COLORS.textPrimary,
     letterSpacing: 0.3,
     textAlign: "center",
     marginBottom: 8,
-    textShadowColor: "rgba(0,188,212,0.3)",
+    textShadowColor: "rgba(0,196,204,0.3)",
     textShadowOffset: { width: 0, height: 0 },
     textShadowRadius: 8,
   },
   subline: {
     fontFamily: FONTS.light,
     fontSize: 14,
-    color: C.textMuted,
+    color: COLORS.textMuted,
     textAlign: "center",
     lineHeight: 21,
     marginBottom: 20,
@@ -487,12 +485,12 @@ const s = StyleSheet.create({
     width: "100%",
     height: 54,
     borderRadius: 27,
-    backgroundColor: C.yellow,
+    backgroundColor: COLORS.amber,
     alignItems: "center",
     justifyContent: "center",
     marginBottom: 12,
     overflow: "hidden",
-    shadowColor: C.yellow,
+    shadowColor: COLORS.amber,
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.5,
     shadowRadius: 14,
@@ -507,7 +505,7 @@ const s = StyleSheet.create({
   ctaTxt: {
     fontFamily: FONTS.bold,
     fontSize: 16,
-    color: "#08081a",
+    color: COLORS.background,
     letterSpacing: 0.3,
   },
   ctaShine: {
@@ -524,7 +522,7 @@ const s = StyleSheet.create({
   dismissTxt: {
     fontFamily: FONTS.regular,
     fontSize: 13,
-    color: C.textMuted,
+    color: COLORS.textMuted,
     textDecorationLine: "underline",
   },
 });

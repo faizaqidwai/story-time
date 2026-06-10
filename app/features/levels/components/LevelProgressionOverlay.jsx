@@ -18,22 +18,29 @@ import {
 } from "react-native";
 import { Audio } from "expo-av";
 import { progressLevel } from "../../../services/levelProgressionService";
-import { FONTS } from "../../../theme";
+import { FONTS, COLORS } from "../../../theme";
 import { font, pad, radius, size } from "../../../theme/tokens";
 
 const { width: SW, height: SH } = Dimensions.get("window");
 
+// ── hex → "R,G,B" for rgba() template literals — tracks theme changes ─────────
+function hexToRgb(hex) {
+  const h = hex.replace("#", "");
+  return `${parseInt(h.slice(0,2),16)},${parseInt(h.slice(2,4),16)},${parseInt(h.slice(4,6),16)}`;
+}
+
+// Brand colours — all sourced from COLORS so theme changes propagate automatically
 const C = {
-  bg: "rgba(8,8,26,0.97)",
-  teal: "#00BCD4",
-  tealBorder: "rgba(0,188,212,0.4)",
-  yellow: "#FFD54F",
-  yellowGlow: "rgba(255,213,79,0.3)",
-  green: "#4CAF50",
-  greenBorder: "rgba(76,175,80,0.4)",
-  purple: "#9652D9",
-  textPri: "#E0F7FA",
-  textMuted: "#7a9aaa",
+  bg:          `rgba(${hexToRgb(COLORS.background)},0.97)`,
+  teal:        COLORS.primary,
+  tealBorder:  `rgba(${hexToRgb(COLORS.primary)},0.4)`,
+  yellow:      COLORS.amber,
+  yellowGlow:  `rgba(${hexToRgb(COLORS.amber)},0.3)`,
+  green:       COLORS.teal,
+  greenBorder: `rgba(${hexToRgb(COLORS.teal)},0.4)`,
+  purple:      COLORS.purple,
+  textPri:     COLORS.textPrimary,
+  textMuted:   COLORS.textMuted,
 };
 
 // ── Star burst particle
@@ -432,7 +439,7 @@ const s = StyleSheet.create({
     width: 130,
     height: 130,
     borderRadius: 65,
-    backgroundColor: "rgba(255,213,79,0.12)",
+    backgroundColor: "rgba(245,166,35,0.12)",
     borderWidth: 3,
     borderColor: C.yellow,
     alignItems: "center",
@@ -493,11 +500,11 @@ const s = StyleSheet.create({
   errorText: {
     fontFamily: FONTS.regular,
     fontSize: font.s, // 13 → font.s (12/14)
-    color: "#EF5350",
+    color: "#E8445A",
     textAlign: "center",
   },
   retryBtn: {
-    backgroundColor: "rgba(0,188,212,0.15)",
+    backgroundColor: "rgba(0,196,204,0.15)",
     borderRadius: radius.sm, // 12 → radius.sm (10/14)
     borderWidth: 1,
     borderColor: C.tealBorder,
@@ -525,7 +532,7 @@ const s = StyleSheet.create({
   doneBtnText: {
     fontFamily: FONTS.bold,
     fontSize: font.lg, // 16 → font.lg (17/22)
-    color: "#08081a",
+    color: "#0A1628",
   },
 
   scrimTap: {

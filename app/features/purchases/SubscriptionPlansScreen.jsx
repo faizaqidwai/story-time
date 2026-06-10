@@ -27,7 +27,7 @@ import {
   FlatList,
 } from "react-native";
 import { useRouter } from "expo-router";
-import { FONTS } from "../../theme";
+import { FONTS, COLORS } from "../../theme";
 import { useRevenueCat } from "../../_contexts/RevenueCatContext";
 import { useApiCall } from "../../_hooks/useApiCall";
 import { fetchMySubscription } from "../../services/subscriptionService";
@@ -42,44 +42,56 @@ const CARD_MARGIN = pad.sm;
 const CARD_WIDTH = SW * 0.8;
 const PEEK_WIDTH = SW * 0.07;
 
+// Local aliases — all sourced from COLORS so theme changes propagate automatically
 const C = {
-  bg: "#08081a",
-  teal: "#00BCD4",
-  yellow: "#FFD54F",
-  coral: "#FF6B6B",
-  textPri: "#E0F7FA",
-  textSec: "#B0BEC5",
-  textMuted: "#546E7A",
+  bg:       COLORS.background,
+  teal:     COLORS.primary,
+  yellow:   COLORS.amber,
+  coral:    COLORS.coral,
+  textPri:  COLORS.textPrimary,
+  textSec:  COLORS.textMuted,
+  textMuted:COLORS.textMuted,
 };
+
+// ── Converts a #RRGGBB hex from COLORS into "R,G,B" channel string ───────────
+// Used so rgba() template literals in JSX always track the theme automatically.
+// Change COLORS.primary tomorrow → colorRgb updates everywhere instantly.
+function hexToRgb(hex) {
+  const h = hex.replace("#", "");
+  const r = parseInt(h.substring(0, 2), 16);
+  const g = parseInt(h.substring(2, 4), 16);
+  const b = parseInt(h.substring(4, 6), 16);
+  return `${r},${g},${b}`;
+}
 
 const ACCENT = {
   NONE: {
     fallbackIcon: "🌱",
-    color: "#00BCD4",
-    colorRgb: "0,188,212",
+    color:    COLORS.primary,
+    colorRgb: hexToRgb(COLORS.primary),   // derives from theme — always in sync
     ctaLabel: "Start for Free",
-    darkBg: "#03080a",
+    darkBg:   COLORS.background,
   },
   MONTHLY: {
     fallbackIcon: "⚡",
-    color: "#60CDFF",
-    colorRgb: "96,205,255",
+    color:    COLORS.primary,
+    colorRgb: hexToRgb(COLORS.primary),   // derives from theme — always in sync
     ctaLabel: "Go Premium",
-    darkBg: "#030c14",
+    darkBg:   "#071020",
   },
   YEARLY: {
     fallbackIcon: "🏆",
-    color: "#FFD54F",
-    colorRgb: "255,213,79",
+    color:    COLORS.amber,
+    colorRgb: hexToRgb(COLORS.amber),     // derives from theme — always in sync
     ctaLabel: "Save 20% Yearly",
-    darkBg: "#100d02",
+    darkBg:   "#0F0A00",
   },
   LIFETIME: {
     fallbackIcon: "♾️",
-    color: "#FF6B6B",
-    colorRgb: "255,107,107",
+    color:    COLORS.coral,
+    colorRgb: hexToRgb(COLORS.coral),     // derives from theme — always in sync
     ctaLabel: "Own It Forever",
-    darkBg: "#0e0303",
+    darkBg:   "#0F0205",
   },
 };
 
@@ -465,12 +477,12 @@ function PlanCard({ pkg, onPress, isCurrentPlan }) {
             style={[
               cardS.currentBadge,
               {
-                backgroundColor: "rgba(255,80,80,0.12)",
-                borderColor: "rgba(255,80,80,0.35)",
+                backgroundColor: "rgba(232,68,90,0.12)",
+                borderColor: "rgba(232,68,90,0.35)",
               },
             ]}
           >
-            <Text style={[cardS.currentBadgeText, { color: "#EF5350" }]}>
+            <Text style={[cardS.currentBadgeText, { color: "#E8445A" }]}>
               ⚠ Temporarily Unavailable
             </Text>
           </View>
@@ -677,7 +689,7 @@ const cardS = StyleSheet.create({
   ctaText: {
     fontFamily: FONTS.bold,
     fontSize: font.md,
-    color: "#08081a",
+    color: "#0A1628",
     letterSpacing: 0.3,
   },
   trialNote: {
@@ -761,21 +773,21 @@ const togS = StyleSheet.create({
   },
   pillActive: { backgroundColor: C.teal },
   pillText: { fontFamily: FONTS.bold, fontSize: font.sm, color: C.textMuted },
-  pillTextActive: { color: "#08081a" },
+  pillTextActive: { color: "#0A1628" },
   badge: {
     backgroundColor: "rgba(255,255,255,0.08)",
     borderRadius: radius.xs,
     paddingHorizontal: pad.xs,
     paddingVertical: 1,
   },
-  badgeActive: { backgroundColor: "rgba(8,8,26,0.22)" },
+  badgeActive: { backgroundColor: "rgba(10,16,38,0.22)" },
   badgeText: {
     fontFamily: FONTS.bold,
     fontSize: font.xs,
     color: C.textMuted,
     letterSpacing: 0.3,
   },
-  badgeTextActive: { color: "#08081a" },
+  badgeTextActive: { color: "#0A1628" },
 });
 
 // ── Pagination dots ───────────────────────────────────────────────────────────
@@ -870,7 +882,7 @@ const emS = StyleSheet.create({
     paddingHorizontal: pad.xl,
     paddingVertical: pad.sm,
   },
-  retryText: { fontFamily: FONTS.bold, fontSize: font.md, color: "#08081a" },
+  retryText: { fontFamily: FONTS.bold, fontSize: font.md, color: "#0A1628" },
 });
 
 // ── Main screen ───────────────────────────────────────────────────────────────
@@ -991,9 +1003,14 @@ export default function SubscriptionPlansScreen() {
 
     // ── Normal purchase flow ──────────────────────────────────────────────────
     // We only pass packageJson — PurchaseScreen reads pkg.identifier from it
-    // to find the live RC package object from RevenueCatContext.enrichedPackages
+    // to find the live RC package object from RevenueCatContext.enrichedPackages.
+    // We override accentColorRgb here with the brand-correct value from ACCENT
+    // so PurchaseScreen always receives the correct brand RGB channels,
+    // regardless of what RevenueCatContext enrichment injected.
+    const accent = getAccent(pkg.billingCycle, pkg.icon, null, pkg.darkBg, pkg.ctaLabel);
+    const brandPkg = { ...pkg, accentColorRgb: accent.colorRgb };
     const navParams = {
-      packageJson: JSON.stringify(pkg),
+      packageJson: JSON.stringify(brandPkg),
     };
 
     if (isOnFreePlan) {
@@ -1119,7 +1136,7 @@ const scr = StyleSheet.create({
     paddingBottom: pad.lg,
     paddingHorizontal: pad.md,
     borderBottomWidth: 1,
-    borderBottomColor: "rgba(0,188,212,0.1)",
+    borderBottomColor: "rgba(0,196,204,0.1)",
   },
   backBtn: {
     width: size.hitMd,

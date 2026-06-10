@@ -22,7 +22,7 @@ import {
 } from "react-native";
 import { Image as ExpoImage } from "expo-image";
 
-import { FONTS } from "../../theme";
+import { FONTS, COLORS } from "../../theme";
 import { font, pad, radius, isTablet } from "../../theme/tokens";
 import { GAME_STATUS } from "../GamificationEngine";
 import { useGamification } from "../GamificationContext";
@@ -30,9 +30,6 @@ import { GAME_ANIMATIONS } from "../constants/gameAnimations";
 import ScratchCover from "./ScratchCover";
 import GAME_COVERS from "../constants/gameCoverImages";
 
-const TEAL = "#00BCD4";
-const YELLOW = "#FFD54F";
-const DARK = "#08081a";
 
 const CARD_W = isTablet ? 220 : 160;
 const CARD_H = isTablet ? 270 : 200;
@@ -115,9 +112,9 @@ const dotS = StyleSheet.create({
     borderColor: "rgba(255,255,255,0.35)",
   },
   dotFilled: {
-    backgroundColor: TEAL,
-    borderColor: TEAL,
-    shadowColor: TEAL,
+    backgroundColor: COLORS.primary,
+    borderColor: COLORS.primary,
+    shadowColor: COLORS.primary,
     shadowOffset: { width: 0, height: 0 },
     shadowOpacity: 0.9,
     shadowRadius: 4,
@@ -162,8 +159,8 @@ function usePulse(active) {
 function CoverSection({ coverSource, gradient, icon, gameId, isLocked }) {
   if (!coverSource) {
     // ── FALLBACK: original animated-icon design for games without a cover ──
-    const g0 = gradient?.[0] ?? TEAL;
-    const g1 = gradient?.[1] ?? "#1a1a2e";
+    const g0 = gradient?.[0] ?? COLORS.primary;
+    const g1 = gradient?.[1] ?? COLORS.surface;
     const MiniComponent = GAME_ANIMATIONS[gameId];
     return (
       <View style={[s.coverFallback, { height: COVER_H }]}>
@@ -245,7 +242,7 @@ export default function GameCard({ slot }) {
     if (isUnlocked) startPlay(gameId);
   };
 
-  const acc = accentColor ?? YELLOW;
+  const acc = accentColor ?? COLORS.amber;
   const coverSource = GAME_COVERS[gameId] ?? null;
 
   return (
@@ -261,7 +258,7 @@ export default function GameCard({ slot }) {
       >
         {/* ── Dark card base ── */}
         <View
-          style={[StyleSheet.absoluteFillObject, { backgroundColor: DARK }]}
+          style={[StyleSheet.absoluteFillObject, { backgroundColor: COLORS.background }]}
         />
 
         {/* ── TOP: cover image or animated fallback ── */}
@@ -342,7 +339,7 @@ const s = StyleSheet.create({
     borderRadius: radius.xl,
     overflow: "hidden",
     elevation: 10,
-    shadowColor: "#00BCD4",
+    shadowColor: COLORS.primary,
     shadowOffset: { width: 0, height: 6 },
     shadowOpacity: 0.35,
     shadowRadius: 12,
@@ -360,7 +357,7 @@ const s = StyleSheet.create({
     bottom: 0,
     height: 32,
     // Linear gradient effect via layered opacity
-    backgroundColor: DARK,
+    backgroundColor: COLORS.background,
     opacity: 0.6,
   },
   lockTint: {
@@ -420,14 +417,14 @@ const s = StyleSheet.create({
   },
   badgeText: {
     fontSize: font.sm,
-    color: DARK,
+    color: COLORS.background,
     marginLeft: 2,
   },
 
   // ── Footer ────────────────────────────────────────────────────────────────
   footer: {
     width: "100%",
-    backgroundColor: DARK,
+    backgroundColor: COLORS.background,
     paddingHorizontal: pad.sm,
     paddingTop: 6,
     paddingBottom: 6,
@@ -468,7 +465,7 @@ const s = StyleSheet.create({
   unlockBtnText: {
     fontSize: font.s,
     fontWeight: "700",
-    color: DARK,
+    color: COLORS.background,
     letterSpacing: 0.2,
   },
 
@@ -488,7 +485,7 @@ const s = StyleSheet.create({
     position: "absolute",
     top: pad.s,
     left: pad.s,
-    backgroundColor: "rgba(255,100,60,0.88)",
+    backgroundColor: "rgba(232,68,90,0.88)",
     borderRadius: radius.xs,
     paddingHorizontal: pad.xs,
     paddingVertical: 2,

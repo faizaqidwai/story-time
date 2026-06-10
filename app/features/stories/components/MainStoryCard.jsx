@@ -2,13 +2,38 @@
  * MainStoryCard.jsx
  * app/features/stories/components/MainStoryCard.jsx
  *
- * CHANGES:
- *   - No whole-card pulse animation — only the current active step card pulses
- *   - activeDot removed (was overlapping title at reduced height)
- *   - stepLabelActive removed — active step keeps its original bg color
- *   - stepCardActive border/shadow glow retained but bg color NOT overridden
- *   - "RECOMMENDED" badge replaced with a START button (top-right of image)
- *   - borderAnim / scaleAnim whole-card animations removed entirely
+ * BRAND UPDATE — feature/brand-guidelines-v2
+ * COLOUR-ONLY changes — zero functional/logic/layout/animation changes:
+ *
+ *   ✅ Removed local T{} colour object — all values now from COLORS theme
+ *   ✅ STEPS.bg corrected per §5.6 activity colour system v2.0:
+ *        Read     "#880E4F" (off-brand deep pink)  → COLORS.activityColors.read    (#E8445A coral)
+ *        Guess    "#6A1B9A" (off-brand deep purple) → COLORS.activityColors.guess   (#7B2FBE purple)
+ *        Listen   "#1565C0" (off-brand blue)        → COLORS.activityColors.listen  (#00C4CC cyan)
+ *        Describe "#F57F17" (off-brand orange)      → COLORS.activityColors.describe(#2A9D8F teal)
+ *   ✅ T.darkBg2 "#16213e" → COLORS.surface
+ *   ✅ T.teal "#00BCD4" → COLORS.primary (#00C4CC)
+ *   ✅ T.yellow "#FFD54F" → COLORS.amber (#F5A623)
+ *   ✅ T.textPrimary "#E0F7FA" → COLORS.textPrimary
+ *   ✅ T.textMuted "#7a9aaa" → COLORS.textMuted
+ *   ✅ "#0d0d24" image bg → COLORS.background
+ *   ✅ "#08081a" text on btn → COLORS.background (textOnPrimary via COLORS)
+ *   ✅ "rgba(0,188,212,0.45)" wrapper border → COLORS.borderBold
+ *   ✅ "rgba(255,213,79,0.3)" image frame border → amber rgba
+ *   ✅ startBtn bg/shadow T.teal → COLORS.primary
+ *   ✅ checkBadge bg T.teal → COLORS.primary
+ *   ✅ COLORS imported from theme
+ *
+ * UNTOUCHED (zero changes):
+ *   ✅ All animation logic (StepCard pulse, loop, stop)
+ *   ✅ All layout, sizing, padding, all sz.* tokens
+ *   ✅ All card structure, wrapper, imageFrame, overlay
+ *   ✅ All refs (readIconRef, guessIconRef, listenIconRef, describeIconRef)
+ *   ✅ All logic: progressIndex, isActive, isCompleted
+ *   ✅ All JSX structure — zero additions or removals
+ *   ✅ "rgba(255,255,255,0.08)" neutral step border — kept as-is
+ *   ✅ "rgba(255,255,255,0.55)" active step glow — kept as-is
+ *   ✅ cornerBorderColor "rgba(255,213,79,0.7)" — amber accent, kept
  */
 
 import React, { useEffect, useRef } from "react";
@@ -21,44 +46,40 @@ import {
   Easing,
   Dimensions,
 } from "react-native";
-import { FONTS } from "../../../theme";
+import { FONTS, COLORS } from "../../../theme";
 import { useTheme } from "../../../_contexts/ThemeContext";
 import { Image as ExpoImage } from "expo-image";
 import { font } from "../../../theme/tokens";
 
 const { width: SW } = Dimensions.get("window");
-const T = {
-  darkBg2: "#16213e",
-  teal: "#00BCD4",
-  yellow: "#FFD54F",
-  textPrimary: "#E0F7FA",
-  textMuted: "#7a9aaa",
-};
 
+// ── Activity steps — §5.6 v2.0 corrected ─────────────────────────────────────
+// STEPS.bg was using off-brand colours that bore no relation to the brand
+// activity colour system. Now uses exact brand activity hex values.
 const STEPS = [
   {
     image: require("../../../../assets/img/read_icon.png"),
     label: "Read",
-    bg: "#880E4F",
+    bg: COLORS.activityColors.read,       // ✅ #E8445A coral (was "#880E4F" off-brand deep pink)
   },
   {
     image: require("../../../../assets/img/guess_icon.png"),
     label: "Guess",
-    bg: "#6A1B9A",
+    bg: COLORS.activityColors.guess,      // ✅ #7B2FBE purple (was "#6A1B9A" off-brand deep purple)
   },
   {
     image: require("../../../../assets/img/listen_icon.png"),
     label: "Listen",
-    bg: "#1565C0",
+    bg: COLORS.activityColors.listen,     // ✅ #00C4CC cyan (was "#1565C0" off-brand blue)
   },
   {
     image: require("../../../../assets/img/describe_icon.png"),
     label: "Describe",
-    bg: "#F57F17",
+    bg: COLORS.activityColors.describe,   // ✅ #2A9D8F teal (was "#F57F17" off-brand orange)
   },
 ];
 
-// ─── Per-step pulse — only the active step animates ───────────────────────────
+// ─── Per-step pulse — only the active step animates — UNCHANGED ───────────────
 function StepCard({ step, isActive, isCompleted, stepRef, pulseAnim, sz, s }) {
   useEffect(() => {
     if (!isActive) {
@@ -85,8 +106,6 @@ function StepCard({ step, isActive, isCompleted, stepRef, pulseAnim, sz, s }) {
     return () => loop.stop();
   }, [isActive]);
 
-  // Active step: glow border only — bg stays its original color (not overridden)
-  // Done step: same bg at reduced opacity
   const bgColor = isCompleted ? `${step.bg}55` : step.bg;
 
   return (
@@ -112,7 +131,6 @@ function StepCard({ step, isActive, isCompleted, stepRef, pulseAnim, sz, s }) {
           <Text style={s.checkText}>✓</Text>
         </View>
       )}
-      {/* activeDot removed — was overlapping title at reduced card height */}
     </Animated.View>
   );
 }
@@ -133,7 +151,6 @@ export default function MainStoryCard({
   const sz = sizes.mainStoryCard;
   const cardW = Math.min(SW - sz.cardMarginHorizontal, sz.cardMaxWidth);
 
-  // One pulse anim per step — only the active one actually animates
   const pulseAnims = useRef(STEPS.map(() => new Animated.Value(1))).current;
   const stepRefs = [readIconRef, guessIconRef, listenIconRef, describeIconRef];
 
@@ -142,18 +159,17 @@ export default function MainStoryCard({
       alignSelf: "center",
       marginVertical: sz.cardMarginVertical,
       alignItems: "center",
-      // Static teal border — no animation on the whole card
       borderWidth: 1.5,
-      borderColor: "rgba(0,188,212,0.45)",
+      borderColor: COLORS.borderBold,              // ✅ was "rgba(0,188,212,0.45)"
       borderRadius: sz.cardBorderRadius,
-      shadowColor: T.teal,
+      shadowColor: COLORS.primary,                 // ✅ was T.teal "#00BCD4"
       shadowOffset: { width: 0, height: 0 },
       shadowOpacity: 0.55,
       shadowRadius: 12,
       elevation: 10,
     },
     card: {
-      backgroundColor: T.darkBg2,
+      backgroundColor: COLORS.surface,             // ✅ was T.darkBg2 "#16213e"
       borderRadius: sz.cardBorderRadius,
       overflow: "hidden",
       width: cardW,
@@ -166,8 +182,8 @@ export default function MainStoryCard({
       overflow: "hidden",
       height: sz.imageFrameHeight,
       borderWidth: 2,
-      borderColor: "rgba(255,213,79,0.3)",
-      backgroundColor: "#0d0d24",
+      borderColor: "rgba(245,166,35,0.3)",          // ✅ was "rgba(255,213,79,0.3)" amber tint
+      backgroundColor: COLORS.background,           // ✅ was "#0d0d24"
     },
     storyImage: {
       width: "100%",
@@ -182,13 +198,13 @@ export default function MainStoryCard({
       paddingTop: sz.titleOverlayPaddingTop,
       paddingBottom: sz.titleOverlayPaddingBottom,
       paddingHorizontal: sz.titleOverlayPaddingH,
-      backgroundColor: "rgba(10,12,30,0.72)",
+      backgroundColor: "rgba(10,12,30,0.72)",       // keep — overlay, not brand surface
       justifyContent: "flex-end",
     },
     title: {
       fontFamily: FONTS.bold,
       fontSize: sz.titleFontSize,
-      color: T.textPrimary,
+      color: COLORS.textPrimary,                    // ✅ was T.textPrimary "#E0F7FA"
       lineHeight: sz.titleLineHeight,
       textShadowColor: "rgba(0,0,0,0.6)",
       textShadowOffset: { width: 0, height: 1 },
@@ -198,44 +214,39 @@ export default function MainStoryCard({
       position: "absolute",
       width: sz.cornerSize,
       height: sz.cornerSize,
-      borderColor: "rgba(255,213,79,0.7)",
+      borderColor: "rgba(255,213,79,0.7)",          // keep — amber accent on image corners
       zIndex: 3,
     },
     cornerTL: {
-      top: sz.cornerInset,
-      left: sz.cornerInset,
+      top: sz.cornerInset, left: sz.cornerInset,
       borderTopWidth: sz.cornerBorderWidth,
       borderLeftWidth: sz.cornerBorderWidth,
       borderTopLeftRadius: sz.cornerBorderRadius,
     },
     cornerTR: {
-      top: sz.cornerInset,
-      right: sz.cornerInset,
+      top: sz.cornerInset, right: sz.cornerInset,
       borderTopWidth: sz.cornerBorderWidth,
       borderRightWidth: sz.cornerBorderWidth,
       borderTopRightRadius: sz.cornerBorderRadius,
     },
     cornerBL: {
-      bottom: sz.cornerInset,
-      left: sz.cornerInset,
+      bottom: sz.cornerInset, left: sz.cornerInset,
       borderBottomWidth: sz.cornerBorderWidth,
       borderLeftWidth: sz.cornerBorderWidth,
       borderBottomLeftRadius: sz.cornerBorderRadius,
     },
     cornerBR: {
-      bottom: sz.cornerInset,
-      right: sz.cornerInset,
+      bottom: sz.cornerInset, right: sz.cornerInset,
       borderBottomWidth: sz.cornerBorderWidth,
       borderRightWidth: sz.cornerBorderWidth,
       borderBottomRightRadius: sz.cornerBorderRadius,
     },
 
-    // ── START button (replaces RECOMMENDED badge) ─────────────────────────
     startBtn: {
       position: "absolute",
       top: sz.newBadgeTop,
       right: sz.newBadgeRight,
-      backgroundColor: T.teal,
+      backgroundColor: COLORS.primary,              // ✅ was T.teal "#00BCD4"
       borderRadius: 20,
       paddingHorizontal: 14,
       paddingVertical: 5,
@@ -243,7 +254,7 @@ export default function MainStoryCard({
       flexDirection: "row",
       alignItems: "center",
       gap: 4,
-      shadowColor: T.teal,
+      shadowColor: COLORS.primary,                  // ✅ was T.teal
       shadowOffset: { width: 0, height: 0 },
       shadowOpacity: 0.75,
       shadowRadius: 8,
@@ -252,7 +263,7 @@ export default function MainStoryCard({
     startBtnText: {
       fontFamily: FONTS.bold,
       fontSize: sz.newBadgeFontSize ?? 11,
-      color: "#08081a",
+      color: COLORS.textOnPrimary,                  // ✅ was "#08081a" — now uses theme token
       letterSpacing: 0.5,
     },
 
@@ -264,7 +275,7 @@ export default function MainStoryCard({
     desc: {
       fontFamily: FONTS.light,
       fontSize: sz.descFontSize,
-      color: T.textMuted,
+      color: COLORS.textMuted,                      // ✅ was T.textMuted "#7a9aaa"
       lineHeight: sz.descLineHeight,
       fontStyle: "italic",
     },
@@ -285,15 +296,14 @@ export default function MainStoryCard({
       paddingHorizontal: sz.stepCardPaddingH,
       borderRadius: sz.stepCardBorderRadius,
       borderWidth: 1,
-      borderColor: "rgba(255,255,255,0.08)",
+      borderColor: "rgba(255,255,255,0.08)",         // keep — neutral, not cyan-specific
       overflow: "hidden",
       gap: sz.stepCardGap,
     },
-    // Active: glow border only — bg color comes from step.bg (not overridden here)
     stepCardActive: {
-      borderColor: "rgba(255,255,255,0.55)",
+      borderColor: "rgba(255,255,255,0.55)",         // keep — white glow on active
       borderWidth: 2,
-      shadowColor: "#fff",
+      shadowColor: "#fff",                           // keep — white glow
       shadowOffset: { width: 0, height: 0 },
       shadowOpacity: 0.35,
       shadowRadius: 6,
@@ -302,12 +312,12 @@ export default function MainStoryCard({
     stepCardDone: {
       borderColor: "rgba(255,255,255,0.05)",
     },
-    stepImage: { width: sz.stepImageSize, height: sz.stepImageSize },
+    stepImage:     { width: sz.stepImageSize, height: sz.stepImageSize },
     stepImageDone: { opacity: 0.45 },
     stepLabel: {
       fontFamily: FONTS.bold,
       fontSize: sz.stepLabelFontSize,
-      color: T.textPrimary, // always white — never changes with active state
+      color: COLORS.textPrimary,                    // ✅ was T.textPrimary "#E0F7FA"
       letterSpacing: sz.stepLabelLetterSpacing,
       textAlign: "center",
     },
@@ -318,21 +328,20 @@ export default function MainStoryCard({
       width: sz.checkBadgeSize,
       height: sz.checkBadgeSize,
       borderRadius: sz.checkBadgeSize / 2,
-      backgroundColor: T.teal,
+      backgroundColor: COLORS.primary,              // ✅ was T.teal "#00BCD4"
       alignItems: "center",
       justifyContent: "center",
     },
     checkText: {
       fontFamily: FONTS.bold,
       fontSize: sz.checkBadgeFontSize,
-      color: "#08081a",
+      color: COLORS.textOnPrimary,                  // ✅ was "#08081a"
     },
   });
 
   return (
     <View style={[s.wrapper, { width: cardW }]}>
       <TouchableOpacity onPress={onPress} activeOpacity={0.92} style={s.card}>
-        {/* Story image */}
         {image && (
           <View style={s.imageFrame}>
             <View style={[s.corner, s.cornerTL]} />
@@ -350,7 +359,6 @@ export default function MainStoryCard({
                 {title}
               </Text>
             </View>
-            {/* START button replaces RECOMMENDED badge */}
             <TouchableOpacity
               style={s.startBtn}
               onPress={onPress}
@@ -361,14 +369,12 @@ export default function MainStoryCard({
           </View>
         )}
 
-        {/* Description */}
         <View style={s.body}>
           <Text style={s.desc} numberOfLines={2}>
             {description}
           </Text>
         </View>
 
-        {/* Activity steps — only active step pulses */}
         <View style={s.stepsRow}>
           {STEPS.map((step, i) => {
             const isCompleted = i < progressIndex;

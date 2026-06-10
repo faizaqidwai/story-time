@@ -37,18 +37,12 @@ const GRID_GAP = isTablet ? 16 : 12; // gap between cards
 const CARD_W = (SW - H_PAD * 2 - GRID_GAP) / 2; // square
 const CARD_H = CARD_W;
 
-// ── Color palette — one vibrant color per activity ───────────────────────────
+// ── §5.6 Activity colour system v2.0 ─────────────────────────────────────────
 const ACTIVITY_COLORS = {
-  0: { base: "#00BCD4", dark: "#00838F", glow: "rgba(0,188,212,0.5)" }, // Read    teal
-  1: { base: "#9C27B0", dark: "#6A0080", glow: "rgba(156,39,176,0.5)" }, // Guess   purple
-  2: { base: "#FF9800", dark: "#E65100", glow: "rgba(255,152,0,0.5)" }, // Listen  orange
-  3: { base: "#E91E63", dark: "#880E4F", glow: "rgba(233,30,99,0.5)" }, // Describe pink
-};
-
-const C = {
-  bg: "#08081a",
-  textPri: "#E0F7FA",
-  textMuted: "#7a9aaa",
+  0: { base: "#E8445A", glow: "rgba(232,68,90,0.5)"  }, // Read     coral
+  1: { base: "#7B2FBE", glow: "rgba(123,47,190,0.5)" }, // Guess    purple
+  2: { base: "#00C4CC", glow: "rgba(0,196,204,0.5)"  }, // Listen   cyan
+  3: { base: "#2A9D8F", glow: "rgba(42,157,143,0.5)" }, // Describe teal
 };
 
 const ACTIVITIES = [
@@ -165,14 +159,14 @@ function ActivityCard({ activity, status, isEnabled, onPress, delay }) {
       const badgeLoop = Animated.loop(
         Animated.sequence([
           Animated.timing(badgePulse, {
-            toValue: 1.25,
-            duration: 550,
+            toValue: 1.4,
+            duration: 300,
             easing: Easing.inOut(Easing.sin),
             useNativeDriver: true,
           }),
           Animated.timing(badgePulse, {
             toValue: 1.0,
-            duration: 550,
+            duration: 300,
             easing: Easing.inOut(Easing.sin),
             useNativeDriver: true,
           }),
@@ -181,14 +175,14 @@ function ActivityCard({ activity, status, isEnabled, onPress, delay }) {
       const cardScaleLoop = Animated.loop(
         Animated.sequence([
           Animated.timing(cardScale, {
-            toValue: 1.03,
-            duration: 1100,
+            toValue: 1.07,
+            duration: 600,
             easing: Easing.inOut(Easing.sin),
             useNativeDriver: true,
           }),
           Animated.timing(cardScale, {
             toValue: 1.0,
-            duration: 1100,
+            duration: 600,
             easing: Easing.inOut(Easing.sin),
             useNativeDriver: true,
           }),
@@ -198,13 +192,13 @@ function ActivityCard({ activity, status, isEnabled, onPress, delay }) {
         Animated.sequence([
           Animated.timing(cardGlow, {
             toValue: 1.0,
-            duration: 1200,
+            duration: 600,
             easing: Easing.inOut(Easing.sin),
             useNativeDriver: true,
           }),
           Animated.timing(cardGlow, {
             toValue: 0.85,
-            duration: 1200,
+            duration: 600,
             easing: Easing.inOut(Easing.sin),
             useNativeDriver: true,
           }),
@@ -261,21 +255,15 @@ function ActivityCard({ activity, status, isEnabled, onPress, delay }) {
         activeOpacity={1}
         style={[card.wrap, { opacity: cardOpacity }]}
       >
-        {/* ── Solid background ── */}
+        {/* ── Single flat colour fill ── */}
         <View
           style={[
             StyleSheet.absoluteFillObject,
-            { backgroundColor: colors.dark },
-          ]}
-        />
-        <View
-          style={[
-            StyleSheet.absoluteFillObject,
-            { backgroundColor: colors.base, height: "50%", opacity: 0.92 },
+            { backgroundColor: colors.base },
           ]}
         />
 
-        {/* ── Slow glow overlay (active card only) ── */}
+        {/* ── Subtle brightness pulse on active card ── */}
         {isCurrent && (
           <Animated.View
             style={[
@@ -287,11 +275,6 @@ function ActivityCard({ activity, status, isEnabled, onPress, delay }) {
             ]}
           />
         )}
-
-        {/* ── Decorative circles ── */}
-        <View style={[card.circle1, { opacity: 0.12 }]} />
-        <View style={[card.circle2, { opacity: 0.09 }]} />
-        <View style={[card.circle3, { opacity: 0.06 }]} />
 
         {/* ── Top-LEFT number badge ── */}
         <View style={[card.numBadge, { backgroundColor: "rgba(0,0,0,0.30)" }]}>
@@ -347,12 +330,12 @@ function ActivityCard({ activity, status, isEnabled, onPress, delay }) {
               card.pill,
               {
                 backgroundColor: isDone
-                  ? "rgba(76,200,100,0.25)"
+                  ? "rgba(42,157,143,0.25)"
                   : isCurrent
                     ? "rgba(255,255,255,0.28)"
                     : "rgba(0,0,0,0.22)",
                 borderColor: isDone
-                  ? "rgba(76,200,100,0.65)"
+                  ? "rgba(42,157,143,0.65)"
                   : isCurrent
                     ? "rgba(255,255,255,0.65)"
                     : "rgba(255,255,255,0.12)",
@@ -360,7 +343,7 @@ function ActivityCard({ activity, status, isEnabled, onPress, delay }) {
             ]}
           >
             {isDone ? (
-              <Text style={[card.pillText, { color: "#69F0AE" }]}>✓ Done</Text>
+              <Text style={[card.pillText, { color: "#2A9D8F" }]}>✓ Done</Text>
             ) : isCurrent ? (
               <View style={card.pillRow}>
                 <ExpoImage
@@ -395,8 +378,8 @@ function ActivityCard({ activity, status, isEnabled, onPress, delay }) {
 }
 
 const ICON_SIZE = isTablet ? 84 : 68;
-// Bottom overlay height — taller to fit title + subtitle + pill
-const BOTTOM_H = isTablet ? 112 : 94;
+// Bottom overlay height — increased to give text/pill more room
+const BOTTOM_H = isTablet ? 130 : 112;
 
 const card = StyleSheet.create({
   wrap: {
@@ -410,33 +393,7 @@ const card = StyleSheet.create({
     shadowOpacity: 0.4,
     shadowRadius: 12,
   },
-  circle1: {
-    position: "absolute",
-    backgroundColor: "#fff",
-    width: CARD_W * 1.0,
-    height: CARD_W * 1.0,
-    borderRadius: CARD_W * 0.5,
-    top: -CARD_W * 0.45,
-    right: -CARD_W * 0.35,
-  },
-  circle2: {
-    position: "absolute",
-    backgroundColor: "#fff",
-    width: CARD_W * 0.55,
-    height: CARD_W * 0.55,
-    borderRadius: CARD_W * 0.275,
-    bottom: CARD_H * 0.18,
-    left: -CARD_W * 0.18,
-  },
-  circle3: {
-    position: "absolute",
-    backgroundColor: "#fff",
-    width: CARD_W * 0.35,
-    height: CARD_W * 0.35,
-    borderRadius: CARD_W * 0.175,
-    bottom: -CARD_W * 0.1,
-    right: CARD_W * 0.15,
-  },
+
   // Top-left number badge
   numBadge: {
     position: "absolute",
@@ -472,28 +429,28 @@ const card = StyleSheet.create({
     top: 0,
     left: 0,
     right: 0,
-    // Icon sits in the top portion above the bottom overlay
     bottom: BOTTOM_H,
     alignItems: "center",
     justifyContent: "center",
+    paddingTop: isTablet ? 44 : 36,    // ✅ shifts icon down into lower half of zone
   },
   icon: {
     width: ICON_SIZE,
     height: ICON_SIZE,
   },
-  // Bottom overlay — semi-dark, centered content
+  // Bottom overlay — transparent, more breathing room between elements
   bottomOverlay: {
     position: "absolute",
     bottom: 0,
     left: 0,
     right: 0,
     height: BOTTOM_H,
-    backgroundColor: "rgba(0,0,0,0.42)",
+    backgroundColor: "transparent",
     alignItems: "center",
     justifyContent: "center",
     paddingHorizontal: isTablet ? 10 : 8,
-    paddingVertical: isTablet ? 10 : 8,
-    gap: isTablet ? 5 : 3,
+    paddingVertical: isTablet ? 14 : 12,  // ✅ more vertical padding
+    gap: isTablet ? 8 : 6,               // ✅ more gap between title/subtitle/pill
   },
   title: {
     fontFamily: FONTS.bold,
@@ -583,7 +540,7 @@ export default function StoryHome() {
       <>
         <Stack.Screen options={{ headerShown: false }} />
         <View style={[screen.center, { paddingTop: insets.top }]}>
-          <Text style={{ color: C.textMuted, fontSize: font.md }}>
+          <Text style={{ color: "#8899AA", fontSize: font.md }}>
             Story not available. Please go back.
           </Text>
           <TouchableOpacity
@@ -649,7 +606,7 @@ export default function StoryHome() {
           onPress={() => router.back()}
           hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
         >
-          <Ionicons name="chevron-back" size={20} color="#00BCD4" />
+          <Ionicons name="chevron-back" size={20} color="#00C4CC" />
         </TouchableOpacity>
         <Text style={screen.headerTitle} numberOfLines={1}>
           {currentStory.title}
@@ -729,7 +686,7 @@ export default function StoryHome() {
 // SCREEN STYLES
 // ─────────────────────────────────────────────────────────────────────────────
 const screen = StyleSheet.create({
-  root: { flex: 1, backgroundColor: C.bg },
+  root: { flex: 1, backgroundColor: "#0A1628" },
   scroll: { flex: 1 },
   scrollContent: { paddingBottom: 20 },
 
@@ -738,17 +695,17 @@ const screen = StyleSheet.create({
     alignItems: "center",
     paddingHorizontal: pad.sm,
     paddingBottom: pad.sm,
-    backgroundColor: C.bg,
+    backgroundColor: "#0A1628",
     borderBottomWidth: 1,
-    borderBottomColor: "rgba(0,188,212,0.12)",
+    borderBottomColor: "rgba(0,196,204,0.12)",
   },
   backButton: {
     width: size.hitSm,
     height: size.hitSm,
     borderRadius: size.hitSm / 2,
-    backgroundColor: "rgba(0,188,212,0.08)",
+    backgroundColor: "rgba(0,196,204,0.08)",
     borderWidth: 1,
-    borderColor: "rgba(0,188,212,0.35)",
+    borderColor: "rgba(0,196,204,0.35)",
     alignItems: "center",
     justifyContent: "center",
     flexShrink: 0,
@@ -758,11 +715,11 @@ const screen = StyleSheet.create({
     textAlign: "center",
     fontFamily: FONTS.bold,
     fontSize: font.md,
-    color: "#00BCD4",
+    color: "#00C4CC",
     letterSpacing: 0.5,
     textTransform: "uppercase",
     marginHorizontal: pad.s,
-    textShadowColor: "rgba(0,188,212,0.4)",
+    textShadowColor: "rgba(0,196,204,0.4)",
     textShadowOffset: { width: 0, height: 0 },
     textShadowRadius: 8,
   },
@@ -770,24 +727,24 @@ const screen = StyleSheet.create({
 
   center: {
     flex: 1,
-    backgroundColor: C.bg,
+    backgroundColor: "#0A1628",
     alignItems: "center",
     justifyContent: "center",
     gap: pad.md,
     padding: pad.xxl,
   },
   fallbackBtn: {
-    backgroundColor: "rgba(0,188,212,0.13)",
+    backgroundColor: "rgba(0,196,204,0.13)",
     borderRadius: radius.lg,
     borderWidth: 1,
-    borderColor: "rgba(0,188,212,0.35)",
+    borderColor: "rgba(0,196,204,0.35)",
     paddingHorizontal: pad.lg,
     paddingVertical: pad.sm,
   },
   fallbackBtnText: {
     fontFamily: FONTS.bold,
     fontSize: font.md,
-    color: "#00BCD4",
+    color: "#00C4CC",
   },
 
   imageContainer: { width: "100%", position: "relative", overflow: "hidden" },
@@ -807,7 +764,7 @@ const screen = StyleSheet.create({
   storyTitle: {
     fontFamily: FONTS.bold,
     fontSize: font.xl,
-    color: "#E0F7FA",
+    color: "#FFFFFF",
     lineHeight: font.xl * 1.2,
     textShadowColor: "rgba(0,0,0,0.7)",
     textShadowOffset: { width: 0, height: 1 },
@@ -819,7 +776,7 @@ const screen = StyleSheet.create({
     paddingVertical: pad.sm,
     fontFamily: FONTS.light,
     fontSize: font.md,
-    color: "rgba(224,247,250,0.7)",
+    color: "rgba(255,255,255,0.7)",
     lineHeight: font.sm * 1.3,
     fontStyle: "italic",
   },
@@ -828,7 +785,7 @@ const screen = StyleSheet.create({
   sectionHeading: {
     fontFamily: FONTS.bold,
     fontSize: font.s,
-    color: C.textMuted,
+    color: "#8899AA",
     letterSpacing: 2.5,
     textTransform: "uppercase",
     marginBottom: pad.md,

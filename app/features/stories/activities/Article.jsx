@@ -34,25 +34,25 @@ const STATUS_H =
   Platform.OS === "android" ? (StatusBar.currentHeight ?? 24) : 50;
 
 const C = {
-  bg: "#08081a",
-  surface: "#16213e",
+  bg: "#0A1628",
+  surface: "#0F2040",
   surfaceDim: "rgba(255,255,255,0.06)",
-  teal: "#00BCD4",
-  tealDim: "rgba(0,188,212,0.13)",
-  tealBorder: "rgba(0,188,212,0.35)",
-  tealBold: "rgba(0,188,212,0.65)",
-  yellow: "#FFD54F",
-  yellowDim: "rgba(255,213,79,0.12)",
-  yellowBorder: "rgba(255,213,79,0.55)",
-  green: "#4CAF50",
-  greenDim: "rgba(76,175,80,0.18)",
-  greenBorder: "rgba(76,175,80,0.6)",
-  red: "#EF5350",
-  redDim: "rgba(239,83,80,0.15)",
-  redBorder: "rgba(239,83,80,0.55)",
-  textPri: "#E0F7FA",
-  textSec: "#B2EBF2",
-  textMuted: "#7a9aaa",
+  teal: "#00C4CC",
+  tealDim: "rgba(0,196,204,0.13)",
+  tealBorder: "rgba(0,196,204,0.35)",
+  tealBold: "rgba(0,196,204,0.65)",
+  yellow: "#F5A623",
+  yellowDim: "rgba(245,166,35,0.12)",
+  yellowBorder: "rgba(245,166,35,0.55)",
+  green: "#2A9D8F",
+  greenDim: "rgba(42,157,143,0.18)",
+  greenBorder: "rgba(42,157,143,0.6)",
+  red: "#E8445A",
+  redDim: "rgba(232,68,90,0.15)",
+  redBorder: "rgba(232,68,90,0.55)",
+  textPri: "#FFFFFF",
+  textSec: "#FFFFFF",
+  textMuted: "#8899AA",
   border: "rgba(255,255,255,0.08)",
 };
 
@@ -185,7 +185,7 @@ function Waveform({ isPlaying }) {
                   ? C.teal
                   : i % 3 === 1
                     ? C.yellow
-                    : "rgba(0,188,212,0.45)"
+                    : "rgba(0,196,204,0.45)"
                 : "rgba(255,255,255,0.1)",
             },
           ]}
@@ -1285,7 +1285,7 @@ const styles = StyleSheet.create({
     color: C.teal,
     letterSpacing: 0.3,
     marginHorizontal: pad.s,
-    textShadowColor: "rgba(0,188,212,0.5)",
+    textShadowColor: "rgba(0,196,204,0.5)",
     textShadowOffset: { width: 0, height: 0 },
     textShadowRadius: 10,
   },
@@ -1322,7 +1322,7 @@ const styles = StyleSheet.create({
     gap: pad.s,
   },
   coverTag: {
-    backgroundColor: "rgba(0,188,212,0.25)",
+    backgroundColor: "rgba(0,196,204,0.25)",
     borderRadius: radius.sm,
     borderWidth: 1,
     borderColor: C.tealBorder,
@@ -1384,7 +1384,7 @@ const styles = StyleSheet.create({
     marginBottom: pad.xs,
     overflow: "hidden",
     borderWidth: 1,
-    borderColor: "rgba(0,188,212,0.15)",
+    borderColor: "rgba(0,196,204,0.15)",
   },
   progressFill: {
     height: "100%",
@@ -1473,7 +1473,7 @@ const styles = StyleSheet.create({
   startQuizText: {
     fontFamily: FONTS.bold,
     fontSize: font.xl,
-    color: "#08081a",
+    color: "#0A1628",
     letterSpacing: 0.4,
   },
 
@@ -1482,10 +1482,10 @@ const styles = StyleSheet.create({
     alignItems: "center",
     gap: 6,
     marginTop: pad.md,
-    backgroundColor: "rgba(0,188,212,0.07)",
+    backgroundColor: "rgba(0,196,204,0.07)",
     borderRadius: radius.md,
     borderWidth: 1,
-    borderColor: "rgba(0,188,212,0.18)",
+    borderColor: "rgba(0,196,204,0.18)",
     paddingHorizontal: pad.md,
     paddingVertical: pad.sm,
     alignItems: "center",
@@ -1575,10 +1575,10 @@ const styles = StyleSheet.create({
   },
   questionSpeakingBadge: {
     marginTop: pad.sm,
-    backgroundColor: "rgba(0,188,212,0.08)",
+    backgroundColor: "rgba(0,196,204,0.08)",
     borderRadius: radius.sm,
     borderWidth: 1,
-    borderColor: "rgba(0,188,212,0.2)",
+    borderColor: "rgba(0,196,204,0.2)",
     paddingHorizontal: pad.sm,
     paddingVertical: pad.xs,
     alignSelf: "flex-start",
@@ -1624,10 +1624,10 @@ const styles = StyleSheet.create({
   },
 
   speakingIndicator: {
-    backgroundColor: "rgba(0,188,212,0.07)",
+    backgroundColor: "rgba(0,196,204,0.07)",
     borderRadius: radius.md,
     borderWidth: 1,
-    borderColor: "rgba(0,188,212,0.18)",
+    borderColor: "rgba(0,196,204,0.18)",
     paddingHorizontal: pad.md,
     paddingVertical: pad.sm,
     alignItems: "center",

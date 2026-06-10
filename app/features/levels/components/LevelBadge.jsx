@@ -10,11 +10,11 @@
 
 import React, { useEffect, useRef } from "react";
 import { View, Text, Animated, Easing, TouchableOpacity } from "react-native";
-import { FONTS } from "../../../theme";
+import { FONTS, COLORS } from "../../../theme";
 import { font, isTablet } from "../../../theme/tokens";
 
-const TEAL = "#00BCD4";
-const YELLOW = "#FFD54F";
+const TEAL = "#00C4CC";   // brand cyan §3.1
+const YELLOW = "#F5A623";  // brand amber §3.1
 
 export default function LevelBadge({
   displayLevel = 1,
@@ -60,7 +60,7 @@ export default function LevelBadge({
             width: ringSize,
             height: ringSize,
             borderRadius: ringSize / 2,
-            backgroundColor: "#0d0f22",
+            backgroundColor: "#0A1628",
             shadowColor: "#000",
             shadowOffset: { width: 0, height: 4 },
             shadowOpacity: 0.9,
@@ -72,7 +72,7 @@ export default function LevelBadge({
             zIndex: 10,
           },
           isViewingOther
-            ? { borderColor: "rgba(255,213,79,0.5)" }
+            ? { borderColor: "rgba(245,166,35,0.5)" }
             : { borderColor: "rgba(255,255,255,0.06)" },
         ]}
       >
@@ -81,7 +81,7 @@ export default function LevelBadge({
             width: innerSize,
             height: innerSize,
             borderRadius: innerSize / 2,
-            backgroundColor: "#10122a",
+            backgroundColor: "#0A1628",
             alignItems: "center",
             justifyContent: "center",
             borderWidth: 1.5,
@@ -97,7 +97,7 @@ export default function LevelBadge({
               left: -10,
               right: -10,
               height: "58%",
-              backgroundColor: "#1a2540",
+              backgroundColor: "#0F2040",
               transform: [{ rotate: "-6deg" }, { translateY: -4 }],
               borderRadius: 4,
               opacity: 0.9,
@@ -119,7 +119,7 @@ export default function LevelBadge({
             style={{
               fontFamily: FONTS.bold,
               fontSize: font.h2,
-              color: "#E0F7FA",
+              color: "#FFFFFF",
               textShadowColor: TEAL,
               textShadowOffset: { width: 0, height: 0 },
               textShadowRadius: 8,

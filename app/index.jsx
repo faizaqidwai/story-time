@@ -1,104 +1,74 @@
-// app/index.jsx (SplashScreen)
+// app/index.jsx  —  SplashScreen
 //
-// CHANGES FROM ORIGINAL:
-//   ✅ fetchRegisterToken() removed — moved to AccountChoice.jsx
-//      It was causing app to get stuck on splash when offline
-//      since it fired on every first launch before the user chose anything
-//   ✅ clearPrimaryUser import removed (was unused here)
-//   ✅ All animation logic, sounds, and navigation unchanged
-//   ✅ handleRegisterUser and showModal kept for compatibility
-//      (they are not reachable in the current nav flow but kept intact)
+// FIXES applied:
+//   ✅ All content wrapped in tight <inner> block with gap:10
+//   ✅ Title image given explicit aspectRatio: 4.5 — fixes unknown height bug
+//   ✅ Logo size: width * 0.38 (compact, not oversized)
+//   ✅ Title image width: width * 0.55
+//   ✅ No marginBottom on any child — parent gap:10 controls all spacing
+//   ✅ COLORS imported from new theme (background, glowCyan, glowPurple, textSecondary, textDisabled)
+//   ✅ All animation logic, sound, navigation unchanged
 
-import { StyleSheet, View, Animated, Dimensions, Platform } from "react-native";
+import { StyleSheet, View, Animated, Dimensions } from "react-native";
 import React, { useEffect, useRef } from "react";
 import { useRouter } from "expo-router";
 import { Audio } from "expo-av";
 import { useUser } from "./_contexts/UserContext";
-import { FONTS } from "./theme";
+import { FONTS, COLORS } from "./theme";
 import { useTheme } from "./_contexts/ThemeContext";
-import {
-  clearPrimaryUser,
-  getPrimaryUserAccountId,
-} from "./services/identityStorage";
-//clearPrimaryUser(); // Clear primary user on app start for testing purposes. Remove in production.
+import { getPrimaryUserAccountId } from "./services/identityStorage";
 
-const { width, height } = Dimensions.get("window");
+const { width } = Dimensions.get("window");
 
 const SplashScreen = () => {
-  const router = useRouter();
+  const router    = useRouter();
   const { sizes } = useTheme();
-  const sz = sizes.splash;
+  const sz        = sizes.splash;
 
-  const { isFirstTime, isLoading, isLogout, profiles } = useUser();
+  const { isLoading, profiles } = useUser();
 
-  const logoOp = useRef(new Animated.Value(0)).current;
-  const logoScale = useRef(new Animated.Value(0.82)).current;
-  const titleOp = useRef(new Animated.Value(0)).current;
-  const titleY = useRef(new Animated.Value(12)).current;
-  const sub1Op = useRef(new Animated.Value(0)).current;
-  const sub1Y = useRef(new Animated.Value(10)).current;
-  const sub2Op = useRef(new Animated.Value(0)).current;
-  const sub2Y = useRef(new Animated.Value(10)).current;
-
-  const fade = useRef(new Animated.Value(0)).current;
-  const scale = useRef(new Animated.Value(0.5)).current;
+  // ── Animation refs ────────────────────────────────────────────
+  const logoOp         = useRef(new Animated.Value(0)).current;
+  const logoScale      = useRef(new Animated.Value(0.82)).current;
+  const titleOp        = useRef(new Animated.Value(0)).current;
+  const titleY         = useRef(new Animated.Value(12)).current;
+  const sub1Op         = useRef(new Animated.Value(0)).current;
+  const sub1Y          = useRef(new Animated.Value(10)).current;
+  const sub2Op         = useRef(new Animated.Value(0)).current;
+  const sub2Y          = useRef(new Animated.Value(10)).current;
+  const fade           = useRef(new Animated.Value(0)).current;
+  const scale          = useRef(new Animated.Value(0.5)).current;
   const sparkleOpacity = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
-    // ── 1. Logo fades + scales in ────────────────────────────
+    // ── 1. Logo fades + scales in ─────────────────────────────
     Animated.parallel([
-      Animated.timing(logoOp, {
-        toValue: 1,
-        duration: 900,
-        useNativeDriver: true,
-      }),
-      Animated.spring(logoScale, {
-        toValue: 1,
-        friction: 6,
-        tension: 55,
-        useNativeDriver: true,
-      }),
+      Animated.timing(logoOp,    { toValue: 1, duration: 900, useNativeDriver: true }),
+      Animated.spring(logoScale, { toValue: 1, friction: 6, tension: 55, useNativeDriver: true }),
     ]).start(() => {
+
+      // ── 2. Title image slides up ───────────────────────────
       Animated.parallel([
-        Animated.timing(titleOp, {
-          toValue: 1,
-          duration: 450,
-          useNativeDriver: true,
-        }),
-        Animated.timing(titleY, {
-          toValue: 0,
-          duration: 450,
-          useNativeDriver: true,
-        }),
+        Animated.timing(titleOp, { toValue: 1, duration: 450, useNativeDriver: true }),
+        Animated.timing(titleY,  { toValue: 0, duration: 450, useNativeDriver: true }),
       ]).start(() => {
+
+        // ── 3. Tagline fades in ──────────────────────────────
         Animated.parallel([
-          Animated.timing(sub1Op, {
-            toValue: 1,
-            duration: 350,
-            useNativeDriver: true,
-          }),
-          Animated.timing(sub1Y, {
-            toValue: 0,
-            duration: 350,
-            useNativeDriver: true,
-          }),
+          Animated.timing(sub1Op, { toValue: 1, duration: 350, useNativeDriver: true }),
+          Animated.timing(sub1Y,  { toValue: 0, duration: 350, useNativeDriver: true }),
         ]).start(() => {
+
+          // ── 4. "From Codklusters" fades in ──────────────────
           Animated.parallel([
-            Animated.timing(sub2Op, {
-              toValue: 1,
-              duration: 350,
-              useNativeDriver: true,
-            }),
-            Animated.timing(sub2Y, {
-              toValue: 0,
-              duration: 350,
-              useNativeDriver: true,
-            }),
+            Animated.timing(sub2Op, { toValue: 1, duration: 350, useNativeDriver: true }),
+            Animated.timing(sub2Y,  { toValue: 0, duration: 350, useNativeDriver: true }),
           ]).start();
         });
       });
     });
 
+    // ── Sound ─────────────────────────────────────────────────
     const playSound = async () => {
       try {
         const { sound } = await Audio.Sound.createAsync(
@@ -106,40 +76,25 @@ const SplashScreen = () => {
           { volume: 0.4 },
         );
         await sound.playAsync();
-      } catch (error) {
-        console.log("Sound error:", error);
+      } catch (e) {
+        console.log("Sound error:", e);
       }
     };
     playSound();
 
+    // ── Background animations ──────────────────────────────────
     Animated.parallel([
-      Animated.timing(fade, {
-        toValue: 1,
-        duration: 4000,
-        useNativeDriver: true,
-      }),
-      Animated.spring(scale, {
-        toValue: 1,
-        friction: 3,
-        tension: 40,
-        useNativeDriver: true,
-      }),
+      Animated.timing(fade,  { toValue: 1, duration: 4000, useNativeDriver: true }),
+      Animated.spring(scale, { toValue: 1, friction: 3, tension: 40, useNativeDriver: true }),
     ]).start();
 
-    Animated.timing(sparkleOpacity, {
-      toValue: 1,
-      duration: 2000,
-      useNativeDriver: true,
-    }).start();
+    Animated.timing(sparkleOpacity, { toValue: 1, duration: 2000, useNativeDriver: true }).start();
 
+    // ── Navigation ────────────────────────────────────────────
     const timer = setTimeout(async () => {
       if (!isLoading) {
         const primaryUserAccountId = await getPrimaryUserAccountId();
         if (!primaryUserAccountId) {
-          // CHANGE: fetchRegisterToken removed from here.
-          // It is now called in AccountChoice when user taps "Create New Account".
-          // This prevents the app from stalling on splash when offline.
-          console.log("in index after register token");
           router.replace("/features/onboarding/IntroCarousel");
         } else {
           if (profiles.length === 0) {
@@ -151,70 +106,91 @@ const SplashScreen = () => {
       }
     }, 5000);
 
-    return () => {
-      clearTimeout(timer);
-    };
+    return () => clearTimeout(timer);
   }, [isLoading, profiles]);
 
-  const logoSize = width * sz.logoSizeRatio;
+  // ── Computed sizes ────────────────────────────────────────────
+  const logoSize      = width * 0.38;   // compact logo — 38% screen width
+  const titleImgWidth = width * 0.55;   // title image — 55% screen width
+  // ✅ KEY FIX: explicit height derived from aspect ratio
+  // storytime-title-bg.png is landscape text — approx 4.5:1 ratio
+  // Without this, RN cannot compute height from width alone and leaves a gap
+  const titleImgHeight = titleImgWidth / 4.5;
 
   return (
     <View style={styles.container}>
+
+      {/* ── Ambient glows (position:absolute, don't affect layout) ── */}
       <View style={styles.glowTL} pointerEvents="none" />
       <View style={styles.glowBR} pointerEvents="none" />
 
-      <Animated.Image
-        source={require("../assets/img/story-time-logo-4.png")}
-        style={[
-          styles.logo,
-          {
-            width: logoSize,
-            height: logoSize,
-            opacity: logoOp,
-            transform: [{ scale: logoScale }],
-          },
-        ]}
-        resizeMode="contain"
-      />
+      {/*
+        ── Inner content block ─────────────────────────────────────
+        Single wrapper with gap:10 — ALL spacing controlled here.
+        No marginBottom on any child whatsoever.
+        alignItems:"center" centres each child horizontally.
+      */}
+      <View style={styles.inner}>
 
-      <Animated.Text
-        style={[
-          styles.title,
-          {
-            fontSize: sz.titleFontSize,
-            opacity: titleOp,
-            transform: [{ translateY: titleY }],
-          },
-        ]}
-      >
-        Story Time
-      </Animated.Text>
+        {/* Logo */}
+        <Animated.Image
+          source={require("../assets/img/storytime-logo.png")}
+          style={[
+            styles.logo,
+            {
+              width:  logoSize,
+              height: logoSize,
+              opacity:   logoOp,
+              transform: [{ scale: logoScale }],
+            },
+          ]}
+          resizeMode="contain"
+        />
 
-      <Animated.Text
-        style={[
-          styles.sub1,
-          {
-            fontSize: sz.sub1FontSize,
-            opacity: sub1Op,
-            transform: [{ translateY: sub1Y }],
-          },
-        ]}
-      >
-        A kids learning App
-      </Animated.Text>
+        {/* Title image — replaces old "Story Time" Text */}
+        <Animated.Image
+          source={require("../assets/img/storytime-title-bg.png")}
+          style={[
+            styles.titleImage,
+            {
+              width:  titleImgWidth,
+              height: titleImgHeight,   // ✅ explicit height — eliminates the gap
+              opacity:   titleOp,
+              transform: [{ translateY: titleY }],
+            },
+          ]}
+          resizeMode="contain"
+        />
 
-      <Animated.Text
-        style={[
-          styles.sub2,
-          {
-            fontSize: sz.sub2FontSize,
-            opacity: sub2Op,
-            transform: [{ translateY: sub2Y }],
-          },
-        ]}
-      >
-        From Codklusters Education
-      </Animated.Text>
+        {/* Tagline */}
+        <Animated.Text
+          style={[
+            styles.sub1,
+            {
+              fontSize:  sz.sub1FontSize,
+              opacity:   sub1Op,
+              transform: [{ translateY: sub1Y }],
+            },
+          ]}
+        >
+          An English Reading Habit App
+        </Animated.Text>
+
+        {/* By-line */}
+        <Animated.Text
+          style={[
+            styles.sub2,
+            {
+              fontSize:  sz.sub2FontSize,
+              opacity:   sub2Op,
+              transform: [{ translateY: sub2Y }],
+            },
+          ]}
+        >
+          From Codklusters Education
+        </Animated.Text>
+
+      </View>
     </View>
   );
 };
@@ -222,126 +198,68 @@ const SplashScreen = () => {
 export default SplashScreen;
 
 const styles = StyleSheet.create({
+
+  // ── Outer container ───────────────────────────────────────────
   container: {
     flex: 1,
     justifyContent: "center",
     alignItems: "center",
-    backgroundColor: "#08081a",
+    backgroundColor: COLORS.background,   // #0A1628 Midnight Navy
     overflow: "hidden",
   },
+
+  // ── Ambient glows ─────────────────────────────────────────────
   glowTL: {
     position: "absolute",
-    top: -80,
-    left: -80,
-    width: 320,
-    height: 320,
+    top: -80, left: -80,
+    width: 320, height: 320,
     borderRadius: 160,
-    backgroundColor: "rgba(0,188,212,0.07)",
+    backgroundColor: COLORS.glowCyan,    // rgba(0,196,204,0.08)
   },
   glowBR: {
     position: "absolute",
-    bottom: -60,
-    right: -60,
-    width: 280,
-    height: 280,
+    bottom: -60, right: -60,
+    width: 280, height: 280,
     borderRadius: 140,
-    backgroundColor: "rgba(150,82,217,0.07)",
+    backgroundColor: COLORS.glowPurple,  // rgba(123,47,190,0.08)
   },
-  logo: { border: 1, borderRadius: 3 },
-  title: {
-    fontFamily:
-      Platform.OS === "ios" ? "Noteworthy-Bold" : "sans-serif-condensed",
-    fontWeight: "900",
-    color: "#00BCD4",
-    letterSpacing: 1.5,
-    textShadowColor: "rgba(0,188,212,0.45)",
-    textShadowOffset: { width: 0, height: 0 },
-    textShadowRadius: 18,
-    marginBottom: 10,
+
+  // ── Inner block ───────────────────────────────────────────────
+  // gap:10 is the single source of spacing between all children.
+  // Do NOT add marginTop/marginBottom to any child inside here.
+  inner: {
+    alignItems: "center",
+    gap: 10,
   },
+
+  // ── Logo ──────────────────────────────────────────────────────
+  logo: {
+    borderRadius: 22,
+    // no margin — gap on parent handles spacing
+  },
+
+  // ── Title image ───────────────────────────────────────────────
+  // width + height both set explicitly (height = width / 4.5)
+  // This is critical — without explicit height RN leaves dead space
+  titleImage: {
+    // no margin — gap on parent handles spacing
+  },
+
+  // ── Tagline ───────────────────────────────────────────────────
   sub1: {
     fontFamily: FONTS.light,
-    color: "#B2EBF2",
+    color: COLORS.textSecondary,         // rgba(255,255,255,0.85)
     letterSpacing: 0.4,
-    marginBottom: 6,
+    textAlign: "center",
+    // no margin — gap on parent handles spacing
   },
+
+  // ── By-line ───────────────────────────────────────────────────
   sub2: {
     fontFamily: FONTS.light,
-    color: "rgba(255,255,255,0.28)",
+    color: COLORS.textDisabled,          // rgba(255,255,255,0.30)
     letterSpacing: 0.8,
-  },
-  modalOverlay: {
-    flex: 1,
-    backgroundColor: "rgba(0, 0, 0, 0.7)",
-    justifyContent: "center",
-    alignItems: "center",
-    padding: 20,
-  },
-  modalContent: {
-    backgroundColor: "#fff",
-    borderRadius: 25,
-    padding: 30,
-    width: "100%",
-    maxWidth: 400,
-    maxHeight: "80%",
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 8,
-    elevation: 8,
-  },
-  welcomeTitle: {
-    fontSize: 32,
-    fontWeight: "bold",
-    color: "#9652D9",
     textAlign: "center",
-    marginBottom: 10,
-  },
-  welcomeSubtitle: {
-    fontSize: 16,
-    color: "#666",
-    textAlign: "center",
-    marginBottom: 30,
-  },
-  inputGroup: { marginBottom: 20 },
-  label: { fontSize: 16, fontWeight: "600", color: "#333", marginBottom: 8 },
-  input: {
-    backgroundColor: "#F5F5F5",
-    borderRadius: 12,
-    padding: 15,
-    fontSize: 16,
-    borderWidth: 1,
-    borderColor: "#E0E0E0",
-  },
-  levelButtons: { flexDirection: "row", gap: 10 },
-  levelButton: {
-    flex: 1,
-    paddingVertical: 12,
-    paddingHorizontal: 10,
-    borderRadius: 12,
-    backgroundColor: "#F5F5F5",
-    borderWidth: 2,
-    borderColor: "#E0E0E0",
-    alignItems: "center",
-  },
-  levelButtonActive: { backgroundColor: "#9652D9", borderColor: "#9652D9" },
-  levelButtonText: { fontSize: 14, fontWeight: "600", color: "#666" },
-  levelButtonTextActive: { color: "#fff" },
-  startButton: {
-    backgroundColor: "#FF6B9D",
-    paddingVertical: 16,
-    borderRadius: 12,
-    marginTop: 20,
-    shadowColor: "#FF6B9D",
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 4,
-    elevation: 4,
-  },
-  startButtonText: {
-    fontSize: 18,
-    fontWeight: "bold",
-    color: "#fff",
-    textAlign: "center",
+    // no margin — gap on parent handles spacing
   },
 });

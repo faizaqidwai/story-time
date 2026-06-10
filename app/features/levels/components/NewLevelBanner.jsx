@@ -18,7 +18,7 @@ import {
   Animated,
   Easing,
 } from "react-native";
-import { FONTS } from "../../../theme";
+import { FONTS, COLORS } from "../../../theme";
 import { font, pad, radius, size } from "../../../theme/tokens";
 
 export default function NewLevelBanner({ onPress }) {
@@ -87,19 +87,19 @@ const s = StyleSheet.create({
     right: -pad.sm, // -12 → -pad.sm
     bottom: -pad.xs, // -6 → -pad.xs
     borderRadius: radius.xl, // 24 → radius.xl (24/32)
-    backgroundColor: "rgba(0,188,212,0.18)",
+    backgroundColor: "rgba(0,196,204,0.18)",
   },
   btn: {
     flexDirection: "row",
     alignItems: "center",
     gap: pad.s, // 8 → pad.s (8/11)
-    backgroundColor: "#0d1f35",
+    backgroundColor: "#0F2040",
     borderRadius: radius.xl, // 20 → radius.xl (24/32)
     borderWidth: 1.5,
-    borderColor: "#00BCD4",
+    borderColor: "#00C4CC",
     paddingHorizontal: pad.md, // 16 → pad.md (16/22)
     paddingVertical: pad.s, // 10 → pad.s (8/11)
-    shadowColor: "#00BCD4",
+    shadowColor: "#00C4CC",
     shadowOffset: { width: 0, height: 0 },
     shadowOpacity: 0.7,
     shadowRadius: 10,
@@ -111,7 +111,7 @@ const s = StyleSheet.create({
   title: {
     fontFamily: FONTS.bold,
     fontSize: font.sm, // 13 → font.sm (13/17)
-    color: "#E0F7FA",
+    color: "#FFFFFF",
     letterSpacing: 0.3,
   },
 
@@ -119,10 +119,10 @@ const s = StyleSheet.create({
   sub: {
     fontFamily: FONTS.bold,
     fontSize: font.xs, // 10 → font.xs (9/12)
-    color: "#00BCD4",
+    color: "#00C4CC",
     marginTop: 1,
   },
 
   // Decorative glyph — no fontFamily needed
-  arrow: { fontSize: font.xl, color: "#00BCD4", marginLeft: pad.xs }, // 22 → font.xl (20/26), marginLeft 4 → pad.xs (4/6)
+  arrow: { fontSize: font.xl, color: "#00C4CC", marginLeft: pad.xs }, // 22 → font.xl (20/26), marginLeft 4 → pad.xs (4/6)
 });

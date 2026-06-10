@@ -19,24 +19,13 @@ import {
   TouchableOpacity,
 } from "react-native";
 import { Image as ExpoImage } from "expo-image";
-import { FONTS } from "../../theme";
+import { FONTS, COLORS } from "../../theme";
 import { font, pad, radius } from "../../theme/tokens";
 import { GAME_ANIMATIONS } from "../constants/gameAnimations";
 import ExpandedGameCard from "./ExpandedGameCard";
 import GAME_COVERS from "../constants/gameCoverImages";
 
 const { width: SW } = Dimensions.get("window");
-
-const C = {
-  teal: "#00BCD4",
-  purple: "#B39DDB",
-  purpleGlow: "rgba(179,157,219,0.35)",
-  purpleBorder: "rgba(179,157,219,0.55)",
-  yellow: "#FFD54F",
-  yellowBorder: "rgba(255,213,79,0.6)",
-  textPri: "#E0F7FA",
-  textMuted: "#7a9aaa",
-};
 
 const COST = 9;
 const DIAMOND_CNT = 9;
@@ -135,7 +124,7 @@ function FlyingDiamond({ fromX, fromY, toX, toY, delay, onLand }) {
 // Shows cover image full-bleed when available; falls back to animated icon.
 // ─────────────────────────────────────────────────────────────────────────────
 function MiniGameCard({ slot, size = ICON_BOX }) {
-  const gradient = slot?.gradient ?? ["#00BCD4", "#0097A7"];
+  const gradient = slot?.gradient ?? [COLORS.primary, COLORS.primaryDark];
   const MiniAnim = slot?.gameId ? GAME_ANIMATIONS[slot.gameId] : null;
   const coverSource = slot?.gameId ? (GAME_COVERS[slot.gameId] ?? null) : null;
 
@@ -519,25 +508,25 @@ const fl = StyleSheet.create({
   heading: {
     fontFamily: FONTS.bold,
     fontSize: font.xl,
-    color: C.textPri,
+    color: COLORS.textPrimary,
     textAlign: "center",
     letterSpacing: 0.3,
     marginBottom: pad.xs,
-    textShadowColor: C.purpleGlow,
+    textShadowColor: COLORS.purpleGlow,
     textShadowOffset: { width: 0, height: 0 },
     textShadowRadius: 10,
   },
   subHeading: {
     fontFamily: FONTS.regular,
     fontSize: font.md,
-    color: C.textMuted,
+    color: COLORS.textMuted,
     textAlign: "center",
     marginBottom: pad.sm,
   },
   divider: {
     width: "100%",
     height: 1,
-    backgroundColor: "rgba(179,157,219,0.2)",
+    backgroundColor: "rgba(123,47,190,0.2)",
     marginBottom: pad.md,
   },
   rewardRow: {
@@ -558,15 +547,15 @@ const fl = StyleSheet.create({
     overflow: "visible",
   },
   walletBox: {
-    backgroundColor: "rgba(179,157,219,0.12)",
+    backgroundColor: "rgba(123,47,190,0.12)",
     borderWidth: 2,
-    borderColor: C.purpleBorder,
+    borderColor: COLORS.purpleBorder,
   },
   boxImage: { width: ICON_BOX * 0.72, height: ICON_BOX * 0.72 },
   iconLabel: {
     fontFamily: FONTS.bold,
     fontSize: font.s,
-    color: C.textMuted,
+    color: COLORS.textMuted,
     letterSpacing: 1.1,
     textTransform: "uppercase",
   },
@@ -580,7 +569,7 @@ const fl = StyleSheet.create({
     backgroundColor: "rgba(8,8,26,0.95)",
     borderRadius: radius.pill,
     borderWidth: 1.5,
-    borderColor: C.purpleBorder,
+    borderColor: COLORS.purpleBorder,
     paddingHorizontal: pad.s,
     paddingVertical: 3,
     zIndex: 10,
@@ -588,7 +577,7 @@ const fl = StyleSheet.create({
   walletCounterText: {
     fontFamily: FONTS.bold,
     fontSize: font.lg,
-    color: C.purple,
+    color: COLORS.purple,
   },
   gameCounter: {
     position: "absolute",
@@ -600,7 +589,7 @@ const fl = StyleSheet.create({
     backgroundColor: "rgba(8,8,26,0.95)",
     borderRadius: radius.pill,
     borderWidth: 1.5,
-    borderColor: C.yellowBorder,
+    borderColor: COLORS.amberBorder,
     paddingHorizontal: pad.s,
     paddingVertical: 3,
     zIndex: 10,
@@ -608,7 +597,7 @@ const fl = StyleSheet.create({
   gameCounterText: {
     fontFamily: FONTS.bold,
     fontSize: font.lg,
-    color: C.yellow,
+    color: COLORS.amber,
   },
   counterIcon: { width: 18, height: 18 },
   arrowTrail: {
@@ -619,7 +608,7 @@ const fl = StyleSheet.create({
     width: ARROW_ZONE,
     justifyContent: "center",
   },
-  arrowChar: { fontFamily: FONTS.bold, fontSize: font.h3, color: C.purple },
+  arrowChar: { fontFamily: FONTS.bold, fontSize: font.h3, color: COLORS.purple },
   btnRow: {
     flexDirection: "row",
     gap: pad.sm,
@@ -645,33 +634,33 @@ const fl = StyleSheet.create({
     paddingVertical: pad.sm,
     borderRadius: radius.pill,
     borderWidth: 1.5,
-    borderColor: C.purpleBorder,
-    backgroundColor: "rgba(179,157,219,0.15)",
+    borderColor: COLORS.purpleBorder,
+    backgroundColor: "rgba(123,47,190,0.15)",
     alignItems: "center",
   },
   confirmBtnText: {
     fontFamily: FONTS.bold,
     fontSize: font.md,
-    color: C.purple,
+    color: COLORS.purple,
   },
   cantAffordBox: {
     flex: 1.5,
     paddingVertical: pad.sm,
     borderRadius: radius.pill,
     borderWidth: 1.5,
-    borderColor: "rgba(239,83,80,0.4)",
-    backgroundColor: "rgba(239,83,80,0.1)",
+    borderColor: "rgba(232,68,90,0.4)",
+    backgroundColor: "rgba(232,68,90,0.1)",
     alignItems: "center",
   },
   cantAffordText: {
     fontFamily: FONTS.bold,
     fontSize: font.md,
-    color: "#EF5350",
+    color: COLORS.coral,
   },
   animatingHint: {
     fontFamily: FONTS.light,
     fontSize: font.md,
-    color: C.textMuted,
+    color: COLORS.textMuted,
     textAlign: "center",
     marginTop: pad.lg,
     fontStyle: "italic",

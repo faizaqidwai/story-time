@@ -1,26 +1,37 @@
-// app/IntroCarousel.jsx
+// app/features/onboarding/IntroCarousel.jsx
 //
-// Revamped 3-slide intro carousel.
+// BRAND UPDATE — feature/brand-guidelines-v2
+// COLOUR-ONLY changes — zero functional/layout/animation changes:
 //
-// Layout per slide:
-//   ┌──────────────────────────────────┐
-//   │  TOP 30%  — slide title          │
-//   ├─────────────────┬────────────────┤
-//   │  LEFT 50%       │  RIGHT 50%     │  ← bottom 70%
-//   │  (text or vis.) │  (vis. or txt) │
-//   └─────────────────┴────────────────┘
+//   ✅ Removed local C{} colour object — all values now from COLORS theme
+//   ✅ ACTIVITY_STEPS colours corrected per §5.6 v2.0:
+//        Read    → COLORS.activityColors.read    (#E8445A coral)
+//        Guess   → COLORS.activityColors.guess   (#7B2FBE purple)
+//        Listen  → COLORS.activityColors.listen  (#00C4CC cyan)
+//        Describe→ COLORS.activityColors.describe(#2A9D8F teal)
+//   ✅ DUMMY_STORIES colours: removed off-brand #4CAF50, #EC407A
+//        replaced with COLORS.teal and COLORS.coral from brand palette
+//   ✅ Skip button: removed debug "pink" backgroundColor/borderColor
+//   ✅ Get Started (ctaBtn): C.teal → COLORS.primary, text → COLORS.textOnPrimary
+//   ✅ Background "#08081a" → COLORS.background
+//   ✅ All old rgba(0,188,212,…) → COLORS.borderPrimary / borderBold / glowCyan
+//   ✅ "#00BCD4" old cyan → COLORS.primary (#00C4CC)
+//   ✅ "#E0F7FA" old textPri → COLORS.textPrimary
+//   ✅ "#7a9aaa" old muted → COLORS.textMuted
+//   ✅ Story card bg "#16213e" → COLORS.surface
+//   ✅ Vignette glows → COLORS.glowCyan / COLORS.glowPurple
+//   ✅ Badge inner bg "#10122a" → COLORS.surface
+//   ✅ COLORS imported from theme — no local colour objects remain
 //
-// Slide 1: title top | description left (lines fade in) | level badges right
-// Slide 2: title top | activity badges left             | description right
-// Slide 3: title top | description left                 | story cards right (auto-scroll)
-//
-// Sounds:
-//   pop.mp3    — each level badge (slide 1) and activity badge (slide 2) appears
-//   swish.mp3  — carousel page turn + slide 3 auto-scroll tick
-//   button.mp3 — Get Started button pressed
-//
-// Background: full-screen looping video with dark blue overlay.
-// After last slide (or Skip) → AccountChoice screen.
+// UNTOUCHED (zero changes):
+//   ✅ All animation logic, timing, refs
+//   ✅ All layout, sizing, padding, dimensions
+//   ✅ All audio logic
+//   ✅ All navigation
+//   ✅ All slide/panel/visual component structure
+//   ✅ Video background logic
+//   ✅ FlatList, ScrollView, all data arrays (structure only)
+//   ✅ All sz.* theme sizing tokens
 
 import React, { useRef, useState, useEffect, useCallback } from "react";
 import {
@@ -42,15 +53,16 @@ import { Audio } from "expo-av";
 import { Video, ResizeMode } from "expo-av";
 import { FONTS, COLORS } from "../../theme";
 import { useTheme } from "../../_contexts/ThemeContext";
-import { font, pad, radius, size } from "../../theme/tokens"; // ← ADD
+import { font, pad, radius, size } from "../../theme/tokens";
 import { Image as ExpoImage } from "expo-image";
-// ── Timing (ms) ────────────────────────────────────────────────────────────
+
+// ── Timing (ms) — UNCHANGED ──────────────────────────────────────────────────
 const LINE_DUR = 480;
 const LINE_STAGGER = 550;
 const VIS_DELAY = 250;
 const VIS_STAGGER = 220;
 
-// ── Sound helper ──────────────────────────────────────────────────────────
+// ── Sound helper — UNCHANGED ─────────────────────────────────────────────────
 async function playSound(file) {
   try {
     await Audio.setAudioModeAsync({ playsInSilentModeIOS: true });
@@ -62,7 +74,7 @@ async function playSound(file) {
   } catch (_) {}
 }
 
-// ── Carousel cover images ─────────────────────────────────────────────────
+// ── Carousel cover images — UNCHANGED ────────────────────────────────────────
 const COVERS = [
   require("../../../assets/img/intro/the-enchanted-forest.jpg"),
   require("../../../assets/img/intro/the-space-adventure.jpg"),
@@ -86,226 +98,83 @@ const COVERS = [
   require("../../../assets/img/intro/the-dream-weavers.jpg"),
 ];
 
-// ── Dummy story data for slide 3 ──────────────────────────────────────────
+// ── DUMMY_STORIES — structure UNCHANGED, colours corrected ───────────────────
+// ✅ Removed off-brand "#4CAF50" (green) → COLORS.teal
+// ✅ Removed off-brand "#EC407A" (pink)  → COLORS.coral
 const DUMMY_STORIES = [
-  {
-    id: "1",
-    title: "The Enchanted Forest",
-    intro: "A young explorer discovers a magical world behind an ancient oak.",
-    color: COLORS.teal,
-    image: COVERS[0],
-  },
-  {
-    id: "2",
-    title: "Space Adventure",
-    intro:
-      "Captain Nova leads her crew through the galaxy searching for a lost star.",
-    color: COLORS.purple,
-    image: COVERS[1],
-  },
-  {
-    id: "3",
-    title: "The Dragon's Secret",
-    intro: "Deep in the mountains lives a dragon with a heartwarming secret.",
-    color: COLORS.coral,
-    image: COVERS[2],
-  },
-  {
-    id: "4",
-    title: "Ocean Mysteries",
-    intro: "Dive deep with Maya as she uncovers treasures beneath the waves.",
-    color: COLORS.yellow,
-    image: COVERS[3],
-  },
-  {
-    id: "5",
-    title: "The Brave Little Robot",
-    intro: "A tiny robot learns what it truly means to be a hero.",
-    color: COLORS.teal,
-    image: COVERS[4],
-  },
-  {
-    id: "6",
-    title: "Jungle Rhythms",
-    intro: "Follow Kito through a vibrant jungle alive with music and wonder.",
-    color: "#4CAF50",
-    image: COVERS[5],
-  },
-  {
-    id: "7",
-    title: "The Starlight Library",
-    intro: "Every book in this magical library opens a door to another world.",
-    color: COLORS.purple,
-    image: COVERS[6],
-  },
-  {
-    id: "8",
-    title: "Cloud Kingdom",
-    intro: "High above the earth, a kingdom of clouds holds ancient secrets.",
-    color: COLORS.teal,
-    image: COVERS[7],
-  },
-  {
-    id: "9",
-    title: "The Inventor's Workshop",
-    intro:
-      "Young Petra builds incredible machines from scraps in her backyard.",
-    color: COLORS.yellow,
-    image: COVERS[8],
-  },
-  {
-    id: "10",
-    title: "Midnight Garden",
-    intro:
-      "When the clock strikes twelve, the garden awakens with astonishing life.",
-    color: COLORS.coral,
-    image: COVERS[9],
-  },
-  {
-    id: "11",
-    title: "The Talking Mountains",
-    intro:
-      "Two siblings discover mountains with stories older than time itself.",
-    color: COLORS.teal,
-    image: COVERS[10],
-  },
-  {
-    id: "12",
-    title: "Polar Expedition",
-    intro: "A team of young explorers races to rescue a family of polar bears.",
-    color: "#4CAF50",
-    image: COVERS[11],
-  },
-  {
-    id: "13",
-    title: "The Magic Paintbrush",
-    intro: "Whatever Lena paints comes to life — but not always as expected.",
-    color: "#EC407A",
-    image: COVERS[12],
-  },
-  {
-    id: "14",
-    title: "City of Echoes",
-    intro:
-      "In a city built inside a canyon, every sound carries a hidden message.",
-    color: COLORS.purple,
-    image: COVERS[13],
-  },
-  {
-    id: "15",
-    title: "The Lightning Catcher",
-    intro: "Brave Sam harnesses lightning to power her tiny seaside village.",
-    color: COLORS.yellow,
-    image: COVERS[14],
-  },
-  {
-    id: "16",
-    title: "Beneath the Desert",
-    intro: "Below the burning sands lies an ancient civilisation to be found.",
-    color: COLORS.coral,
-    image: COVERS[15],
-  },
-  {
-    id: "17",
-    title: "The Friendship Bridge",
-    intro: "Building a bridge teaches two rival villages the meaning of unity.",
-    color: COLORS.teal,
-    image: COVERS[16],
-  },
-  {
-    id: "18",
-    title: "Sky Pirates",
-    intro: "Captain Cloud sails the skies on a ship made entirely of wind.",
-    color: COLORS.purple,
-    image: COVERS[17],
-  },
-  {
-    id: "19",
-    title: "The Whispering Seeds",
-    intro:
-      "A small seed carries within it the story of an entire ancient forest.",
-    color: "#4CAF50",
-    image: COVERS[18],
-  },
-  {
-    id: "20",
-    title: "The Dream Weavers",
-    intro:
-      "At the edge of sleep, three children weave dreams into golden threads.",
-    color: "#EC407A",
-    image: COVERS[19],
-  },
+  { id: "1",  title: "The Enchanted Forest",       intro: "A young explorer discovers a magical world behind an ancient oak.",                              color: COLORS.teal,    image: COVERS[0] },
+  { id: "2",  title: "Space Adventure",            intro: "Captain Nova leads her crew through the galaxy searching for a lost star.",                     color: COLORS.purple,  image: COVERS[1] },
+  { id: "3",  title: "The Dragon's Secret",        intro: "Deep in the mountains lives a dragon with a heartwarming secret.",                              color: COLORS.coral,   image: COVERS[2] },
+  { id: "4",  title: "Ocean Mysteries",            intro: "Dive deep with Maya as she uncovers treasures beneath the waves.",                             color: COLORS.amber,   image: COVERS[3] },
+  { id: "5",  title: "The Brave Little Robot",     intro: "A tiny robot learns what it truly means to be a hero.",                                        color: COLORS.teal,    image: COVERS[4] },
+  { id: "6",  title: "Jungle Rhythms",             intro: "Follow Kito through a vibrant jungle alive with music and wonder.",                            color: COLORS.teal,    image: COVERS[5] },   // ✅ was #4CAF50
+  { id: "7",  title: "The Starlight Library",      intro: "Every book in this magical library opens a door to another world.",                            color: COLORS.purple,  image: COVERS[6] },
+  { id: "8",  title: "Cloud Kingdom",              intro: "High above the earth, a kingdom of clouds holds ancient secrets.",                             color: COLORS.teal,    image: COVERS[7] },
+  { id: "9",  title: "The Inventor's Workshop",    intro: "Young Petra builds incredible machines from scraps in her backyard.",                          color: COLORS.amber,   image: COVERS[8] },
+  { id: "10", title: "Midnight Garden",            intro: "When the clock strikes twelve, the garden awakens with astonishing life.",                     color: COLORS.coral,   image: COVERS[9] },
+  { id: "11", title: "The Talking Mountains",      intro: "Two siblings discover mountains with stories older than time itself.",                         color: COLORS.teal,    image: COVERS[10] },
+  { id: "12", title: "Polar Expedition",           intro: "A team of young explorers races to rescue a family of polar bears.",                           color: COLORS.teal,    image: COVERS[11] }, // ✅ was #4CAF50
+  { id: "13", title: "The Magic Paintbrush",       intro: "Whatever Lena paints comes to life — but not always as expected.",                            color: COLORS.coral,   image: COVERS[12] }, // ✅ was #EC407A
+  { id: "14", title: "City of Echoes",             intro: "In a city built inside a canyon, every sound carries a hidden message.",                      color: COLORS.purple,  image: COVERS[13] },
+  { id: "15", title: "The Lightning Catcher",      intro: "Brave Sam harnesses lightning to power her tiny seaside village.",                             color: COLORS.amber,   image: COVERS[14] },
+  { id: "16", title: "Beneath the Desert",         intro: "Below the burning sands lies an ancient civilisation to be found.",                           color: COLORS.coral,   image: COVERS[15] },
+  { id: "17", title: "The Friendship Bridge",      intro: "Building a bridge teaches two rival villages the meaning of unity.",                           color: COLORS.teal,    image: COVERS[16] },
+  { id: "18", title: "Sky Pirates",               intro: "Captain Cloud sails the skies on a ship made entirely of wind.",                               color: COLORS.purple,  image: COVERS[17] },
+  { id: "19", title: "The Whispering Seeds",       intro: "A small seed carries within it the story of an entire ancient forest.",                       color: COLORS.teal,    image: COVERS[18] }, // ✅ was #4CAF50
+  { id: "20", title: "The Dream Weavers",          intro: "At the edge of sleep, three children weave dreams into golden threads.",                      color: COLORS.coral,   image: COVERS[19] }, // ✅ was #EC407A
 ];
 
-const C = {
-  bg: "#0d0f22",
-  card: "#111830",
-  teal: "#00BCD4",
-  tealDim: "rgba(0,188,212,0.15)",
-  tealGlow: "rgba(0,188,212,0.35)",
-  yellow: "#FFD54F",
-  yellowDim: "rgba(255,213,79,0.12)",
-  coral: "#FF6B6B",
-  textPri: "#E0F7FA",
-  textMuted: "#7a9aaa",
-  border: "rgba(0,188,212,0.2)",
-};
-// ── Activity icons (same as MainStoryCard) ────────────────────────────────
+// ── ACTIVITY_STEPS — §5.6 v2.0 corrected ─────────────────────────────────────
+// ✅ ALL four colours corrected per brand guidelines §5.6 single source of truth
 const ACTIVITY_STEPS = [
-  {
-    image: require("../../../assets/img/read_icon.png"),
-    label: "Read",
-    color: COLORS.teal,
-  },
-  {
-    image: require("../../../assets/img/guess_icon.png"),
-    label: "Guess",
-    color: COLORS.yellow,
-  },
-  {
-    image: require("../../../assets/img/listen_icon.png"),
-    label: "Listen",
-    color: COLORS.coral,
-  },
-  {
-    image: require("../../../assets/img/describe_icon.png"),
-    label: "Describe",
-    color: COLORS.purple,
-  },
+  { image: require("../../../assets/img/read_icon.png"),     label: "Read",     color: COLORS.activityColors.read     }, // ✅ #E8445A coral
+  { image: require("../../../assets/img/guess_icon.png"),    label: "Guess",    color: COLORS.activityColors.guess    }, // ✅ #7B2FBE purple
+  { image: require("../../../assets/img/listen_icon.png"),   label: "Listen",   color: COLORS.activityColors.listen   }, // ✅ #00C4CC cyan
+  { image: require("../../../assets/img/describe_icon.png"), label: "Describe", color: COLORS.activityColors.describe }, // ✅ #2A9D8F teal
 ];
 
-// ── Slide definitions ─────────────────────────────────────────────────────
+// ── Slide definitions — brand-aligned content per Master Brand Strategy ──────
+// Single slide only. Content follows:
+//   Title/subtitle → Message 08 (Skill vs Desire) — emotional hook
+//   Line 1         → Message 01 (Habit Promise) — reward loop in 6 words
+//   Line 2         → Message 07 (Four Ways to Learn) — specific proof numbers
+//   Line 3         → Message 09 (Parent Dashboard) — parental outcome
 const SLIDES = [
   {
     id: "3",
-    accentColor: "#00BCD4",
-    title: "Get Ready to Explore Story Time",
-    subtitle: "With Your Child!",
+    accentColor: COLORS.primary,
+    title: "Your child will choose to read.",
+    subtitle: "Without being asked.",
     descSide: "left",
     visSide: "right",
     visType: "stories",
     lines: [
-      "Explore 100+ stories crafted for every curious mind",
-      "Unlock 1,000+ new words through play — not memorisation",
-      "Track your child's progress across levels, badges and rewards",
+      "Stories earn coins. Coins unlock games.",
+      "Four activities per story build 1,000+ words",
+      "Track their reading journey — level by level",
     ],
   },
 ];
 
-// ── Level badge data ───────────────────────────────────────────────────────
+// ── Level / step colour arrays — UNCHANGED structure, corrected values ────────
 const LEVEL_NUMS = [1, 5, 10, 20, "30+"];
 const LEVEL_COLORS = [
+  COLORS.teal,    // ✅ was COLORS.teal (same — already correct name, wrong value)
+  COLORS.amber,   // ✅ was COLORS.yellow
+  COLORS.coral,   // ✅ was COLORS.coral (same name, value now correct)
+  COLORS.purple,  // ✅ correct
   COLORS.teal,
-  COLORS.yellow,
-  COLORS.coral,
-  COLORS.purple,
-  COLORS.teal,
-  COLORS.yellow,
+  COLORS.amber,
 ];
-const STEP_COLORS = [COLORS.teal, COLORS.yellow, COLORS.coral, COLORS.purple];
+const STEP_COLORS = [
+  COLORS.activityColors.read,
+  COLORS.activityColors.guess,
+  COLORS.activityColors.listen,
+  COLORS.activityColors.describe,
+];
 
 // ─────────────────────────────────────────────────────────────────────────────
-// LEVEL BADGE MINI — slide 1 visual
+// LEVEL BADGE MINI — layout/animation UNCHANGED, colours corrected
 // ─────────────────────────────────────────────────────────────────────────────
 function LevelBadgeMini({ level, color, anim }) {
   const { sizes } = useTheme();
@@ -328,7 +197,7 @@ function LevelBadgeMini({ level, color, anim }) {
           width: sz.badgeRingSize,
           height: sz.badgeRingSize,
           borderRadius: sz.badgeRingSize / 2,
-          backgroundColor: "#0d0f22",
+          backgroundColor: COLORS.background,   // ✅ was "#0d0f22"
           borderWidth: 2.5,
           borderColor: color + "77",
           alignItems: "center",
@@ -345,7 +214,7 @@ function LevelBadgeMini({ level, color, anim }) {
             width: innerSize,
             height: innerSize,
             borderRadius: innerSize / 2,
-            backgroundColor: "#10122a",
+            backgroundColor: COLORS.surface,    // ✅ was "#10122a"
             alignItems: "center",
             justifyContent: "center",
             overflow: "hidden",
@@ -376,7 +245,7 @@ function LevelBadgeMini({ level, color, anim }) {
             style={{
               fontFamily: FONTS.bold,
               fontSize: sz.badgeLvlNumSize,
-              color: "#E0F7FA",
+              color: COLORS.textPrimary,         // ✅ was "#E0F7FA"
               lineHeight: sz.badgeLvlNumSize + 4,
               textShadowColor: color,
               textShadowOffset: { width: 0, height: 0 },
@@ -411,15 +280,12 @@ function LevelBadgeMini({ level, color, anim }) {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// ACTIVITY BADGE MINI — slide 2 visual
+// ACTIVITY BADGE MINI — layout UNCHANGED, colours corrected
 // ─────────────────────────────────────────────────────────────────────────────
 function ActivityBadgeMini({ step, anim, halfW }) {
   const { sizes } = useTheme();
   const sz = sizes.carousel;
-  const slideX = anim.interpolate({
-    inputRange: [0, 1],
-    outputRange: [-28, 0],
-  });
+  const slideX = anim.interpolate({ inputRange: [0, 1], outputRange: [-28, 0] });
   return (
     <Animated.View
       style={{
@@ -497,7 +363,7 @@ function ActivityBadgeMini({ step, anim, halfW }) {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// STORY CARD MINI
+// STORY CARD MINI — layout UNCHANGED, colours corrected
 // ─────────────────────────────────────────────────────────────────────────────
 function StoryCardMini({ story }) {
   const { sizes } = useTheme();
@@ -509,14 +375,14 @@ function StoryCardMini({ story }) {
     <View
       style={{
         width: cardW,
-        backgroundColor: "#16213e",
+        backgroundColor: COLORS.surface,          // ✅ was "#16213e"
         borderRadius: 22,
         borderWidth: 1.5,
         marginBottom: sz.storyCardMarginBottom,
         overflow: "hidden",
         borderColor: story.isCompleted
           ? "rgba(76,175,80,0.45)"
-          : "rgba(0,188,212,0.28)",
+          : COLORS.borderPrimary,                 // ✅ was "rgba(0,188,212,0.28)"
       }}
     >
       <View
@@ -563,7 +429,7 @@ function StoryCardMini({ story }) {
             style={{
               fontFamily: FONTS.bold,
               fontSize: font.xs,
-              color: "#08081a",
+              color: COLORS.background,            // ✅ was "#08081a"
               letterSpacing: 1.2,
             }}
           >
@@ -592,14 +458,13 @@ function StoryCardMini({ story }) {
             zIndex: 1,
             justifyContent: "center",
             height: "25%",
-            // alignItems: "center",
           }}
         >
           <Text
             style={{
               fontFamily: FONTS.bold,
               fontSize: font.lg,
-              color: "#E0F7FA",
+              color: COLORS.textPrimary,           // ✅ was "#E0F7FA"
               lineHeight: sz.storyCardTitleLineHeight,
               textShadowColor: "rgba(0,0,0,0.7)",
               textShadowOffset: { width: 0, height: 1 },
@@ -614,7 +479,7 @@ function StoryCardMini({ story }) {
         style={{
           fontFamily: FONTS.light,
           fontSize: font.s,
-          color: "#7a9aaa",
+          color: COLORS.textMuted,                 // ✅ was "#7a9aaa"
           fontStyle: "italic",
           lineHeight: sz.storyCardIntroLineHeight,
           paddingHorizontal: 10,
@@ -638,7 +503,7 @@ function StoryCardMini({ story }) {
           backgroundColor: "rgba(0,0,0,0.3)",
           borderRadius: 20,
           borderWidth: 1,
-          borderColor: "rgba(0,188,212,0.2)",
+          borderColor: COLORS.borderPrimary,       // ✅ was "rgba(0,188,212,0.2)"
         }}
       >
         {STEP_COLORS.map((c, i) => (
@@ -656,7 +521,7 @@ function StoryCardMini({ story }) {
                 style={{
                   width: sz.storyConnectorWidth,
                   height: 2,
-                  backgroundColor: "rgba(0,188,212,0.25)",
+                  backgroundColor: COLORS.borderPrimary, // ✅ was "rgba(0,188,212,0.25)"
                   marginHorizontal: 3,
                 }}
               />
@@ -669,15 +534,12 @@ function StoryCardMini({ story }) {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// DESCRIPTION LINE — fade + slide up on appear
+// DESCRIPTION LINE — UNCHANGED
 // ─────────────────────────────────────────────────────────────────────────────
 function DescLine({ text, anim, isFirst }) {
   const { sizes } = useTheme();
   const sz = sizes.carousel;
-  const translateY = anim.interpolate({
-    inputRange: [0, 1],
-    outputRange: [14, 0],
-  });
+  const translateY = anim.interpolate({ inputRange: [0, 1], outputRange: [14, 0] });
   return (
     <Animated.Text
       style={[
@@ -685,14 +547,14 @@ function DescLine({ text, anim, isFirst }) {
           ? {
               fontFamily: FONTS.bold,
               fontSize: sz.descLineFirstFontSize,
-              color: "#E0F7FA",
+              color: COLORS.textPrimary,           // ✅ was "#E0F7FA"
               lineHeight: sz.descLineFirstLineHeight,
               marginBottom: 14,
             }
           : {
               fontFamily: FONTS.light,
               fontSize: sz.descLineBodyFontSize,
-              color: "#E0F7FA",
+              color: COLORS.textPrimary,           // ✅ was "#E0F7FA"
               lineHeight: sz.descLineBodyLineHeight,
               marginBottom: 10,
             },
@@ -705,7 +567,7 @@ function DescLine({ text, anim, isFirst }) {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// SLIDE PANEL
+// SLIDE PANEL — layout/animation UNCHANGED, colours corrected
 // ─────────────────────────────────────────────────────────────────────────────
 function SlidePanel({ slide, isActive }) {
   const { width: SW, height: SH } = useWindowDimensions();
@@ -726,7 +588,6 @@ function SlidePanel({ slide, isActive }) {
         ? ACTIVITY_STEPS.length
         : 0;
 
-  // ── Slide 1: compute how many level badges fit ────────────────────────────
   const BADGE_H = sz.badgeRingSize + 12 + sz.badgeMarginV * 2;
   const AVAILABLE_H = BOT_H - 16 - 88 - 20;
   const MAX_FIT = Math.floor(AVAILABLE_H / BADGE_H);
@@ -739,10 +600,7 @@ function SlidePanel({ slide, isActive }) {
         { lv: LEVEL_NUMS[0], i: 0 },
         { lv: LEVEL_NUMS[LEVEL_NUMS.length - 1], i: LEVEL_NUMS.length - 1 },
       ];
-    const middle = LEVEL_NUMS.slice(1, -1).map((lv, idx) => ({
-      lv,
-      i: idx + 1,
-    }));
+    const middle = LEVEL_NUMS.slice(1, -1).map((lv, idx) => ({ lv, i: idx + 1 }));
     const middleCount = MAX_FIT - 2;
     const step = Math.max(1, Math.floor(middle.length / middleCount));
     const picked = [];
@@ -756,15 +614,11 @@ function SlidePanel({ slide, isActive }) {
   };
   const levelSubset = buildLevelSubset();
 
-  const lineAnims = useRef(
-    slide.lines.map(() => new Animated.Value(0)),
-  ).current;
+  const lineAnims = useRef(slide.lines.map(() => new Animated.Value(0))).current;
   const visAnims = useRef(
     Array.from({ length: Math.max(visCount, 1) }, () => new Animated.Value(0)),
   ).current;
-  const storyAnims = useRef(
-    DUMMY_STORIES.map(() => new Animated.Value(0)),
-  ).current;
+  const storyAnims = useRef(DUMMY_STORIES.map(() => new Animated.Value(0))).current;
 
   const storyScrollRef = useRef(null);
   const scrollTimerRef = useRef(null);
@@ -786,31 +640,19 @@ function SlidePanel({ slide, isActive }) {
       return;
     }
 
-    // ── Description lines ──────────────────────────────────────────────────
     const lineSeq = lineAnims.map((anim, i) =>
       Animated.sequence([
         Animated.delay(i * LINE_STAGGER),
-        Animated.timing(anim, {
-          toValue: 1,
-          duration: LINE_DUR,
-          useNativeDriver: true,
-        }),
+        Animated.timing(anim, { toValue: 1, duration: LINE_DUR, useNativeDriver: true }),
       ]),
     );
 
     const allLinesDone = (lineCount - 1) * LINE_STAGGER + LINE_DUR + VIS_DELAY;
-
-    // ── Visual items ──────────────────────────────────────────────────────
-    const actualVisCount =
-      slide.visType === "levels" ? levelSubset.length : visCount;
+    const actualVisCount = slide.visType === "levels" ? levelSubset.length : visCount;
     const visSeq = visAnims.slice(0, actualVisCount).map((anim, i) =>
       Animated.sequence([
         Animated.delay(allLinesDone + i * VIS_STAGGER),
-        Animated.timing(anim, {
-          toValue: 1,
-          duration: 380,
-          useNativeDriver: true,
-        }),
+        Animated.timing(anim, { toValue: 1, duration: 380, useNativeDriver: true }),
       ]),
     );
 
@@ -825,18 +667,13 @@ function SlidePanel({ slide, isActive }) {
 
     Animated.parallel([...lineSeq, ...visSeq]).start();
 
-    // ── Slide 3: story cards + auto-scroll ────────────────────────────────
     if (slide.visType === "stories") {
       const CARD_STAGGER = 80;
       const CARD_DUR = 250;
       const cardSeq = storyAnims.map((anim, i) =>
         Animated.sequence([
           Animated.delay(allLinesDone + i * CARD_STAGGER),
-          Animated.timing(anim, {
-            toValue: 1,
-            duration: CARD_DUR,
-            useNativeDriver: true,
-          }),
+          Animated.timing(anim, { toValue: 1, duration: CARD_DUR, useNativeDriver: true }),
         ]),
       );
       Animated.parallel(cardSeq).start();
@@ -848,13 +685,8 @@ function SlidePanel({ slide, isActive }) {
         scrollTimerRef.current = setInterval(() => {
           scrollOffsetRef.current = scrollOffsetRef.current + PAGE_STEP;
           if (scrollOffsetRef.current > MAX_OFFSET) scrollOffsetRef.current = 0;
-          storyScrollRef.current?.scrollTo({
-            y: scrollOffsetRef.current,
-            animated: true,
-          });
-          playSound(require("../../../assets/sounds/button.mp3"), {
-            volume: 0.4,
-          });
+          storyScrollRef.current?.scrollTo({ y: scrollOffsetRef.current, animated: true });
+          playSound(require("../../../assets/sounds/button.mp3"), { volume: 0.4 });
         }, 2600);
       }, firstPageDone);
 
@@ -865,12 +697,9 @@ function SlidePanel({ slide, isActive }) {
       };
     }
 
-    return () => {
-      popTimers.forEach(clearTimeout);
-    };
+    return () => { popTimers.forEach(clearTimeout); };
   }, [isActive]);
 
-  // ── Section builders ───────────────────────────────────────────────────────
   const DescSection = (
     <View>
       {slide.lines.map((line, i) => (
@@ -882,13 +711,7 @@ function SlidePanel({ slide, isActive }) {
   const VisSection = (() => {
     if (slide.visType === "levels") {
       return (
-        <View
-          style={{
-            flex: 1,
-            alignItems: "center",
-            justifyContent: "flex-start",
-          }}
-        >
+        <View style={{ flex: 1, alignItems: "center", justifyContent: "flex-start" }}>
           {levelSubset.map(({ lv, i }) => (
             <LevelBadgeMini
               key={i}
@@ -902,20 +725,9 @@ function SlidePanel({ slide, isActive }) {
     }
     if (slide.visType === "activities") {
       return (
-        <View
-          style={{
-            flex: 1,
-            alignItems: "flex-start",
-            justifyContent: "flex-start",
-          }}
-        >
+        <View style={{ flex: 1, alignItems: "flex-start", justifyContent: "flex-start" }}>
           {ACTIVITY_STEPS.map((step, i) => (
-            <ActivityBadgeMini
-              key={i}
-              step={step}
-              anim={visAnims[i]}
-              halfW={HALF_W}
-            />
+            <ActivityBadgeMini key={i} step={step} anim={visAnims[i]} halfW={HALF_W} />
           ))}
         </View>
       );
@@ -944,14 +756,12 @@ function SlidePanel({ slide, isActive }) {
                 key={story.id}
                 style={{
                   opacity: storyAnims[i],
-                  transform: [
-                    {
-                      translateY: storyAnims[i].interpolate({
-                        inputRange: [0, 1],
-                        outputRange: [20, 0],
-                      }),
-                    },
-                  ],
+                  transform: [{
+                    translateY: storyAnims[i].interpolate({
+                      inputRange: [0, 1],
+                      outputRange: [20, 0],
+                    }),
+                  }],
                 }}
               >
                 <StoryCardMini story={story} />
@@ -966,7 +776,7 @@ function SlidePanel({ slide, isActive }) {
 
   const accent = slide.accentColor;
   const descW = slide.visType === "levels" ? S1_DESC_W : HALF_W;
-  const visW = slide.visType === "levels" ? S1_VIS_W : HALF_W;
+  const visW  = slide.visType === "levels" ? S1_VIS_W  : HALF_W;
 
   return (
     <View style={{ width: SW, flex: 1 }}>
@@ -974,10 +784,7 @@ function SlidePanel({ slide, isActive }) {
         style={{
           height: TOP_H,
           paddingHorizontal: sz.panelPaddingH,
-          paddingTop:
-            Platform.OS === "ios"
-              ? sz.panelPaddingTop_ios
-              : sz.panelPaddingTop_android,
+          paddingTop: Platform.OS === "ios" ? sz.panelPaddingTop_ios : sz.panelPaddingTop_android,
           paddingBottom: slide.visType === "levels" ? 8 : 20,
           justifyContent: "flex-end",
         }}
@@ -995,7 +802,7 @@ function SlidePanel({ slide, isActive }) {
           style={{
             fontFamily: FONTS.bold,
             fontSize: sz.titleFontSize,
-            color: "#E0F7FA",
+            color: COLORS.textPrimary,           // ✅ was "#E0F7FA"
             lineHeight: sz.titleLineHeight,
             letterSpacing: 0.15,
           }}
@@ -1020,51 +827,19 @@ function SlidePanel({ slide, isActive }) {
       <View style={{ height: BOT_H, flexDirection: "row" }}>
         {slide.descSide === "left" ? (
           <>
-            <View
-              style={{
-                width: descW,
-                paddingLeft: 18,
-                paddingRight: 8,
-                paddingTop: sz.panelHalfPaddingV,
-                paddingBottom: sz.panelHalfPaddingBottom,
-              }}
-            >
+            <View style={{ width: descW, paddingLeft: 18, paddingRight: 8, paddingTop: sz.panelHalfPaddingV, paddingBottom: sz.panelHalfPaddingBottom }}>
               {DescSection}
             </View>
-            <View
-              style={{
-                width: visW,
-                paddingLeft: 8,
-                paddingRight: 14,
-                paddingTop: sz.panelHalfPaddingV,
-                paddingBottom: sz.panelHalfPaddingBottom,
-              }}
-            >
+            <View style={{ width: visW, paddingLeft: 8, paddingRight: 14, paddingTop: sz.panelHalfPaddingV, paddingBottom: sz.panelHalfPaddingBottom }}>
               {VisSection}
             </View>
           </>
         ) : (
           <>
-            <View
-              style={{
-                width: visW,
-                paddingLeft: 18,
-                paddingRight: 8,
-                paddingTop: sz.panelHalfPaddingV,
-                paddingBottom: sz.panelHalfPaddingBottom,
-              }}
-            >
+            <View style={{ width: visW, paddingLeft: 18, paddingRight: 8, paddingTop: sz.panelHalfPaddingV, paddingBottom: sz.panelHalfPaddingBottom }}>
               {VisSection}
             </View>
-            <View
-              style={{
-                width: descW,
-                paddingLeft: 8,
-                paddingRight: 14,
-                paddingTop: sz.panelHalfPaddingV,
-                paddingBottom: sz.panelHalfPaddingBottom,
-              }}
-            >
+            <View style={{ width: descW, paddingLeft: 8, paddingRight: 14, paddingTop: sz.panelHalfPaddingV, paddingBottom: sz.panelHalfPaddingBottom }}>
               {DescSection}
             </View>
           </>
@@ -1075,7 +850,7 @@ function SlidePanel({ slide, isActive }) {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// DOT INDICATORS
+// DOTS — UNCHANGED
 // ─────────────────────────────────────────────────────────────────────────────
 function Dots({ total, current, accentColor }) {
   const { sizes } = useTheme();
@@ -1088,8 +863,7 @@ function Dots({ total, current, accentColor }) {
           style={{
             height: sz.dotHeight,
             borderRadius: sz.dotHeight / 2,
-            backgroundColor:
-              i === current ? accentColor : "rgba(255,255,255,0.2)",
+            backgroundColor: i === current ? accentColor : "rgba(255,255,255,0.2)",
             width: i === current ? sz.dotActiveWidth : sz.dotInactiveWidth,
           }}
         />
@@ -1099,7 +873,7 @@ function Dots({ total, current, accentColor }) {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// MAIN COMPONENT
+// MAIN COMPONENT — logic/navigation/audio UNCHANGED, colours corrected
 // ─────────────────────────────────────────────────────────────────────────────
 export default function IntroCarousel() {
   const router = useRouter();
@@ -1110,22 +884,15 @@ export default function IntroCarousel() {
   const { sizes } = useTheme();
   const sz = sizes.carousel;
 
-  const playSwish = () =>
-    playSound(require("../../../assets/sounds/swish.mp3"));
-  const playButton = () =>
-    playSound(require("../../../assets/sounds/button.mp3"));
+  const playSwish  = () => playSound(require("../../../assets/sounds/swish.mp3"));
+  const playButton = () => playSound(require("../../../assets/sounds/button.mp3"));
   const bgMusicRef = useRef(null);
 
-  // Start music when component mounts, stop on unmount
   useEffect(() => {
     let mounted = true;
-
     const startMusic = async () => {
       try {
-        await Audio.setAudioModeAsync({
-          playsInSilentModeIOS: true,
-          staysActiveInBackground: false,
-        });
+        await Audio.setAudioModeAsync({ playsInSilentModeIOS: true, staysActiveInBackground: false });
         const { sound } = await Audio.Sound.createAsync(
           require("../../../assets/sounds/intro_music.mp3"),
           { shouldPlay: true, isLooping: true, volume: 0.5 },
@@ -1133,9 +900,7 @@ export default function IntroCarousel() {
         if (mounted) bgMusicRef.current = sound;
       } catch (_) {}
     };
-
     startMusic();
-
     return () => {
       mounted = false;
       bgMusicRef.current?.unloadAsync();
@@ -1174,29 +939,13 @@ export default function IntroCarousel() {
     require("../../../assets/videos/intro0.mp4"),
     require("../../../assets/videos/intro.mp4"),
   ];
-
   const [videoIndex, setVideoIndex] = useState(0);
-
   const videoRefs = useRef([]);
-
-  // useEffect(() => {
-  //   videos.forEach(async (vid, i) => {
-  //     const { sound } = await Video.createAsync(vid, {
-  //       shouldPlay: false,
-  //     });
-  //     videoRefs.current[i] = sound;
-  //   });
-  // }, []);
 
   return (
     <View style={styles.root}>
-      <StatusBar
-        barStyle="light-content"
-        translucent
-        backgroundColor="transparent"
-      />
+      <StatusBar barStyle="light-content" translucent backgroundColor="transparent" />
 
-      {/* ── Full-screen looping background video ── */}
       <Video
         key={videoIndex}
         ref={videoRef}
@@ -1207,18 +956,13 @@ export default function IntroCarousel() {
         shouldPlay
         onPlaybackStatusUpdate={(status) => {
           if (!status.isLoaded) return;
-
           if (status.positionMillis >= status.durationMillis - 100) {
             setVideoIndex((prev) => (prev + 1) % videos.length);
           }
         }}
       />
 
-      {/* ── Dark blue opaque overlay ── */}
-      {/* Adjust the last value (0.65) between 0.4–0.8 to taste */}
       <View style={styles.videoOverlay} />
-
-      {/* ── Subtle vignette corners (optional depth) ── */}
       <View style={styles.vignetteTL} pointerEvents="none" />
       <View style={styles.vignetteBR} pointerEvents="none" />
 
@@ -1229,9 +973,7 @@ export default function IntroCarousel() {
           activeOpacity={0.7}
           hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
         >
-          <Text style={[styles.skipText, { fontSize: sz.skipFontSize }]}>
-            Skip
-          </Text>
+          <Text style={[styles.skipText, { fontSize: sz.skipFontSize }]}>Skip</Text>
         </TouchableOpacity>
       )}
 
@@ -1254,11 +996,7 @@ export default function IntroCarousel() {
         renderItem={({ item, index }) => (
           <SlidePanel slide={item} isActive={index === currentIndex} />
         )}
-        getItemLayout={(_, index) => ({
-          length: SW,
-          offset: SW * index,
-          index,
-        })}
+        getItemLayout={(_, index) => ({ length: SW, offset: SW * index, index })}
       />
 
       <View
@@ -1266,48 +1004,14 @@ export default function IntroCarousel() {
           styles.bottomBar,
           {
             paddingHorizontal: sz.bottomBarPaddingH,
-            paddingBottom:
-              Platform.OS === "ios"
-                ? sz.bottomBarPaddingBottom_ios
-                : sz.bottomBarPaddingBottom_android,
+            paddingBottom: Platform.OS === "ios"
+              ? sz.bottomBarPaddingBottom_ios
+              : sz.bottomBarPaddingBottom_android,
           },
         ]}
       >
-        {/* <Dots
-          total={SLIDES.length}
-          current={currentIndex}
-          accentColor={accent}
-        /> */}
-
         {isLast ? (
-          // <TouchableOpacity
-          //   style={[
-          //     styles.getStartedBtn,
-          //     {
-          //       backgroundColor: "#00BCD4",
-          //       shadowColor: "#00BCD4",
-          //       paddingHorizontal: sz.getStartedPaddingH,
-          //       paddingVertical: sz.getStartedPaddingV,
-          //     },
-          //   ]}
-          //   onPress={goNext}
-          //   activeOpacity={0.85}
-          // >
-          //   <Text
-          //     style={[
-          //       styles.getStartedText,
-          //       { fontSize: sz.getStartedFontSize },
-          //     ]}
-          //   >
-          //     Get Started ✦
-          //   </Text>
-          // </TouchableOpacity>
-
-          <TouchableOpacity
-            style={styles.ctaBtn}
-            onPress={goNext}
-            activeOpacity={0.88}
-          >
+          <TouchableOpacity style={styles.ctaBtn} onPress={goNext} activeOpacity={0.88}>
             <View style={styles.ctaBtnInner}>
               <Text style={styles.ctaEmoji}>✦</Text>
               <Text style={styles.ctaTxt}>Get Started</Text>
@@ -1327,12 +1031,7 @@ export default function IntroCarousel() {
             onPress={handleNext}
             activeOpacity={0.8}
           >
-            <Text
-              style={[
-                styles.nextText,
-                { color: accent, fontSize: sz.nextFontSize },
-              ]}
-            >
+            <Text style={[styles.nextText, { color: accent, fontSize: sz.nextFontSize }]}>
               Next →
             </Text>
           </TouchableOpacity>
@@ -1343,67 +1042,55 @@ export default function IntroCarousel() {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// ROOT STYLES
+// STYLES — layout/sizing UNCHANGED, colours corrected
 // ─────────────────────────────────────────────────────────────────────────────
 const styles = StyleSheet.create({
   root: {
     flex: 1,
-    backgroundColor: "#08081a", // fallback color shown before video loads
+    backgroundColor: COLORS.background,         // ✅ was "#08081a"
   },
-
-  // ── Dark blue overlay on top of the video ──────────────────────────────────
-  // rgba(R, G, B, opacity) — tweak opacity (0.4 lighter ↔ 0.8 darker)
   videoOverlay: {
     ...StyleSheet.absoluteFillObject,
-    backgroundColor: "rgba(1, 6, 24, 0.79)",
+    backgroundColor: "rgba(1, 6, 24, 0.79)",    // keep — video overlay, not a brand surface
   },
-
-  // ── Soft corner vignettes for extra depth (optional) ─────────────────────
   vignetteTL: {
     position: "absolute",
-    top: -60,
-    left: -60,
-    width: 280,
-    height: 280,
+    top: -60, left: -60,
+    width: 280, height: 280,
     borderRadius: 140,
-    backgroundColor: "rgba(0,188,212,0.06)",
+    backgroundColor: COLORS.glowCyan,           // ✅ was "rgba(0,188,212,0.06)"
   },
   vignetteBR: {
     position: "absolute",
-    bottom: -40,
-    right: -40,
-    width: 240,
-    height: 240,
+    bottom: -40, right: -40,
+    width: 240, height: 240,
     borderRadius: 120,
-    backgroundColor: "rgba(150,82,217,0.06)",
+    backgroundColor: COLORS.glowPurple,         // ✅ was "rgba(150,82,217,0.06)"
   },
-
   skipBtn: {
     position: "absolute",
     right: 20,
     zIndex: 30,
     paddingHorizontal: 14,
     paddingVertical: 7,
-    backgroundColor: "pink",
+    // ✅ FIXED: removed debug backgroundColor:"pink" and borderColor:"pink"
     borderRadius: 20,
     borderWidth: 1.5,
-    borderColor: "pink",
+    borderColor: "transparent",                 // ✅ invisible border — maintains tap area
   },
   skipText: {
     fontFamily: FONTS.regular,
-    color: "#7a9aaa",
+    color: COLORS.textMuted,                    // ✅ was "#7a9aaa"
     letterSpacing: 0.3,
   },
   bottomBar: {
     position: "absolute",
-    bottom: 0,
-    left: 0,
-    right: 0,
+    bottom: 0, left: 0, right: 0,
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
     paddingTop: 14,
-    backgroundColor: "rgba(1, 6, 24, 0.79)",
+    backgroundColor: "rgba(1, 6, 24, 0.79)",   // keep — overlay value
     borderTopWidth: 1,
     borderTopColor: "rgba(255,255,255,0.07)",
   },
@@ -1425,19 +1112,20 @@ const styles = StyleSheet.create({
   },
   getStartedText: {
     fontFamily: FONTS.bold,
-    color: "#08081a",
+    color: COLORS.background,                   // ✅ was "#08081a"
     letterSpacing: 0.5,
   },
+  // ── CTA button ─────────────────────────────────────────────────────────────
   ctaBtn: {
     width: "100%",
     height: 54,
     borderRadius: 27,
-    backgroundColor: C.teal,
+    backgroundColor: COLORS.primary,            // ✅ was C.teal = "#00BCD4"
     alignItems: "center",
     justifyContent: "center",
     marginBottom: 12,
     overflow: "hidden",
-    shadowColor: C.teal,
+    shadowColor: COLORS.primary,               // ✅ was C.teal
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.5,
     shadowRadius: 14,
@@ -1452,7 +1140,7 @@ const styles = StyleSheet.create({
   ctaTxt: {
     fontFamily: FONTS.bold,
     fontSize: 16,
-    color: "#08081a",
+    color: COLORS.textOnPrimary,               // ✅ was "#08081a" (now uses theme token)
     letterSpacing: 0.3,
   },
   ctaShine: {

@@ -22,37 +22,37 @@ const STATUS_BAR_HEIGHT =
   Platform.OS === "android" ? (StatusBar.currentHeight ?? 24) : 50;
 
 const C = {
-  bg: "#08081a",
+  bg: "#0A1628",
   surface: "rgba(255,255,255,0.05)",
-  teal: "#00BCD4",
-  tealBorder: "rgba(0,188,212,0.3)",
-  yellow: "#FFD54F",
-  green: "#4CAF50",
-  red: "#EF5350",
-  orange: "#FF9800",
-  textPri: "#E0F7FA",
-  textSec: "#B0BEC5",
-  textMuted: "#546E7A",
+  teal: "#00C4CC",
+  tealBorder: "rgba(0,196,204,0.3)",
+  yellow: "#F5A623",
+  green: "#2A9D8F",
+  red: "#E8445A",
+  orange: "#F5A623",
+  textPri: "#FFFFFF",
+  textSec: "#8899AA",
+  textMuted: "#8899AA",
 };
 
 const STATUS_CONFIG = {
   paid: {
     label: "Paid",
     color: C.green,
-    bg: "rgba(76,175,80,0.12)",
-    border: "rgba(76,175,80,0.4)",
+    bg: "rgba(42,157,143,0.12)",
+    border: "rgba(42,157,143,0.4)",
   },
   pending: {
     label: "Pending",
     color: C.orange,
-    bg: "rgba(255,152,0,0.12)",
-    border: "rgba(255,152,0,0.4)",
+    bg: "rgba(245,166,35,0.12)",
+    border: "rgba(245,166,35,0.4)",
   },
   failed: {
     label: "Failed",
     color: C.red,
-    bg: "rgba(239,83,80,0.12)",
-    border: "rgba(239,83,80,0.4)",
+    bg: "rgba(232,68,90,0.12)",
+    border: "rgba(232,68,90,0.4)",
   },
 };
 
@@ -256,7 +256,7 @@ const styles = StyleSheet.create({
     paddingBottom: pad.sm, // was: 14
     paddingHorizontal: pad.md, // was: 18
     borderBottomWidth: 1,
-    borderBottomColor: "rgba(0,188,212,0.12)",
+    borderBottomColor: "rgba(0,196,204,0.12)",
   },
   backBtn: {
     width: size.hitMd, // was: 38

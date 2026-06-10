@@ -1,4 +1,7 @@
 import React, { useRef, useEffect, useState } from "react";
+// BRAND UPDATE — feature/brand-guidelines-v2 — COLOUR-ONLY changes:
+// All logic, animation, layout, props unchanged.
+
 import {
   Modal,
   View,
@@ -22,7 +25,7 @@ const BADGE_CONFIGS = {
     icon: "📖",
     title: "First Story Complete!",
     description: "You finished your very first story!",
-    accentColor: COLORS.pink ?? "#FF6B9D",
+    accentColor: COLORS.pink ?? "#E8445A",
     sourceLabel: "Story",
     sourceIcon: "📚",
     rewardLabel: "Stars",
@@ -48,7 +51,7 @@ const BADGE_CONFIGS = {
     icon: "🎯",
     title: "Word Cracked!",
     description: "You guessed the word correctly!",
-    accentColor: "#00BCD4",
+    accentColor: "#00C4CC",
     sourceLabel: "Game",
     sourceIcon: null,
     sourceImage: require("../../../../assets/img/guess_icon.png"),
@@ -62,7 +65,7 @@ const BADGE_CONFIGS = {
     icon: "🧠",
     title: "Perfect Descriptions!",
     description: "You matched all 3 correct answers!",
-    accentColor: "#9652D9",
+    accentColor: "#7B2FBE",
     sourceLabel: "Game",
     sourceIcon: null,
     sourceImage: require("../../../../assets/img/describe_icon.png"),
@@ -76,7 +79,7 @@ const BADGE_CONFIGS = {
     icon: "🌟",
     title: "Challenge Complete!",
     description: "Incredible! You finished the challenge!",
-    accentColor: "#FFD54F",
+    accentColor: "#F5A623",
     sourceLabel: "Game",
     sourceIcon: "🎮",
     rewardLabel: "Coins",
@@ -90,7 +93,7 @@ const BADGE_CONFIGS = {
     icon: "🎧",
     title: "Listening Champion!",
     description: "You aced the listening quiz!",
-    accentColor: "#00BCD4",
+    accentColor: "#00C4CC",
     sourceLabel: "Listen",
     sourceIcon: null,
     sourceImage: require("../../../../assets/img/listen_icon.png"),
@@ -827,7 +830,7 @@ export default BadgePopup;
 const styles = StyleSheet.create({
   overlay: {
     flex: 1,
-    backgroundColor: "rgba(8,8,22,0.92)",
+    backgroundColor: "rgba(10,16,38,0.97)",
     justifyContent: "center",
     alignItems: "center",
   },
@@ -889,12 +892,12 @@ const styles = StyleSheet.create({
     justifyContent: "center",
   },
   sourceBox: {
-    backgroundColor: "rgba(0,188,212,0.12)",
+    backgroundColor: "rgba(0,196,204,0.12)",
     borderWidth: 2,
     borderColor: COLORS.teal,
   },
   walletBox: {
-    backgroundColor: "rgba(255,213,79,0.12)",
+    backgroundColor: "rgba(245,166,35,0.12)",
     borderWidth: 2,
     borderColor: COLORS.yellow,
   },

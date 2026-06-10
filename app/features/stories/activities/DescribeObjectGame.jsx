@@ -34,29 +34,29 @@ const STATUS_BAR_HEIGHT =
 const shuffle = (arr) => [...arr].sort(() => Math.random() - 0.5);
 
 const C = {
-  bg: "#08081a",
+  bg: "#0A1628",
   surface: "rgba(255,255,255,0.05)",
   surfaceDim: "rgba(255,255,255,0.09)",
-  teal: "#00BCD4",
-  tealDim: "rgba(0,188,212,0.15)",
-  tealBorder: "rgba(0,188,212,0.35)",
-  tealBold: "rgba(0,188,212,0.65)",
-  yellow: "#FFD54F",
-  yellowDim: "rgba(255,213,79,0.12)",
-  yellowBorder: "rgba(255,213,79,0.55)",
-  green: "#4CAF50",
-  greenDim: "rgba(76,175,80,0.18)",
-  greenBorder: "rgba(76,175,80,0.6)",
-  red: "#EF5350",
-  redDim: "rgba(239,83,80,0.15)",
-  redBorder: "rgba(239,83,80,0.55)",
-  purple: "#9652D9",
-  purpleDim: "rgba(150,82,217,0.18)",
-  purpleBorder: "rgba(150,82,217,0.4)",
+  teal: "#00C4CC",
+  tealDim: "rgba(0,196,204,0.15)",
+  tealBorder: "rgba(0,196,204,0.35)",
+  tealBold: "rgba(0,196,204,0.65)",
+  yellow: "#F5A623",
+  yellowDim: "rgba(245,166,35,0.12)",
+  yellowBorder: "rgba(245,166,35,0.55)",
+  green: "#2A9D8F",
+  greenDim: "rgba(42,157,143,0.18)",
+  greenBorder: "rgba(42,157,143,0.6)",
+  red: "#E8445A",
+  redDim: "rgba(232,68,90,0.15)",
+  redBorder: "rgba(232,68,90,0.55)",
+  purple: "#7B2FBE",
+  purpleDim: "rgba(123,47,190,0.18)",
+  purpleBorder: "rgba(123,47,190,0.4)",
   white: "#FFFFFF",
   textPri: "#FFFFFF",
-  textSec: "#B0BEC5",
-  textMuted: "#546E7A",
+  textSec: "#8899AA",
+  textMuted: "#8899AA",
 };
 
 const CORRECT_NEEDED = 3;
@@ -222,7 +222,7 @@ function OptionCard({
     textColor = C.red;
     icon = "✗";
   } else if (state === "missed" && revealed) {
-    bg = "rgba(255,213,79,0.08)";
+    bg = "rgba(245,166,35,0.08)";
     border = C.yellowBorder;
     textColor = C.yellow;
     icon = "!";
@@ -987,7 +987,7 @@ const styles = StyleSheet.create({
     fontSize: font.xl,
     color: C.teal,
     letterSpacing: 0.4,
-    textShadowColor: "rgba(0,188,212,0.6)",
+    textShadowColor: "rgba(0,196,204,0.6)",
     textShadowOffset: { width: 0, height: 0 },
     textShadowRadius: 12,
   }, // was: 18
@@ -1073,7 +1073,7 @@ const styles = StyleSheet.create({
     width: 110,
     height: 110,
     borderRadius: 55,
-    backgroundColor: "rgba(0,188,212,0.08)",
+    backgroundColor: "rgba(0,196,204,0.08)",
     borderWidth: 2,
     borderColor: C.tealBorder,
     alignItems: "center",
@@ -1091,7 +1091,7 @@ const styles = StyleSheet.create({
     fontSize: font.h2,
     color: C.white,
     letterSpacing: 0.5,
-    textShadowColor: "rgba(0,188,212,0.4)",
+    textShadowColor: "rgba(0,196,204,0.4)",
     textShadowOffset: { width: 0, height: 0 },
     textShadowRadius: 14,
   }, // was: 32
@@ -1265,7 +1265,7 @@ const styles = StyleSheet.create({
     color: C.white,
     letterSpacing: 0.3,
     marginBottom: pad.lg,
-    textShadowColor: "rgba(0,188,212,0.5)",
+    textShadowColor: "rgba(0,196,204,0.5)",
     textShadowOffset: { width: 0, height: 0 },
     textShadowRadius: 16,
   }, // was: 26

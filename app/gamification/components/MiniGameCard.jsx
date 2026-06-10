@@ -26,16 +26,13 @@ import {
 } from "react-native";
 import { Image as ExpoImage } from "expo-image";
 
-import { FONTS } from "../../theme";
+import { FONTS, COLORS } from "../../theme";
 import { radius } from "../../theme/tokens";
 import { GAME_STATUS } from "../GamificationEngine";
 import { useGamification } from "../GamificationContext";
 import GAME_COVERS from "../constants/gameCoverImages";
 import ScratchCover from "./ScratchCover";
 
-const TEAL = "#00BCD4";
-const YELLOW = "#FFD54F";
-const DARK = "#08081a";
 
 const SIZES = {
   tracker: { card: 90, badge: 20, badgeFont: 9, starSize: 14 },
@@ -92,10 +89,10 @@ function ProgressStars({ count, starSize }) {
             key={i}
             style={{
               fontSize: starSize,
-              color: filled ? YELLOW : "rgba(255,255,255,0.2)",
+              color: filled ? COLORS.amber : "rgba(255,255,255,0.2)",
               // Glow on filled stars
               ...(filled && {
-                textShadowColor: YELLOW,
+                textShadowColor: COLORS.amber,
                 textShadowOffset: { width: 0, height: 0 },
                 textShadowRadius: 4,
               }),
@@ -165,20 +162,20 @@ export default function MiniGameCard({
     if (isUnlocked) startPlay(gameId);
   };
 
-  const acc = accentColor ?? YELLOW;
+  const acc = accentColor ?? COLORS.amber;
   const coverSource = GAME_COVERS[gameId] ?? null;
-  const g0 = gradient?.[0] ?? TEAL;
-  const g1 = gradient?.[1] ?? "#1a1a2e";
+  const g0 = gradient?.[0] ?? COLORS.primary;
+  const g1 = gradient?.[1] ?? COLORS.surface;
 
   const borderColor = isRevealed
     ? revealGlow.interpolate({
         inputRange: [0, 1],
-        outputRange: ["rgba(255,213,79,0.45)", "rgba(255,213,79,0.95)"],
+        outputRange: ["rgba(245,166,35,0.45)", "rgba(245,166,35,0.95)"],
       })
     : isUnlocked
       ? unlockGlow.interpolate({
           inputRange: [0, 1],
-          outputRange: ["rgba(0,188,212,0.4)", "rgba(0,188,212,0.9)"],
+          outputRange: ["rgba(0,196,204,0.4)", "rgba(0,196,204,0.9)"],
         })
       : "rgba(255,255,255,0.08)";
 
@@ -197,12 +194,12 @@ export default function MiniGameCard({
           height: CARD,
           borderRadius: radius.md,
           overflow: "hidden",
-          backgroundColor: DARK,
+          backgroundColor: COLORS.background,
           borderWidth: 1.5,
           borderColor,
         },
         (isRevealed || isUnlocked) && {
-          shadowColor: isRevealed ? YELLOW : TEAL,
+          shadowColor: isRevealed ? COLORS.amber : COLORS.primary,
           shadowOffset: { width: 0, height: 0 },
           shadowOpacity,
           shadowRadius: 10,
@@ -307,7 +304,7 @@ export default function MiniGameCard({
                     style={{
                       fontFamily: FONTS.bold,
                       fontSize: CARD * 0.1,
-                      color: DARK,
+                      color: COLORS.background,
                     }}
                   >
                     Unlock 💎9
@@ -355,11 +352,11 @@ export default function MiniGameCard({
             width: dim.badge,
             height: dim.badge,
             borderRadius: dim.badge / 2,
-            backgroundColor: DARK,
+            backgroundColor: COLORS.background,
           },
         ]}
       >
-        <Text style={{ fontSize: dim.badgeFont, color: YELLOW }}>
+        <Text style={{ fontSize: dim.badgeFont, color: COLORS.amber }}>
           {isLocked ? "🔒" : "▶"}
         </Text>
       </View>

@@ -19,21 +19,12 @@ import {
   TouchableOpacity,
 } from "react-native";
 import { Image as ExpoImage } from "expo-image";
-import { FONTS } from "../../theme";
+import { FONTS, COLORS } from "../../theme";
 import { font, pad, radius } from "../../theme/tokens";
 import { GAME_ANIMATIONS } from "../constants/gameAnimations";
 import GAME_COVERS from "../constants/gameCoverImages";
 
 const CARD_SIZE = 160;
-
-const C = {
-  teal:       "#00BCD4",
-  yellow:     "#FFD54F",
-  yellowGlow: "rgba(255,213,79,0.45)",
-  purple:     "#B39DDB",
-  textPri:    "#E0F7FA",
-  textMuted:  "#7a9aaa",
-};
 
 // ─────────────────────────────────────────────────────────────────────────────
 // GAME CARD FACE
@@ -44,7 +35,7 @@ const C = {
 // design for games without a cover (spin_wheel, tressure_hunt).
 // ─────────────────────────────────────────────────────────────────────────────
 export function GameCardFace({ slot, size = CARD_SIZE }) {
-  const gradient    = slot?.gradient  ?? ["#00BCD4", "#0097A7"];
+  const gradient    = slot?.gradient  ?? [COLORS.primary, COLORS.primaryDark];
   const MiniAnim    = slot?.gameId ? GAME_ANIMATIONS[slot.gameId] : null;
   const coverSource = slot?.gameId ? (GAME_COVERS[slot.gameId] ?? null) : null;
 
@@ -153,27 +144,27 @@ const eg = StyleSheet.create({
     position: "absolute", top: 0, left: 0, right: 0, bottom: 0,
     borderRadius:  radius.xl + 10,
     borderWidth:   2.5,
-    borderColor:   "rgba(255,213,79,0.8)",
-    shadowColor:   C.yellow,
+    borderColor:   "rgba(245,166,35,0.8)",
+    shadowColor:   COLORS.amber,
     shadowOffset:  { width: 0, height: 0 },
     shadowOpacity: 1,
     shadowRadius:  18,
     elevation:     0,
   },
   gameName: {
-    fontFamily: FONTS.bold, fontSize: font.xl, color: C.textPri,
+    fontFamily: FONTS.bold, fontSize: font.xl, color: COLORS.textPrimary,
     marginTop: pad.md, marginBottom: pad.xs, letterSpacing: 0.3,
-    textShadowColor: "rgba(255,213,79,0.4)", textShadowOffset: { width: 0, height: 0 }, textShadowRadius: 8,
+    textShadowColor: "rgba(245,166,35,0.4)", textShadowOffset: { width: 0, height: 0 }, textShadowRadius: 8,
   },
   btnWrap:     { width: "100%", alignItems: "center", marginTop: pad.sm },
   playBtn: {
     flexDirection: "row", alignItems: "center", gap: pad.sm,
     width: "100%", paddingVertical: pad.md, borderRadius: radius.pill,
-    backgroundColor: C.teal, justifyContent: "center",
-    shadowColor: C.teal, shadowOffset: { width: 0, height: 0 }, shadowOpacity: 0.7, shadowRadius: 12, elevation: 10,
+    backgroundColor: COLORS.primary, justifyContent: "center",
+    shadowColor: COLORS.primary, shadowOffset: { width: 0, height: 0 }, shadowOpacity: 0.7, shadowRadius: 12, elevation: 10,
   },
   playIcon:    { width: 22, height: 22 },
-  playBtnText: { fontFamily: FONTS.bold, fontSize: font.lg, color: "#08081a", letterSpacing: 0.3 },
+  playBtnText: { fontFamily: FONTS.bold, fontSize: font.lg, color: COLORS.background, letterSpacing: 0.3 },
   laterBtn:    { marginTop: pad.sm, paddingVertical: pad.s, paddingHorizontal: pad.sm },
-  laterText:   { fontFamily: FONTS.light, fontSize: font.sm, color: C.textMuted },
+  laterText:   { fontFamily: FONTS.light, fontSize: font.sm, color: COLORS.textMuted },
 });

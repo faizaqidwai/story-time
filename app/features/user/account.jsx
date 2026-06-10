@@ -50,19 +50,19 @@ const AGE_OPTIONS = [
 ];
 
 const C = {
-  bg: "#08081a",
-  card: "#111830",
-  teal: "#00BCD4",
-  tealDim: "rgba(0,188,212,0.13)",
-  tealBorder: "rgba(0,188,212,0.35)",
-  yellow: "#FFD54F",
-  border: "rgba(0,188,212,0.2)",
-  green: "#4CAF50",
-  greenDim: "rgba(76,175,80,0.22)",
-  greenBorder: "rgba(76,175,80,0.55)",
-  textPri: "#E0F7FA",
-  textSec: "#B0BEC5",
-  textMuted: "#7a9aaa",
+  bg: "#0A1628",
+  card: "#0F2040",
+  teal: "#00C4CC",
+  tealDim: "rgba(0,196,204,0.13)",
+  tealBorder: "rgba(0,196,204,0.35)",
+  yellow: "#F5A623",
+  border: "rgba(0,196,204,0.2)",
+  green: "#2A9D8F",
+  greenDim: "rgba(42,157,143,0.22)",
+  greenBorder: "rgba(42,157,143,0.55)",
+  textPri: "#FFFFFF",
+  textSec: "#8899AA",
+  textMuted: "#8899AA",
   lockedBg: "rgba(255,255,255,0.03)",
   lockedBorder: "rgba(255,255,255,0.07)",
   lockedText: "rgba(255,255,255,0.18)",
@@ -82,9 +82,9 @@ const START_LEVEL = [
   { label: "9", value: 9 },
 ];
 
-const TEAL = "#00BCD4";
-const YELLOW = "#FFD54F";
-const PINK = "#EC407A";
+const TEAL = "#00C4CC";
+const YELLOW = "#F5A623";
+const PINK = "#E8445A";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // PROFILE LIMIT MODAL — unchanged from original
@@ -349,7 +349,7 @@ const plm = StyleSheet.create({
     borderRadius: 28,
     borderWidth: 1.5,
     borderColor: C.border,
-    borderTopColor: "rgba(0,188,212,0.4)",
+    borderTopColor: "rgba(0,196,204,0.4)",
     borderTopWidth: 1.5,
     paddingTop: 32,
     paddingBottom: 24,
@@ -385,24 +385,24 @@ const plm = StyleSheet.create({
     width: 120,
     height: 120,
     borderRadius: 60,
-    backgroundColor: "rgba(255,213,79,0.08)",
+    backgroundColor: "rgba(245,166,35,0.08)",
     borderWidth: 1.5,
-    borderColor: "rgba(255,213,79,0.2)",
+    borderColor: "rgba(245,166,35,0.2)",
   },
   glowRingInner: {
     position: "absolute",
     width: 90,
     height: 90,
     borderRadius: 45,
-    backgroundColor: "rgba(255,213,79,0.1)",
+    backgroundColor: "rgba(245,166,35,0.1)",
     borderWidth: 1.5,
-    borderColor: "rgba(255,213,79,0.35)",
+    borderColor: "rgba(245,166,35,0.35)",
   },
   iconCircle: {
     width: 68,
     height: 68,
     borderRadius: 34,
-    backgroundColor: "#1a1f3a",
+    backgroundColor: "#0F2040",
     borderWidth: 2,
     borderColor: YELLOW,
     alignItems: "center",
@@ -421,7 +421,7 @@ const plm = StyleSheet.create({
     letterSpacing: 0.3,
     textAlign: "center",
     marginBottom: 8,
-    textShadowColor: "rgba(0,188,212,0.3)",
+    textShadowColor: "rgba(0,196,204,0.3)",
     textShadowOffset: { width: 0, height: 0 },
     textShadowRadius: 8,
   },
@@ -441,7 +441,7 @@ const plm = StyleSheet.create({
     paddingVertical: 9,
     paddingHorizontal: 16,
     marginVertical: 3,
-    backgroundColor: "rgba(0,188,212,0.08)",
+    backgroundColor: "rgba(0,196,204,0.08)",
     borderRadius: 14,
     borderWidth: 1,
     borderColor: C.border,
@@ -483,7 +483,7 @@ const plm = StyleSheet.create({
   ctaTxt: {
     fontFamily: FONTS.bold,
     fontSize: 16,
-    color: "#08081a",
+    color: "#0A1628",
     letterSpacing: 0.3,
   },
   ctaShine: {
@@ -533,7 +533,7 @@ function AccountOptionCard({ image, label, onPress, sz }) {
           backgroundColor: "rgba(255,255,255,0.05)",
           borderRadius: sz.optionCardBorderRadius,
           borderWidth: 1.5,
-          borderColor: "rgba(0,188,212,0.44)",
+          borderColor: "rgba(0,196,204,0.44)",
           alignItems: "center",
           justifyContent: "center",
           paddingVertical: sz.optionCardPaddingV,
@@ -559,7 +559,7 @@ function AccountOptionCard({ image, label, onPress, sz }) {
             fontSize: font.md,
             letterSpacing: 0.2,
             textAlign: "center",
-            color: COLORS.teal,
+            color: COLORS.primary,
           }}
         >
           {label}
@@ -901,7 +901,7 @@ const Account = () => {
     divider: {
       height: 1,
       marginHorizontal: sz.optionSectionPaddingH,
-      backgroundColor: "rgba(0,188,212,0.2)",
+      backgroundColor: "rgba(0,196,204,0.2)",
       marginBottom: 4,
     },
     title: {
@@ -911,7 +911,7 @@ const Account = () => {
       textAlign: "center",
       marginTop: sz.titleMarginTop,
       marginBottom: sz.titleMarginBottom,
-      textShadowColor: "rgba(0,188,212,0.4)",
+      textShadowColor: "rgba(0,196,204,0.4)",
       textShadowOffset: { width: 0, height: 2 },
       textShadowRadius: 8,
     },
@@ -927,7 +927,7 @@ const Account = () => {
     },
     currentProfileText: {
       fontFamily: FONTS.regular,
-      color: COLORS.purpleLight,
+      color: "#FFFFFF",              // ✅ was COLORS.purpleLight — invisible on purple bg
       fontSize: font.lg,
       textAlign: "center",
     },
@@ -937,12 +937,12 @@ const Account = () => {
       paddingBottom: 20,
     },
     addButton: {
-      backgroundColor: "rgba(0,188,212,0.1)",
+      backgroundColor: "rgba(0,196,204,0.1)",
       borderRadius: sz.addBtnBorderRadius,
       padding: sz.addBtnPadding,
       marginTop: sz.addBtnMarginTop,
       borderWidth: 2,
-      borderColor: COLORS.teal,
+      borderColor: COLORS.primary,
       borderStyle: "dashed",
     },
     // Locked state for Add button when subscription inactive
@@ -958,7 +958,7 @@ const Account = () => {
     addButtonText: {
       fontFamily: FONTS.bold,
       fontSize: sz.addBtnFontSize,
-      color: COLORS.teal,
+      color: COLORS.primary,
       textAlign: "center",
     },
     addButtonTextLocked: {
@@ -974,7 +974,7 @@ const Account = () => {
       backgroundColor: "rgba(255,255,255,0.05)",
       borderRadius: sz.accountSectionBorderRadius,
       borderWidth: 1.5,
-      borderColor: COLORS.borderTeal,
+      borderColor: COLORS.borderPrimary,
       padding: sz.accountSectionPadding,
     },
     accountSectionHeader: {
@@ -1005,16 +1005,16 @@ const Account = () => {
       fontSize: sz.credentialsInputFontSize,
       color: COLORS.textPrimary,
       borderWidth: 1.5,
-      borderColor: COLORS.borderTeal,
+      borderColor: COLORS.borderPrimary,
     },
     credentialsSaveBtn: {
-      backgroundColor: COLORS.teal,
+      backgroundColor: COLORS.primary,
       borderRadius: sz.credentialsBtnBorderRadius,
       paddingVertical: sz.credentialsBtnPaddingV,
       alignItems: "center",
       marginTop: 4,
     },
-    credentialsSaveBtnDisabled: { backgroundColor: "rgba(0,188,212,0.25)" },
+    credentialsSaveBtnDisabled: { backgroundColor: "rgba(0,196,204,0.25)" },
     credentialsSaveBtnText: {
       fontFamily: FONTS.bold,
       fontSize: sz.credentialsBtnFontSize,
@@ -1025,25 +1025,25 @@ const Account = () => {
       flexDirection: "row",
       alignItems: "center",
       gap: sz.emailLinkedRowGap,
-      backgroundColor: "rgba(0,188,212,0.07)",
+      backgroundColor: "rgba(0,196,204,0.07)",
       borderRadius: sz.emailLinkedRowBorderRadius,
       padding: sz.emailLinkedRowPadding,
       borderWidth: 1,
-      borderColor: "rgba(0,188,212,0.25)",
+      borderColor: "rgba(0,196,204,0.25)",
     },
     emailLinkedBadge: {
       width: sz.emailLinkedBadgeSize,
       height: sz.emailLinkedBadgeSize,
       borderRadius: sz.emailLinkedBadgeBorderRadius,
-      backgroundColor: "rgba(0,188,212,0.2)",
+      backgroundColor: "rgba(0,196,204,0.2)",
       borderWidth: 1.5,
-      borderColor: COLORS.teal,
+      borderColor: COLORS.primary,
       justifyContent: "center",
       alignItems: "center",
     },
     emailLinkedIcon: {
       fontFamily: FONTS.bold,
-      color: COLORS.teal,
+      color: COLORS.primary,
       fontSize: sz.emailLinkedIconFontSize,
     },
     emailLinkedLabel: {
@@ -1055,7 +1055,7 @@ const Account = () => {
     emailLinkedValue: {
       fontFamily: FONTS.regular,
       fontSize: sz.emailLinkedValueFontSize,
-      color: COLORS.tealLight ?? COLORS.teal,
+      color: COLORS.primary,
     },
     logoutBtn: {
       flexDirection: "row",
@@ -1067,14 +1067,14 @@ const Account = () => {
       paddingVertical: sz.logoutPaddingV,
       borderRadius: sz.logoutBorderRadius,
       borderWidth: 1.5,
-      borderColor: "rgba(255,80,80,0.4)",
-      backgroundColor: "rgba(255,80,80,0.08)",
+      borderColor: "rgba(232,68,90,0.4)",
+      backgroundColor: "rgba(232,68,90,0.08)",
     },
-    logoutIcon: { fontSize: sz.logoutIconFontSize, color: "#FF6B6B" },
+    logoutIcon: { fontSize: sz.logoutIconFontSize, color: "#E8445A" },
     logoutText: {
       fontFamily: FONTS.bold,
       fontSize: sz.logoutTextFontSize,
-      color: "#FF6B6B",
+      color: "#E8445A",
       letterSpacing: 0.4,
     },
     modalOverlay: {
@@ -1085,14 +1085,14 @@ const Account = () => {
       padding: sz.modalOverlayPadding,
     },
     modalContent: {
-      backgroundColor: COLORS.darkBg2,
+      backgroundColor: COLORS.surface,
       borderRadius: sz.modalBorderRadius,
       padding: sz.modalPadding,
       width: "100%",
       maxWidth: sz.modalMaxWidth,
       maxHeight: "80%",
       borderWidth: 1.5,
-      borderColor: COLORS.borderTealBold,
+      borderColor: COLORS.borderBold,
       ...SHADOWS.tealGlow,
     },
     modalTitle: {
@@ -1117,7 +1117,7 @@ const Account = () => {
       fontSize: sz.modalInputFontSize,
       color: COLORS.textPrimary,
       borderWidth: 1.5,
-      borderColor: COLORS.borderTeal,
+      borderColor: COLORS.borderPrimary,
     },
     ageSection: {
       flexDirection: "row",
@@ -1132,9 +1132,9 @@ const Account = () => {
       alignItems: "center",
       justifyContent: "center",
       borderRadius: sz.ageBtnBorderRadius,
-      backgroundColor: "rgba(0,188,212,0.1)",
+      backgroundColor: "rgba(0,196,204,0.1)",
       borderWidth: 2,
-      borderColor: "rgba(0,188,212,0.45)",
+      borderColor: "rgba(0,196,204,0.45)",
       shadowColor: TEAL,
       shadowOffset: { width: 0, height: 0 },
       shadowOpacity: 0.3,
@@ -1142,11 +1142,11 @@ const Account = () => {
       elevation: 4,
       gap: 4,
     },
-    ageBtnActive: { backgroundColor: COLORS.teal, borderColor: COLORS.teal },
+    ageBtnActive: { backgroundColor: COLORS.primary, borderColor: COLORS.primary },
     ageBtnText: {
       fontFamily: FONTS.bold,
       fontSize: sz.ageBtnFontSize,
-      color: "#E0F7FA",
+      color: "#FFFFFF",
     },
     genderSection: {
       flexDirection: "row",
@@ -1171,7 +1171,7 @@ const Account = () => {
       shadowRadius: 10,
     },
     genderBtnGirl: {
-      backgroundColor: "rgba(236,64,122,0.15)",
+      backgroundColor: "rgba(232,68,90,0.15)",
       borderColor: PINK,
       shadowColor: PINK,
       shadowOffset: { width: 0, height: 0 },
@@ -1183,7 +1183,7 @@ const Account = () => {
     genderLabel: {
       fontFamily: FONTS.bold,
       fontSize: sz.genderLabelFontSize,
-      color: "#E0F7FA",
+      color: "#FFFFFF",
       letterSpacing: 1,
     },
     modalActions: {
@@ -1207,7 +1207,7 @@ const Account = () => {
       fontSize: sz.actionBtnFontSize,
       color: COLORS.textSecondary,
     },
-    saveButton: { backgroundColor: COLORS.teal },
+    saveButton: { backgroundColor: COLORS.primary },
     saveButtonText: {
       fontFamily: FONTS.bold,
       fontSize: sz.actionBtnFontSize,
@@ -1225,13 +1225,13 @@ const Account = () => {
       paddingBottom: pad.sm,
       backgroundColor: C.bg,
       borderBottomWidth: 1,
-      borderBottomColor: "rgba(0,188,212,0.12)",
+      borderBottomColor: "rgba(0,196,204,0.12)",
     },
     backButton: {
       width: size.hitSm,
       height: size.hitSm,
       borderRadius: size.hitSm / 2,
-      backgroundColor: "rgba(0,188,212,0.08)",
+      backgroundColor: "rgba(0,196,204,0.08)",
       borderWidth: 1,
       borderColor: C.tealBorder,
       alignItems: "center",
@@ -1249,7 +1249,7 @@ const Account = () => {
     deleteAccountText: {
       fontFamily: FONTS.regular,
       fontSize: font.sm,
-      color: "rgba(255,80,80,0.45)",
+      color: "rgba(232,68,90,0.45)",
       textDecorationLine: "underline",
       letterSpacing: 0.2,
     },
